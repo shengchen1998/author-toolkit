@@ -1,0 +1,6 @@
+{
+  "name": "author-toolkit",
+  "version": "2.0.0",
+  "description": "A reusable fiction revision workflow and six independent writing skills for Claude Code and Kimi Code",
+  "skills": "./skills/"
+}

@@ -9,11 +9,11 @@ Editorial workflow for collaborative fiction writing in three stages: Story Bibl
 
 ## Session Continuity
 
-Novel projects span weeks or months. Claude has no memory between sessions, so the Story Bible is your persistent state.
+Novel projects span weeks or months, and agent sessions do not reliably preserve context. The Story Bible is persistent creative state; `.author-toolkit/project.json`, when present, locates that state and the workflow artifacts.
 
-- **At session start:** Read `story-bible.md` (or whatever the project calls it) before doing any other work. Skim recent files in `sessions/` for unresolved threads.
-- **At session end:** Write a brief note at `sessions/YYYY-MM-DD_topic-slug.md` summarizing what was done, decisions made, and the stopping point. Two to five sentences is enough.
-- **When foundations shift:** Update the Story Bible immediately when premise, character bios, world rules, or major plot turns change. The Story Bible is the source of truth, not a one-time template.
+- **At session start:** Read the Story Bible at its registered path, or `story-bible.md` in a standalone project. Skim recent files in `sessions/` for unresolved threads.
+- **At session end:** Write a brief note at `sessions/YYYY-MM-DD_topic-slug.md` summarizing what was done, decisions made, backups created, and the stopping point. Two to five sentences is enough.
+- **When foundations shift:** Record approved changes to premise, character bios, world rules, or major plot turns promptly. Standalone work asks the author to confirm the update; workflow work returns the proposed change to `revise-fiction` for approval and writing. The Story Bible remains the creative source of truth.
 - **Surface unresolved questions:** At the start of new work, list questions left open from prior sessions and ask the user which to address before continuing.
 
 ## When to Use
@@ -114,7 +114,7 @@ Key relationship: Tension with Handler (wants to trust, can't fully)
 
 3. **Curate:** Ask which to keep, combine, or discard. Reasons help calibrate.
 
-4. **Draft:** Write chapter. Use `str_replace` for revisions, never reprint.
+4. **Draft:** Write chapter. Use targeted text edits for revisions, never reprint.
 
 5. **Refine:** Iterate on feedback. After 3 passes with minimal changes, ask: "What could be cut?"
 
@@ -126,7 +126,7 @@ Key relationship: Tension with Handler (wants to trust, can't fully)
 
 3. **Propose Changes:** Specific, surgical edits with brief "why"
 
-4. **Implement:** Use `str_replace`. Link to file after changes.
+4. **Implement:** Use targeted text edits. Link to file after changes.
 
 5. **Iterate:** Until chapter achieves purpose
 
@@ -148,7 +148,9 @@ When a specific editorial persona is invoked, load the corresponding reference f
 
 **Goal:** Verify manuscript works without author context.
 
-**Using fresh sub-agent (no story bible):**
+**Using a fresh reviewer without Story Bible context:**
+
+Use a fresh sub-agent when the host provides one. Otherwise, write a handoff containing only the manuscript path, target reader, and review questions, then ask the author to open a new session. The reviewer receives no Story Bible, prior analysis, or revision discussion.
 
 1. **Comprehension:** Can they summarize plot, understand motivations, identify stakes?
 2. **Engagement:** Where did they lose interest, have questions, feel confused?
@@ -178,7 +180,7 @@ Use these checkpoints to verify you're following the workflow correctly.
 - [ ] Did you avoid mixing feedback from multiple personas in one pass?
 
 **After making edits:**
-- [ ] Did you use `str_replace` for surgical changes, not reprinting entire sections?
+- [ ] Did you use targeted text edits for surgical changes, not reprinting entire sections?
 - [ ] Can you articulate what changed and why it's better?
 - [ ] Is the change consistent with the Story Bible (character voice, plot logic, world rules)?
 
@@ -188,7 +190,7 @@ Use these checkpoints to verify you're following the workflow correctly.
 - [ ] Can you explain why the selected option is stronger than alternatives?
 
 **Before claiming "done":**
-- [ ] Has a fresh sub-agent (without Story Bible context) read the manuscript?
+- [ ] Has a fresh reviewer (without Story Bible context) read the manuscript?
 - [ ] Did the fresh reader understand plot, character motivations, and stakes?
 - [ ] Were any gaps or confusion points identified and addressed?
 
@@ -208,8 +210,8 @@ Each persona and stage has a defined end. Stop at it. Do not auto-advance to the
 | **Character Consultant** | One consult on the named character/scene is complete | Do not reflexively check other characters or scenes. Wait for the next invocation. |
 | **Continuity Tracker** | Audit produces flag list | Stop. Do not fix automatically. Author decides which flags are real and how to resolve. |
 | **Brainstorm Partner** | Curate step produces a chosen direction (or 5+ options reviewed and declined) | Hand back. Do not draft into a chapter unless explicitly asked. |
-| **Reader Testing (Stage 3)** | Fresh sub-agent's report is delivered | Stop. Author decides whether to return to Stage 2 and on which findings. |
-| **Session** | Stopping point reached or context window is filling | Update the Story Bible if foundations shifted; write a `sessions/` note; stop. |
+| **Reader Testing (Stage 3)** | The fresh reviewer's report is delivered by a sub-agent or a separate-session handoff | Stop. Author decides whether to return to Stage 2 and on which findings. |
+| **Session** | Stopping point reached or context window is filling | Record approved Story Bible changes, write a `sessions/` note, and stop. |
 
 If the author explicitly asks you to continue past a stopping point, fine—but name what's about to happen ("I'll now move from continuity audit to applying fixes") so the scope shift is visible.
 
@@ -219,11 +221,11 @@ If the author explicitly asks you to continue past a stopping point, fine—but 
 
 | Mistake | Why It Happens | Fix |
 |---------|---------------|-----|
-| **Skipping Story Bible** | "I know my story well enough" | Story Bible isn't for you—it's for Claude. Without shared context, feedback will miss key story elements. Build it. |
+| **Skipping Story Bible** | "I know my story well enough" | The Story Bible preserves shared context across sessions. Without it, feedback will miss key story elements. Build it. |
 | **Generic feedback without persona** | Rushing, forgetting to invoke specific role | Explicitly say "As developmental editor..." or "As line editor..." in your prompt. Different lenses catch different issues. |
-| **Reprinting entire chapters** | Habit from other editing contexts | Use `str_replace` for surgical edits only. Reprinting burns context and makes changes hard to track. Link to file after edits. |
+| **Reprinting entire chapters** | Habit from other editing contexts | Use targeted text edits for surgical edits only. Reprinting burns context and makes changes hard to track. Link to file after edits. |
 | **Jumping to line edits before structure** | Wanting to "fix" prose immediately | If plot/pacing/character issues exist, line edits are wasted effort. Always developmental pass first. See example below. |
-| **Skipping Reader Testing** | "I've read it so many times already" | You have author context. Reader Testing uses fresh sub-agent without story bible to catch gaps readers will hit. |
+| **Skipping Reader Testing** | "I've read it so many times already" | You have author context. Reader Testing uses a fresh reviewer without the Story Bible to catch gaps readers will hit. |
 | **Too many personas at once** | Trying to fix everything in one pass | Invoke one persona per pass. Developmental → Character → Line → Continuity. Focused feedback is actionable feedback. |
 | **Brainstorming without curation** | Taking first idea that sounds good | Generate 5-15 options, then curate. First idea is rarely best idea. Quantity enables quality. |
 
@@ -264,17 +266,9 @@ If the author explicitly asks you to continue past a stopping point, fine—but 
 
 ## Finding Format
 
-When this skill's diagnostic modes (developmental-editing critique,
-continuity-tracking flags) produce findings, emit them conforming to
-`../../references/finding-schema.json`: `audit` (use the mode
-name, e.g. "developmental-editing"), `technique` (the named craft
-technique — e.g. "Want/Need/Wound/Lie alignment"), `severity`
-(note/suggestion/warning), `location` (file/line/quote), `issue`,
-`confidence` ("judgment" — this skill has no deterministic component), and
-optionally `exemplar` (a one-sentence illustration inline, since this
-skill has no curated exemplar library yet — grow one opportunistically).
-Brainstorming and drafting-proposal output is NOT in scope for this
-contract.
+Standalone developmental-editing critiques and continuity-tracking flags conform to `../../references/finding-schema.json`: `audit` = the mode name, `technique` = the named craft technique, `severity`, `location`, `issue`, `confidence: "judgment"`, and optional `exemplar`. Serialize findings as JSON, using one JSON code block when embedding them in Markdown; YAML does not satisfy this contract. Brainstorming and drafting proposals remain outside the finding contract.
+
+When `revise-fiction` supplies workflow report context, load `../../references/workflow-reporting.md` and use finding v2. After the author approves an edit batch, return the affected file list to the orchestrator and wait for its backup confirmation before editing. The orchestrator records backups through `author-project`. Return reports and proposed Story Bible updates to the orchestrator; do not advance the workflow from this skill.
 
 ---
 

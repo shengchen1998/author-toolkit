@@ -13,7 +13,7 @@ For a story not yet drafted, or only partially drafted. Places the landmark beat
 
 ## Stop Condition
 
-Stop once the Structure Map block is complete for all 11 landmarks (or explicitly marked "undecided" per beat). Hand it back for the author to paste into their Story Bible. Do not write to the Story Bible directly, and do not proceed to drafting scenes — that's `fiction-workshop`'s job.
+Stop once the Structure Map block is complete for all 11 landmarks (or explicitly marked "undecided" per beat). Return it to the author in standalone use or to `revise-fiction` in workflow mode; only the orchestrator writes an author-approved profile to the Story Bible. Do not proceed to drafting scenes — that's `fiction-workshop`'s job.
 
 ## Common Pitfalls in Map Mode
 

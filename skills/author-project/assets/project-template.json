@@ -1,0 +1,67 @@
+{
+  "schema_version": "2.0.0",
+  "project_type": "fiction",
+  "language": "und",
+  "manuscript_root": "manuscript/",
+  "paths": {
+    "story_bible": "story-bible.md",
+    "audit_tracker": "audit-tracker.md",
+    "reports": "reports/",
+    "sessions": "sessions/",
+    "backups": ".author-toolkit/backups/",
+    "handoffs": ".author-toolkit/handoffs/"
+  },
+  "workflow": {
+    "name": "revise-fiction",
+    "current_stage": "intake",
+    "stages": [
+      {
+        "name": "intake",
+        "status": "not_started",
+        "artifacts": []
+      },
+      {
+        "name": "story-bible",
+        "status": "not_started",
+        "artifacts": []
+      },
+      {
+        "name": "structure",
+        "status": "not_started",
+        "artifacts": []
+      },
+      {
+        "name": "characters",
+        "status": "not_started",
+        "artifacts": []
+      },
+      {
+        "name": "revision-plan",
+        "status": "not_started",
+        "artifacts": []
+      },
+      {
+        "name": "chapter-revision",
+        "status": "not_started",
+        "artifacts": []
+      },
+      {
+        "name": "prose",
+        "status": "not_started",
+        "artifacts": []
+      },
+      {
+        "name": "ai-cleanup",
+        "status": "not_started",
+        "artifacts": []
+      },
+      {
+        "name": "final-review",
+        "status": "not_started",
+        "artifacts": []
+      }
+    ]
+  },
+  "created_at": "2000-01-01T00:00:00Z",
+  "updated_at": "2000-01-01T00:00:00Z"
+}

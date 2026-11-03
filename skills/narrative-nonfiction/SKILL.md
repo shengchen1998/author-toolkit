@@ -11,7 +11,7 @@ Workflow for self-help and prescriptive nonfiction using narrative elements and 
 
 ## Session Continuity
 
-Book projects span weeks or months. Claude has no memory between sessions, so the project's blueprint document is your persistent state.
+Book projects span weeks or months, and agent sessions do not reliably preserve context. The project's Blueprint is persistent creative state. Narrative nonfiction uses this standalone continuity model in 2.0 rather than the `revise-fiction` manifest.
 
 - **At session start:** Read `book-blueprint.md` (or whatever the project calls its blueprint) before doing any other work. Skim recent files in `sessions/` for unresolved threads.
 - **At session end:** Write a brief note at `sessions/YYYY-MM-DD_topic-slug.md` summarizing what was done, decisions made, and the stopping point. Two to five sentences is enough.
@@ -114,7 +114,7 @@ See `references/` for detailed guidance on each mode.
 
 3. **Invoke Mode:** Load relevant reference file
 
-4. **Implement:** Use `str_replace`
+4. **Implement:** Use targeted text edits
 
 ---
 
@@ -275,13 +275,9 @@ Choose one morning this week (not your busiest day—start manageable).
 
 ## Finding Format
 
-This skill's diagnostic modes (reveal-engineering plant/payoff gaps,
-metaphor-consistency checks, reader-journey audits) conform to
-`../../references/finding-schema.json`: `audit` = the mode
-name, `technique` = the specific craft element (e.g. "Reveal plant without
-payoff"), `severity`, `location`, `issue`, `confidence: "judgment"`,
-`exemplar` optional. Exercise-design and transformation-arc scaffolding
-output (generative, not diagnostic) is NOT in scope.
+Standalone diagnostic modes, including content editing, reveal plant/payoff gaps, metaphor consistency, and reader-journey audits, conform to `../../references/finding-schema.json`: `audit` = the mode name, `technique` = the specific craft element, `severity`, `location`, `issue`, `confidence: "judgment"`, and optional `exemplar`. Exercise design and transformation-arc scaffolding remain outside the finding contract.
+
+Narrative nonfiction remains standalone in 2.0. It does not consume the `revise-fiction` manifest or workflow report context, and it has no calling orchestrator.
 
 ---
 
@@ -289,6 +285,7 @@ output (generative, not diagnostic) is NOT in scope.
 
 - `references/transformation-arc.md` - Reader journey structure
 - `references/metaphor-consistency.md` - Extended metaphor management
+- `references/content-editing.md` - Teaching clarity, completeness, and accuracy
 - `references/exercise-design.md` - Practical application design
 - `references/reveal-engineering.md` - Reveal-pattern index; permission-reframe pattern in detail
 - `references/empirical-reveal.md` - Counterintuitive-data reveal pattern (Freakonomics-style)

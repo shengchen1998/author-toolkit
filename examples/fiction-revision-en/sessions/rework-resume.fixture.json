@@ -1,0 +1,115 @@
+{
+  "fixture": true,
+  "description": "Handwritten state sequence: structure rework invalidates completed downstream work; an interrupted session resumes and reruns structure before characters. No workflow runner or model produced these snapshots.",
+  "project": "../.author-toolkit/project.json",
+  "snapshots": [
+    {
+      "label": "before-rework",
+      "updated_at": "2026-01-17T20:00:00Z",
+      "paths": {
+        "story_bible": "story-bible.md",
+        "audit_tracker": "audit-tracker.md",
+        "reports": "reports",
+        "sessions": "sessions",
+        "backups": "backups",
+        "handoffs": "handoffs"
+      },
+      "workflow": {
+        "name": "revise-fiction",
+        "current_stage": "prose",
+        "stages": [
+          { "name": "intake", "status": "complete", "updated_at": "2026-01-10T09:00:00Z" },
+          { "name": "story-bible", "status": "complete", "updated_at": "2026-01-11T09:00:00Z" },
+          { "name": "structure", "status": "complete", "artifacts": ["reports/structure/2026-01-17_structure.md"], "updated_at": "2026-01-17T18:00:00Z" },
+          { "name": "characters", "status": "complete", "artifacts": ["audit-tracker.md"], "updated_at": "2026-01-17T18:20:00Z" },
+          { "name": "revision-plan", "status": "complete", "artifacts": ["audit-tracker.md"], "updated_at": "2026-01-17T18:40:00Z" },
+          { "name": "chapter-revision", "status": "complete", "artifacts": ["manuscript/chapter-01.md", "manuscript/chapter-02.md", "manuscript/chapter-03.md"], "updated_at": "2026-01-17T19:00:00Z" },
+          { "name": "prose", "status": "in_progress", "artifacts": ["audit-tracker.md"], "updated_at": "2026-01-17T20:00:00Z" },
+          { "name": "ai-cleanup", "status": "not_started" },
+          { "name": "final-review", "status": "not_started" }
+        ]
+      }
+    },
+    {
+      "label": "structure-rework",
+      "updated_at": "2026-01-18T09:00:00Z",
+      "paths": {
+        "story_bible": "story-bible.md",
+        "audit_tracker": "audit-tracker.md",
+        "reports": "reports",
+        "sessions": "sessions",
+        "backups": "backups",
+        "handoffs": "handoffs"
+      },
+      "workflow": {
+        "name": "revise-fiction",
+        "current_stage": "structure",
+        "stages": [
+          { "name": "intake", "status": "complete", "updated_at": "2026-01-10T09:00:00Z" },
+          { "name": "story-bible", "status": "complete", "updated_at": "2026-01-11T09:00:00Z" },
+          { "name": "structure", "status": "in_progress", "reason": "Author requested midpoint and climax rework.", "updated_at": "2026-01-18T09:00:00Z" },
+          { "name": "characters", "status": "stale", "reason": "The Chapter 2 conflict is being restructured.", "updated_at": "2026-01-18T09:00:00Z" },
+          { "name": "revision-plan", "status": "stale", "reason": "The plan depends on unresolved structural decisions.", "updated_at": "2026-01-18T09:00:00Z" },
+          { "name": "chapter-revision", "status": "stale", "reason": "Chapters will change after structure rework.", "updated_at": "2026-01-18T09:00:00Z" },
+          { "name": "prose", "status": "stale", "reason": "Sentence work must follow the new chapter text.", "updated_at": "2026-01-18T09:00:00Z" },
+          { "name": "ai-cleanup", "status": "not_started" },
+          { "name": "final-review", "status": "not_started" }
+        ]
+      }
+    },
+    {
+      "label": "resume-after-interruption",
+      "updated_at": "2026-01-19T08:00:00Z",
+      "paths": {
+        "story_bible": "story-bible.md",
+        "audit_tracker": "audit-tracker.md",
+        "reports": "reports",
+        "sessions": "sessions",
+        "backups": "backups",
+        "handoffs": "handoffs"
+      },
+      "workflow": {
+        "name": "revise-fiction",
+        "current_stage": "structure",
+        "stages": [
+          { "name": "intake", "status": "complete", "updated_at": "2026-01-10T09:00:00Z" },
+          { "name": "story-bible", "status": "complete", "updated_at": "2026-01-11T09:00:00Z" },
+          { "name": "structure", "status": "in_progress", "reason": "Resumed the author's midpoint and climax rework; no downstream artifact has been refreshed.", "updated_at": "2026-01-19T08:00:00Z" },
+          { "name": "characters", "status": "stale", "reason": "The Chapter 2 conflict is being restructured.", "updated_at": "2026-01-18T09:00:00Z" },
+          { "name": "revision-plan", "status": "stale", "reason": "The plan depends on unresolved structural decisions.", "updated_at": "2026-01-18T09:00:00Z" },
+          { "name": "chapter-revision", "status": "stale", "reason": "Chapters will change after structure rework.", "updated_at": "2026-01-18T09:00:00Z" },
+          { "name": "prose", "status": "stale", "reason": "Sentence work must follow the new chapter text.", "updated_at": "2026-01-18T09:00:00Z" },
+          { "name": "ai-cleanup", "status": "not_started" },
+          { "name": "final-review", "status": "not_started" }
+        ]
+      }
+    },
+    {
+      "label": "structure-rerun-and-characters-resume",
+      "updated_at": "2026-01-19T10:00:00Z",
+      "paths": {
+        "story_bible": "story-bible.md",
+        "audit_tracker": "audit-tracker.md",
+        "reports": "reports",
+        "sessions": "sessions",
+        "backups": "backups",
+        "handoffs": "handoffs"
+      },
+      "workflow": {
+        "name": "revise-fiction",
+        "current_stage": "characters",
+        "stages": [
+          { "name": "intake", "status": "complete", "updated_at": "2026-01-10T09:00:00Z" },
+          { "name": "story-bible", "status": "complete", "updated_at": "2026-01-11T09:00:00Z" },
+          { "name": "structure", "status": "complete", "artifacts": ["reports/structure/2026-01-17_structure.md"], "updated_at": "2026-01-19T09:30:00Z" },
+          { "name": "characters", "status": "in_progress", "reason": "Rerunning character work against the completed structure decisions.", "updated_at": "2026-01-19T10:00:00Z" },
+          { "name": "revision-plan", "status": "stale", "reason": "Rebuild only after the character rerun is complete.", "updated_at": "2026-01-19T10:00:00Z" },
+          { "name": "chapter-revision", "status": "stale", "reason": "Awaiting the rebuilt revision plan.", "updated_at": "2026-01-19T10:00:00Z" },
+          { "name": "prose", "status": "stale", "reason": "Awaiting revised chapter text.", "updated_at": "2026-01-19T10:00:00Z" },
+          { "name": "ai-cleanup", "status": "not_started" },
+          { "name": "final-review", "status": "not_started" }
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,136 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "project-schema.json",
+  "title": "author-toolkit project manifest v2",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "project_type",
+    "language",
+    "manuscript_root",
+    "paths",
+    "workflow",
+    "created_at",
+    "updated_at"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "format": "uri-reference",
+      "description": "Optional relative or absolute pointer to this schema."
+    },
+    "schema_version": { "const": "2.0.0" },
+    "project_type": { "const": "fiction" },
+    "language": { "$ref": "#/$defs/language" },
+    "manuscript_root": { "$ref": "relative-path-schema.json" },
+    "paths": {
+      "type": "object",
+      "required": [
+        "story_bible",
+        "audit_tracker",
+        "reports",
+        "sessions",
+        "backups",
+        "handoffs"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "story_bible": { "$ref": "relative-path-schema.json" },
+        "audit_tracker": { "$ref": "relative-path-schema.json" },
+        "reports": { "$ref": "relative-path-schema.json" },
+        "sessions": { "$ref": "relative-path-schema.json" },
+        "backups": { "$ref": "relative-path-schema.json" },
+        "handoffs": { "$ref": "relative-path-schema.json" }
+      }
+    },
+    "workflow": {
+      "type": "object",
+      "required": ["name", "current_stage", "stages"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "const": "revise-fiction" },
+        "current_stage": {
+          "enum": [
+            "intake",
+            "story-bible",
+            "structure",
+            "characters",
+            "revision-plan",
+            "chapter-revision",
+            "prose",
+            "ai-cleanup",
+            "final-review",
+            "complete"
+          ]
+        },
+        "stages": {
+          "type": "array",
+          "minItems": 9,
+          "maxItems": 9,
+          "prefixItems": [
+            { "$ref": "#/$defs/stage", "type": "object", "properties": { "name": { "const": "intake" } } },
+            { "$ref": "#/$defs/stage", "type": "object", "properties": { "name": { "const": "story-bible" } } },
+            { "$ref": "#/$defs/stage", "type": "object", "properties": { "name": { "const": "structure" } } },
+            { "$ref": "#/$defs/stage", "type": "object", "properties": { "name": { "const": "characters" } } },
+            { "$ref": "#/$defs/stage", "type": "object", "properties": { "name": { "const": "revision-plan" } } },
+            { "$ref": "#/$defs/stage", "type": "object", "properties": { "name": { "const": "chapter-revision" } } },
+            { "$ref": "#/$defs/stage", "type": "object", "properties": { "name": { "const": "prose" } } },
+            { "$ref": "#/$defs/stage", "type": "object", "properties": { "name": { "const": "ai-cleanup" } } },
+            { "$ref": "#/$defs/stage", "type": "object", "properties": { "name": { "const": "final-review" } } }
+          ],
+          "items": false
+        }
+      }
+    },
+    "created_at": { "$ref": "#/$defs/timestamp" },
+    "updated_at": { "$ref": "#/$defs/timestamp" }
+  },
+  "$defs": {
+    "language": {
+      "type": "string",
+      "pattern": "^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$",
+      "description": "BCP 47 language tag such as en, en-US, zh, or zh-CN."
+    },
+    "timestamp": { "type": "string", "format": "date-time" },
+    "stage": {
+      "type": "object",
+      "required": ["name", "status"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "enum": [
+            "intake",
+            "story-bible",
+            "structure",
+            "characters",
+            "revision-plan",
+            "chapter-revision",
+            "prose",
+            "ai-cleanup",
+            "final-review"
+          ]
+        },
+        "status": {
+          "enum": [
+            "not_started",
+            "in_progress",
+            "awaiting_author",
+            "blocked",
+            "complete",
+            "skipped",
+            "stale"
+          ]
+        },
+        "artifacts": {
+          "type": "array",
+          "items": { "$ref": "relative-path-schema.json" },
+          "uniqueItems": true
+        },
+        "reason": { "type": "string", "minLength": 1 },
+        "override_reason": { "type": "string", "minLength": 1 },
+        "updated_at": { "$ref": "#/$defs/timestamp" }
+      }
+    }
+  }
+}

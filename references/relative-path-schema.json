@@ -1,0 +1,9 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "relative-path-schema.json",
+  "title": "author-toolkit portable project-relative path",
+  "type": "string",
+  "minLength": 1,
+  "pattern": "^(?!/)(?!~(?:/|$))(?![A-Za-z][A-Za-z0-9+.-]*:)(?!.*\\\\)(?!.*(?:^|/)\\.\\.(?:/|$)).+$",
+  "description": "Portable project-relative path; absolute paths, URI schemes, backslashes, home paths, and .. segments are forbidden."
+}

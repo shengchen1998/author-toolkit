@@ -1,185 +1,234 @@
-# Writing Skills for Claude Code
+# Author Toolkit
 
-A Claude Code plugin with specialized skills for fiction and narrative nonfiction authors.
+A reusable fiction revision workflow and six independent writing skills for
+Claude Code and Kimi Code.
 
-## Session Continuity
+[Chinese quick start](README.zh-CN.md) | [2.0 migration](docs/MIGRATION-2.0.md) |
+[Validation status](docs/VALIDATION.md)
 
-Book projects span weeks or months, and Claude has no memory between sessions. All three skills now treat the project's blueprint or Story Bible as persistent state: read it at session start, update it when foundations change, and write a short note to `sessions/YYYY-MM-DD_topic-slug.md` at session end. The prose-mechanics skill uses a per-project audit tracker the same way.
+## What is included
 
-## Skills Included
+Version 2.0.0 contains 12 skills in three groups.
 
-### Fiction Workshop
-Collaborative fiction writing and editing with 5 editorial personas:
-- **Developmental Editor** - Plot, pacing, structure, stakes
-- **Line Editor** - Prose rhythm, word choice, "show don't tell"
-- **Character Consultant** - Voice consistency, motivation, arc
-- **Continuity Tracker** - Timeline, world facts, internal consistency
-- **Brainstorm Partner** - "What if" exploration, problem-solving
+### User entry points
 
-Includes genre-specific guides for:
-- Spy thrillers (tradecraft, tension, moral complexity)
-- Hard sci-fi (technical accuracy, worldbuilding, geopolitics)
+| Skill | Purpose |
+| --- | --- |
+| `ask-author` | Read project state and route the author to the appropriate entry point or independent skill. |
+| `setup-author-toolkit` | Register an existing writing project and initialize its workflow state. |
+| `revise-fiction` | Run the nine-stage revision workflow for an existing novel. |
 
-### Character Archetypes
-Fiction-only companion to Fiction Workshop's character work. Two taxonomies plus four analysis modes for using archetypes diagnostically:
-- **Narrative-Role Archetypes** - Vogler/Campbell's 8 character functions (Hero, Mentor, Threshold Guardian, Herald, Shapeshifter, Shadow, Trickster, Ally)
-- **Personality Archetypes** - Jungian 12 (Mark & Pearson model): Innocent, Everyman, Hero, Caregiver, Explorer, Rebel, Lover, Creator, Jester, Sage, Magician, Ruler
-- **Analyzer** - Diagnose or recommend an archetype pairing
-- **Audit** - Flag stock/cliché use of an established archetype
-- **Conformance** - Check for unexplained archetype drift across chapters
-- **Ensemble** - Check cast-level archetype balance and gaps
+### Shared orchestration skills
 
-Archetype is a starting scaffold, not a finished character — pair with Fiction Workshop's Want/Need/Wound/Lie framework to individualize.
+These skills support the entry points. They are not separate user workflows.
 
-### Story Structure
-Percentage-anchored macro plot structure, drawn from K.M. Weiland's landmark-beat model and James Scott Bell's signpost catalog:
-- **Landmark Beats** - 11-beat skeleton (Hook, Inciting Event, First Plot Point, Pinch Points, Midpoint, Third Plot Point, Climax, Resolution) with percentages and diagnostics
-- **Signposts** - Bell's 14 named checkpoints (Disturbance, Mirror Moment, Doorways of No Return, Q Factor, and more), overlaid on the landmarks or placed relatively between them
-- **Map** - Place beats and signposts for a story not yet drafted
-- **Audit** - Locate where beats actually land in an existing manuscript and flag missing, mistimed, or thin ones
+| Skill | Purpose |
+| --- | --- |
+| `author-project` | Read and update project registration, workflow state, and artifact paths. |
+| `author-handoff` | Preserve session context and support resume and rework. |
+| `author-review` | Run independent intent, craft, and fresh-reader reviews without editing the manuscript. |
 
-Weiland's beats answer *where* a turning point falls; Bell's signposts answer *what psychological work* it needs to do.
+### Independent writing skills
 
-### Narrative Nonfiction
-For self-help, prescriptive nonfiction, and structural-argument books with storytelling elements:
-- **Transformation Arc** - Reader journey design
-- **Metaphor Consistency** - Extended metaphor management
-- **Exercise Design** - Practical application sections
-- **Reveal Engineering** - Twist/reframe setup and payoff across four patterns:
-  - *Permission-reframe* (training-wheels frame released as validation)
-  - *Empirical* (counterintuitive data overturns received wisdom)
-  - *Structural* (visible surface reframed by hidden mechanism)
-  - *Conceptual* (new category installed; old framework dissolved)
-- **Voice Editing** - Tone and persona consistency
+These six skills keep their existing names, triggers, and direct invocation.
+They can be used without the 2.0 orchestration workflow.
 
-### Prose Mechanics
-Sentence-level diagnostic audits for finished or near-finished drafts (fiction or nonfiction):
-- **Active/Passive Audit** - Unjustified passive constructions, hidden agency
-- **Parallel Structure Audit** - Broken grammatical parallels in lists, comparisons, series
-- **Sentence Length Variance** - Flat-rhythm detection at the paragraph level
-- **Accessibility Audit** - Readability scoring and structural accessibility (prose, not WCAG)
+| Skill | Purpose | Example request |
+| --- | --- | --- |
+| `fiction-workshop` | Draft or edit fiction with developmental, line-editing, character, continuity, and brainstorming perspectives. | "As developmental editor, analyze chapter 3." |
+| `character-archetypes` | Identify archetype pairings and audit cliches, drift, and cast balance. | "What archetype is this character?" |
+| `story-structure` | Map a new structure or audit landmark beats and signposts in an existing draft. | "Audit this manuscript's structure." |
+| `narrative-nonfiction` | Develop narrative nonfiction, reader transformation, metaphors, exercises, reveals, and voice. | "Design the transformation arc for this book." |
+| `prose-mechanics` | Run 19 focused sentence-level audits on stabilized drafts. | "Run an echoes audit on chapter 7." |
+| `avoid-ai-writing` | Detect AI writing patterns or rewrite text to remove them. | "Detect mode: flag AI patterns in this chapter." |
 
-Run audits one at a time, in order. Each pass produces a flagged-issues report for author review.
+`avoid-ai-writing` is vendored from
+[conorbronsdon/avoid-ai-writing](https://github.com/conorbronsdon/avoid-ai-writing)
+under MIT. See [ATTRIBUTION.md](ATTRIBUTION.md).
 
-### Avoid AI Writing
-Audits and rewrites text to remove AI-ism patterns that make prose sound
-machine-generated. Supports two modes:
-- **Detect mode** — Flag AI-isms only; no rewriting. Use when auditing
-  published content, someone else's writing, or when you want to decide
-  yourself what to fix.
-- **Rewrite mode** (default) — Flag AI-isms and rewrite the text to fix them.
+## Scope and language support
 
-Recommended workflow: run `avoid-ai-writing` after the line-edit pass in
-either `fiction-workshop` or `narrative-nonfiction` to catch any residual
-AI patterns before final polish.
+The complete 2.0 orchestration workflow supports revision of an existing,
+single-book fiction manuscript. It accepts Markdown and plain text.
 
-Vendored from [conorbronsdon/avoid-ai-writing](https://github.com/conorbronsdon/avoid-ai-writing)
-(MIT). See [ATTRIBUTION.md](ATTRIBUTION.md).
+Writing a new novel from scratch remains a direct `fiction-workshop` or
+`story-structure` task. Narrative nonfiction remains a direct
+`narrative-nonfiction` task. Multi-book projects and integrations with other
+hosts are outside the supported 2.0 workflow.
+
+English and Chinese are the core workflow languages. Where a diagnostic has
+narrower language coverage, it follows its language-support rules and records
+partial or skipped checks. Other languages use the documented fallback rules;
+reduced rule coverage is not reported as an equivalent completed audit.
 
 ## Installation
 
-### Direct from GitHub
-```bash
-/plugin install github:rhavekost/author-toolkit
-```
+### Claude Code plugin
 
-### For Team Projects
-Add to `.claude/settings.json`:
-```json
-{
-  "enabledPlugins": [
-    "github:rhavekost/author-toolkit"
-  ]
-}
-```
-
-## Usage
-
-Invoke skills directly:
+Add the marketplace, then install the plugin:
 
 ```bash
-/author-toolkit:fiction-workshop
-/author-toolkit:character-archetypes
-/author-toolkit:story-structure
-/author-toolkit:narrative-nonfiction
-/author-toolkit:prose-mechanics
-/author-toolkit:avoid-ai-writing
+claude plugin marketplace add shengchen1998/author-toolkit
+claude plugin install author-toolkit@author-toolkit
 ```
 
-Once activated, work with the editorial personas:
+### Kimi Code plugin
 
-```
-# Fiction
-"As developmental editor, analyze Chapter 3"
-"As line editor, polish this dialogue"
-"Brainstorm mode—I need to solve [plot problem]"
+Run:
 
-# Character archetypes
-"What archetype is this character?"
-"Audit this scene for archetype cliché"
-"Check archetype conformance for chapters 4-8"
-"Run an ensemble balance check on the cast"
-
-# Story structure
-"Map the structure for this story"
-"Audit this manuscript's structure"
-"Check this manuscript for a Faux Climax"
-
-# Nonfiction
-"Help me design the transformation arc for my self-help book"
-"Check metaphor consistency in chapters 4-8"
-"Engineer the reveal for chapter 16"
-
-# Prose mechanics
-"Run active/passive audit on chapter 3"
-"Run sentence-variance audit on chapter 7"
-"Run accessibility audit on the whole manuscript"
-
-# Avoid AI Writing
-"Audit this chapter for AI-isms" (detect mode)
-"Rewrite this chapter to remove AI patterns" (rewrite mode)
+```text
+/plugins install https://github.com/shengchen1998/author-toolkit
 ```
 
-## Quick Reference
+Then run `/reload` or start a new session with `/new`.
 
-| Need | Invoke Skill | Then Say |
-|------|--------------|----------|
-| Fiction writing/editing | `/author-toolkit:fiction-workshop` | "Let's build a story bible" or "As developmental editor, analyze Chapter 3" |
-| Developmental pass | `/author-toolkit:fiction-workshop` | "As developmental editor, analyze [chapter]" |
-| Line editing | `/author-toolkit:fiction-workshop` | "As line editor, polish [scene]" |
-| Character work | `/author-toolkit:fiction-workshop` | "As character consultant, is this in character?" |
-| Continuity check | `/author-toolkit:fiction-workshop` | "As continuity tracker, check for inconsistencies" |
-| Get unstuck | `/author-toolkit:fiction-workshop` | "Brainstorm mode—I need to [solve problem]" |
-| Archetype identification | `/author-toolkit:character-archetypes` | "What archetype is this character?" |
-| Archetype cliché check | `/author-toolkit:character-archetypes` | "Audit [scene] for archetype cliché" |
-| Archetype drift check | `/author-toolkit:character-archetypes` | "Check archetype conformance for chapters [X-Y]" |
-| Cast balance check | `/author-toolkit:character-archetypes` | "Run an ensemble balance check on the cast" |
-| Plan new story structure | `/author-toolkit:story-structure` | "Map the structure for this story" |
-| Audit existing structure | `/author-toolkit:story-structure` | "Audit this manuscript's structure" |
-| Nonfiction writing | `/author-toolkit:narrative-nonfiction` | "Let's build a blueprint for [book]" |
-| Reader journey | `/author-toolkit:narrative-nonfiction` | "Design the transformation arc" |
-| Metaphor consistency | `/author-toolkit:narrative-nonfiction` | "Check metaphor consistency in chapters 4-8" |
-| Exercise design | `/author-toolkit:narrative-nonfiction` | "Design exercises for [concept]" |
-| Active/passive pass | `/author-toolkit:prose-mechanics` | "Run active/passive audit on [chapter]" |
-| Parallel structure | `/author-toolkit:prose-mechanics` | "Run parallel-structure audit on [chapter]" |
-| Sentence variance | `/author-toolkit:prose-mechanics` | "Run sentence-variance audit on [chapter]" |
-| Readability audit | `/author-toolkit:prose-mechanics` | "Run accessibility audit on [chapter]" |
-| Audit chapter for AI-isms | `/author-toolkit:avoid-ai-writing` | "Detect mode — flag AI patterns in this chapter" |
-| Clean AI-isms from chapter | `/author-toolkit:avoid-ai-writing` | "Rewrite mode — remove AI patterns from this chapter" |
+### Generic project or user installation
 
-## Attribution
+The generic installer requires Node.js >= 22.20. Install into the current
+project for both supported hosts:
 
-This plugin vendors the `avoid-ai-writing` skill by
-[Conor Bronsdon (@ConorBronsdon)](https://github.com/conorbronsdon),
-sourced from
-[conorbronsdon/avoid-ai-writing](https://github.com/conorbronsdon/avoid-ai-writing)
-and licensed under the MIT License. The upstream `LICENSE` and `README` are
-preserved unmodified inside
-[`skills/avoid-ai-writing/`](skills/avoid-ai-writing/). Full attribution and
-vendored commit SHA are recorded in [ATTRIBUTION.md](ATTRIBUTION.md).
+```bash
+npx skills@latest add shengchen1998/author-toolkit -a claude-code -a kimi-code-cli
+```
 
-## License
+Add `-g` to install at user level instead:
 
-MIT. See [LICENSE](LICENSE). Vendored third-party skills retain their
-original licenses inside their skill directories — see
-[ATTRIBUTION.md](ATTRIBUTION.md) for details.
+```bash
+npx skills@latest add shengchen1998/author-toolkit -a claude-code -a kimi-code-cli -g
+```
+
+Updates are manual. Check and apply them with:
+
+```bash
+npx skills check
+npx skills update
+```
+
+No installation method in this document implies automatic updates. See the
+[validation status](docs/VALIDATION.md) before relying on a specific host or
+installation path.
+
+## Revise an existing novel
+
+Use the command that matches the installation method:
+
+| Installation | Host | Command |
+| --- | --- | --- |
+| Plugin | Claude Code | `/author-toolkit:revise-fiction` |
+| Plugin | Kimi Code | `/skill:author-toolkit:revise-fiction` |
+| Bare skills | Claude Code | `/revise-fiction` |
+| Bare skills | Kimi Code | `/skill:revise-fiction` |
+
+For the other user entry points, replace `revise-fiction` with `ask-author` or
+`setup-author-toolkit` in the same command form.
+
+A quick run looks like this:
+
+1. Identify the directory containing the existing novel and its Markdown or
+   plain-text manuscript files.
+2. Invoke `setup-author-toolkit` with that path. Answer the intake questions and
+   confirm the revision scope. Registration records paths; it does not move the
+   manuscript into a new layout.
+3. After setup validates the manifest, invoke `revise-fiction` at the registered
+   project and selected entry stage.
+4. Review reports at the author gates. Resolve, defer, or dismiss findings,
+   request rework, and approve revisions before continuing.
+
+The nine stages are:
+
+1. `intake`: Clarify scope and register the project.
+2. `story-bible`: Establish the story foundation and manuscript baseline.
+3. `structure`: Review macro structure.
+4. `characters`: Review characters and continuity.
+5. `revision-plan`: Organize findings and author decisions into a revision plan.
+6. `chapter-revision`: Apply approved chapter revisions with backups.
+7. `prose`: Run sentence-level review and approved fixes.
+8. `ai-cleanup`: Detect or revise AI writing patterns as requested.
+9. `final-review`: Verify the result and prepare the handoff.
+
+The skill definitions contain the full gates and audit rules.
+
+### Project files and artifacts
+
+`.author-toolkit/project.json` registers workflow state and artifact paths in the writing project:
+
+- `project.json` records project registration, workflow state, and artifact
+  locations.
+- Reports default to `reports/` and preserve diagnostic context and
+  machine-readable results. A rerun creates a new report instead of rewriting a
+  delivered report.
+- The tracker defaults to `audit-tracker.md` and records stable finding IDs,
+  statuses, author decisions, and report pointers.
+- Session notes default to `sessions/` and record completed work, open decisions,
+  backup paths, and the stopping point so a later session can resume or handle
+  rework.
+- Before an approved manuscript edit, the affected file is copied to
+  `.author-toolkit/backups/`. Restoration also requires author approval.
+
+The exact paths and state transitions are defined by the workflow skills and
+project schema. Standalone skills retain their existing Story Bible, blueprint,
+and audit-tracker conventions.
+
+### Finding and report schemas
+
+Finding schema v1 remains at `references/finding-schema.json` for existing
+standalone skills and consumers. The 2.0 workflow adds finding v2 in
+`references/finding-schema-v2.json`, a report envelope in
+`references/report-schema-v2.json`, and a project schema in
+`references/project-schema.json`.
+Existing reports are not automatically rewritten. See
+[Migrating to 2.0](docs/MIGRATION-2.0.md).
+
+## Invoke an independent skill directly
+
+Use the same installation-specific command form and replace the skill name:
+
+| Installation | Command pattern |
+| --- | --- |
+| Claude Code plugin | `/author-toolkit:<skill-name>` |
+| Kimi Code plugin | `/skill:author-toolkit:<skill-name>` |
+| Claude Code bare skills | `/<skill-name>` |
+| Kimi Code bare skills | `/skill:<skill-name>` |
+
+For example, run `prose-mechanics`, then ask for one audit such as "Run a
+frequency audit on chapter 4." Run prose audits one at a time and review the
+findings before applying changes. The independent skills do not start the
+nine-stage orchestration workflow.
+
+## Resume or request rework
+
+Start `revise-fiction` again in the registered project and describe whether you
+want to resume, review a report, or rework a finding. The workflow uses
+`project.json`, the tracker, reports, and session notes to recover context. It
+does not reconstruct state by moving or renaming existing project files.
+
+Use backups to inspect or restore pre-edit manuscript content. Ask for
+restoration explicitly; a resume or report rerun does not implicitly restore a
+backup.
+
+## Development
+
+The development package requires Node.js >= 22. The generic skills installer
+requires Node.js >= 22.20. After installing dependencies, run the protocol tests
+and validation from the repository root:
+
+```bash
+npm test
+npm run validate
+```
+
+These commands cover repository-level checks, not host-specific runtime
+verification. Host versions, completed checks, and current limitations are
+tracked in [docs/VALIDATION.md](docs/VALIDATION.md).
+
+## Attribution and license
+
+Author Toolkit originated at
+[rhavekost/author-toolkit](https://github.com/rhavekost/author-toolkit).
+The original copyright notice and [MIT License](LICENSE) are preserved. The
+current release repository is
+[shengchen1998/author-toolkit](https://github.com/shengchen1998/author-toolkit).
+
+Vendored third-party skills retain their original licenses. See
+[ATTRIBUTION.md](ATTRIBUTION.md) for upstream sources and the local integration
+adapter.

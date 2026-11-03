@@ -1,0 +1,74 @@
+{
+  "$schema": "../../../references/project-schema.json",
+  "schema_version": "2.0.0",
+  "project_type": "fiction",
+  "language": "zh-CN",
+  "manuscript_root": "manuscript",
+  "paths": {
+    "story_bible": "story-bible.md",
+    "audit_tracker": "audit-tracker.md",
+    "reports": "reports",
+    "sessions": "sessions",
+    "backups": "backups",
+    "handoffs": "handoffs"
+  },
+  "workflow": {
+    "name": "revise-fiction",
+    "current_stage": "structure",
+    "stages": [
+      {
+        "name": "intake",
+        "status": "complete",
+        "artifacts": ["story-bible.md"],
+        "updated_at": "2026-01-10T09:00:00Z"
+      },
+      {
+        "name": "story-bible",
+        "status": "complete",
+        "artifacts": ["story-bible.md"],
+        "updated_at": "2026-01-11T09:00:00Z"
+      },
+      {
+        "name": "structure",
+        "status": "in_progress",
+        "artifacts": ["reports/structure/2026-01-17_structure.md"],
+        "reason": "作者在中点和高潮诊断后要求返工。",
+        "updated_at": "2026-01-18T09:00:00Z"
+      },
+      {
+        "name": "characters",
+        "status": "stale",
+        "reason": "结构返工会改变第二章林宁与林涛的冲突。",
+        "updated_at": "2026-01-18T09:00:00Z"
+      },
+      {
+        "name": "revision-plan",
+        "status": "stale",
+        "reason": "修订计划必须根据新的结构选择重建。",
+        "updated_at": "2026-01-18T09:00:00Z"
+      },
+      {
+        "name": "chapter-revision",
+        "status": "stale",
+        "reason": "章节修改依赖尚未解决的中点和高潮。",
+        "updated_at": "2026-01-18T09:00:00Z"
+      },
+      {
+        "name": "prose",
+        "status": "stale",
+        "reason": "修订章节稳定后必须重新进行句子审计。",
+        "updated_at": "2026-01-18T09:00:00Z"
+      },
+      {
+        "name": "ai-cleanup",
+        "status": "not_started"
+      },
+      {
+        "name": "final-review",
+        "status": "not_started"
+      }
+    ]
+  },
+  "created_at": "2026-01-10T09:00:00Z",
+  "updated_at": "2026-01-18T09:00:00Z"
+}

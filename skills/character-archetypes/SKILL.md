@@ -31,7 +31,7 @@ This skill is NOT for:
 Archetype pairings are meant to persist in the project's Story Bible, not be re-derived each session.
 
 - **At session start:** If a Story Bible exists, check each main character's entry for an existing Archetype Profile block (see `assets/archetype-profile-template.md`). Don't re-run Analyzer on a character who already has one unless the author asks for a re-check.
-- **When a pairing is newly named or changed:** Hand the profile block back to the author to paste into the Story Bible yourself — this skill does not write to the Story Bible directly (see each mode's stop condition below).
+- **When a pairing is newly named or changed:** Return the profile block to the author or calling orchestrator. Standalone calls leave Story Bible changes to the author; `revise-fiction` writes only author-approved changes.
 
 ## The Two Taxonomies
 
@@ -63,7 +63,7 @@ Load only the reference file matching the currently invoked mode. Do not preload
 2. **Load only that mode's reference file** (and the taxonomy file(s) it needs — Analyzer and Audit need both taxonomies; Conformance and Ensemble need whichever taxonomy the character's existing profile already names).
 3. **Run the mode's workflow** exactly as documented in its reference file.
 4. **Stop at the mode's documented stop condition** (see Stopping Points below). Hand results back to the author.
-5. **If a new or changed Archetype Profile results**, offer the `assets/archetype-profile-template.md` block for the author to paste into their Story Bible — do not write it there yourself.
+5. **If a new or changed Archetype Profile results**, return the `assets/archetype-profile-template.md` block. In standalone use, the author places it in the Story Bible; in `revise-fiction`, the orchestrator writes it after author approval.
 
 ## Integration with `fiction-workshop`
 
@@ -84,15 +84,9 @@ Each mode has a defined end. Stop at it. Do not auto-advance to the next mode, d
 
 ## Finding Format
 
-Audit, Conformance, and Ensemble mode output (diagnostic — cliché flags,
-drift flags, cast-balance gaps) conforms to
-`../../references/finding-schema.json`: `audit` = the mode
-name ("archetype-audit", "archetype-conformance", "archetype-ensemble"),
-`technique` = the specific archetype pattern involved (e.g. "Mentor
-archetype cliché" or "Trickster/Shadow cast overlap"), `severity`,
-`location`, `issue`, `confidence: "judgment"`, `exemplar` optional (inline
-one-liner; no curated library yet). Analyzer mode (pairing/recommendation,
-not a flag) is NOT in scope for this contract.
+Standalone Audit, Conformance, and Ensemble output conforms to `../../references/finding-schema.json`: `audit` = the mode name, `technique` = the specific archetype pattern, `severity`, `location`, `issue`, `confidence: "judgment"`, and optional `exemplar`. Analyzer mode is not diagnostic and remains outside the finding contract.
+
+When `revise-fiction` supplies workflow report context, load `../../references/workflow-reporting.md` and use finding v2. Return new or changed Archetype Profiles to the orchestrator, which writes approved profile changes to the Story Bible.
 
 ## Common Mistakes
 

@@ -1,16 +1,19 @@
-# Prose Audit Tracker
+# Audit Tracker
 
-Lightweight session index. Full findings live in `reports/prose/` — this
-file just tracks what's been run and where to look, so a new session
-doesn't re-run an audit that already has a current report.
+Index audit runs and finding decisions. Full findings remain in immutable reports under `reports/`; do not restate them here.
 
-## Chapters × Audits
+## Runs
 
-| Chapter | Audit | Last run | Report | Status |
+| Chapter or scope | Audit | Last run | Report | Run status |
 |---|---|---|---|---|
-| _(fill in as audits run)_ | | | `reports/prose/<chapter>--<audit>--<stamp>.md` | clean / findings pending |
+| _(fill in as audits run)_ | | | `reports/prose/<chapter>--<audit>--<stamp>.md` | current / stale / superseded |
+
+## Finding Decisions
+
+| Finding ID | Report | Status | Author note |
+|---|---|---|---|
+| _(reuse the report's stable ID)_ | | open / resolved / deferred / dismissed / stale | |
 
 ## Open Questions
 
-_(Unresolved findings the author hasn't addressed yet — link the report,
-don't restate the finding.)_
+Link unresolved reports and record decisions needed from the author. Do not duplicate finding details.

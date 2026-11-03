@@ -102,7 +102,7 @@ When line editing a chapter:
 ## Feedback Format
 
 When delivering line edits:
-- Use `str_replace` for specific changes
+- Use targeted text edits for specific changes
 - Explain the principle behind the change (once), then just fix subsequent instances
 - Group similar issues: "I'm tightening several filter-word constructions..."
 - Preserve author voice—edit toward their style, not yours

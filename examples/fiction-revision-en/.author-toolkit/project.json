@@ -1,0 +1,74 @@
+{
+  "$schema": "../../../references/project-schema.json",
+  "schema_version": "2.0.0",
+  "project_type": "fiction",
+  "language": "en",
+  "manuscript_root": "manuscript",
+  "paths": {
+    "story_bible": "story-bible.md",
+    "audit_tracker": "audit-tracker.md",
+    "reports": "reports",
+    "sessions": "sessions",
+    "backups": "backups",
+    "handoffs": "handoffs"
+  },
+  "workflow": {
+    "name": "revise-fiction",
+    "current_stage": "structure",
+    "stages": [
+      {
+        "name": "intake",
+        "status": "complete",
+        "artifacts": ["story-bible.md"],
+        "updated_at": "2026-01-10T09:00:00Z"
+      },
+      {
+        "name": "story-bible",
+        "status": "complete",
+        "artifacts": ["story-bible.md"],
+        "updated_at": "2026-01-11T09:00:00Z"
+      },
+      {
+        "name": "structure",
+        "status": "in_progress",
+        "artifacts": ["reports/structure/2026-01-17_structure.md"],
+        "reason": "The author requested rework after the midpoint and climax diagnostics.",
+        "updated_at": "2026-01-18T09:00:00Z"
+      },
+      {
+        "name": "characters",
+        "status": "stale",
+        "reason": "Structure rework changes the Chapter 2 conflict between Ning and Tao.",
+        "updated_at": "2026-01-18T09:00:00Z"
+      },
+      {
+        "name": "revision-plan",
+        "status": "stale",
+        "reason": "The revision plan must be rebuilt from the new structural choices.",
+        "updated_at": "2026-01-18T09:00:00Z"
+      },
+      {
+        "name": "chapter-revision",
+        "status": "stale",
+        "reason": "Chapter-level edits depend on the unresolved midpoint and climax.",
+        "updated_at": "2026-01-18T09:00:00Z"
+      },
+      {
+        "name": "prose",
+        "status": "stale",
+        "reason": "Sentence audits must be rerun after the revised chapters settle.",
+        "updated_at": "2026-01-18T09:00:00Z"
+      },
+      {
+        "name": "ai-cleanup",
+        "status": "not_started"
+      },
+      {
+        "name": "final-review",
+        "status": "not_started"
+      }
+    ]
+  },
+  "created_at": "2026-01-10T09:00:00Z",
+  "updated_at": "2026-01-18T09:00:00Z"
+}

@@ -9,10 +9,10 @@ Diagnostic audits for sentence-level prose quality on near-final drafts. Each au
 
 ## Session Continuity
 
-Audit work is iterative across multiple sessions. Claude has no memory between them, so the audit tracker is your persistent state.
+Audit work is iterative, and agent sessions do not reliably preserve context. The audit tracker indexes persistent reports and decisions; `.author-toolkit/project.json`, when present, supplies its path.
 
-- **At session start:** Read `audit-tracker.md` in the project directory (copy from `assets/audit-tracker-template.md` if it doesn't exist). Check which audits have run on which chapters and what's still outstanding.
-- **At session end:** Update the tracker with what was audited, what was flagged, and what was resolved. Note the stopping point.
+- **At session start:** Read the registered tracker, or `audit-tracker.md` in a standalone project. Create it from `assets/audit-tracker-template.md` only when it is absent. Check current and stale runs and outstanding finding decisions.
+- **At session end:** Update the run index and finding statuses with report pointers. Record the stopping point and any backups in `sessions/`; keep finding details in reports.
 - **Surface unresolved questions:** If prior audits flagged issues the author hasn't addressed, list them at session start so the user can decide what to take on.
 
 ## Core Concept
@@ -38,16 +38,16 @@ This skill is NOT for:
 
 ## Audit Passes
 
-Run audits **one at a time, in order**. Order matters because earlier audits change what later audits flag. Recommended sequence: frequency-family first (they inform the crutch-words config), mechanical passes next, semantic passes last (judgment-expensive; don't run on prose about to be reworked).
+Run audits **one at a time, in the table order**. Earlier audits change what later audits flag. Frequency precedes Crutch Words so its results can inform the project configuration; semantic passes come last because they require prose that is unlikely to be reworked.
 
 | # | Audit | Class | Invocation | Catches |
 |---|-------|-------|------------|---------|
 | 1 | Active/Passive | hybrid | "Run active/passive audit on..." | Unjustified passive, hidden agency |
 | 2 | Parallel Structure | semantic | "Run parallel-structure audit on..." | Broken grammatical parallels |
-| 3 | Sentence Variance (file: `sentence-length-variance.md`) | deterministic | "Run sentence-variance audit on..." | Flat rhythm, narrow length bands |
+| 3 | Sentence Variance (file: `sentence-length-variance.md`) | hybrid | "Run sentence-variance audit on..." | Flat rhythm, narrow length bands |
 | 4 | Readability (file: `accessibility-audit.md`) | deterministic | "Run readability audit on..." | Grade-level spikes, paragraph bloat |
 | 5 | Echoes | deterministic | "Run echoes audit on..." | Word repeated within 100 words |
-| 6 | Frequency | deterministic | "Run frequency audit on..." | Manuscript-wide word overuse |
+| 6 | Frequency | deterministic | "Run frequency audit on..." | Chapter-scope word overuse |
 | 7 | Crutch Words | deterministic | "Run crutch-words audit on..." | Author-specific overused words |
 | 8 | Filter Words | deterministic | "Run filter-words audit on..." | felt/saw/heard/realized/noticed/watched |
 | 9 | Adverb Audit | deterministic | "Run adverb audit on..." | -ly density, dialogue vs. narration |
@@ -60,34 +60,24 @@ Run audits **one at a time, in order**. Order matters because earlier audits cha
 | 16 | Pronoun Clarity | semantic | "Run pronoun-clarity audit on..." | Ambiguous antecedents |
 | 17 | Show vs. Tell | semantic | "Run show-vs-tell audit on..." | Named vs. dramatized emotion |
 | 18 | POV Consistency | semantic | "Run pov-consistency audit on..." | Head-hopping, knowledge violations |
-| 19 | AI-Isms | hybrid | "Run ai-isms audit on..." | Cross-lists `avoid-ai-writing` |
+| 19 | AI-Isms | hybrid | "Run ai-isms audit on..." | AI-associated patterns through the adapter |
 
-Load only the reference file matching the currently invoked audit. Do not preload all references at session start — it wastes context budget. If switching audits mid-session, load the new reference file and treat the prior one as out-of-scope.
+Load only the reference file matching the currently invoked audit. For AI-Isms, load `../../references/avoid-ai-writing-adapter.md`. Before a workflow or non-English audit, also load `references/language-support.md` and record full, partial, or skipped coverage.
 
 ## Finding Format
 
-Every audit emits findings conforming to `../../references/finding-schema.json`:
-`audit`, `technique`, `severity` (note/suggestion/warning), `location`
-(file/line/quote), `issue`, `exemplar` (optional), `confidence`
-(deterministic/judgment). Render findings grouped by severity, resolving
-any `exemplar` reference against `references/exemplars/<ref>.md`.
+Standalone audits retain finding v1 from `../../references/finding-schema.json`, grouped by severity with optional exemplars resolved against `references/exemplars/<ref>.md`.
+
+When `revise-fiction` supplies workflow report context, load `../../references/workflow-reporting.md` and use report and finding v2. Every finding includes a recommendation, and the tracker stores stable finding IDs and their review statuses.
 
 ## Engine Hook
 
-Before running any audit, check `command -v scriptorium`. If it succeeds:
-- **Deterministic audits:** run `scriptorium prose audit <name> <chapter>`
-  and treat its JSON as authoritative — do not re-derive findings by hand.
-- **Hybrid audits:** run `scriptorium prose prepare <name> <chapter>` to
-  get code-detected candidates, judge each per that audit's reference
-  file, then `scriptorium prose submit-findings <state> --findings-file
-  <file>`.
-- **Semantic audits:** run `scriptorium prose prepare <name> <chapter>`
-  (no candidates — pure judgment over the raw chapter), judge per the
-  embedded instructions, then `submit-findings`.
+Before running any audit, check `command -v scriptorium` when shell discovery is available. If it succeeds:
+- **Deterministic audits:** run `scriptorium prose audit <name> <chapter>` and treat its JSON as the detection result within the engine's documented coverage.
+- **Hybrid audits:** run `scriptorium prose prepare <name> <chapter>` to get code-detected candidates, judge each per that audit's reference file, then submit findings through the engine.
+- **Semantic audits:** prepare the raw chapter, judge it per the embedded instructions, then submit findings.
 
-If `scriptorium` is unavailable, perform the audit conversationally using
-the reference file's detection rules directly — this is the audit's full
-specification, not an abbreviated fallback.
+Sentence Variance uses the hybrid path because the engine implements only detection pattern #1; apply patterns #2-5 as additional judgment. If `scriptorium` or shell discovery is unavailable, perform the audit conversationally using the reference file's complete detection rules. Workflow reports record the selected engine and its coverage without claiming equivalent results across execution paths.
 
 ## Workflow
 
@@ -105,11 +95,11 @@ For each audit:
 
 4. **Stop. Wait for author review.** Do not apply fixes automatically. The author decides which flags are real and which are stylistic choices.
 
-5. **Apply approved fixes:** Use `str_replace` for surgical edits on the flags the author confirms. Skip the rest without comment.
+5. **Apply approved fixes:** In workflow mode, return the approved file list to `revise-fiction` and wait for its backup confirmation before editing. The orchestrator records every backup through `author-project`. Use targeted text edits only on confirmed flags and record the resulting backup IDs in the session note.
 
-6. **Update the tracker:** Note which audit ran, on which chapter, what was flagged, and what was resolved.
+6. **Update the tracker:** Index the report and update each finding's review status. Keep full finding details in the report.
 
-7. **Move to the next audit.** Repeat.
+7. **Wait for the next request.** The author explicitly starts the next audit or asks the orchestrator to continue.
 
 ## Common Mistakes
 
@@ -143,7 +133,7 @@ Use these checkpoints to verify you're running audits correctly.
 - [ ] Did you stop and wait for review rather than continuing to the next audit?
 
 **After applying fixes:**
-- [ ] Did you use `str_replace` for surgical changes only?
+- [ ] Did you use targeted text edits for surgical changes only?
 - [ ] Did you skip the flags the author didn't confirm, without re-raising them?
 - [ ] Did you update the tracker before ending the session?
 
@@ -163,7 +153,7 @@ Each audit has a defined end. Stop at it. Do not auto-advance to the next audit,
 | **Parallel Structure audit** | Flagged-issues report is delivered | Same as above. Do not roll forward into variance. |
 | **Sentence Length Variance audit** | Flagged-issues report is delivered (with std-dev numbers and flagged runs) | Wait. Variance fixes ripple, so confirmation matters. |
 | **Readability audit** | Flagged-issues report is delivered (with FK grade, paragraph-length, jargon flags) | Wait. Don't pivot into developmental editing if structural concerns surface—surface them and stop. |
-| **Approved-fixes pass** | All author-confirmed flags resolved via `str_replace` | Update the tracker. Do not start the next audit without confirmation. |
+| **Approved-fixes pass** | All author-confirmed flags resolved via targeted text edits | Update the tracker. Do not start the next audit without confirmation. |
 | **Audit sequence** | Author defers, OR a later audit reveals the manuscript needs structural work | Stop. Note in tracker. Recommend the author switch to `fiction-workshop` or `narrative-nonfiction` for the structural pass. |
 | **Session** | Stopping point reached or context window is filling | Update `audit-tracker.md`; write a `sessions/` note; stop. |
 
