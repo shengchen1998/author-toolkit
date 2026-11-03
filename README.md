@@ -136,7 +136,9 @@ A quick run looks like this:
    Markdown or plain-text manuscript files.
 2. Invoke `setup-author-toolkit` with that path. Answer the project registration
    and language questions. Registration records paths; it does not move the
-   manuscript into a new layout. Do not pass a workflow name or entry stage. The
+   manuscript into a new layout. For a new project, setup also installs the
+   project-level `AGENTS.md` template when no such file exists, preserving any
+   existing agent instructions. Do not pass a workflow name or entry stage. The
    selected revision skill establishes and confirms the initial scope afterward.
 3. After setup validates the shared v3 manifest, choose `revise-fiction` for
    whole-book Story Bible, structure, and final review, or `revise-draft` for

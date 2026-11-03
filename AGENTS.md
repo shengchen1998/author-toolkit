@@ -29,7 +29,7 @@ The shared revision workflows support one single-book fiction project per manife
 | --- | --- |
 | `skills/*/SKILL.md` | Host-executable skill instructions with YAML frontmatter. |
 | `skills/*/references/` | Detailed craft rules, operation gates, and audit procedures loaded by skills as needed. |
-| `skills/*/assets/` | Project, report, tracker, handoff, baseline, and planning templates. |
+| `skills/*/assets/` | Project, agent-instruction, report, tracker, handoff, baseline, and planning templates. |
 | `scripts/validate.mjs` | CLI for schemas, manifests, on-disk project state, Markdown reports, and workflow fixtures. |
 | `scripts/migrate-v3.mjs` | CLI for migrating a writing project's v2 manifest and tracker to v3. |
 | `scripts/lib/` | Validation and migration implementation, exported through `index.mjs`. |

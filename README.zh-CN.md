@@ -78,8 +78,9 @@ npx skills update
 
 1. 准备单本小说或当前稿的 Markdown 或纯文本文件, 并确认项目目录.
 2. 调用 `setup-author-toolkit`, 提供路径并回答项目登记和语言问题. 登记会保留原稿路径,
-   并在完成后验证共享 v3 manifest. 不指定 workflow 或 entry stage. 之后由所选修订技能
-   建立并确认初始范围.
+   并在完成后验证共享 v3 manifest. 新项目根目录没有 `AGENTS.md` 时, setup 会安装项目级
+   agent 指令模板; 已有指令文件保持不变. 不指定 workflow 或 entry stage. 之后由所选
+   修订技能建立并确认初始范围.
 3. 根据目标选择技能: 需要全书 Story Bible, 结构审查和终审时调用 `revise-fiction`;
    只需处理当前稿, 局部诊断和当前范围复核时调用 `revise-draft`.
 4. 在作者确认节点审阅报告. 报告可以汇总全部发现项, 但 agent 每次只提出一个待决项,
