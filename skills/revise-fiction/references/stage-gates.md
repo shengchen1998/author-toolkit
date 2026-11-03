@@ -1,6 +1,6 @@
 # Full-book operation gates
 
-Load the section for the current operation. A gate describes the evidence needed to finish that operation for the active scope. Finish with `awaiting_author`; the author starts the next operation explicitly.
+Load the section for the current operation. A gate describes the evidence needed to finish that operation for the active scope. Finish with `awaiting_author`; the author starts the next operation explicitly. At every author gate, also follow the [Author decision loop](state-and-findings.md#author-decision-loop).
 
 For every report, follow `state-and-findings.md`. A clean report contains zero findings and still records engine, `scope_id`, input versions, operation coverage, subchecks when applicable, and language coverage.
 
@@ -8,7 +8,7 @@ For every report, follow `state-and-findings.md`. A clean report contains zero f
 
 **Inputs:** A v3 project root and accessible manuscript text.
 
-**Work:** Inventory every registered manuscript file in reading order, including missing or duplicate chapter identifiers, language, and excluded non-manuscript files. Compute a SHA-256 version for every in-scope file. Record a new `scope_id` through `author-project`; scope changes require author confirmation. Confirm target reader, book metadata, current author goal, and requested entry operation.
+**Work:** Inventory every registered manuscript file in reading order, including missing or duplicate chapter identifiers, language, and excluded non-manuscript files. Compute a SHA-256 version for every in-scope file. Record a new `scope_id` through `author-project`; scope changes require author confirmation. Record target reader, book metadata, current author goal, and requested entry operation when known. Use the author decision loop only for missing choices required by the current gate; keep optional unknowns open without requesting a batch of metadata.
 
 **Gate:** The manifest passes validation, the inventory accounts for every in-scope file, paths are readable, exclusions are named, the tracker exists, and the author confirms the scope. Save the inventory in `reports/intake/` as report v2. Record open metadata questions without inventing answers.
 

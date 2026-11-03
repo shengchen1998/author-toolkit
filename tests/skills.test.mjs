@@ -83,6 +83,15 @@ test("revision strategies share one project and keep distinct evidence gates", a
     path.join(root, "skills/revise-draft/references/stage-gates.md"),
     "utf8",
   );
+  const fictionGates = await readFile(
+    path.join(root, "skills/revise-fiction/references/stage-gates.md"),
+    "utf8",
+  );
+  const state = await readFile(
+    path.join(root, "skills/revise-fiction/references/state-and-findings.md"),
+    "utf8",
+  );
+  const reporting = await readFile(path.join(root, "references/workflow-reporting.md"), "utf8");
 
   for (const text of [setup, fiction, draft]) {
     assert.match(text, /\.author-toolkit\/project\.json/);
@@ -100,4 +109,15 @@ test("revision strategies share one project and keep distinct evidence gates", a
   assert.match(draftGates, /Unknown future turns and ending are valid entries/);
   assert.match(draftGates, /Reports list actual subchecks/);
   assert.match(fiction, /current-scope review does not satisfy final review/);
+
+  for (const text of [fiction, draft, fictionGates, draftGates, reporting]) {
+    assert.match(text, /\[Author decision loop\]\(/);
+  }
+  assert.match(state, /## Author decision loop/);
+  assert.match(state, /Otherwise, each assistant turn has one active decision/);
+  assert.match(state, /discussion alone does not advance the queue or approve work/);
+  assert.match(state, /explicitly request batch handling/);
+  assert.match(state, /Keep nonblocking unknowns labeled as unknown/);
+  assert.match(state, /`pending_action\.reason`/);
+  assert.match(draft, /normally confirmation of the proposed scope/);
 });

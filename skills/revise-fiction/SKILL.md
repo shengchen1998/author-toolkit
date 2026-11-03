@@ -18,6 +18,10 @@ Coordinate full-book revision from the shared project evidence. This skill suppl
 
 The full-book sequence is `intake`, `story-bible`, `structure`, `characters`, `revision-plan`, `chapter-revision`, `prose`, `ai-cleanup`, and `final-review`.
 
+## Author interaction
+
+At every author gate, follow the [Author decision loop](references/state-and-findings.md#author-decision-loop) before presenting questions or approval requests. This applies within an operation as well as at its final gate.
+
 ## Operation routing
 
 For each diagnostic callee, supply the workflow stage, destination report path, named input list and versions, `scope_id`, BCP 47 language, and tracker path. Require the callee to use `../../references/workflow-reporting.md` and finding v2 for this run. The callee returns findings and proposed creative changes; the orchestrator retains approval, pending-action writes, and backup control.

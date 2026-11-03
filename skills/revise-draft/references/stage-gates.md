@@ -1,6 +1,6 @@
 # Current-draft operation gates
 
-Load only the current operation. Evidence comes from the shared project and is judged by operation, scope, input versions, subchecks, and dependencies. Finish each operation with `awaiting_author`; the author starts the next one explicitly.
+Load only the current operation. Evidence comes from the shared project and is judged by operation, scope, input versions, subchecks, and dependencies. Finish each operation with `awaiting_author`; the author starts the next one explicitly. At every author gate, also follow the [Author decision loop](../../revise-fiction/references/state-and-findings.md#author-decision-loop).
 
 ## 1. Intake
 
@@ -14,7 +14,7 @@ Load only the current operation. Evidence comes from the shared project and is j
 
 **Inputs:** Current scope, manuscript, and any existing Story Bible or earlier baseline.
 
-**Work:** Copy `assets/draft-baseline-template.md` to `draft-baseline.md` unless another project path is already registered in the session. Summarize only the current draft under `observed`, `inferred`, and `unknown`. Use Story Bible facts as labeled inputs rather than silently treating them as written events. Show the proposed baseline for author correction or confirmation.
+**Work:** Copy `assets/draft-baseline-template.md` to `draft-baseline.md` unless another project path is already registered in the session. Summarize only the current draft under `observed`, `inferred`, and `unknown`. Use Story Bible facts as labeled inputs rather than silently treating them as written events. Show the proposed baseline as context. After scope confirmation, review corrections and baseline confirmation through the author decision loop.
 
 **Gate:** The baseline covers current premise and conflict as written, principal characters and current arc trends, established world facts, timeline constraints, and open questions. It identifies the active `scope_id` and input versions. Unknown future turns and ending are valid entries and do not block diagnostics.
 

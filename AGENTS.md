@@ -66,7 +66,7 @@ Resolve operational files through the manifest's registered `paths`, including c
 
 Evidence reuse requires matching operation, `scope_id`, input versions, requested coverage and subchecks, and dependency state. Changed inputs or dependencies invalidate affected evidence; a schema-valid old report is not necessarily current. Scope membership, order, or exclusion changes require a new author-confirmed scope. Pending actions describe interrupted or awaiting work, not permission to resume a manuscript write.
 
-Workflow reports are immutable Markdown files with human-readable coverage and exactly one report v2 JSON envelope. Reruns create new files. Stable finding identity, tracker statuses, stale propagation, and approval history are defined in `skills/revise-fiction/references/state-and-findings.md`; that file is the single source for these rules. Shared revision work uses finding v2 and report v2. Standalone skills retain finding v1 and do not modify shared project state unless the author explicitly incorporates their output.
+Workflow reports are immutable Markdown files with human-readable coverage and exactly one report v2 JSON envelope. Reruns create new files. The author decision loop, stable finding identity, tracker statuses, stale propagation, and approval history are defined in `skills/revise-fiction/references/state-and-findings.md`; that file is the single source for these rules. Shared revision work uses finding v2 and report v2. Standalone skills retain finding v1 and do not modify shared project state unless the author explicitly incorporates their output.
 
 ## Setup, build, and test commands
 

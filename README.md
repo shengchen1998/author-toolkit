@@ -141,8 +141,11 @@ A quick run looks like this:
 3. After setup validates the shared v3 manifest, choose `revise-fiction` for
    whole-book Story Bible, structure, and final review, or `revise-draft` for
    the current draft, local diagnostics, and current-scope review.
-4. Review reports at the author gates. Resolve, defer, or dismiss findings,
-   request rework, and approve revisions before manuscript changes.
+4. Review reports at the author gates. A report may summarize every finding, but
+   the agent presents one active decision at a time so you can discuss evidence
+   and alternatives before deciding. Resolve, defer, or dismiss findings, request
+   rework, and approve revisions before manuscript changes. You can explicitly
+   request batch handling when you prefer it.
 
 ### `revise-fiction`: whole-book revision
 

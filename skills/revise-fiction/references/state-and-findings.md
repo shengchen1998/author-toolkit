@@ -43,6 +43,20 @@ Use only these finding statuses:
 
 For each status change, update the tracker row with UTC time, current report path, and reason. Keep historical report paths in the audit-run table. Unknown future plot, an unwritten ending, and other open creative choices belong in baseline open questions; they become findings only when they cause a concrete problem in existing text.
 
+## Author decision loop
+
+Use this loop at every author gate, including scope, baseline, creative choices, finding dispositions, plan approvals, manuscript edits, restores, and overrides.
+
+1. Present the completed inventory or report as context, then choose one active decision by dependency and impact. A coherent scope or edit batch is one decision; unrelated questions need separate turns. A findings table supplies context while only the selected row is active.
+2. Show the active item's evidence, recommendation, and main tradeoff. End with one question. Keep other items queued without turning them into additional questions.
+3. When the author asks questions, disputes evidence, or explores alternatives, stay with the active item and refine the proposal. Only an explicit author decision closes the active item; discussion alone does not advance the queue or approve work.
+4. Record the explicit decision, recheck dependencies, then present the next single item. Keep unresolved findings `open` and the operation `awaiting_author`. Put the active item and remaining queue in `pending_action.reason` and the session note so resume returns to the same item.
+5. When the required decisions are complete, finish the gate and name the next operation. The existing operation-transition gates still apply.
+
+Ask only for choices needed now. Keep nonblocking unknowns labeled as unknown instead of turning them into decision requests.
+
+The author may select a different active item, explicitly request batch handling, or supply several decisions at once. Record each exact decision and its scope. Otherwise, each assistant turn has one active decision. Accepting a finding does not authorize a manuscript edit.
+
 ## Author approvals
 
 Use the shared `## Approvals` table for edit, restore, baseline, scope, prose-override, and prose-risk decisions. Record `Approval ID`, `Type`, `Operation`, `Scope ID`, `Paths`, `Status`, `Reason`, and `Updated`. Approval IDs use an uppercase prefix and at least three digits. Status is `approved`, `deferred`, `cancelled`, or `superseded`.
