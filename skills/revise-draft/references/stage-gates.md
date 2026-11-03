@@ -1,0 +1,75 @@
+# Current-draft operation gates
+
+Load only the current operation. Evidence comes from the shared project and is judged by operation, scope, input versions, subchecks, and dependencies. Finish each operation with `awaiting_author`; the author starts the next one explicitly.
+
+## 1. Intake
+
+**Inputs:** A v3 project root and at least one readable manuscript file.
+
+**Work:** Inventory all manuscript files in reading order, record missing or duplicate chapter identifiers, language, exclusions, and SHA-256 versions. Confirm the current `scope_id` with the author. Record the current author goal when known; total length, outline, ending, and revision target may remain open.
+
+**Gate:** Manifest and tracker validate, every file is accounted for, paths are readable, exclusions are named, and the author confirms the scope. Write an intake report in `reports/intake/`. Missing metadata does not block current-text work.
+
+## 2. Draft baseline
+
+**Inputs:** Current scope, manuscript, and any existing Story Bible or earlier baseline.
+
+**Work:** Copy `assets/draft-baseline-template.md` to `draft-baseline.md` unless another project path is already registered in the session. Summarize only the current draft under `observed`, `inferred`, and `unknown`. Use Story Bible facts as labeled inputs rather than silently treating them as written events. Show the proposed baseline for author correction or confirmation.
+
+**Gate:** The baseline covers current premise and conflict as written, principal characters and current arc trends, established world facts, timeline constraints, and open questions. It identifies the active `scope_id` and input versions. Unknown future turns and ending are valid entries and do not block diagnostics.
+
+## 3. Diagnostics
+
+**Inputs:** Current manuscript, draft-baseline, and scope.
+
+**Work:** Invoke `fiction-workshop` Developmental Editor for scene-level and local chapter diagnosis. Examine scene goal/conflict/outcome, causality, chapter function, information release, local pacing, transitions, and current climactic turns. Exclude act-level landmark placement, percentage timing, full-book ending completeness, and missing future beats. Never force the current last chapter into a climax or resolution role.
+
+**Gate:** Every selected chapter has local narrative coverage, findings reference existing text, assumptions and local structural risks are disclosed, and all findings have tracker decisions. Unwritten future material remains an open question rather than a defect.
+
+## 4. Characters
+
+**Inputs:** Current manuscript, draft-baseline, local findings, and any existing archetype profiles.
+
+**Work:** Use Character Consultant for current motivation, voice, choices, and arc trends, then Continuity Tracker for timeline, relationships, knowledge states, and world facts. Use archetype Conformance for existing profiles or another archetype mode when the author requests it. Do not require full-cast readiness or final arc resolution.
+
+**Gate:** Requested characters have current-text and continuity coverage, every finding has a tracker decision, approved baseline corrections are written, and unresolved facts are explicit. Reports list actual subchecks, including any omitted full-arc or ensemble checks, so later full-book gates can treat the coverage truthfully.
+
+## 5. Revision plan
+
+**Inputs:** Current baselines, diagnostics and character reports, tracker, and scope.
+
+**Work:** Copy `../../revise-fiction/assets/revision-plan-template.md` to `.author-toolkit/revision-plan/<plan-id>.md`. Link every accepted finding to a concrete local action, file, order, scope, baseline impact, and batch. Keep deferred and dismissed decisions visible.
+
+**Gate:** Accepted findings map to batches or explicit deferrals, conflicts are resolved with the author, and the author approves the plan and file scope. With no accepted edits, record this operation and chapter revision as skipped for the current pass.
+
+## 6. Chapter revision
+
+**Inputs:** Approved plan, draft-baseline, manuscript, and tracker.
+
+**Work:** Diagnose one batch and show exact changes before writing. Local chapter splits, merges, reordering, cuts, and scene rewrites require the same explicit approval and backups as other edits. Implement only the approved batch, update current-scope hashes, and recheck affected continuity and baseline differences.
+
+**Gate:** Every planned batch is accepted or explicitly deferred, each modified file has a backup linked to its approval, no requested batch is partially edited, and affected evidence is marked stale by dependency.
+
+## 7. Prose
+
+**Inputs:** Intake, confirmed scope, language metadata, current manuscript, and tracker.
+
+**Work:** The author may enter directly without diagnostics or a full-book baseline. Check for approved but unexecuted edits to the selected text; explain rework risk and record a `prose-risk` approval if the author proceeds. Invoke `prose-mechanics` audits 1-18 one at a time in upstream order, wait for decisions, and back up approved fixes. Issues outside the scope and unknown future structure do not block this operation.
+
+**Gate:** Each selected audit has a current report for the scope, findings have tracker decisions, and fixes have approvals and backups. Name unselected audits and record limited operation coverage.
+
+## 8. AI cleanup
+
+**Inputs:** Confirmed scope, language metadata, current manuscript, and tracker.
+
+**Work:** Follow `../../../references/avoid-ai-writing-adapter.md`. Detection and approved rewrites use the shared approval and backup records. A second detection follows every rewrite.
+
+**Gate:** Every in-scope file has full, partial, or skipped language coverage with engine and degradation details. Every finding has a tracker decision. An upstream failure blocks the operation rather than producing a clean result.
+
+## 9. Current-scope review
+
+**Inputs:** Confirmed scope, current manuscript, relevant baselines, approved plan when used, target reader when known, and review checklists.
+
+**Work:** Invoke `author-review` with `review_mode=current-scope`. Run independent intent and consistency, writing standards, and fresh-reader perspectives over the same `scope_id`. Use subagents in parallel or three separate-session handoffs. Produce findings only.
+
+**Gate:** Three valid reports cover the same scope and list their actual subchecks. Full-book ending, complete landmark coverage, and other inapplicable checks are explicitly `skipped`. The reports and session state describe only the current scope, never a completed book or final review. Later changes stale the affected review evidence.

@@ -5,10 +5,12 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import {
+  validateEvidenceReport,
   validateManifest,
   validateMarkdownReport,
   validateProjectFiles,
   validateSchemaDefinitions,
+  validateScopeCurrency,
   validateTracker,
   validateWorkflowSequence,
 } from "./lib/index.mjs";
@@ -113,14 +115,18 @@ async function main() {
 
       if (result.valid) {
         check(`${path.relative(root, file)}#files`, await validateProjectFiles(manifest, file));
+        if (manifest.schema_version === "3.0.0" && manifest.current_scope) {
+          check(`${path.relative(root, file)}#scope`, await validateScopeCurrency(manifest, file));
+        }
         check(`${path.relative(root, file)}#tracker`, await validateTracker(manifest, file));
       } else if (
-        manifest?.schema_version !== "2.0.0" ||
+        !["2.0.0", "3.0.0"].includes(manifest?.schema_version) ||
         manifest?.project_type !== "fiction" ||
-        manifest?.workflow?.name !== "revise-fiction"
+        (manifest?.schema_version === "2.0.0" &&
+          manifest?.workflow?.name !== "revise-fiction")
       ) {
         console.error(
-          "  legacy or standalone project detected; migration to the fiction revise-fiction v2 manifest is required before workflow validation",
+          "  legacy or standalone project detected; run setup-author-toolkit to register or migrate it before revision",
         );
       }
     } catch (error) {
@@ -134,7 +140,11 @@ async function main() {
   for (const file of selection.reports) {
     try {
       const markdown = await readFile(file, "utf8");
-      check(path.relative(root, file), validateMarkdownReport(markdown));
+      const parsed = validateMarkdownReport(markdown);
+      const needsEvidence = ["draft-baseline", "diagnostics", "current-scope-review"].includes(
+        parsed.envelope?.stage,
+      );
+      check(path.relative(root, file), needsEvidence ? validateEvidenceReport(markdown) : parsed);
     } catch (error) {
       check(path.relative(root, file), {
         valid: false,

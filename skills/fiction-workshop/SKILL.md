@@ -9,11 +9,11 @@ Editorial workflow for collaborative fiction writing in three stages: Story Bibl
 
 ## Session Continuity
 
-Novel projects span weeks or months, and agent sessions do not reliably preserve context. The Story Bible is persistent creative state; `.author-toolkit/project.json`, when present, locates that state and the workflow artifacts.
+Novel projects span weeks or months, and agent sessions do not reliably preserve context. The applicable Story Bible or current-draft baseline is persistent creative state; `.author-toolkit/project.json`, when present, locates shared project artifacts.
 
-- **At session start:** Read the Story Bible at its registered path, or `story-bible.md` in a standalone project. Skim recent files in `sessions/` for unresolved threads.
+- **At session start:** Read the baseline named by the caller, or `story-bible.md` in a standalone project. Skim recent files in `sessions/` for unresolved threads.
 - **At session end:** Write a brief note at `sessions/YYYY-MM-DD_topic-slug.md` summarizing what was done, decisions made, backups created, and the stopping point. Two to five sentences is enough.
-- **When foundations shift:** Record approved changes to premise, character bios, world rules, or major plot turns promptly. Standalone work asks the author to confirm the update; workflow work returns the proposed change to `revise-fiction` for approval and writing. The Story Bible remains the creative source of truth.
+- **When foundations shift:** Record approved changes to premise, character bios, world rules, or major plot turns promptly. Standalone work asks the author to confirm the update; workflow work returns the proposed change to `revise-fiction` or `revise-draft` for approval and writing to the applicable baseline.
 - **Surface unresolved questions:** At the start of new work, list questions left open from prior sessions and ask the user which to address before continuing.
 
 ## When to Use
@@ -268,7 +268,7 @@ If the author explicitly asks you to continue past a stopping point, fine—but 
 
 Standalone developmental-editing critiques and continuity-tracking flags conform to `../../references/finding-schema.json`: `audit` = the mode name, `technique` = the named craft technique, `severity`, `location`, `issue`, `confidence: "judgment"`, and optional `exemplar`. Serialize findings as JSON, using one JSON code block when embedding them in Markdown; YAML does not satisfy this contract. Brainstorming and drafting proposals remain outside the finding contract.
 
-When `revise-fiction` supplies workflow report context, load `../../references/workflow-reporting.md` and use finding v2. After the author approves an edit batch, return the affected file list to the orchestrator and wait for its backup confirmation before editing. The orchestrator records backups through `author-project`. Return reports and proposed Story Bible updates to the orchestrator; do not advance the workflow from this skill.
+When `revise-fiction` or `revise-draft` supplies workflow report context, load `../../references/workflow-reporting.md` and use finding v2. After the author approves an edit batch, return the affected file list to the orchestrator and wait for its backup confirmation before editing. The orchestrator records backups through `author-project`. Return reports and proposed updates to the applicable Story Bible or draft-baseline; do not advance the pending operation from this skill.
 
 ---
 

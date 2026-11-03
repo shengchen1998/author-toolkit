@@ -4,7 +4,8 @@ import path from "node:path";
 import { spawnSync } from "node:child_process";
 import test from "node:test";
 
-import { clone, readManifest, root } from "./helpers.mjs";
+import { extractReportEnvelope } from "../scripts/lib/index.mjs";
+import { clone, readManifest, readReport, root } from "./helpers.mjs";
 
 const validator = path.join(root, "scripts", "validate.mjs");
 
@@ -55,5 +56,33 @@ test("the CLI exits nonzero for an invalid manifest and invalid Markdown", async
   );
   const standalone = runValidator(["--manifest", standalonePath]);
   assert.equal(standalone.status, 1);
-  assert.match(standalone.stderr, /migration to the fiction revise-fiction v2 manifest is required/);
+  assert.match(standalone.stderr, /run setup-author-toolkit to register or migrate it/);
+});
+
+test("the CLI enforces evidence semantics for current-draft operation reports", async (t) => {
+  const output = path.join(root, ".test-output");
+  await mkdir(output, { recursive: true });
+  const temporary = await mkdtemp(path.join(output, "evidence-cli-"));
+  t.after(async () => {
+    await rm(temporary, { recursive: true, force: true });
+  });
+
+  const envelope = extractReportEnvelope(await readReport());
+  envelope.stage = "diagnostics";
+  envelope.engine.notes = "Coverage: full - fixture text; no fallback";
+  const reportPath = path.join(temporary, "diagnostics.md");
+  const render = () =>
+    `# Diagnostics\n\n## Language coverage\n\nfull - fixture text\n\n\`\`\`json\n${JSON.stringify(envelope, null, 2)}\n\`\`\`\n`;
+
+  await writeFile(reportPath, render(), "utf8");
+  const invalid = runValidator(["--report", reportPath]);
+  assert.equal(invalid.status, 1);
+  assert.match(invalid.stderr, /scope_id/);
+
+  envelope.engine.notes +=
+    " scope_id=scope-current operation_coverage=full subchecks=scene-causality,chapter-transitions";
+  await writeFile(reportPath, render(), "utf8");
+  const valid = runValidator(["--report", reportPath]);
+  assert.equal(valid.status, 0, valid.stderr);
+  assert.match(valid.stdout, /1 checks, 0 failures/);
 });

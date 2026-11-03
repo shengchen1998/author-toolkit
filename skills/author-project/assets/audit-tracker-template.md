@@ -2,13 +2,12 @@
 
 This is the living status index. Linked reports are immutable.
 
-## Workflow
+## Project
 
 - Project root:
 - Manifest created at:
-- Main workflow: `revise-fiction`
-- Current stage:
-- Next action:
+- Current scope:
+- Pending action:
 
 ## Findings
 
@@ -21,6 +20,13 @@ Allowed statuses: `open`, `resolved`, `deferred`, `dismissed`, `stale`.
 
 | Stage | Scope | Report | Engine and fallback | Language coverage | Run at | Result |
 |---|---|---|---|---|---|---|
+
+## Approvals
+
+Allowed statuses: `approved`, `deferred`, `cancelled`, `superseded`.
+
+| Approval ID | Type | Operation | Scope ID | Paths | Status | Reason | Updated |
+|---|---|---|---|---|---|---|---|
 
 ## Open questions
 

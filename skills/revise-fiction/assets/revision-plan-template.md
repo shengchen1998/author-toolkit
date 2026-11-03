@@ -2,23 +2,24 @@
 
 - Plan ID:
 - Created or revised at:
-- Source structure reports:
+- Scope ID and input versions:
+- Source structure or diagnostics reports:
 - Source character reports:
-- Story Bible baseline:
-- Manuscript scope:
-- Author approval and scope:
+- Relevant Story Bible or draft-baseline versions:
+- Manuscript scope and exclusions:
+- Author approval ID and scope:
 
 ## Finding actions
 
-| Finding ID | Severity | Planned action | Affected files | Story Bible impact | Batch | Author decision |
+| Finding ID | Severity | Planned action | Affected files | Baseline impact | Batch | Author decision |
 |---|---|---|---|---|---|---|
 
 ## Chapter batches
 
-| Batch | Files | Intended changes | Approval record | Backup ID | Revision status | Result or follow-up |
+| Batch | Files | Intended changes | Approval ID | Backup ID | Revision status | Result or follow-up |
 |---|---|---|---|---|---|---|
 
-Use revision statuses `proposed`, `approved`, `in_progress`, `done`, and `deferred`. Finding statuses remain in the audit tracker.
+Use revision statuses `proposed`, `approved`, `in_progress`, `done`, and `deferred`. Finding and approval statuses remain in the shared audit tracker.
 
 ## Deferred and dismissed findings
 
@@ -29,4 +30,4 @@ Use revision statuses `proposed`, `approved`, `in_progress`, `done`, and `deferr
 
 ## Plan changes after approval
 
-Record later changes in a new revision of the plan, propagate stale state, and obtain approval for the new affected scope before editing.
+Record later changes in a new revision of the plan, propagate stale evidence by dependency, and obtain approval for the new affected scope before editing.

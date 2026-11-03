@@ -1,13 +1,42 @@
 # Validation Status
 
-- **Release:** 2.0.0
-- **Overall status:** Partial
+- **Release:** 3.0.0
+- **Working tree status:** Repository checks passed; host runs not exercised
+- **Date:** 2026-11-03
+
+The repository-level results below cover schemas, validators, migration,
+shared-state contracts, and command-line behavior. They do not verify a full
+creative `revise-draft` run in a host.
+
+## 3.0 working-tree validation
+
+| Check | Status | Evidence |
+| --- | --- | --- |
+| Protocol tests | **Pass** | `npm test`: 74 tests passed, 0 failed. Coverage includes v2 compatibility, v3 scopes and pending actions, approvals, evidence reports, legacy ID collisions, single-file and project-root manuscript layouts, operational-file exclusion, special-character approval paths, changed and added manuscript detection, and both revision-skill contracts. |
+| Default validation | **Pass** | `npm run validate`: 19 checks passed, 0 failures, including both legacy v2 examples and workflow fixtures. |
+| Real migration CLI | **Pass** | A copied Chinese v2 project migrated to v3 with a preserved snapshot. Explicit manifest validation passed 4 checks with 0 failures, including `#scope`; a second migration was idempotent with `snapshot: null`. |
+| Kimi Code actual run | **Not exercised** | The 3.0 working tree has not been exercised through Kimi Code host runs. |
+| Claude Code actual run | **Not exercised** | The 3.0 working tree has not been exercised through Claude Code host runs. |
+| Generic installation and 13-skill discovery | **Not exercised** | No 3.0 installation or discovery result is claimed. |
+
+Historical 2.0 evidence does not verify the new shared evidence model,
+`revise-draft`, v2-to-v3 migration, or 3.0 host entry points.
+
+## Historical 2.0 validation
+
+The remainder of this page is preserved historical evidence for the 2.0 working
+tree. It is not a 3.0 test report.
+
+- **Historical release:** 2.0.0
+- **Historical overall status:** Partial
 - **Tested revision:** `b5e15ef` plus the uncommitted 2.0 working tree
-- **Test date:** 2026-11-03
+- **Historical test date:** 2026-11-03
 
-This page separates repository checks from actual host runs. A pass covers only the commands and modes listed below. Pending means the check has not finished; blocked means the standard runtime path could not start.
+This historical record separates repository checks from actual host runs. A
+pass covers only the commands and modes listed below. Pending means the check
+has not finished; blocked means the standard runtime path could not start.
 
-## Release checks
+### Historical release checks
 
 | Check | Status | Evidence |
 | --- | --- | --- |
@@ -17,7 +46,7 @@ This page separates repository checks from actual host runs. A pass covers only 
 | Six independent skill regression | **Pass** | One real Kimi invocation per independent skill passed its requested scope and stopping point. This does not cover every persona, audit, or mode. |
 | Generic skills installation | **Pass** | `skills` 1.7.5 discovered 12 skills and installed all 12 into isolated `.claude/skills/` and `.agents/skills/` project directories. Project `list` reported all 12 as tracked. |
 
-## Host and tool versions
+### Historical host and tool versions
 
 | Host or tool | Tested version | Status |
 | --- | --- | --- |
@@ -26,7 +55,7 @@ This page separates repository checks from actual host runs. A pass covers only 
 | Node.js | 22.23.4 | **Pass** |
 | `skills` installer | 1.7.5 | **Local discovery and project installation passed** |
 
-## Independent skill regression
+### Historical independent skill regression
 
 All rows used Kimi Code 2.4.1 with the repository loaded through `--skills-dir`.
 
@@ -39,7 +68,7 @@ All rows used Kimi Code 2.4.1 with the repository loaded through `--skills-dir`.
 | `prose-mechanics` | **Pass** | Standalone Echoes audit on Chapter 1 with finding v1 JSON and no manuscript changes. The other 18 audits were not exercised. |
 | `avoid-ai-writing` | **Pass** | Detect-only audit of a short English sample. Rewrite mode was not exercised. |
 
-## Workflow evidence
+### Historical workflow evidence
 
 - The English structure rerun created `reports/structure/2026-11-02T184141Z_structure-v2.md` in the isolated run. It reused `STRUCT-001` through `STRUCT-004`, added `STRUCT-005` through `STRUCT-008`, preserved the fixture report, and left all three manuscript hashes unchanged.
 - The Chinese structure rerun created `reports/structure/2026-11-02T191829Z_structure.md`, reused four IDs, added three, and passed manifest, file, tracker, and report validation with unchanged manuscript hashes.
@@ -54,7 +83,7 @@ All rows used Kimi Code 2.4.1 with the repository loaded through `--skills-dir`.
 - Generic project installation used `--copy`; no global skill installation was performed.
 - Local-source `check` and `update` reported no project skills to update. Remote GitHub update behavior remains untested.
 
-## Unverified limitations
+### Historical unverified limitations
 
 - Claude authentication, native marketplace installation, skill invocation, report generation, and resume remain unverified.
 - Kimi native plugin installation through `/plugins install` and the Desktop `/skill:revise-fiction` user entry remain unverified. The Desktop attempt stopped without bypassing the editor guard.
@@ -63,4 +92,6 @@ All rows used Kimi Code 2.4.1 with the repository loaded through `--skills-dir`.
 - Native plugin update behavior and remote GitHub `skills check` / `skills update` remain unverified.
 - Multi-book projects and other hosts are outside the supported 2.0 workflow. They are support boundaries, not pending test cases.
 
-Temporary validation projects live under `.test-output/` and are not release artifacts. The example manuscripts and prewritten reports under `examples/` are fixtures, not evidence of a model run.
+Temporary validation projects live under `.test-output/` and are not release
+artifacts. The example manuscripts and prewritten reports under `examples/` are
+fixtures, not evidence of a model run.

@@ -11,6 +11,7 @@ const findingV1Schema = readSchema("finding-schema.json");
 const findingV2Schema = readSchema("finding-schema-v2.json");
 const relativePathSchema = readSchema("relative-path-schema.json");
 const projectSchema = readSchema("project-schema.json");
+const projectV3Schema = readSchema("project-schema-v3.json");
 const reportSchema = readSchema("report-schema-v2.json");
 
 const ajv = new Ajv2020({ allErrors: true, strict: true });
@@ -19,12 +20,14 @@ ajv.addSchema(findingV1Schema, "finding-schema-v1.json");
 ajv.addSchema(findingV2Schema);
 ajv.addSchema(relativePathSchema);
 ajv.addSchema(projectSchema);
+ajv.addSchema(projectV3Schema);
 ajv.addSchema(reportSchema);
 
 const findingV1Validator = ajv.getSchema("finding-schema-v1.json");
 const findingV2Validator = ajv.getSchema("finding-schema-v2.json");
 const relativePathValidator = ajv.getSchema("relative-path-schema.json");
 const projectValidator = ajv.getSchema("project-schema.json");
+const projectV3Validator = ajv.getSchema("project-schema-v3.json");
 const reportValidator = ajv.getSchema("report-schema-v2.json");
 
 function evaluate(validator, value) {
@@ -47,6 +50,10 @@ export function validateProjectSchema(value) {
   return evaluate(projectValidator, value);
 }
 
+export function validateProjectV3Schema(value) {
+  return evaluate(projectV3Validator, value);
+}
+
 export function validateReportEnvelope(value) {
   return evaluate(reportValidator, value);
 }
@@ -62,6 +69,7 @@ export function validateSchemaDefinitions() {
     ["finding-schema-v2.json", findingV2Schema],
     ["relative-path-schema.json", relativePathSchema],
     ["project-schema.json", projectSchema],
+    ["project-schema-v3.json", projectV3Schema],
     ["report-schema-v2.json", reportSchema],
   ];
 

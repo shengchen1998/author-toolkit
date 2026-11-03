@@ -1,37 +1,33 @@
-# State, findings, and reports
+# Shared evidence, findings, approvals, and state
 
 ## Report envelope
 
 Use the toolkit root's `references/report-schema-v2.json` as the authoritative envelope contract and resolve its reference to `finding-schema-v2.json`. Read both schemas before writing. Do not infer v2 from the legacy `finding-schema.json`.
 
-Write each report beneath the registered `reports/` path using a stage directory and a unique UTC-stamped filename. Include human-readable context, a `Language coverage` heading, and exactly one fenced `json` block containing one report v2 object. Do not add another JSON block or an appended status log.
+Write each report beneath the registered shared `reports/` path using an operation directory and a unique UTC-stamped filename. Include human-readable context, a `Language coverage` heading, and exactly one fenced `json` block containing one report v2 object.
 
 Populate the actual v2 fields:
 
 - `skill.name` and `skill.version` identify the executing skill; use its declared version or `unversioned`.
-- `language` is the BCP 47 tag for the report's evaluated text. Split reports by file or language when one tag cannot describe mixed coverage truthfully.
-- `inputs` lists every manuscript, Story Bible, plan, or prior-report input. Record an available content hash or Git revision, an author-supplied version label, or `version: "untracked"` with `version_type: "untracked"`. Git and hashing tools are optional.
-- `engine.name` is exactly `conversational` or `scriptorium`. Record the actual engine version or `unknown`, a truthful `degraded` boolean, and detailed `notes` containing the execution path, fallback, context profile, mode, and degradation. Do not invent compound engine names.
-- Under the Markdown `Language coverage` heading, mark each requested rule or category `full`, `partial`, or `skipped` with a reason. Repeat the concise coverage summary in `engine.notes` so the envelope remains self-describing.
-- Every finding has an uppercase audit-specific ID prefix and at least three digits, a nonempty `recommendation`, and the narrowest truthful `location.scope`. File scope has no chapter, line, or quote; chapter scope requires a chapter; line scope requires a line; passage scope requires a quote. Do not invent a line or quotation for a broad issue.
+- `stage` identifies the operation, not the orchestration skill that invoked it. Valid project operations are `intake`, `story-bible`, `draft-baseline`, `structure`, `characters`, `diagnostics`, `revision-plan`, `chapter-revision`, `prose`, `ai-cleanup`, `current-scope-review`, and `final-review`.
+- `language` is the BCP 47 tag of the evaluated text. Split reports when one tag cannot describe mixed coverage truthfully.
+- `inputs` lists every manuscript, baseline, plan, or prior-report input with its available content hash or other truthful version. Current v3 manuscript scopes require SHA-256 hashes.
+- `engine.name` is exactly `conversational` or `scriptorium`. Record the actual version or `unknown`, a truthful `degraded` boolean, and detailed notes containing the execution path, fallback, context profile, mode, and degradation.
+- `engine.notes` also contains `scope_id=<id>` and `operation_coverage=full|partial|skipped`. For `characters`, `diagnostics`, and `current-scope-review`, add `subchecks=` followed by the actual checks covered. Operation coverage is distinct from language coverage.
+- Under `Language coverage`, mark each requested rule or category `full`, `partial`, or `skipped` with a reason. Repeat the concise language summary in `engine.notes`.
+- Every finding has an uppercase audit-specific ID prefix and at least three digits, a nonempty `recommendation`, and the narrowest truthful `location.scope`. Do not invent a line or quotation for a broad issue.
 
-Use `confidence: "judgment"` for editorial interpretation and `deterministic` only for direct code-detected evidence. Finding status is tracker state and is not a finding v2 property. Preserve P-tiers and other upstream evidence in existing text fields such as `technique` or in tracker notes, never in additional JSON properties.
+Use `confidence: "judgment"` for editorial interpretation and `deterministic` only for direct code-detected evidence. Finding status is tracker state and is not a finding v2 property.
 
-Run `node <toolkit-root>/scripts/validate.mjs --report <report-path>` when the installed validator is available and retain its result in the session note. Without it, check required fields, types, enums, conditional location rules, and additional-property restrictions against both schemas and label the result as manual validation. If the v2 schemas are missing or the payload does not conform, mark the stage `blocked` with a reason. Never emit a legacy payload as a substitute.
+Run `node <toolkit-root>/scripts/validate.mjs --report <report-path>` when available and retain the result in the session note. Use `validateEvidenceReport` for v3 evidence-semantic checks. If the payload does not conform, record the operation as `blocked`; never emit a legacy payload as a substitute.
 
-Historical reports are immutable. Author decisions, stale marks, later locations, and rerun results go into the living audit tracker and new reports. Never edit a prior report in place, even to correct its status.
+Historical reports are immutable. Author decisions, stale marks, later locations, and rerun results go into the living tracker and new reports.
 
 ## Finding identity across reruns
 
-Read the latest prior reports for the same stage, audit, and scope before assigning IDs. Reuse an existing finding ID when the rerun describes the same underlying issue. Match in this order:
+Read the latest prior reports for the same operation, audit, and scope before assigning IDs. Reuse an existing ID for the same underlying issue. Match by upstream stable ID, then by the same audit, technique, file, normalized quotation and issue, then by clearly overlapping location after nearby text changed. Allocate a fresh ID for a different issue and link any possible predecessor in tracker notes.
 
-1. An upstream stable ID already associated with the finding.
-2. The same audit, technique, file, normalized quotation when present, and normalized issue, ignoring line movement.
-3. The same audit, technique, file, and issue with a clearly overlapping location after nearby text changed.
-
-If the match is ambiguous, assign a new ID and link the possible predecessor in tracker notes. Never merge two distinct issues to make a report look cleaner. Allocate the next unused number padded to at least three digits for the uppercase audit prefix and never reuse an ID belonging to a different issue.
-
-A finding absent from an equivalent complete rerun becomes `stale` in the tracker, not `resolved`, unless the author confirmed and the new text verifies the fix. When a finding remains present, its new report evidence retains the existing ID and the tracker retains its current decision status. New findings enter the tracker as `open`.
+A finding absent from an equivalent complete rerun becomes `stale`, not `resolved`, unless the author confirmed and the new text verifies the fix. New findings enter as `open`.
 
 ## Living tracker
 
@@ -40,40 +36,56 @@ Use only these finding statuses:
 | Status | Meaning |
 |---|---|
 | `open` | A current finding awaits an author decision or verified resolution |
-| `resolved` | The author accepted a resolution and the current text or artifact verifies it |
+| `resolved` | The author accepted a resolution and current evidence verifies it |
 | `deferred` | The author chose to address it later; record the consequence |
 | `dismissed` | The author judged it inapplicable or intentional; record the reason |
 | `stale` | Its input or scope changed, or an equivalent rerun no longer observes it without verified resolution |
 
-For each status change, update the tracker row with UTC time, current report path, and reason. Keep historical report paths in the audit-run table and stage `artifacts`. Do not restate full findings in session notes or handoffs; link their IDs and report paths.
+For each status change, update the tracker row with UTC time, current report path, and reason. Keep historical report paths in the audit-run table. Unknown future plot, an unwritten ending, and other open creative choices belong in baseline open questions; they become findings only when they cause a concrete problem in existing text.
+
+## Author approvals
+
+Use the shared `## Approvals` table for edit, restore, baseline, scope, prose-override, and prose-risk decisions. Record `Approval ID`, `Type`, `Operation`, `Scope ID`, `Paths`, `Status`, `Reason`, and `Updated`. Approval IDs use an uppercase prefix and at least three digits. Status is `approved`, `deferred`, `cancelled`, or `superseded`.
+
+An approval applies only to its named operation, paths, scope, and input versions. Link manuscript backup records to the approval ID. A structural or input change supersedes an affected override; record the supersession rather than deleting history. Legacy v2 overrides remain `deferred` until the author confirms them on resume.
+
+## Scope and input currency
+
+A scope records its ID, description, `proposed` or `confirmed` status, ordered file paths and SHA-256 hashes, exclusions, and creation time. Reports, findings, plan batches, approvals, and reviews reference the applicable `scope_id`.
+
+Only the author can confirm a new scope or expand an existing one. New chapters do not silently extend old reports. Reuse unchanged evidence by its actual operation and input versions, and create new coverage for added or affected text. Before every manuscript write, recompute the hashes; if they differ, stop and reconcile the scope and stale evidence instead of overwriting newer work.
 
 ## Stale propagation
 
 Apply stale state to the smallest affected dependency set. Keep old reports readable as historical evidence.
 
-| Change | State to mark stale |
+| Change | Evidence to mark stale |
 |---|---|
-| Sentence-level wording, punctuation, or formatting with no fact or structural change | Prose and AI-cleanup results for the affected text, plus final review covering that text. Structure and character audits remain current |
-| Copy edits to Story Bible or plan with no meaning change | Final review that used the edited artifact; earlier craft audits remain current |
-| Plot event, beat order, chapter order, ending, POV strategy, or other structural fact | Structure, revision plan, affected chapter revision and downstream prose/AI results, and final review. Also stale character audits when the changed beat affects an arc or relationship |
-| Character want, need, wound, lie, arc, relationship, voice rule, knowledge state, timeline fact, or world rule | Characters, revision plan, affected chapter revision and downstream prose/AI results, and final review. Also stale structure when the fact changes a structural beat |
-| Manuscript files added, removed, replaced, or reordered | Intake and every audit whose scope or reading order changed, plus final review |
-| Approved revision-plan action or priority change | Affected unexecuted batches and downstream results, plus final review that used the plan |
+| Sentence wording, punctuation, or formatting with no fact or structural change | Prose and AI-cleanup results for the affected text, plus reviews covering that text |
+| Copy edits to a baseline or plan with no meaning change | Reviews that used the edited artifact; earlier craft audits remain current |
+| Plot event, beat order, chapter order, ending, POV strategy, or other structural fact | Structure and diagnostics, revision plan, affected chapter revision and downstream prose/AI results, reviews, and affected character evidence |
+| Character want, need, wound, lie, arc, relationship, voice rule, knowledge state, timeline fact, or world rule | Characters, revision plan, affected chapter revision and downstream prose/AI results, reviews, and structural evidence when a beat changes |
+| Manuscript files added, removed, replaced, or reordered | Intake and every audit whose scope or reading order changed, plus affected reviews |
+| Approved plan action or priority change | Affected unexecuted batches and downstream results, plus reviews that used the plan |
 
-A final review depends on all of its inputs, so any later manuscript, Story Bible, or plan change makes its affected coverage stale. Sentence edits still leave structure and character results current unless they change the facts those audits evaluated.
+Record each stale reason with the changed path and decision or edit batch. Old evidence keeps its original scope; it never expands silently.
 
-Record each stale `reason` with the changed path and decision or edit batch. Record the earliest stale stage as the next action in the tracker. Do not point `current_stage` at a stale stage. When the author resumes it, set that stage `in_progress`, move the pointer, and mark or explicitly override affected downstream work in the same validated write. A later valid rerun can return that stage to `awaiting_author`; downstream stale stages remain stale until their own dependencies and gates are satisfied.
+## Evidence reuse across skills
 
-An author override for unstable prose is scoped to the stated files and structural baseline. Write it to the prose stage's `override_reason`. Any active or completed downstream stage after a stale stage also needs an `override_reason` under the project validator. A later structural change exhausts the override and requires new explicit approval.
+Reuse evidence by operation, scope, input versions, subchecks, and dependency state rather than by report title.
 
-## Stage and session writes
+- Story Bible can supply facts to draft-baseline, but the current manuscript still needs current-draft coverage. Draft-baseline with unknown foundation fields cannot satisfy Story Bible.
+- Full-book structure can supply local leads, but does not replace scene-level diagnostics. Local diagnostics cannot satisfy full-book landmark coverage.
+- Character reports reuse only the subchecks actually covered. Continuity with the same scope and inputs can transfer directly; current-arc-only evidence is partial for a full-arc gate.
+- Revision plans, chapter revisions, prose, and AI cleanup transfer when their operations, scopes, inputs, approvals, and coverage match.
+- Final review can satisfy current-scope review when it covers the same scope and checks. Current-scope review never satisfies final review.
 
-At each pass or stage stop, update the manifest through `author-project`, then update the tracker and a short note in the registered `sessions/` directory. Record work performed, approved decisions, report and backup paths, open questions, stale propagation, and the next action. Set the stage to `awaiting_author` whenever the author must continue.
+## Pending operations and session writes
 
-On the author's explicit next-stage request, verify the prior gate and then mark the prior stage `complete` and the requested stage `in_progress`. If the gate no longer holds, mark it `stale` with a reason and explain the required rerun instead. After the author accepts final review, set every stage `complete` or explicitly `skipped` before using `current_stage: "complete"`.
+The neutral manifest stores only the current scope and an optional shared pending action. A pending action records `operation`, `status`, `scope_id`, `reason`, `artifacts`, and `updated_at`; status is `in_progress`, `awaiting_author`, or `blocked`. It does not record which orchestration skill created it.
 
-## Main and standalone work
+At each stop, update the manifest through `author-project`, then the tracker and a short session note. Record work performed, author decisions, report and backup paths, open questions, stale propagation, and the exact next action. On resume, rederive gates from current evidence rather than treating a pending action as permission to write. Read-only work may continue with an unrelated pending decision; reconcile conflicting writes first.
 
-Each book has one manifest with `workflow.name: "revise-fiction"`. Do not create parallel main trackers for different agents or sessions. Read the latest state before writing and include all historical artifacts.
+## Standalone work
 
-Standalone use of `story-structure`, `character-archetypes`, `fiction-workshop`, `prose-mechanics`, or `avoid-ai-writing` has no effect on main workflow state. Incorporate a standalone artifact only after the author explicitly requests it. Preserve the original output, create a new immutable v2 report for the main workflow, continue finding IDs where identity matches, and record the incorporation decision and source path in the tracker and session note.
+Standalone use of underlying skills has no effect on shared project state. Incorporate a standalone artifact only after the author explicitly requests it. Preserve the original output, create a new immutable v2 report when needed, continue finding IDs where identity matches, and record the decision in the shared tracker and session note.

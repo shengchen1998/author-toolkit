@@ -122,3 +122,44 @@ export function validateMarkdownReport(markdown) {
 
   return { valid: errors.length === 0, errors, envelope };
 }
+
+function evidenceError(message) {
+  return {
+    instancePath: "/engine/notes",
+    keyword: "evidence",
+    message,
+    params: {},
+  };
+}
+
+function evidenceValue(notes, name) {
+  return notes.match(new RegExp(`(?:^|\\s)${name}=([^\\s]+)`))?.[1];
+}
+
+export function validateEvidenceReport(markdown) {
+  const result = validateMarkdownReport(markdown);
+  if (!result.envelope) return result;
+
+  const errors = [...result.errors];
+  const notes = result.envelope.engine?.notes ?? "";
+  const scopeId = evidenceValue(notes, "scope_id");
+  if (!scopeId || !/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(scopeId)) {
+    errors.push(evidenceError("engine.notes must contain scope_id=<valid-scope-id>"));
+  }
+
+  const operationCoverage = evidenceValue(notes, "operation_coverage");
+  if (!["full", "partial", "skipped"].includes(operationCoverage)) {
+    errors.push(
+      evidenceError("engine.notes must contain operation_coverage=full, partial, or skipped"),
+    );
+  }
+
+  if (
+    ["characters", "diagnostics", "current-scope-review"].includes(result.envelope.stage) &&
+    !evidenceValue(notes, "subchecks")
+  ) {
+    errors.push(evidenceError(`engine.notes must contain non-empty subchecks for ${result.envelope.stage}`));
+  }
+
+  return { ...result, valid: errors.length === 0, errors };
+}

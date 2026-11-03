@@ -33,7 +33,10 @@
         "chapter-revision",
         "prose",
         "ai-cleanup",
-        "final-review"
+        "final-review",
+        "draft-baseline",
+        "diagnostics",
+        "current-scope-review"
       ]
     },
     "created_at": { "type": "string", "format": "date-time" },

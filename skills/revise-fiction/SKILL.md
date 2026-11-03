@@ -1,61 +1,61 @@
 ---
 name: revise-fiction
-description: Coordinate an existing fiction manuscript through the nine-stage revision workflow, including mid-workflow resume.
+description: Coordinate an existing fiction manuscript through nine evidence-gated revision operations, including mid-workflow resume.
 disable-model-invocation: true
 ---
 
 # Revise Fiction
 
-Coordinate one main revision workflow for a fiction book. The existing writing skills supply their own craft rules; this skill supplies sequence, state, approvals, and persistence.
+Coordinate full-book revision from the shared project evidence. This skill supplies sequence, gates, approvals, and persistence; the writing skills supply their craft rules.
 
 ## Start or resume
 
-1. Locate `.author-toolkit/project.json` at the selected project root. If it is absent, display the host command for `setup-author-toolkit` and stop. Use `/author-toolkit:setup-author-toolkit` in Claude Code or `/skill:author-toolkit:setup-author-toolkit` in Kimi Code; bare forms are `/setup-author-toolkit` and `/skill:setup-author-toolkit` respectively. Setup is user-invoked.
-2. Resolve each required callee in the current skill listing only when needed. Copy the actual registered name into the Skill call: both `story-structure` and `author-toolkit:story-structure` forms are valid when that is how the host lists them. Apply the same rule to every callee. Never invent an alias or call a user-invoked entry through the Skill tool.
-3. Invoke `author-project` in separate calls with `read`, `validate`, and `status`. Read the registered audit tracker, relevant session notes, and current revision plan. Report validation errors or missing required inputs before editing.
-4. Select the author-requested stage or the earliest stale or unfinished stage. Read only the relevant stage section in [`references/stage-gates.md`](references/stage-gates.md). Mid-workflow entry is allowed when its listed inputs exist; earlier stages retain their evidence-based status.
-5. Invoke `author-project` with `set-stage` to mark the selected stage `in_progress`. Run the stage work and stop at its gate. Set it to `awaiting_author`, record the next action, and wait for the author to start the next pass or stage.
+1. Locate `.author-toolkit/project.json` at the selected project root. If it is absent or has `schema_version: "2.0.0"`, display the host command for `setup-author-toolkit` and stop. Use `/author-toolkit:setup-author-toolkit` in Claude Code or `/skill:author-toolkit:setup-author-toolkit` in Kimi Code; bare forms are `/setup-author-toolkit` and `/skill:setup-author-toolkit` respectively. Setup is user-invoked and upgrades v2 projects without resetting their artifacts.
+2. Resolve each required callee in the current skill listing only when needed. Copy the actual registered name into the Skill call. Never invent an alias or call a user-invoked entry through the Skill tool.
+3. Invoke `author-project` in separate calls with `read`, `validate`, and `status`. Read the shared tracker, relevant session notes, current revision plan, current scope, pending action, and evidence for the requested operation. Report validation errors or missing required inputs before editing.
+4. Select the author-requested operation or the earliest operation whose required evidence is missing, incomplete, or stale in the sequence below. Read only the relevant section in [`references/stage-gates.md`](references/stage-gates.md). A report from another orchestration skill is evidence when its operation, scope, input versions, subchecks, and dependencies satisfy the same gate; no stage label alone establishes completion.
+5. Invoke `author-project` with `set-pending` to record the operation as `in_progress`. Run the operation and stop at its gate. Record it as `awaiting_author` or `blocked`, update the tracker and session note, and wait for the author. Do not chain operations automatically.
 
-The nine stages are `intake`, `story-bible`, `structure`, `characters`, `revision-plan`, `chapter-revision`, `prose`, `ai-cleanup`, and `final-review`.
+The full-book sequence is `intake`, `story-bible`, `structure`, `characters`, `revision-plan`, `chapter-revision`, `prose`, `ai-cleanup`, and `final-review`.
 
-## Stage routing
+## Operation routing
 
-For each diagnostic callee, supply the workflow stage, destination report path, named input list and versions, BCP 47 language, and tracker path. Require the callee to use `../../references/workflow-reporting.md` and finding v2 for this run. The callee returns findings and proposed creative changes; the orchestrator retains approval, state advancement, and backup control.
+For each diagnostic callee, supply the workflow stage, destination report path, named input list and versions, `scope_id`, BCP 47 language, and tracker path. Require the callee to use `../../references/workflow-reporting.md` and finding v2 for this run. The callee returns findings and proposed creative changes; the orchestrator retains approval, pending-action writes, and backup control.
 
-| Stage | Delegation |
+| Operation | Delegation |
 |---|---|
 | `intake` | `author-project` plus manuscript inventory |
 | `story-bible` | `fiction-workshop`, Story Bible Building |
-| `structure` | `story-structure`, Audit mode |
+| `structure` | `story-structure`, Audit mode over the full selected scope |
 | `characters` | `character-archetypes` plus `fiction-workshop` Character Consultant and Continuity Tracker |
-| `revision-plan` | Consolidate accepted findings using the local plan template |
+| `revision-plan` | Consolidate accepted findings using the shared plan template |
 | `chapter-revision` | `fiction-workshop`, scoped to the approved plan |
-| `prose` | `prose-mechanics`, audits 1-18 in their upstream order; AI-Isms stays in the next stage |
+| `prose` | `prose-mechanics`, audits 1-18 in their upstream order; AI-Isms stays in the next operation |
 | `ai-cleanup` | Follow [`../../references/avoid-ai-writing-adapter.md`](../../references/avoid-ai-writing-adapter.md) |
-| `final-review` | `author-review` |
+| `final-review` | `author-review` with `review_mode=final` |
 
-Honor each callee's stopping point. A pause within a stage ends with the same stage `awaiting_author`; the author can then continue that stage. Do not chain stages automatically.
+Honor each callee's stopping point. A pause within an operation ends with the same operation `awaiting_author`; the author can then continue it.
 
 ## Approval and backup gate
 
-For manuscript changes, first obtain a diagnosis or proposal without editing. Show the affected paths and intended change batch, then obtain explicit author approval. After approval and before the first write, invoke `author-project` with `record-backup` for every affected file. Apply only the approved batch after every backup succeeds.
+For manuscript changes, first obtain a diagnosis or proposal without editing. Show the affected paths and intended change batch, then obtain explicit author approval. Record the approval in the shared tracker with its `approval_id`, operation, `scope_id`, paths, and reason. After approval and before the first write, invoke `author-project` with `record-backup` for every affected file and that `approval_id`. Apply only the approved batch after every backup succeeds.
 
 A restore requires separate explicit approval naming the backup ID and files. Invoke `author-project` with `record-restore`, which preserves the current text in a safety backup before restoring. Never treat an earlier edit approval as restore approval.
 
 Story Bible changes require author confirmation and remain consistent with the approved plan. `author-project` handles state and backups only; it never supplies creative content.
 
-## Reports and state
+## Reports and shared state
 
-Before writing any report or changing finding status, read [`references/state-and-findings.md`](references/state-and-findings.md). Every workflow report is Markdown with exactly one JSON envelope conforming to `../../references/report-schema-v2.json` and the finding v2 schema it references. Use the schema's actual properties and validate with the provided script when available. Never label a v1 payload as v2.
+Before writing any report or changing finding or approval status, read [`references/state-and-findings.md`](references/state-and-findings.md). Every workflow report is Markdown with exactly one JSON envelope conforming to `../../references/report-schema-v2.json` and the finding v2 schema it references. Record `scope_id`, `operation_coverage`, and applicable `subchecks` in `engine.notes`.
 
-Use finding statuses `open`, `resolved`, `deferred`, `dismissed`, and `stale` in the living audit tracker. Preserve historical reports, continue finding IDs across reruns, and propagate stale state by dependency rather than invalidating every earlier audit after a sentence edit.
+Prose is blocked while structure is unstable. The author may explicitly override that block for a named scope; record an approved `prose-override` in the shared tracker with the reason, scope, input versions, and unresolved structural state. The override does not make the structure evidence current. A later structural change exhausts it.
 
-Prose is blocked while structure is unstable. The author may explicitly override that block for a named scope; record the approval, reason, scope, and unresolved structural state in the manifest and tracker. The override does not mark structure current.
+## Skill switching boundary
 
-## Workflow boundary
+`revise-draft` reads and writes this same project state. Switching skills never resets scope, reports, findings, approvals, or backups. A current-scope diagnostic does not satisfy the full-book structure gate merely because it exists, and a current-scope review does not satisfy final review. Display any pending approval or interrupted write before starting new work; never resume a manuscript write merely because the other skill was invoked.
 
-Keep one `main` workflow per book project. Standalone calls to the underlying skills leave the manifest, main tracker, and main reports untouched. If the author explicitly asks to incorporate standalone work, resume at the matching stage, register the source artifact, convert its findings to v2 with stable IDs, and record the author's incorporation decision.
+Standalone calls to the underlying skills leave shared state untouched. If the author explicitly asks to incorporate standalone work, register the source artifact, convert its findings to v2 with stable IDs, and record the author's decision in the shared project.
 
-When the author requests a session transfer, or a long task must stop because context is exhausted, invoke `author-handoff` with `create` after the manifest, tracker, and session note are current. This adds at most two nesting levels: `revise-fiction` to `author-handoff` to `author-project`. The handoff contains pointers and unresolved decisions, not manuscript or Story Bible content.
+When the author requests a session transfer, or a long task must stop because context is exhausted, invoke `author-handoff` with `create` after the manifest, tracker, and session note are current. The handoff contains pointers and unresolved decisions, not manuscript or baseline content.
 
-Finish each invocation with the current stage, stale stages, report or artifact paths, approvals or backups used, unresolved questions, and the exact next action. Every completed pass ends `awaiting_author`; the stage becomes `complete` only when the author starts the next stage and its gate still holds.
+Finish each invocation with the current operation and scope, stale evidence, report or artifact paths, approvals or backups used, unresolved questions, and the exact next action.

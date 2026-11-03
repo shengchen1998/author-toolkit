@@ -8,6 +8,7 @@ const expectedSkills = [
   "ask-author",
   "setup-author-toolkit",
   "revise-fiction",
+  "revise-draft",
   "author-project",
   "author-handoff",
   "author-review",
@@ -18,7 +19,12 @@ const expectedSkills = [
   "prose-mechanics",
   "avoid-ai-writing",
 ];
-const userEntries = new Set(["ask-author", "setup-author-toolkit", "revise-fiction"]);
+const userEntries = new Set([
+  "ask-author",
+  "setup-author-toolkit",
+  "revise-fiction",
+  "revise-draft",
+]);
 
 async function frontmatter(skill) {
   const text = await readFile(path.join(root, "skills", skill, "SKILL.md"), "utf8");
@@ -67,4 +73,31 @@ test("workflow reporting pointers do not form a cycle", async () => {
 
   assert.match(reporting, /state-and-findings\.md/);
   assert.doesNotMatch(state, /workflow-reporting\.md/);
+});
+
+test("revision strategies share one project and keep distinct evidence gates", async () => {
+  const setup = await readFile(path.join(root, "skills/setup-author-toolkit/SKILL.md"), "utf8");
+  const fiction = await readFile(path.join(root, "skills/revise-fiction/SKILL.md"), "utf8");
+  const draft = await readFile(path.join(root, "skills/revise-draft/SKILL.md"), "utf8");
+  const draftGates = await readFile(
+    path.join(root, "skills/revise-draft/references/stage-gates.md"),
+    "utf8",
+  );
+
+  for (const text of [setup, fiction, draft]) {
+    assert.match(text, /\.author-toolkit\/project\.json/);
+    assert.doesNotMatch(text, /\.author-toolkit\/revise-draft\//);
+  }
+  assert.match(
+    fiction,
+    /intake`, `story-bible`, `structure`, `characters`, `revision-plan`, `chapter-revision`, `prose`, `ai-cleanup`, and `final-review/,
+  );
+  assert.match(
+    draft,
+    /intake`, `draft-baseline`, `diagnostics`, `characters`, `revision-plan`, `chapter-revision`, `prose`, `ai-cleanup`, and `current-scope-review/,
+  );
+  assert.match(draft, /unknown future story is not a finding/i);
+  assert.match(draftGates, /Unknown future turns and ending are valid entries/);
+  assert.match(draftGates, /Reports list actual subchecks/);
+  assert.match(fiction, /current-scope review does not satisfy final review/);
 });

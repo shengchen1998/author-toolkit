@@ -2,9 +2,13 @@
 
 Give each reviewer only its assigned checklist and the permitted inputs listed in `SKILL.md`. Every checklist item can produce zero or more findings. A finding needs a reader or craft issue, recommendation, severity, judgment confidence, and the narrowest truthful location scope. Use file or chapter scope for a broad issue, line scope for one line, and passage scope with a short quotation for a passage. Follow the conditional location fields in finding v2 rather than inventing a line or quotation.
 
+## Review-mode applicability
+
+For `final` mode, evaluate every applicable item against the complete book. For `current-scope` mode, evaluate only what the confirmed scope contains. Mark checks that require a complete book `skipped` in the report's `Review coverage` section with the reason `outside current scope`. These include the ending and resolution, complete plot beats and chapter order, full character arcs and payoff chains, whole-book revision-plan coverage, and satisfaction of promises that require later chapters. Evaluate local causality, continuity, prose, comprehension, and reader response only where the supplied text supports them. Mark applicable but incompletely reviewed local coverage `partial`. Never infer missing chapters or describe a current-scope review as a whole-book final review.
+
 ## Intent and consistency
 
-Inputs: manuscript, Story Bible, and approved revision plan.
+Inputs: manuscript, Story Bible, approved draft-baseline when supplied, and approved revision plan.
 
 ### Premise and reader contract
 

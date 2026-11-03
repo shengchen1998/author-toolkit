@@ -1,14 +1,21 @@
 # Author Handoff
 
-## Current stage
+## Current shared state
 
 - Manifest created at:
 - Generated at:
 - Source host:
-- Stage and status:
-- Next stage:
-- Stale stages and reasons:
+- Current scope ID and confirmation status:
+- Pending operation and status:
+- Pending scope ID, reason, and artifacts:
+- Next action from tracker or latest session:
+- Last explicitly invoked skill, if known:
 - Validation or blocking errors:
+
+## Blocked or stale evidence
+
+| Operation | Scope ID | Status | Dependency reason | Report or tracker reference |
+|---|---|---|---|---|
 
 ## Approved decisions
 
@@ -16,6 +23,11 @@
 |---|---|---|---|
 
 Include only explicit author approvals. Link finding IDs and report paths rather than copying findings.
+
+## Shared approvals
+
+| Approval ID | Type | Operation | Scope ID | Paths | Status | Reason | Updated |
+|---|---|---|---|---|---|---|---|
 
 ## Unresolved questions
 
@@ -28,6 +40,7 @@ Include only explicit author approvals. Link finding IDs and report paths rather
 - Manifest: `.author-toolkit/project.json`
 - Manuscript:
 - Story Bible:
+- Draft baseline:
 - Audit tracker:
 - Revision plan:
 - Current reports:
@@ -35,10 +48,11 @@ Include only explicit author approvals. Link finding IDs and report paths rather
 - Backups:
 - Handoffs:
 
-All paths after the original root are relative to the receiving project root. Mark any missing path explicitly. Do not paste manuscript or Story Bible content into this file.
+All paths after the original root are relative to the receiving project root. Mark any missing path explicitly. Do not paste manuscript, Story Bible, or draft-baseline content into this file.
 
 ## Next action
 
-- Exact action and stage:
+- Exact action and operation:
+- Recommended skill, advisory only:
 - Author-facing host command:
 - Approval or backup still required:

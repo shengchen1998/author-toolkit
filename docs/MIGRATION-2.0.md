@@ -1,5 +1,9 @@
 # Migrating to Author Toolkit 2.0
 
+> **Historical guide:** This page preserves the 2.0 migration instructions for
+> legacy projects and compatibility checks. For the current release and v2-to-v3
+> upgrades, see [Migrating to Author Toolkit 3.0](MIGRATION-3.0.md).
+
 Author Toolkit 2.0 adds an opt-in orchestration workflow for revising an
 existing novel. The six independent writing skills remain available with their
 existing names and triggers. Installing 2.0 does not require converting an

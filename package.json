@@ -1,9 +1,9 @@
 {
   "name": "author-toolkit-contracts",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "private": true,
   "type": "module",
-  "description": "Schemas, deterministic validators, and fixtures for author-toolkit 2.0.",
+  "description": "Two fiction revision strategies sharing one project evidence model, plus six independent writing skills for Claude Code and Kimi Code.",
   "scripts": {
     "test": "node --test tests/*.test.mjs",
     "validate": "node scripts/validate.mjs"
