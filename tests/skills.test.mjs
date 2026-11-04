@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
 import test from "node:test";
 
@@ -9,6 +9,7 @@ const expectedSkills = [
   "setup-author-toolkit",
   "revise-fiction",
   "revise-draft",
+  "write-fiction",
   "author-project",
   "author-handoff",
   "author-review",
@@ -24,6 +25,7 @@ const userEntries = new Set([
   "setup-author-toolkit",
   "revise-fiction",
   "revise-draft",
+  "write-fiction",
 ]);
 
 async function frontmatter(skill) {
@@ -42,6 +44,18 @@ for (const skill of expectedSkills) {
     assert.equal(userOnly, userEntries.has(skill));
   });
 }
+
+test("the inventory contains exactly 14 skills and five user entries", async () => {
+  const entries = await readdir(path.join(root, "skills"), { withFileTypes: true });
+  const actual = entries
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => entry.name)
+    .sort();
+
+  assert.deepEqual(actual, [...expectedSkills].sort());
+  assert.equal(expectedSkills.length, 14);
+  assert.equal(userEntries.size, 5);
+});
 
 test("the upstream AI-writing skill has no local integration section", async () => {
   const text = await readFile(path.join(root, "skills/avoid-ai-writing/SKILL.md"), "utf8");
@@ -120,4 +134,141 @@ test("revision strategies share one project and keep distinct evidence gates", a
   assert.match(state, /Keep nonblocking unknowns labeled as unknown/);
   assert.match(state, /`pending_action\.reason`/);
   assert.match(draft, /normally confirmation of the proposed scope/);
+});
+
+test("creation and both revision strategies share state and stable switching gates", async () => {
+  const [setup, instructions, ask, fiction, draft, write, state] = await Promise.all([
+    readFile(path.join(root, "skills/setup-author-toolkit/SKILL.md"), "utf8"),
+    readFile(path.join(root, "skills/setup-author-toolkit/assets/AGENTS.md"), "utf8"),
+    readFile(path.join(root, "skills/ask-author/SKILL.md"), "utf8"),
+    readFile(path.join(root, "skills/revise-fiction/SKILL.md"), "utf8"),
+    readFile(path.join(root, "skills/revise-draft/SKILL.md"), "utf8"),
+    readFile(path.join(root, "skills/write-fiction/SKILL.md"), "utf8"),
+    readFile(
+      path.join(root, "skills/revise-fiction/references/state-and-findings.md"),
+      "utf8",
+    ),
+  ]);
+
+  for (const text of [fiction, draft, write]) {
+    assert.match(text, /\.author-toolkit\/project\.json/);
+    assert.match(text, /stable operation gate/i);
+  }
+  for (const text of [setup, instructions, ask]) {
+    assert.match(text, /write-fiction/);
+  }
+  assert.match(ask, /standalone `fiction-workshop`/);
+  assert.match(instructions, /staging/);
+  assert.match(instructions, /stable operation gate/i);
+  assert.match(state, /Creation evidence does not satisfy `chapter-revision`/);
+});
+
+test("project operations register creation state and resumable publication", async () => {
+  const [project, operations, templateText] = await Promise.all([
+    readFile(path.join(root, "skills/author-project/SKILL.md"), "utf8"),
+    readFile(path.join(root, "skills/author-project/references/operations.md"), "utf8"),
+    readFile(path.join(root, "skills/author-project/assets/project-template.json"), "utf8"),
+  ]);
+  const template = JSON.parse(templateText);
+
+  assert.match(project, /upgrade-v31/);
+  assert.match(project, /write-fiction/);
+  for (const operation of [
+    "creation-baseline",
+    "writing-plan",
+    "chapter-creation",
+    "chapter-review",
+    "creation-commit",
+    "creation-import",
+    "milestone-review",
+  ]) {
+    assert.match(operations, new RegExp(`\`${operation}\``));
+  }
+  assert.match(operations, /3\.0\.0/);
+  assert.match(operations, /3\.1\.0/);
+  assert.match(operations, /paths\.creation/);
+  assert.match(operations, /expected absent/i);
+  assert.match(operations, /<paths\.creation>\/batches\/<commit-id>\.json/);
+  assert.match(operations, /legacy `STAGES` remains revision-only/);
+  assert.match(operations, /move created files into the safety backup/i);
+  assert.equal(template.schema_version, "3.1.0");
+  assert.equal(template.paths.creation, ".author-toolkit/creation/");
+});
+
+test("local coverage reuse never preserves stale whole-book synthesis", async () => {
+  const [state, draftGates, fictionGates, reporting] = await Promise.all([
+    readFile(
+      path.join(root, "skills/revise-fiction/references/state-and-findings.md"),
+      "utf8",
+    ),
+    readFile(path.join(root, "skills/revise-draft/references/stage-gates.md"), "utf8"),
+    readFile(path.join(root, "skills/revise-fiction/references/stage-gates.md"), "utf8"),
+    readFile(path.join(root, "references/workflow-reporting.md"), "utf8"),
+  ]);
+
+  for (const text of [state, draftGates, fictionGates]) {
+    assert.match(text, /coverage unit/i);
+    assert.match(text, /whole-book synthesis/i);
+    assert.match(text, /write-fiction/);
+  }
+  assert.match(state, /coverage index[\s\S]*paths\.reports/i);
+  assert.match(state, /creation operations remain outside report v2 `stage`/i);
+  assert.match(reporting, /`write-fiction`/);
+});
+
+test("creation handoffs and workshop output remain pointer based", async () => {
+  const [handoff, template, workshop] = await Promise.all([
+    readFile(path.join(root, "skills/author-handoff/SKILL.md"), "utf8"),
+    readFile(path.join(root, "skills/author-handoff/assets/handoff-template.md"), "utf8"),
+    readFile(path.join(root, "skills/fiction-workshop/SKILL.md"), "utf8"),
+  ]);
+
+  for (const term of [
+    "creation batch",
+    "staging",
+    "chapter",
+    "volume",
+    "commit",
+    "review job",
+    "reader-state",
+  ]) {
+    assert.match(handoff + template, new RegExp(term, "i"));
+  }
+  assert.match(handoff, /fresh-reader state remains independent/i);
+  assert.match(handoff, /Do not include chapter excerpts/);
+  assert.match(workshop, /write-fiction/);
+  assert.match(workshop, /staging\/<batch-id>\//);
+  assert.match(workshop, /staged path, SHA-256 hash, and intended target path/i);
+  assert.match(workshop, /Standalone behavior remains unchanged/);
+});
+
+test("review layers require real text, fresh isolation, and complete synthesis", async () => {
+  const [review, protocol, handoff] = await Promise.all([
+    readFile(path.join(root, "skills/author-review/SKILL.md"), "utf8"),
+    readFile(path.join(root, "skills/author-review/references/chunked-review.md"), "utf8"),
+    readFile(
+      path.join(root, "skills/author-review/assets/review-handoff-template.md"),
+      "utf8",
+    ),
+  ]);
+
+  assert.match(review, /chunk -> volume\/phase -> book/);
+  assert.match(protocol, /context budget/i);
+  assert.match(protocol, /chapter or scene boundaries/i);
+  assert.match(protocol, /intent` and `standards` chunk work may run in parallel/i);
+  assert.match(protocol, /fresh` reading is strictly sequential/i);
+  assert.match(protocol, /same logical reviewer/i);
+  assert.match(protocol, /only its own reader-state/i);
+  assert.match(protocol, /three perspectives remain isolated/i);
+  assert.match(protocol, /final fresh[\s\S]*actual manuscript text/i);
+  assert.match(protocol, /never substitutes summaries for the original manuscript/i);
+  assert.match(protocol, /cross-file findings cite every real contributing location/i);
+  assert.match(protocol, /chunk reports/i);
+  assert.match(protocol, /synthesis report/i);
+  assert.match(protocol, /every required unit and every applicable synthesis/i);
+  assert.match(protocol, /partial` or `skipped/);
+  assert.match(review, /resumable handoffs/i);
+  assert.match(review, /collect` validates the review job and coverage/i);
+  assert.match(handoff, /Review job path:/);
+  assert.match(handoff, /Reader-state path:/);
 });

@@ -1,7 +1,15 @@
-import { validateProjectSchema, validateProjectV3Schema } from "./schemas.mjs";
+import {
+  validateProjectSchema,
+  validateProjectV3Schema,
+  validateProjectV31Schema,
+} from "./schemas.mjs";
 import { validateWorkflow } from "./workflow.mjs";
 
 export function validateManifest(value) {
+  if (value?.schema_version === "3.1.0") {
+    return validateProjectV31Schema(value);
+  }
+
   if (value?.schema_version === "3.0.0") {
     return validateProjectV3Schema(value);
   }
@@ -14,7 +22,7 @@ export function validateManifest(value) {
           instancePath: "/schema_version",
           keyword: "schema-version",
           message: `unsupported project schema_version: ${value?.schema_version ?? "missing"}`,
-          params: { supported: ["2.0.0", "3.0.0"] },
+          params: { supported: ["2.0.0", "3.0.0", "3.1.0"] },
         },
       ],
     };

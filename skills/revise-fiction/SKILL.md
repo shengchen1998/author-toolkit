@@ -54,9 +54,11 @@ Before writing any report or changing finding or approval status, read [`referen
 
 Prose is blocked while structure is unstable. The author may explicitly override that block for a named scope; record an approved `prose-override` in the shared tracker with the reason, scope, input versions, and unresolved structural state. The override does not make the structure evidence current. A later structural change exhausts it.
 
-## Skill switching boundary
+## Strategy switching and evidence reuse
 
-`revise-draft` reads and writes this same project state. Switching skills never resets scope, reports, findings, approvals, or backups. A current-scope diagnostic does not satisfy the full-book structure gate merely because it exists, and a current-scope review does not satisfy final review. Display any pending approval or interrupted write before starting new work; never resume a manuscript write merely because the other skill was invoked.
+`write-fiction` and `revise-draft` read and write this same project state. At any stable operation gate, show the exact command for the author's selected strategy; do not switch automatically or require the current strategy's full sequence to finish. Switching never resets scope, reports, findings, approvals, staged drafts, or backups. Display any pending approval, interrupted write, or commit before starting new work; never resume it merely because another entry was invoked.
+
+Reuse full local coverage units only when source-report identity, operation, paths and hashes, subchecks, and dependencies still match. Keep the unit's original scope for provenance and use the requested scope for the composed index and synthesis. Reevaluate every applicable whole-book synthesis after membership, reading-order, text, or dependency changes; unchanged local units do not keep that synthesis current. A current-scope diagnostic does not satisfy the full-book structure gate merely because it exists, and a current-scope review does not satisfy final review. Creation evidence does not satisfy `chapter-revision`.
 
 Standalone calls to the underlying skills leave shared state untouched. If the author explicitly asks to incorporate standalone work, register the source artifact, convert its findings to v2 with stable IDs, and record the author's decision in the shared project.
 

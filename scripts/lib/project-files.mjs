@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { readFile, stat } from "node:fs/promises";
 import path from "node:path";
 
+import { V3_SCHEMA_VERSIONS } from "./constants.mjs";
 import { collectManuscriptInventory } from "./manuscript.mjs";
 import { validateRelativePath } from "./schemas.mjs";
 
@@ -58,12 +59,14 @@ export async function validateProjectFiles(manifest, manifestPath) {
   }
 
   const checks = [["/manuscript_root", manifest.manuscript_root]];
+  const operationalPaths = [...OPERATIONAL_PATHS];
+  if (manifest.schema_version === "3.1.0") operationalPaths.push("creation");
 
-  for (const name of OPERATIONAL_PATHS) {
+  for (const name of operationalPaths) {
     checks.push([`/paths/${name}`, manifest.paths?.[name]]);
   }
 
-  if (manifest.schema_version === "3.0.0") {
+  if (V3_SCHEMA_VERSIONS.has(manifest.schema_version)) {
     manifest.pending_action?.artifacts?.forEach((artifact, artifactIndex) => {
       checks.push([`/pending_action/artifacts/${artifactIndex}`, artifact]);
     });
@@ -93,7 +96,7 @@ export async function validateProjectFiles(manifest, manifestPath) {
 export async function validateScopeCurrency(manifest, manifestPath) {
   const projectRoot = projectRootFromManifest(manifestPath);
   if (
-    manifest.schema_version !== "3.0.0" ||
+    !V3_SCHEMA_VERSIONS.has(manifest.schema_version) ||
     !manifest.current_scope ||
     isUninitializedProjectTemplate(manifest)
   ) {

@@ -86,13 +86,21 @@ Record each stale reason with the changed path and decision or edit batch. Old e
 
 ## Evidence reuse across skills
 
-Reuse evidence by operation, scope, input versions, subchecks, and dependency state rather than by report title.
+`write-fiction`, `revise-fiction`, and `revise-draft` share this evidence at stable operation gates. Switching requires the author's exact command and does not reset state or resume pending writes. Reuse evidence by operation, scope, input versions, subchecks, and dependency state rather than by report title. Creation evidence does not satisfy `chapter-revision`, and creation operations remain outside report v2 `stage`.
 
-- Story Bible can supply facts to draft-baseline, but the current manuscript still needs current-draft coverage. Draft-baseline with unknown foundation fields cannot satisfy Story Bible.
+- Story Bible can supply facts to draft-baseline and creation planning, but the current manuscript still needs its requested coverage. Draft-baseline with unknown foundation fields cannot satisfy Story Bible.
 - Full-book structure can supply local leads, but does not replace scene-level diagnostics. Local diagnostics cannot satisfy full-book landmark coverage.
 - Character reports reuse only the subchecks actually covered. Continuity with the same scope and inputs can transfer directly; current-arc-only evidence is partial for a full-arc gate.
-- Revision plans, chapter revisions, prose, and AI cleanup transfer when their operations, scopes, inputs, approvals, and coverage match.
-- Final review can satisfy current-scope review when it covers the same scope and checks. Current-scope review never satisfies final review.
+- Revision plans, chapter revisions, prose, and AI cleanup transfer when their operations, scopes, inputs, approvals, and coverage match. Creation batches and milestone evidence retain their own operation identity.
+- Final review can satisfy current-scope review when it covers the same scope and checks. Current-scope review and milestone review never satisfy final review.
+
+## Coverage units and synthesis
+
+Store reusable local coverage units and the living coverage index beneath the registered `paths.reports` directory, using the installed artifact contracts. A coverage unit records its source report, operation, original scope, exact paths and hashes, subchecks, dependencies, and actual coverage. Reuse only a full local unit whose source-report identity, operation, paths and hashes, requested subchecks, and dependencies all match. Its original scope remains unchanged for provenance; a composed coverage index and new synthesis use the requested new scope. Partial, skipped, stale, or synthesis units are not reusable local proof.
+
+A changed input invalidates only affected local units and their dependents; unrelated unchanged units can remain current. Reevaluate every applicable volume, phase, current-scope, or whole-book synthesis whenever its text, membership, reading order, dependencies, or child coverage changes. Record a new synthesis report for the current inputs. Never extend an old whole-book synthesis to a new scope because its local units still match.
+
+Chunk reports and their syntheses retain report v2 and finding v2. Creation operations remain outside report v2 `stage`; their batches, commit journals, story state, review jobs, and reader state use their own artifact contracts rather than masquerading as revision evidence.
 
 ## Pending operations and session writes
 

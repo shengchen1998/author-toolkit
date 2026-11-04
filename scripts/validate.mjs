@@ -5,23 +5,55 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import {
+  validateCoverageIndex,
+  validateCoverageUnit,
+  validateCreationBatch,
+  validateCreationCommit,
   validateEvidenceReport,
   validateManifest,
   validateMarkdownReport,
   validateProjectFiles,
+  validateReaderState,
+  validateReaderStateMarkdown,
+  validateReviewJob,
   validateSchemaDefinitions,
   validateScopeCurrency,
+  validateStoryState,
+  validateStoryStateMarkdown,
   validateTracker,
   validateWorkflowSequence,
 } from "./lib/index.mjs";
+import { V3_SCHEMA_VERSIONS } from "./lib/constants.mjs";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
 const examples = ["fiction-revision-en", "fiction-revision-zh"];
+const artifactTypes = [
+  { key: "creationBatches", option: "--creation-batch", validate: validateCreationBatch },
+  { key: "creationCommits", option: "--creation-commit", validate: validateCreationCommit },
+  { key: "coverageUnits", option: "--coverage-unit", validate: validateCoverageUnit },
+  { key: "coverageIndexes", option: "--coverage-index", validate: validateCoverageIndex },
+  { key: "reviewJobs", option: "--review-job", validate: validateReviewJob },
+  {
+    key: "readerStates",
+    option: "--reader-state",
+    validate: validateReaderState,
+    validateMarkdown: validateReaderStateMarkdown,
+  },
+  {
+    key: "storyStates",
+    option: "--story-state",
+    validate: validateStoryState,
+    validateMarkdown: validateStoryStateMarkdown,
+  },
+];
 
 function usage() {
   console.log(`Usage:
   node scripts/validate.mjs
   node scripts/validate.mjs [--manifest FILE] [--report FILE] [--workflow-fixture FILE]...
+  node scripts/validate.mjs [--creation-batch FILE] [--creation-commit FILE]...
+  node scripts/validate.mjs [--coverage-unit FILE] [--coverage-index FILE]...
+  node scripts/validate.mjs [--review-job FILE] [--reader-state FILE] [--story-state FILE]...
 
 With no options, all schemas, example manifests, reports, and workflow fixtures are checked.`);
 }
@@ -41,11 +73,18 @@ async function markdownFiles(directory) {
 }
 
 function parseArguments(args) {
-  const selection = { manifests: [], reports: [], workflowFixtures: [], help: false };
+  const selection = {
+    manifests: [],
+    reports: [],
+    workflowFixtures: [],
+    ...Object.fromEntries(artifactTypes.map(({ key }) => [key, []])),
+    help: false,
+  };
   const destinations = {
     "--manifest": "manifests",
     "--report": "reports",
     "--workflow-fixture": "workflowFixtures",
+    ...Object.fromEntries(artifactTypes.map(({ key, option }) => [option, key])),
   };
 
   for (let index = 0; index < args.length; index += 1) {
@@ -71,10 +110,9 @@ async function main() {
     return;
   }
 
-  const useDefaults =
-    selection.manifests.length === 0 &&
-    selection.reports.length === 0 &&
-    selection.workflowFixtures.length === 0;
+  const useDefaults = Object.entries(selection).every(
+    ([key, files]) => key === "help" || files.length === 0,
+  );
 
   let checks = 0;
   let failures = 0;
@@ -115,12 +153,12 @@ async function main() {
 
       if (result.valid) {
         check(`${path.relative(root, file)}#files`, await validateProjectFiles(manifest, file));
-        if (manifest.schema_version === "3.0.0" && manifest.current_scope) {
+        if (V3_SCHEMA_VERSIONS.has(manifest.schema_version) && manifest.current_scope) {
           check(`${path.relative(root, file)}#scope`, await validateScopeCurrency(manifest, file));
         }
         check(`${path.relative(root, file)}#tracker`, await validateTracker(manifest, file));
       } else if (
-        !["2.0.0", "3.0.0"].includes(manifest?.schema_version) ||
+        !["2.0.0", "3.0.0", "3.1.0"].includes(manifest?.schema_version) ||
         manifest?.project_type !== "fiction" ||
         (manifest?.schema_version === "2.0.0" &&
           manifest?.workflow?.name !== "revise-fiction")
@@ -186,6 +224,23 @@ async function main() {
         valid: false,
         errors: [{ instancePath: "", message: error.message }],
       });
+    }
+  }
+
+  for (const type of artifactTypes) {
+    for (const file of selection[type.key]) {
+      try {
+        const isMarkdown = type.validateMarkdown && /\.(?:md|markdown)$/i.test(file);
+        const result = isMarkdown
+          ? type.validateMarkdown(await readFile(file, "utf8"))
+          : type.validate(await readJson(file));
+        check(path.relative(root, file), result);
+      } catch (error) {
+        check(path.relative(root, file), {
+          valid: false,
+          errors: [{ instancePath: "", message: error.message }],
+        });
+      }
     }
   }
 

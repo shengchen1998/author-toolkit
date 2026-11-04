@@ -81,7 +81,7 @@ Inputs: manuscript and this checklist. Review the text on its own without earlie
 
 ## Fresh reader
 
-Inputs: manuscript, target reader description, and these reader-experience questions. Read without Story Bible, plan, prior reviews, or author explanation.
+Inputs: actual manuscript units in reading order, target reader description, these reader-experience questions, and only this reviewer's own reader-state after the first unit. Read without Story Bible, plan, prior reviews, other perspectives, or author explanation.
 
 ### Comprehension
 

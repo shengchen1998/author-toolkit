@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "creation-commit-schema.json",
+  "title": "author-toolkit resumable creation commit",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "batch_id",
+    "commit_id",
+    "status",
+    "scope_before_id",
+    "scope_after_id",
+    "files",
+    "created_at",
+    "updated_at"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": { "const": "1.0.0" },
+    "batch_id": { "$ref": "#/$defs/id" },
+    "commit_id": { "$ref": "#/$defs/id" },
+    "status": {
+      "enum": [
+        "prepared",
+        "in_progress",
+        "interrupted",
+        "committed",
+        "restore_pending",
+        "restored"
+      ]
+    },
+    "scope_before_id": {
+      "anyOf": [{ "$ref": "#/$defs/id" }, { "type": "null" }]
+    },
+    "scope_after_id": {
+      "anyOf": [{ "$ref": "#/$defs/id" }, { "type": "null" }]
+    },
+    "files": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "path",
+          "action",
+          "input_sha256",
+          "output_sha256",
+          "backup_id",
+          "status"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "path": { "$ref": "relative-path-schema.json" },
+          "action": { "enum": ["create", "modify", "delete", "reorder"] },
+          "input_sha256": { "$ref": "#/$defs/nullableHash" },
+          "output_sha256": { "$ref": "#/$defs/nullableHash" },
+          "backup_id": {
+            "anyOf": [{ "$ref": "#/$defs/id" }, { "type": "null" }]
+          },
+          "status": { "enum": ["pending", "written", "verified", "restored"] }
+        }
+      }
+    },
+    "created_at": { "type": "string", "format": "date-time" },
+    "updated_at": { "type": "string", "format": "date-time" }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+    },
+    "hash": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "nullableHash": {
+      "anyOf": [{ "$ref": "#/$defs/hash" }, { "type": "null" }]
+    }
+  }
+}

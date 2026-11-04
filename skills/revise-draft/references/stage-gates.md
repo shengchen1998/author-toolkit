@@ -2,6 +2,8 @@
 
 Load only the current operation. Evidence comes from the shared project and is judged by operation, scope, input versions, subchecks, and dependencies. Finish each operation with `awaiting_author`; the author starts the next one explicitly. At every author gate, also follow the [Author decision loop](../../revise-fiction/references/state-and-findings.md#author-decision-loop).
 
+At a stable operation gate, the author may switch to `write-fiction` or `revise-fiction` through its exact command; no entry starts automatically. Reuse a local coverage unit only when every path, hash, subcheck, and dependency matches. Reevaluate every applicable whole-book synthesis after relevant changes instead of carrying it forward with unchanged local units. Creation evidence does not satisfy `chapter-revision`.
+
 ## 1. Intake
 
 **Inputs:** A v3 project root and at least one readable manuscript file.
@@ -70,6 +72,6 @@ Load only the current operation. Evidence comes from the shared project and is j
 
 **Inputs:** Confirmed scope, current manuscript, relevant baselines, approved plan when used, target reader when known, and review checklists.
 
-**Work:** Invoke `author-review` with `review_mode=current-scope`. Run independent intent and consistency, writing standards, and fresh-reader perspectives over the same `scope_id`. Use subagents in parallel or three separate-session handoffs. Produce findings only.
+**Work:** Invoke `author-review` with `review_mode=current-scope`. Run independent intent and consistency, writing standards, and fresh-reader perspectives over the same `scope_id` using chunk -> volume/phase -> book coverage. Intent and standards chunks may run in parallel; fresh remains sequential with one logical reviewer and only its own reader-state. Without subagents, use resumable separate-session handoffs. Produce findings only.
 
-**Gate:** Three valid reports cover the same scope and list their actual subchecks. Full-book ending, complete landmark coverage, and other inapplicable checks are explicitly `skipped`. The reports and session state describe only the current scope, never a completed book or final review. Later changes stale the affected review evidence.
+**Gate:** For each perspective, every required chunk report and applicable synthesis report validates for the same scope and lists actual subchecks. Any missing unit or synthesis leaves coverage partial or skipped. Full-book ending, complete landmark coverage, and other inapplicable checks are explicitly `skipped`. The reports and session state describe only the current scope, never a completed book or final review. Later changes stale the affected review evidence.

@@ -4,6 +4,8 @@ Load the section for the current operation. A gate describes the evidence needed
 
 For every report, follow `state-and-findings.md`. A clean report contains zero findings and still records engine, `scope_id`, input versions, operation coverage, subchecks when applicable, and language coverage.
 
+At a stable operation gate, the author may switch to `write-fiction` or `revise-draft` through its exact command; no entry starts automatically. Reuse a local coverage unit only when every path, hash, subcheck, and dependency matches. Reevaluate every applicable whole-book synthesis after relevant changes instead of carrying it forward with unchanged local units. Creation evidence does not satisfy `chapter-revision`.
+
 ## 1. Intake
 
 **Inputs:** A v3 project root and accessible manuscript text.
@@ -72,6 +74,6 @@ For every report, follow `state-and-findings.md`. A clean report contains zero f
 
 **Inputs:** Current manuscript, Story Bible, approved revision plan, target reader, and review checklists.
 
-**Work:** Invoke `author-review` with `review_mode=final`. Keep intent and consistency, writing standards, and fresh reader independent. With subagents, run them in parallel with separate inputs. Without subagents, create three handoffs and wait for separate sessions. This operation produces findings only.
+**Work:** Invoke `author-review` with `review_mode=final`. Keep intent and consistency, writing standards, and fresh reader independent through its chunk -> volume/phase -> book protocol. Intent and standards chunks may run in parallel; fresh remains sequential with one logical reviewer and only its own reader-state. Without subagents, use resumable separate-session handoffs. This operation produces findings only.
 
-**Gate:** Three schema-valid perspective reports cover the same current `scope_id` and all required final-review checks, and their findings are linked in the tracker. Record dissent without merging it away. Later manuscript or baseline changes make the affected final review stale. Return findings for author decisions; do not edit the manuscript. A `current-scope-review` cannot satisfy this gate.
+**Gate:** For each perspective, every required chunk report and applicable synthesis report validates for the same current `scope_id`, all required final-review checks are covered, and findings are linked in the tracker. Any missing unit or synthesis leaves coverage partial or skipped. Record dissent without merging it away. Later manuscript or baseline changes make the affected final review stale. Return findings for author decisions; do not edit the manuscript. A `current-scope-review` cannot satisfy this gate.

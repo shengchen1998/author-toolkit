@@ -323,7 +323,9 @@ test("the shipped project and tracker templates are neutral uninitialized v3 ass
       "utf8",
     ),
   );
-  assert.equal(validateProjectV3Schema(project).valid, true);
+  assert.equal(validateManifest(project).valid, true);
+  assert.equal(project.schema_version, "3.1.0");
+  assert.equal(project.paths.creation, ".author-toolkit/creation/");
   assert.equal(project.language, "und");
   assert.equal("workflow" in project, false);
   assert.equal("current_scope" in project, false);

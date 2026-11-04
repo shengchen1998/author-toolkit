@@ -1,28 +1,31 @@
 # Author Toolkit
 
-Two fiction revision strategies sharing one project evidence model, plus six
-independent writing skills for Claude Code and Kimi Code.
+Incremental fiction creation and two fiction revision strategies sharing one
+project evidence model, plus six independent writing skills for Claude Code and
+Kimi Code.
 
-[Chinese quick start](README.zh-CN.md) | [3.0 migration](docs/MIGRATION-3.0.md) |
+[Chinese quick start](README.zh-CN.md) | [3.1 migration](docs/MIGRATION-3.1.md) |
+[3.0 migration history](docs/MIGRATION-3.0.md) |
 [2.0 migration history](docs/MIGRATION-2.0.md) |
 [Validation status](docs/VALIDATION.md)
 
 ## What is included
 
-Version 3.0.0 contains 13 skills in three groups.
+Version 3.1.0 contains 14 skills in three groups.
 
 ### User entry points
 
 | Skill | Purpose |
 | --- | --- |
 | `ask-author` | Read project state and route the author to the appropriate entry point or independent skill. |
-| `setup-author-toolkit` | Register an existing writing project and initialize the shared project state required by both revision entry points. |
+| `setup-author-toolkit` | Register an existing writing project and initialize the shared project state required by creation and revision. |
+| `write-fiction` | Create or continue a novel through reviewed writing batches, staged drafts, synchronized story state, and milestone reviews. |
 | `revise-fiction` | Revise a whole novel through its Story Bible, macro structure, character arcs, and final whole-book review. |
 | `revise-draft` | Revise the current draft through a draft baseline, local narrative diagnostics, and a review of the selected scope. |
 
-`revise-fiction` and `revise-draft` must both run the same
+`write-fiction`, `revise-fiction`, and `revise-draft` must all run the same
 `setup-author-toolkit` first. Setup does not accept a workflow name or entry
-stage; registration and intake are identical for every subsequent workflow.
+stage; registration and intake are identical for every subsequent strategy.
 
 ### Shared orchestration skills
 
@@ -30,14 +33,15 @@ These skills support the entry points. They are not separate user workflows.
 
 | Skill | Purpose |
 | --- | --- |
-| `author-project` | Read and update project registration, neutral evidence, current scope, pending operations, and artifact paths. |
-| `author-handoff` | Preserve session context and support resume, rework, and switching between revision entry points. |
-| `author-review` | Run independent intent, craft, and fresh-reader reviews without editing the manuscript. |
+| `author-project` | Read and update project registration, neutral evidence, current scope, pending operations, artifact paths, backups, and restores. |
+| `author-handoff` | Preserve session context and support resume, rework, and switching between creation and revision entry points. |
+| `author-review` | Run independent intent, craft, and fresh-reader reviews without editing the manuscript, including resumable chunked review for large books. |
 
 ### Independent writing skills
 
 These six skills keep their existing names, triggers, direct invocation, and
-standalone behavior. They can be used without either shared revision workflow.
+standalone behavior. They can be used without a shared creation or revision
+workflow.
 
 | Skill | Purpose | Example request |
 | --- | --- | --- |
@@ -54,16 +58,17 @@ under MIT. See [ATTRIBUTION.md](ATTRIBUTION.md).
 
 ## Scope and language support
 
-The shared 3.0 revision workflows support single-book fiction projects with
-Markdown or plain-text manuscripts. `revise-fiction` addresses the whole book.
-`revise-draft` can work on an unfinished draft with no outline and no ending;
-its diagnostics address the selected narrative scope rather than judging the
-percentage of a future book or penalizing beats that do not yet exist.
+The shared 3.1 creation and revision workflows support single-book fiction
+projects with Markdown or plain-text manuscripts. `write-fiction` can start
+without a complete outline or ending and can also continue an existing draft.
+`revise-fiction` addresses the whole book. `revise-draft` can work on an
+unfinished draft; its diagnostics address the selected narrative scope rather
+than judging the percentage of a future book or penalizing beats that do not yet
+exist.
 
-Writing a new novel from scratch remains a direct `fiction-workshop` or
-`story-structure` task. Narrative nonfiction remains a direct
-`narrative-nonfiction` task. Multi-book projects and integrations with other
-hosts are outside the supported 3.0 workflows.
+Narrative nonfiction remains a direct `narrative-nonfiction` task. Multi-book
+projects and integrations with other hosts are outside the supported 3.1
+workflows.
 
 English and Chinese are the core workflow languages. Where a diagnostic has
 narrower language coverage, it follows its language-support rules and records
@@ -117,37 +122,67 @@ No installation method in this document implies automatic updates. See the
 [validation status](docs/VALIDATION.md) before relying on a specific host or
 installation path.
 
-## Set up a project and choose a revision strategy
+## Set up a project and choose a strategy
 
 Use the command forms that match the installation method:
 
-| Installation | Host | Setup | Whole-book revision | Current-draft revision |
-| --- | --- | --- | --- | --- |
-| Plugin | Claude Code | `/author-toolkit:setup-author-toolkit` | `/author-toolkit:revise-fiction` | `/author-toolkit:revise-draft` |
-| Plugin | Kimi Code | `/skill:author-toolkit:setup-author-toolkit` | `/skill:author-toolkit:revise-fiction` | `/skill:author-toolkit:revise-draft` |
-| Bare skills | Claude Code | `/setup-author-toolkit` | `/revise-fiction` | `/revise-draft` |
-| Bare skills | Kimi Code | `/skill:setup-author-toolkit` | `/skill:revise-fiction` | `/skill:revise-draft` |
+| Installation | Host | Setup | Creation | Whole-book revision | Current-draft revision |
+| --- | --- | --- | --- | --- | --- |
+| Plugin | Claude Code | `/author-toolkit:setup-author-toolkit` | `/author-toolkit:write-fiction` | `/author-toolkit:revise-fiction` | `/author-toolkit:revise-draft` |
+| Plugin | Kimi Code | `/skill:author-toolkit:setup-author-toolkit` | `/skill:author-toolkit:write-fiction` | `/skill:author-toolkit:revise-fiction` | `/skill:author-toolkit:revise-draft` |
+| Bare skills | Claude Code | `/setup-author-toolkit` | `/write-fiction` | `/revise-fiction` | `/revise-draft` |
+| Bare skills | Kimi Code | `/skill:setup-author-toolkit` | `/skill:write-fiction` | `/skill:revise-fiction` | `/skill:revise-draft` |
 
 For `ask-author`, use the same command form with that skill name.
 
 A quick run looks like this:
 
-1. Identify the directory containing the novel or current draft and its
-   Markdown or plain-text manuscript files.
+1. Identify the writing project directory. It may contain an existing Markdown
+   or plain-text manuscript, or it may be the destination for a new novel.
 2. Invoke `setup-author-toolkit` with that path. Answer the project registration
    and language questions. Registration records paths; it does not move the
    manuscript into a new layout. For a new project, setup also installs the
    project-level `AGENTS.md` template when no such file exists, preserving any
-   existing agent instructions. Do not pass a workflow name or entry stage. The
-   selected revision skill establishes and confirms the initial scope afterward.
-3. After setup validates the shared v3 manifest, choose `revise-fiction` for
-   whole-book Story Bible, structure, and final review, or `revise-draft` for
-   the current draft, local diagnostics, and current-scope review.
-4. Review reports at the author gates. A report may summarize every finding, but
-   the agent presents one active decision at a time so you can discuss evidence
-   and alternatives before deciding. Resolve, defer, or dismiss findings, request
-   rework, and approve revisions before manuscript changes. You can explicitly
-   request batch handling when you prefer it.
+   existing agent instructions. Do not pass a workflow name or entry stage.
+3. After setup validates the shared manifest, choose `write-fiction` to create
+   or continue a novel, `revise-fiction` for whole-book revision, or
+   `revise-draft` for the available draft and current-scope review. The selected
+   strategy establishes and confirms the initial scope when one is needed.
+4. Review evidence and proposals at the author gates. The agent presents one
+   active decision at a time so you can discuss evidence and alternatives before
+   deciding. Planning, manuscript writes, batch acceptance, and restores have
+   distinct approvals.
+
+### `write-fiction`: incremental creation
+
+The creation operations are:
+
+1. `creation-baseline`: Establish the minimum intent foundation and creation
+   state. Future plot, total length, character outcomes, and the ending may
+   remain unknown.
+2. `writing-plan`: Plan one chapter by default, select versioned context, and
+   define the exact target paths and file actions.
+3. `chapter-creation`: Draft into staging with `fiction-workshop`, or stage
+   author-supplied text.
+4. `chapter-review`: Check plan execution, transitions, and continuity, then
+   obtain acceptance or rejection of the complete batch.
+5. `creation-commit`: Publish the accepted batch, update story state and scope,
+   and preserve recovery records.
+6. `creation-import`: Reconcile author-added, modified, deleted, or reordered
+   manuscript files created outside the creation loop.
+7. `milestone-review`: Summarize an author-selected volume or story phase and
+   run requested local checks without calling it a whole-book final review.
+
+The repeating loop is `writing-plan` -> `chapter-creation` -> `chapter-review`
+-> `creation-commit`. AI-written, author-written, and mixed batches use the same
+gates. Keep only one active creation batch per book.
+
+Before writing, approve both the chapter plan and the exact write batch,
+including paths, actions, and input versions. After staging, one acceptance
+decision covers the exact manuscript content, proposed story-state differences,
+and resulting ordered scope; manuscript and scope approvals are recorded
+separately. Acceptance allows `creation-commit` to proceed without another
+author gate.
 
 ### `revise-fiction`: whole-book revision
 
@@ -185,70 +220,130 @@ The mirrored nine stages are:
    perspectives. Mark whole-book checks that do not apply as `skipped` with
    their scope rationale.
 
-Both entry points share the character capability. The draft path requires only
-current arcs and continuity; the whole-book gate requires additional subchecks
-for complete arcs and book-level continuity. A draft engagement may enter
-directly at `prose` or `ai-cleanup`. If no manuscript revision is requested,
-`revision-plan` and `chapter-revision` may be skipped with the reason recorded.
+Both revision entry points share the character capability. The draft path
+requires only current arcs and continuity; the whole-book gate requires
+additional subchecks for complete arcs and book-level continuity. A draft
+engagement may enter directly at `prose` or `ai-cleanup`. If no manuscript
+revision is requested, `revision-plan` and `chapter-revision` may be skipped
+with the reason recorded.
 
 The skill definitions contain the full gates and audit rules.
 
 ## Shared project files and evidence
 
-Both revision strategies use the same neutral `.author-toolkit/project.json`
-(v3) and artifact paths:
+All three strategies use the same neutral `.author-toolkit/project.json` and
+artifact paths. New projects and migrated projects use schema 3.1.0; v3.0
+manifests remain readable and can receive the additive 3.1 upgrade.
 
 - `project.json` records project registration, artifact locations, and optional
   `current_scope` and `pending_action`. It has no `workflow.name`,
   `current_stage`, or `stages` state.
-- `story-bible.md` is the shared story foundation when the selected work needs
-  it. Switching entry points does not create a second Story Bible.
+- `story-bible.md` records author intent. Accepted manuscript text establishes
+  observed story facts; neither source silently overwrites the other when they
+  conflict.
 - `audit-tracker.md` records stable finding IDs, statuses, author decisions,
   shared approvals, and report pointers.
 - `reports/` preserves diagnostic context and machine-readable results. A rerun
-  creates a new report instead of rewriting a delivered report.
+  creates a new report instead of rewriting a delivered report. Reusable
+  coverage units and the living coverage index also belong under this
+  registered path.
 - `sessions/` records completed work, open decisions, backup paths, and the
   stopping point so a later session can resume or handle rework.
 - `backups/` preserves affected manuscript files before approved edits.
   Restoration also requires author approval.
 - `handoffs/` preserves pointers to the current evidence and next action.
+- `paths.creation` registers creation state and defaults to
+  `.author-toolkit/creation/`. It contains `state/current.md`,
+  `state/chapters/`, `state/volumes/`, `batches/`, and `staging/`.
 
-The manifest records the actual paths, including custom locations. There is no
-`revise-draft`-specific project directory and no second set of workflow state.
-Switching between `revise-fiction` and `revise-draft` reuses these artifacts and
-requires no migration.
+Chapter and volume story state is derived from accepted manuscript text and
+versioned source artifacts. It supports continuation; it does not replace the
+Story Bible's intent or the manuscript's facts. Rejected staging text does not
+enter story state or manuscript scope.
+
+The manifest records the actual paths, including custom locations. Switching
+among `write-fiction`, `revise-fiction`, and `revise-draft` at a stable operation
+gate reuses these artifacts and requires no second project tree or migration.
+It does not automatically resume a pending write.
 
 ### Evidence reuse and pending operations
 
 Evidence is reusable only when its `operation`, `scope_id`, input versions,
-coverage, and dependencies match the proposed work. A new scope requires author
-confirmation. When an input or dependency changes, affected evidence becomes
-`stale` and the invalidation propagates through dependent operations; an old
-report's valid schema alone does not make it current.
+coverage, subchecks, and dependencies match the proposed work. A new scope
+requires author confirmation. When an input or dependency changes, affected
+evidence becomes `stale`; an old report's valid schema alone does not make it
+current.
 
-`pending_action` describes the next operation awaiting work or an author
-decision. It replaces stage-specific progress state rather than maintaining one
-state machine per revision entry point.
+A creation batch also records a dependency fingerprint for its plan, selected
+context, and target inputs. On return to a staged draft, recompute that
+fingerprint. Changed included dependencies require re-review or replanning;
+unrelated manuscript growth requires a refreshed publication scope but does not
+by itself invalidate the staged content.
 
-The shared tracker stores approvals. Before manuscript edits, the workflow
-requires explicit author approval and a backup. It verifies the current file
-hash before writing so that an edit cannot silently overwrite changes made
-since the evidence or approval was recorded.
+`pending_action` describes the single next operation awaiting work or an author
+decision. It replaces stage-specific progress state and is not permission to
+publish or resume a manuscript write.
 
-### Finding and report schemas
+### Creation staging, commits, and restores
+
+AI drafts are written beneath `staging/<batch-id>/` before publication. Author
+and mixed batches follow the same staging and acceptance rules. At commit time,
+every new file must still be absent, every existing target must match its
+accepted input hash, and every existing target must have a backup.
+
+The commit journal is written before manuscript publication. Each file is
+published through a verified temporary sibling and atomic rename, with journal
+updates after each transition. The journal coordinates a multi-file batch; it
+does not claim that the filesystem provides one transaction across all files.
+An interrupted commit records completed and pending actions and stops automatic
+publication.
+
+A restore requires separate explicit approval naming the commit or backup and
+exact files. Current content receives a safety backup first. Files created by
+the restored batch are moved into that safety backup before being removed from
+the manuscript. Use `creation-import` to reconcile external manuscript changes
+instead of silently refreshing hashes or story state.
+
+### Coverage units and chunked review
+
+A full local coverage unit can be reused only when its source-report identity,
+operation, exact paths and hashes, requested subchecks, and dependencies match.
+Its original scope remains bound to the source report; the composed index and new
+synthesis use the requested scope. Partial, skipped, stale, and synthesis units
+are not reusable local proof. Unchanged local units can survive unrelated edits,
+but every affected volume, phase, current-scope, or whole-book synthesis must be
+reevaluated for current inputs.
+
+For large manuscripts, `author-review` reads actual manuscript chunks, then
+synthesizes volume or story-phase results, and finally the book. Intent and
+standards reviewers may run in parallel. Fresh-reader review proceeds in reading
+order through one logical reviewer carrying only that reviewer's isolated
+reader-state. Summaries and extracted story state cannot replace reading the
+manuscript. Report `full` coverage only when the requested scope was actually
+covered.
+
+### Finding, report, and creation artifact schemas
 
 Finding schema v1 remains at `references/finding-schema.json` for existing
-standalone skills and consumers. Both shared revision strategies use finding
-v2 in `references/finding-schema-v2.json` and the report envelope in
-`references/report-schema-v2.json`; their schema versions are unchanged in
-3.0.0. The stage enumeration adds `draft-baseline`, `diagnostics`, and
-`current-scope-review`. Project registration uses the v3 schema in
-`references/project-schema.json`.
+standalone skills and consumers. Shared creation and revision diagnostics retain
+finding v2 and report v2. Creation operations are not added to the closed report
+v2 `stage` enumeration.
+
+Creation batches, commit journals, story state, coverage units and indexes,
+review jobs, and reader state use their own artifact contracts rather than
+masquerading as revision reports. Project registration uses
+`references/project-schema-v3.1.json`; the v3.0 schema remains available for
+reading and upgrading existing projects.
 
 Existing reports are not automatically rewritten. See
-[Migrating to 3.0](docs/MIGRATION-3.0.md). The
-[2.0 migration guide](docs/MIGRATION-2.0.md) remains available as historical
+[Migrating to 3.1](docs/MIGRATION-3.1.md). The
+[3.0 migration guide](docs/MIGRATION-3.0.md) and
+[2.0 migration guide](docs/MIGRATION-2.0.md) remain available as historical
 documentation.
+
+The shipped English and Chinese examples intentionally retain legacy v2
+manifests and workflow fixtures for compatibility testing. Do not migrate them
+in place merely to make them look current.
 
 ## Invoke an independent skill directly
 
@@ -263,17 +358,23 @@ Use the same installation-specific command form and replace the skill name:
 
 For example, run `prose-mechanics`, then ask for one audit such as "Run a
 frequency audit on chapter 4." Run prose audits one at a time and review the
-findings before applying changes. The independent skills do not start either
-nine-stage orchestration workflow.
+findings before applying changes. The independent skills do not start shared
+creation or revision orchestration.
 
 ## Resume, switch strategies, or request rework
 
-Start `revise-fiction` or `revise-draft` in the registered project and describe
-whether you want to resume, review a report, switch the revision strategy, or
-rework a finding. Both use the same manifest, tracker, Story Bible, reports,
-session notes, backups, and handoffs to recover context. They evaluate the
-current scope and pending operation against evidence and dependencies instead
-of reconstructing stage status by moving or renaming files.
+Start `write-fiction`, `revise-fiction`, or `revise-draft` in the registered
+project and describe whether you want to resume, review a report, switch
+strategies, or rework a finding. All three use the same manifest, tracker, Story
+Bible, reports, session notes, backups, handoffs, and applicable creation state
+to recover context. They evaluate the current scope, pending operation, evidence,
+and dependencies instead of reconstructing stage status by moving or renaming
+files.
+
+A staged draft may remain while another strategy is used. On return, its
+dependency fingerprint and the current project state determine whether it can be
+reviewed again or needs a new plan. Neither a strategy switch nor a pending
+action publishes it.
 
 Use backups to inspect or restore pre-edit manuscript content. Ask for
 restoration explicitly; a resume, strategy switch, or report rerun does not
@@ -290,9 +391,20 @@ npm test
 npm run validate
 ```
 
-These commands cover repository-level checks, not host-specific runtime
-verification. Host versions, completed checks, and current limitations are
-tracked in [docs/VALIDATION.md](docs/VALIDATION.md).
+Validate a manifest or report directly with the corresponding CLI option. The
+validator also provides options for creation batches, commit journals, story
+state, coverage artifacts, and review jobs; use the installed CLI as the source
+for their exact names:
+
+```bash
+node scripts/validate.mjs --help
+node scripts/validate.mjs --manifest /path/to/.author-toolkit/project.json
+node scripts/validate.mjs --report /path/to/report.md
+```
+
+These commands cover repository-level contracts, not host-specific runtime
+verification or creative quality. Host versions, completed checks, and current
+limitations are tracked in [docs/VALIDATION.md](docs/VALIDATION.md).
 
 ## Attribution and license
 

@@ -74,11 +74,14 @@ test("migration inventories manuscripts and converts pending work and overrides"
   assert.deepEqual(JSON.parse(snapshot).workflow, legacy.workflow);
 
   const migrated = JSON.parse(await readFile(manifestPath, "utf8"));
-  assert.equal(migrated.schema_version, "3.0.0");
+  assert.equal(migrated.schema_version, "3.1.0");
   assert.equal("workflow" in migrated, false);
-  assert.match(migrated.$schema, /project-schema-v3\.json$/);
+  assert.match(migrated.$schema, /project-schema-v3\.1\.json$/);
   assert.equal(migrated.created_at, legacy.created_at);
-  assert.deepEqual(migrated.paths, legacy.paths);
+  assert.deepEqual(migrated.paths, {
+    ...legacy.paths,
+    creation: ".author-toolkit/creation/",
+  });
   assert.equal(migrated.current_scope.status, "proposed");
   assert.match(migrated.current_scope.description, /author confirmation/i);
   assert.equal(migrated.current_scope.files.length, 4);
@@ -102,7 +105,7 @@ test("migration inventories manuscripts and converts pending work and overrides"
     await readFile(path.join(path.dirname(summary.snapshot), "migration.json"), "utf8"),
   );
   assert.equal(migrationRecord.source_schema_version, "2.0.0");
-  assert.equal(migrationRecord.target_schema_version, "3.0.0");
+  assert.equal(migrationRecord.target_schema_version, "3.1.0");
   assert.deepEqual(migrationRecord.pending_action, migrated.pending_action);
   assert.equal(migrationRecord.overrides.length, 2);
   assert.deepEqual(

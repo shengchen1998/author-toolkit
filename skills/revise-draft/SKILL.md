@@ -10,7 +10,7 @@ Coordinate current-draft revision from the same shared project evidence as `revi
 
 ## Start or resume
 
-1. Locate `.author-toolkit/project.json`. If it is absent or has `schema_version: "2.0.0"`, display the host command for user-invoked `setup-author-toolkit` and stop. Use the same setup command forms as `revise-fiction`. Setup is identical for both skills.
+1. Locate `.author-toolkit/project.json`. If it is absent or has `schema_version: "2.0.0"`, display the host command for user-invoked `setup-author-toolkit` and stop. Use the same setup command forms as `revise-fiction`. Setup is identical for all three workflow entries.
 2. Resolve callees only when needed and copy their actual registered names. Never invoke a user-invoked entry through the Skill tool.
 3. Invoke `author-project` in separate calls with `read`, `validate`, and `status`. Read the shared tracker, sessions, current plan, current scope, pending action, and relevant evidence. Switching from `revise-fiction` requires no migration and changes no scope or status.
 4. On the first run for a new scope, complete the read-only `intake` inventory and a proposed `draft-baseline`, then stop at the first item in the author decision loop, normally confirmation of the proposed scope. Show the proposed baseline as context without requesting its confirmation in the same turn. On later runs, select the author-requested operation or the earliest missing, partial, or stale evidence in the sequence below. Read only the relevant section in [`references/stage-gates.md`](references/stage-gates.md).
@@ -53,6 +53,12 @@ Before prose over text with approved but unexecuted changes, explain the rework 
 For manuscript changes, first diagnose and show affected paths and intended changes without editing. Record explicit author approval in the shared tracker, then invoke `author-project` with `record-backup` for every affected file and the approval ID. Apply only the approved batch after every backup succeeds. Restore requires separate explicit approval and a safety backup.
 
 Baseline writes distinguish text-established facts, interpretations, and unknowns. Interpretations remain labeled until the author turns them into creative decisions. Only affected baseline differences are presented after an edit; unknowns never become automatic blockers.
+
+## Strategy switching and evidence reuse
+
+`write-fiction` and `revise-fiction` use this same manifest and state. At any stable operation gate, show the exact command for the author's selected strategy and wait; do not switch automatically or require the other strategy's sequence to finish. Preserve scope, evidence, approvals, staged drafts, and backups. Reconcile an interrupted write or commit before dependent work.
+
+Reuse full local coverage units only when source-report identity, operation, paths and hashes, subchecks, and dependencies match. Keep the unit's original scope for provenance and use the requested scope for the composed index and synthesis. Reevaluate every applicable whole-book synthesis after changed text, membership, reading order, or dependencies, even when some local units remain reusable. Creation evidence does not satisfy `chapter-revision`.
 
 ## Reports and shared state
 

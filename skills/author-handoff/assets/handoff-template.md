@@ -10,6 +10,9 @@
 - Pending scope ID, reason, and artifacts:
 - Next action from tracker or latest session:
 - Last explicitly invoked skill, if known:
+- Active creation batch ID and status:
+- Creation commit ID and journal status:
+- Active review job ID and coverage status:
 - Validation or blocking errors:
 
 ## Blocked or stale evidence
@@ -42,13 +45,21 @@ Include only explicit author approvals. Link finding IDs and report paths rather
 - Story Bible:
 - Draft baseline:
 - Audit tracker:
-- Revision plan:
-- Current reports:
+- Revision or writing plan:
+- Current reports and coverage index:
+- Creation root:
+- Creation batch:
+- Staging directory:
+- Chapter state:
+- Volume/phase state:
+- Commit journal:
+- Review job:
+- Fresh reader-state:
 - Sessions:
 - Backups:
 - Handoffs:
 
-All paths after the original root are relative to the receiving project root. Mark any missing path explicitly. Do not paste manuscript, Story Bible, or draft-baseline content into this file.
+All paths after the original root are relative to the receiving project root. Mark any missing path explicitly. Do not paste manuscript, Story Bible, draft-baseline, creation state, batch, commit, finding, or reader-state content into this file. Fresh reader-state remains independent and is reserved for its own reviewer chain.
 
 ## Next action
 

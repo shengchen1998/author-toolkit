@@ -73,6 +73,20 @@ export function extractReportEnvelope(markdown) {
   }
 }
 
+export function validateMarkdownEnvelope(markdown, validate) {
+  let envelope;
+  try {
+    envelope = extractReportEnvelope(markdown);
+  } catch (error) {
+    if (!(error instanceof ReportEnvelopeError)) throw error;
+    return {
+      valid: false,
+      errors: [{ instancePath: "", keyword: "markdown", message: error.message, params: {} }],
+    };
+  }
+  return { ...validate(envelope), envelope };
+}
+
 export function languageCoverageHeadingCount(markdown) {
   let count = 0;
   scanMarkdownLines(markdown, ({ line, type }) => {

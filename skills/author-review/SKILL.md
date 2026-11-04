@@ -5,13 +5,13 @@ description: Use when running independent final or current-scope manuscript revi
 
 # Author Review
 
-Organize three independent reviews and produce findings only. Accept `all`, one perspective (`intent`, `standards`, or `fresh`), or `collect`, plus a project root or review handoff. Accept `review_mode=final|current-scope`; the default is `final`, preserving existing behavior.
+Organize three independent reviews and produce findings only. Accept `all`, one perspective (`intent`, `standards`, or `fresh`), or `collect`, plus a project root, review job, or review handoff. Accept `review_mode=final|current-scope`; the default is `final`.
 
-This skill does not revise prose, update Story Bible creative content, or apply fixes. When called by `revise-fiction` or `revise-draft`, the caller owns manifest and tracker writes. Standalone use leaves shared project state unchanged unless the author explicitly incorporates the resulting reports later.
+This skill does not revise prose, update Story Bible creative content, or apply fixes. When called by `write-fiction`, `revise-fiction`, or `revise-draft`, the caller owns manifest and tracker writes. Standalone use leaves shared project state unchanged unless the author explicitly incorporates the resulting reports later.
 
 ## Prepare
 
-1. Read [`references/checklists.md`](references/checklists.md), including its review-mode applicability rules. Read the report envelope and finding identity sections of `../revise-fiction/references/state-and-findings.md`; its state-write instructions remain the caller's responsibility.
+1. Read [`references/checklists.md`](references/checklists.md), including its review-mode applicability rules. Read [`references/chunked-review.md`](references/chunked-review.md) before planning, resuming, or collecting a review. Read the report envelope and finding identity sections of `../revise-fiction/references/state-and-findings.md`; its state-write instructions remain the caller's responsibility.
 2. For project input, resolve `author-project` in the current skill listing and invoke its exact registered name in separate calls with `read` and `status`. Bare and `author-toolkit:` qualified names are supported when listed. These are the only Skill calls this skill may make. Do not call other skills from a reviewer or subagent.
 3. Select the review mode and its output identity:
 
@@ -20,39 +20,40 @@ This skill does not revise prose, update Story Bible creative content, or apply 
 | `final` | `final-review/` | `final-review` | `final-review/` |
 | `current-scope` | `current-scope-review/` | `current-scope-review` | `current-scope-review/` |
 
-   With default paths, these report destinations are `reports/final-review/` and `reports/current-scope-review/`. Use unique UTC-stamped filenames in the selected directory.
-4. Establish one confirmed `scope_id` and one manuscript scope for all three perspectives. A final review covers the whole book. A current-scope review covers only the confirmed current scope and never claims whole-book final approval. Apply the checklist's skipped-item rules for whole-book questions that do not apply to that scope.
-5. Use the uppercase finding ID prefixes `INTENT`, `STANDARD`, and `READER`. Every reviewer uses judgment confidence and includes a recommendation. The caller enters returned findings as `open` in the shared tracker; status is not a finding v2 property.
-6. Preserve input independence as follows:
+   With default paths, these report destinations are `reports/final-review/` and `reports/current-scope-review/`. Use unique UTC-stamped filenames. Creation callers retain their own operation identity and never add a creation operation to report v2 `stage`.
+4. Establish one confirmed `scope_id` and one manuscript scope for all three perspectives. A final review covers the whole book. A current-scope review covers only the confirmed current scope and never claims whole-book final approval. Apply the checklist's skipped-item rules for whole-book questions that do not apply.
+5. Create or resume one review job per requested perspective and its chunk -> volume/phase -> book plan from actual manuscript paths, hashes, chapter or scene boundaries, and the available context budget. Use the installed review-job and reader-state artifact contracts; the handoff carries their paths rather than copying their content.
+6. Use the uppercase finding ID prefixes `INTENT`, `STANDARD`, and `READER`. Every reviewer uses judgment confidence and includes a recommendation. The caller enters returned findings as `open` in the shared tracker; status is not a finding v2 property.
+7. Preserve input independence as follows:
 
 | Perspective | Permitted inputs |
 |---|---|
 | Intent and consistency | Manuscript, Story Bible, approved draft-baseline when supplied, approved revision plan, and intent checklist |
 | Writing standards | Manuscript and writing standards checklist only; exclude previous self-assessments, Story Bible, draft-baseline and other baselines, plans, and prior review reports |
-| Fresh reader | Manuscript, target reader description, and fresh-reader questions only; exclude Story Bible, draft-baseline and other baselines, plans, prior reports, and author explanations |
+| Fresh reader | Actual manuscript units in sequence, target reader description, fresh-reader questions, and only its own reader-state after the first unit; exclude all other review and baseline inputs |
 
-## Run with subagents
+## Run layered reviews
 
-When independent subagents are available, dispatch all three in parallel. Each must have a fresh context containing only its permitted inputs and checklist. Do not share one reviewer's output with another. Ask each reviewer to return finding v2 payloads with the narrowest truthful location scope and a recommendation.
+Follow [`references/chunked-review.md`](references/chunked-review.md) for unit coverage, synthesis dependencies, reader-state, findings, and completion. Dispatch independent perspectives with fresh contexts. `intent` and `standards` chunk work may run in parallel; the `fresh` chain remains strictly sequential with one logical reviewer. Do not share one perspective's output with another.
 
-Write one immutable Markdown report per perspective with human-readable scope, a `Language coverage` section, a `Review coverage` section, and exactly one report v2 JSON envelope. In `Review coverage`, mark every inapplicable whole-book checklist item `skipped` with its reason in current-scope mode; record partial applicable coverage truthfully in either mode.
+Write immutable chunk reports and each applicable volume/phase and book synthesis report with human-readable scope, a `Language coverage` section, a `Review coverage` section, and exactly one report v2 JSON envelope. Mark inapplicable whole-book checklist items `skipped` with reasons in current-scope mode and record every other gap truthfully.
 
-Use `engine.name: "conversational"` and record independent-subagent execution, version or `unknown`, and degradation. Every report's `engine.notes` must contain:
+Use `engine.name: "conversational"` and record the actual execution path, version or `unknown`, and degradation. Every report's `engine.notes` contains:
 
 - `scope_id=<actual-scope-id>`;
-- `operation_coverage=full`, `operation_coverage=partial`, or `operation_coverage=skipped` for actual requested-operation coverage;
-- `subchecks=intent`, `subchecks=standards`, or `subchecks=fresh`, matching the single perspective in that report.
+- actual `operation_coverage=full|partial|skipped`;
+- `subchecks=intent`, `subchecks=standards`, or `subchecks=fresh` for one perspective.
 
-For a consolidated report containing all perspectives, use `subchecks=intent,standards,fresh` and the same scope ID. Collect the three reports without editing their findings. For `collect`, read and validate the three supplied report paths for the selected mode, list them as versioned inputs, and create a consolidated conversational-engine report that preserves every finding ID and perspective. Keep disagreements visible.
+For a consolidated report containing all perspectives, use `subchecks=intent,standards,fresh` and the same scope ID. Preserve every finding ID and disagreement. `collect` validates the review job and coverage, including all units and syntheses and the fresh reader-state chain, before reporting consolidated or remaining coverage.
 
 ## Run without subagents
 
-Resolve `paths.handoffs` and create three separate handoffs from [`assets/review-handoff-template.md`](assets/review-handoff-template.md) beneath the mode-specific `<paths.handoffs>/<review-mode-directory>/<review-id>/`. The default for a new manifest is `.author-toolkit/handoffs/`; an existing custom directory takes precedence. Customize each to its permitted inputs, confirmed scope ID, review mode, report stage, and report destination. Give the author three exact host commands for opening separate new sessions with `author-review`, one handoff per session, each including the same `review_mode`.
+Resolve `paths.handoffs` and create resumable handoffs from [`assets/review-handoff-template.md`](assets/review-handoff-template.md) beneath the mode-specific `<paths.handoffs>/<review-mode-directory>/<review-id>/`. Use the registered custom directory when present. Give each handoff only its permitted inputs, review-job path, next unfinished unit, report destination, and resume command. Only the fresh handoff names its own reader-state path.
 
-Stop while the reviews are pending. In each new session, run only the handoff's named perspective and write its report. Once all three reports exist, the author can invoke `author-review` with `collect` and the same review mode or return to the calling strategy's corresponding review operation. Record the separate-session fallback and any reduced coverage in `engine.notes` and the Markdown coverage sections.
+Stop while work is pending. Resume the named perspective in a separate session, write the completed chunk or synthesis report, update the review job and handoff to the next unfinished unit, and stop again when no further work fits. Fresh sessions continue the same logical reviewer only through that reviewer's own reader-state. Once all required evidence exists, the author can invoke `author-review` with `collect` and the same review mode or return to the calling strategy's review operation.
 
 ## Findings and completion
 
-Use `author-review-intent`, `author-review-standards`, and `author-review-fresh-reader` as audit names. Report concrete observations, contradictions, or reader experience at specific locations. Do not produce manuscript replacements or automatic resolutions.
+Use `author-review-intent`, `author-review-standards`, and `author-review-fresh-reader` as audit names. Report concrete observations at verified locations. Linked cross-file findings retain real locations; no broad issue receives an invented single-file location. Produce no manuscript replacements or automatic resolutions.
 
-A perspective is complete when its report validates against report v2 and covers the agreed scope with all skipped or partial checks disclosed. `all` is complete only when all three independent perspective reports exist for the same `scope_id` and review mode. Return report paths and finding counts to the caller or author; do not start another operation or describe current-scope results as a whole-book final review.
+A perspective is complete only when every required unit and applicable synthesis validates and covers the agreed scope, with all gaps disclosed. `all` is complete only when all three perspectives meet that condition for the same current `scope_id` and review mode. Return report paths, actual coverage, and finding counts; do not start another operation or describe current-scope or milestone evidence as whole-book final review.

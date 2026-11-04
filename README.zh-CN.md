@@ -1,27 +1,28 @@
 # Author Toolkit 中文快速上手
 
-Author Toolkit 3.0.0 提供两个共享同一项目证据模型的小说修订策略和六个独立写作技能,
-支持 Claude Code 与 Kimi Code. 完整说明见 [英文 README](README.md).
+Author Toolkit 3.1.0 提供增量小说创作, 两个小说修订策略和六个独立写作技能. 创作与修订共享
+同一项目证据模型, 支持 Claude Code 与 Kimi Code. 完整说明见 [英文 README](README.md).
 
-## 包含的 13 个技能
+## 包含的 14 个技能
 
 用户入口:
 
 | 技能 | 用途 |
 | --- | --- |
 | `ask-author` | 读取项目状态, 引导作者选择合适的入口或独立技能. |
-| `setup-author-toolkit` | 登记写作项目并初始化两个修订入口共用的项目状态. |
+| `setup-author-toolkit` | 登记写作项目并初始化创作与修订入口共用的项目状态. |
+| `write-fiction` | 通过可审阅写作批次, staging, 同步 story state 和里程碑复核创作或续写小说. |
 | `revise-fiction` | 面向全书, 通过 Story Bible, 宏观结构, 完整人物弧线和全书终审进行修订. |
 | `revise-draft` | 面向当前稿, 通过稿件基线, 局部叙事诊断和当前范围复核进行修订. |
 
-`revise-fiction` 与 `revise-draft` 都必须先运行同一个 `setup-author-toolkit`.
-setup 不接受 workflow 名称或 entry stage 参数, 对所有后续工作流使用相同的登记和
-intake 规则.
+`write-fiction`, `revise-fiction` 与 `revise-draft` 都必须先运行同一个
+`setup-author-toolkit`. setup 不接受 workflow 名称或 entry stage 参数, 对所有后续策略使用
+相同的登记和 intake 规则.
 
 共享编排技能为 `author-project`, `author-handoff`, `author-review`. 它们支撑上述入口,
 不是独立的用户工作流. 六个独立技能为 `fiction-workshop`, `character-archetypes`,
 `story-structure`, `narrative-nonfiction`, `prose-mechanics`, `avoid-ai-writing`.
-合计 13 个技能.
+合计 14 个技能.
 
 ## 安装
 
@@ -61,31 +62,49 @@ npx skills check
 npx skills update
 ```
 
-## 先 setup, 再选择修订入口
+## 先 setup, 再选择创作或修订入口
 
 根据安装方式选择命令:
 
-| 安装方式 | 宿主 | Setup | 全书修订 | 当前稿修订 |
-| --- | --- | --- | --- | --- |
-| 插件 | Claude Code | `/author-toolkit:setup-author-toolkit` | `/author-toolkit:revise-fiction` | `/author-toolkit:revise-draft` |
-| 插件 | Kimi Code | `/skill:author-toolkit:setup-author-toolkit` | `/skill:author-toolkit:revise-fiction` | `/skill:author-toolkit:revise-draft` |
-| 裸技能 | Claude Code | `/setup-author-toolkit` | `/revise-fiction` | `/revise-draft` |
-| 裸技能 | Kimi Code | `/skill:setup-author-toolkit` | `/skill:revise-fiction` | `/skill:revise-draft` |
+| 安装方式 | 宿主 | Setup | 创作 | 全书修订 | 当前稿修订 |
+| --- | --- | --- | --- | --- | --- |
+| 插件 | Claude Code | `/author-toolkit:setup-author-toolkit` | `/author-toolkit:write-fiction` | `/author-toolkit:revise-fiction` | `/author-toolkit:revise-draft` |
+| 插件 | Kimi Code | `/skill:author-toolkit:setup-author-toolkit` | `/skill:author-toolkit:write-fiction` | `/skill:author-toolkit:revise-fiction` | `/skill:author-toolkit:revise-draft` |
+| 裸技能 | Claude Code | `/setup-author-toolkit` | `/write-fiction` | `/revise-fiction` | `/revise-draft` |
+| 裸技能 | Kimi Code | `/skill:setup-author-toolkit` | `/skill:write-fiction` | `/skill:revise-fiction` | `/skill:revise-draft` |
 
 `ask-author` 使用相同的命令形式替换技能名.
 
 快速流程:
 
-1. 准备单本小说或当前稿的 Markdown 或纯文本文件, 并确认项目目录.
-2. 调用 `setup-author-toolkit`, 提供路径并回答项目登记和语言问题. 登记会保留原稿路径,
-   并在完成后验证共享 v3 manifest. 新项目根目录没有 `AGENTS.md` 时, setup 会安装项目级
-   agent 指令模板; 已有指令文件保持不变. 不指定 workflow 或 entry stage. 之后由所选
-   修订技能建立并确认初始范围.
-3. 根据目标选择技能: 需要全书 Story Bible, 结构审查和终审时调用 `revise-fiction`;
-   只需处理当前稿, 局部诊断和当前范围复核时调用 `revise-draft`.
-4. 在作者确认节点审阅报告. 报告可以汇总全部发现项, 但 agent 每次只提出一个待决项,
-   让你先讨论证据和备选方案再作决定. 你可以对发现项作出处理决定或要求返工, 也可以明确
-   要求批量处理. 正文修改前需要明确批准, 并先建立备份和校验当前文件 hash.
+1. 确认写作项目目录. 其中可以有 Markdown 或纯文本稿件, 也可以是新小说的目标目录.
+2. 调用 `setup-author-toolkit`, 提供路径并回答项目登记和语言问题. 登记会保留原稿路径.
+   新项目根目录没有 `AGENTS.md` 时, setup 会安装项目级 agent 指令模板; 已有指令文件保持不变.
+   不指定 workflow 或 entry stage.
+3. setup 验证共享 manifest 后, 根据目标选择 `write-fiction`, `revise-fiction` 或
+   `revise-draft`. 需要时由所选策略建立并确认初始 scope.
+4. 在作者确认节点审阅证据和提案. agent 每次只提出一个待决项, 让你先讨论证据和备选方案
+   再作决定. 计划, 正文写入, 批次验收和 restore 分别需要对应授权.
+
+### `write-fiction`: 增量创作快速路径
+
+创作操作包括:
+
+1. `creation-baseline`: 建立最低限度的创作意图基础和 creation state. 后续情节, 总篇幅,
+   人物结局和全书结局可以保持未知.
+2. `writing-plan`: 默认一次规划一章, 选择有版本的上下文, 记录准确目标路径和文件动作.
+3. `chapter-creation`: 通过 `fiction-workshop` 将 AI 草稿写入 staging, 或暂存作者提供的文本.
+4. `chapter-review`: 检查计划执行, 章节衔接和连续性, 由作者验收或拒绝完整批次.
+5. `creation-commit`: 发布已验收批次, 更新 story state 和 scope, 保存恢复记录.
+6. `creation-import`: reconcile 作者在流程外新增, 修改, 删除或重排的正文文件.
+7. `milestone-review`: 汇总作者选择的卷或故事阶段并执行请求的局部检查, 不将其称为全书终审.
+
+重复循环为 `writing-plan` -> `chapter-creation` -> `chapter-review` -> `creation-commit`.
+AI, 作者和混合创作使用相同门禁. 每本书只保留一个 active creation batch.
+
+写前必须同时批准章节计划和准确写入批次, 包括路径, 动作和输入版本. staging 后, 一次批次
+验收覆盖确定的正文内容, story state 差异和有序 scope; 正文与 scope 批准分别记录. 验收后
+`creation-commit` 不再增加作者门禁.
 
 ### `revise-fiction`: 全书修订
 
@@ -117,56 +136,99 @@ npx skills update
 9. `current-scope-review`: 以三个独立视角复核当前范围, 全书不适用项记录为 `skipped`
    并说明范围理由.
 
-两个入口共用 characters 能力. 当前稿路径只要求当前弧线和连续性, 完整全书门禁要求更多
+两个修订入口共用 characters 能力. 当前稿路径只要求当前弧线和连续性, 完整全书门禁要求更多
 人物弧线和全书连续性子检查. 当前稿任务可以直接进入 `prose` 或 `ai-cleanup`. 不需要改稿时,
 可记录原因并跳过 `revision-plan` 和 `chapter-revision`.
 
-从零创作请直接调用 `fiction-workshop` 或 `story-structure`. 叙事非虚构请直接调用
-`narrative-nonfiction`. 多书籍项目和其他宿主不在 3.0 支持范围内.
+叙事非虚构请直接调用 `narrative-nonfiction`. 多书籍项目和其他宿主不在 3.1 支持范围内.
 
 ## 共享项目产物与证据
 
-两个修订策略共用中性的 `.author-toolkit/project.json` (v3) 和以下产物:
+三个策略共用中性的 `.author-toolkit/project.json` 和同一组登记路径. 新项目和迁移终态使用
+schema 3.1.0; v3.0 manifest 仍可读取, 并可进行增量 3.1 升级.
 
 - `project.json`: 项目登记, 产物路径, 以及可选的 `current_scope` 和 `pending_action`.
   不包含 `workflow.name`, `current_stage` 或 `stages`.
-- `story-bible.md`: 当前工作需要时使用的共享故事基础, 不为另一个入口另建副本.
+- `story-bible.md`: 记录作者意图. 已验收正文建立 observed facts; 两者冲突时不能静默覆盖任一
+  来源.
 - `audit-tracker.md`: 稳定的发现项 ID, 状态, 作者决定, 共享批准记录和报告指针.
-- `reports/`: 诊断上下文和机器可读结果. 重新审计生成新报告, 不覆盖已交付报告.
+- `reports/`: 诊断上下文和机器可读结果. 重新审计生成新报告, 不覆盖已交付报告. 可复用
+  coverage units 和 living coverage index 也保存在登记的 reports 路径下.
 - `sessions/`: 已完成工作, 待决事项, 备份路径和停止位置.
 - `backups/`: 获批修改前的稿件备份. 恢复也需要作者批准.
 - `handoffs/`: 当前证据和下一操作的交接指针.
+- `paths.creation`: 创作产物路径, 默认 `.author-toolkit/creation/`, 包含
+  `state/current.md`, `state/chapters/`, `state/volumes/`, `batches/` 和 `staging/`.
 
-实际路径以 manifest 登记为准, 包括自定义位置. 没有 `revise-draft` 专属目录, 也不维护两套
-流程状态. 在 `revise-fiction` 与 `revise-draft` 之间切换会复用这些产物, 无需迁移.
+chapter/volume story state 从已验收正文和有版本的来源派生, 用于续写; 它不能替代 Story Bible
+的意图或正文事实. 被拒绝的 staging 文本不会进入 story state 或 manuscript scope.
 
-证据是否可以复用, 由 `operation`, `scope_id`, 输入版本, coverage 和依赖共同判断.
-新 scope 需要作者确认. 输入或依赖变化时, 受影响证据标为 `stale`, 并沿依赖传播; 旧报告
-符合 schema 并不代表它仍适用于当前稿件. `pending_action` 记录待执行或等待作者决定的下一
-操作, 不再按技能分别保存阶段进度.
+实际路径以 manifest 登记为准, 包括自定义位置. 在稳定 operation 门禁处, 可在 `write-fiction`,
+`revise-fiction` 与 `revise-draft` 之间双向切换并复用这些产物, 无需第二套项目目录或迁移.
+切换不会自动恢复 pending write.
 
-共享 tracker 保存批准记录. 正文修改前必须获得明确批准并建立备份, 写入前还要校验当前文件
-hash, 避免覆盖记录证据或批准之后发生的变化.
+证据是否可以复用, 由 `operation`, `scope_id`, 输入版本, coverage, subchecks 和依赖共同判断.
+新 scope 需要作者确认. 输入或依赖变化时, 受影响证据标为 `stale`; 旧报告符合 schema 并不代表
+它仍适用于当前稿件.
 
-Finding v2 和 report v2 的版本保持不变, 仅 stage 枚举新增 `draft-baseline`, `diagnostics`
-和 `current-scope-review`. 独立技能仍可使用 finding v1. 项目登记使用
-`references/project-schema.json` 中的 v3 schema.
+创作批次还记录计划, 所选上下文和目标输入的 dependency fingerprint. 返回 staged draft 时重新
+计算 fingerprint. 纳入的依赖变化需要重新复核或规划; 无关正文增长只要求刷新发布 scope, 不会
+单独使 staged content 失效.
 
-迁移说明见 [docs/MIGRATION-3.0.md](docs/MIGRATION-3.0.md). 历史 2.0 说明保留在
+`pending_action` 只记录一个待执行或等待作者决定的下一操作, 不是发布或恢复正文写入的许可.
+
+### Staging, commit 与 restore
+
+AI 草稿先写入 `staging/<batch-id>/`, 作者和混合批次也遵守相同的 staging 与验收规则. 提交时,
+每个新文件必须仍不存在, 每个已有目标必须匹配已验收输入 hash, 且每个已有目标必须先备份.
+
+commit journal 在发布正文前写入. 每个文件通过临时同目录文件校验和原子 rename 发布, 并在每次
+状态转换后更新 journal. journal 协调多文件批次, 但不声称整个批次是一个文件系统事务. 中断时
+记录已完成和待处理动作, 停止自动发布.
+
+restore 需要单独明确批准, 指明 commit 或 backup 以及准确文件. 先为当前内容建立安全备份. 对
+该批次新建的文件, 先移入安全备份再从 manuscript 移除. 作者外部改动通过 `creation-import`
+reconcile, 不能静默刷新 hash 或 story state.
+
+### Coverage 与分块终审
+
+只有 source report 身份, operation, 准确路径和 hash, 请求的 subchecks 及依赖全部匹配的 full local
+coverage unit 才能复用. 原 scope 保持与来源报告绑定, 组合后的 coverage index 和新 synthesis 使用请求的
+新 scope. partial, skipped, stale 和 synthesis unit 都不能作为可复用的局部证明. 无关修改可保留未受影响
+的 local units, 但受影响的卷, 故事阶段, 当前范围或全书 synthesis 必须按当前输入重新评价.
+
+大稿件的 `author-review` 先阅读实际正文 chunks, 再综合卷或故事阶段, 最后综合全书. intent 与
+standards 可以并行. fresh reader 按阅读顺序由同一个逻辑 reviewer 推进, 只携带自己的隔离
+reader-state. 摘要和提取的 story state 不能替代正文阅读. 只有实际覆盖请求范围时才报告 `full`.
+
+Finding v2 和 report v2 的版本保持不变, creation operations 不加入封闭的 report v2 `stage`
+枚举. creation batches, commit journals, story state, coverage units/index, review jobs 和
+reader state 使用独立产物契约. 项目登记使用 `references/project-schema-v3.1.json`; v3.0 schema
+保留用于读取和升级旧项目.
+
+迁移说明见 [docs/MIGRATION-3.1.md](docs/MIGRATION-3.1.md). 历史说明保留在
+[docs/MIGRATION-3.0.md](docs/MIGRATION-3.0.md) 和
 [docs/MIGRATION-2.0.md](docs/MIGRATION-2.0.md).
+
+随仓库提供的中英文 examples 有意保留 legacy v2 manifests 和 workflow fixtures 用于兼容性测试,
+不要为了显得最新而原地迁移它们.
 
 ## 恢复, 切换与返工
 
-在已登记项目中再次调用 `revise-fiction` 或 `revise-draft`, 说明要继续, 审阅报告, 切换修订
-策略还是返工. 两个入口通过同一份 manifest, tracker, Story Bible, 报告, session notes,
-备份和 handoff 恢复上下文, 并根据当前 scope, pending operation, 证据和依赖决定下一步.
+在已登记项目中再次调用 `write-fiction`, `revise-fiction` 或 `revise-draft`, 说明要继续, 审阅
+报告, 切换策略还是返工. 三个入口通过同一份 manifest, tracker, Story Bible, 报告, session
+notes, 备份, handoff 和适用的 creation state 恢复上下文, 并根据当前 scope, pending operation,
+证据和依赖决定下一步.
 
-恢复备份需要明确请求和作者确认. 继续流程, 切换技能或重新生成报告不会自动恢复备份, 也不会
-自动改写旧报告.
+使用其他策略时可以保留 staged draft. 返回后根据 dependency fingerprint 和当前项目状态决定重新
+复核还是重新规划. 策略切换和 pending action 都不会自动发布它.
+
+恢复备份需要明确请求和作者确认. 继续流程, 切换技能或重新生成报告不会自动恢复备份, 也不会自动
+改写旧报告.
 
 ## 独立技能
 
-六个旧技能保留原名称, 触发方式和独立行为, 可以不进入任一共享修订流程直接调用:
+六个旧技能保留原名称, 触发方式和独立行为, 可以不进入共享创作或修订流程直接调用:
 
 | 技能 | 用途示例 |
 | --- | --- |
@@ -188,18 +250,18 @@ Finding v2 和 report v2 的版本保持不变, 仅 stage 枚举新增 `draft-ba
 
 ## 语言与格式限制
 
-共享流程处理 Markdown 和纯文本, 核心语言为中文和英文. 某项诊断的语言覆盖较窄时,
-按技能中的语言规则降级, 并在报告中记录部分执行或跳过项. 其他语言使用文档中的降级规则,
-不把规则覆盖减少报告为等效完整审计.
+共享流程处理 Markdown 和纯文本, 核心语言为中文和英文. 某项诊断的语言覆盖较窄时, 按技能中的
+语言规则降级, 并在报告中记录部分执行或跳过项. 其他语言使用文档中的降级规则, 不把规则覆盖减少
+报告为等效完整审计.
 
 ## 验证状态
 
-3.0.0 当前工作树通过 74 项协议测试和 19 项默认校验. 中文 v2 副本的真实迁移通过
-4 项 manifest 检查, 重复迁移保持幂等. 宿主实际运行和 13 技能安装发现尚未验证.
-详见 [docs/VALIDATION.md](docs/VALIDATION.md). 2.0 的历史实测结果单独保留, 不能作为
-3.0 已通过宿主验证的证据. 未列明通过的安装和运行路径不视为已验证.
+3.1.0 工作树的仓库检查已通过: 104 项协议测试和 19 项默认校验, 详见
+[docs/VALIDATION.md](docs/VALIDATION.md). Kimi Code 已完成有限范围的创作提交和双向切换验证; 完整宿主流程,
+14 技能安装发现和百万字稿件的创作质量仍未验证.
+3.0 和 2.0 的历史结果单独保留, 不能作为 3.1 已通过宿主或质量验证的证据.
 
-## 开发
+## 开发与产物校验
 
 开发包需要 Node.js >= 22, 通用技能安装器需要 Node.js >= 22.20. 安装依赖后在仓库根目录运行:
 
@@ -208,5 +270,14 @@ npm test
 npm run validate
 ```
 
-这些命令只覆盖仓库级检查, 不代表宿主运行验证. 宿主版本, 已完成检查和限制见
+可用对应 CLI 参数直接校验 manifest, report 和新产物. 新参数包括 creation batches, commit
+journals, story state, coverage artifacts 和 review jobs; 准确参数名以当前安装的 `--help` 为准:
+
+```bash
+node scripts/validate.mjs --help
+node scripts/validate.mjs --manifest /path/to/.author-toolkit/project.json
+node scripts/validate.mjs --report /path/to/report.md
+```
+
+这些命令只覆盖仓库级契约, 不代表宿主运行验证或创作质量. 宿主版本, 已完成检查和限制见
 [docs/VALIDATION.md](docs/VALIDATION.md).
