@@ -54,10 +54,10 @@ At every author gate, follow the [Author decision loop](../revise-fiction/refere
 
 ## Strategy switching and shared state
 
-`write-fiction`, `revise-draft`, `revise-fiction`, and `revise-increment` use the same manifest, tracker, reports, sessions, backups, handoffs, and creation state. At any stable operation gate, show the exact command for the author's selected strategy and wait. Switching does not reset evidence, resume writes, or require migration. This entry adds no report stage, pending-operation name, manifest field, or separate state tree.
+`write-fiction`, `revise-draft`, `revise-fiction`, `revise-increment`, and `revise-request` use the same manifest, tracker, reports, sessions, backups, handoffs, and creation state. At any stable operation gate, show the exact command for the author's selected strategy and wait. Switching does not reset evidence, resume writes, or require migration. This entry adds no report stage, pending-operation name, manifest field, or separate state tree.
 
 Before writing any report or changing finding or approval status, read [`../revise-fiction/references/state-and-findings.md`](../revise-fiction/references/state-and-findings.md). Validate newly written reports and artifacts with the installed validator and preserve historical evidence.
 
 ## Finish
 
-Finish each invocation with the previous and target scope IDs, change set and work-set paths, reused units, new reports and syntheses, actual coverage, approvals and backups, unresolved findings, and the exact next action. At the final gate, state explicitly whether the target is revision-converged and list every blocker when it is not. Show the `write-fiction`, `revise-draft`, `revise-fiction`, or `revise-increment` command that matches the author's next goal. Use `author-handoff` for session transfer after shared state is current.
+Finish each invocation with the previous and target scope IDs, change set and work-set paths, reused units, new reports and syntheses, actual coverage, approvals and backups, unresolved findings, and the exact next action. At the final gate, state explicitly whether the target is revision-converged and list every blocker when it is not. Show the `write-fiction`, `revise-draft`, `revise-fiction`, `revise-increment`, or `revise-request` command that matches the author's next goal. Use `author-handoff` for session transfer after shared state is current.

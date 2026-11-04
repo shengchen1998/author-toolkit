@@ -68,7 +68,7 @@ Load only the reference file matching the currently invoked audit. Before a work
 
 Standalone audits retain finding v1 from `../../references/finding-schema.json`, grouped by severity with optional exemplars resolved against `references/exemplars/<ref>.md`.
 
-When `revise-fiction`, `revise-draft`, or `revise-increment` supplies workflow report context, load `../../references/workflow-reporting.md` and use report and finding v2. Every finding includes a recommendation, and the tracker stores stable finding IDs and their review statuses.
+When `revise-fiction`, `revise-draft`, `revise-increment`, or `revise-request` supplies workflow report context, load `../../references/workflow-reporting.md` and use report and finding v2. Every finding includes a recommendation, and the tracker stores stable finding IDs and their review statuses.
 
 ## Engine Hook
 
@@ -97,7 +97,7 @@ For each audit:
 
 4. **Stop. Wait for author review.** Do not apply fixes automatically. The author decides which flags are real and which are stylistic choices.
 
-5. **Apply approved fixes:** In workflow mode, return the approved file list to `revise-fiction`, `revise-draft`, or `revise-increment` and wait for its backup confirmation before editing. The orchestrator records every backup through `author-project`. Use targeted text edits only on confirmed flags and record the resulting backup IDs in the session note.
+5. **Apply approved fixes:** In workflow mode, return the approved file list to `revise-fiction`, `revise-draft`, `revise-increment`, or `revise-request` and wait for its backup confirmation before editing. The orchestrator records every backup through `author-project`. Use targeted text edits only on confirmed flags and record the resulting backup IDs in the session note.
 
 6. **Update the tracker:** Index the report and update each finding's review status. Keep full finding details in the report.
 
@@ -110,7 +110,7 @@ For each audit:
 | **Running all audits simultaneously** | Wanting to be thorough in one pass | Each audit has a different lens. Stacked, they produce a noise-flood the author can't act on. One pass at a time. |
 | **Applying fixes mechanically** | Treating flags as instructions, not diagnostics | Every flag needs a judgment call. A flagged passive may be the right passive. Surface the flag; let the author choose. |
 | **Treating audits as line edits** | Conflating diagnostics with revision | Audits identify candidate issues; line editing is the craft of resolving them. Run the audit, then do the line edit—not both at once. |
-| **Auditing unstable drafts** | "Polish as I go" instinct | If chapters are still being cut or reordered, audited prose is wasted work. Wait for stability or record the author's explicit scoped risk approval when `revise-draft` or `revise-increment` permits the pass. |
+| **Auditing unstable drafts** | "Polish as I go" instinct | If chapters are still being cut or reordered, audited prose is wasted work. Wait for stability or record the author's explicit scoped risk approval when `revise-draft`, `revise-increment`, or `revise-request` permits the pass. |
 | **Skipping the report step** | Wanting to be efficient by fixing in place | The report is the deliverable. It teaches the author to see the pattern themselves, which is the long-term value of the audit. |
 | **Running audits out of order** | Convenience or user request | Each audit changes what the next will flag. If the user insists on a different order, note that downstream audits may need a re-run. |
 | **Auditing during developmental work** | Mistaking line-mechanical issues for structural ones | Prose mechanics are downstream of structure. If the chapter's purpose isn't clear, the prose isn't the problem. Use the developmental skills first. |
@@ -120,7 +120,7 @@ For each audit:
 Use these checkpoints to verify you're running audits correctly.
 
 **Before starting an audit:**
-- [ ] Has `revise-fiction` verified full-book structural stability, or has `revise-draft` or `revise-increment` addressed approved local edits and scoped rework risk?
+- [ ] Has `revise-fiction` verified full-book structural stability, or has `revise-draft`, `revise-increment`, or `revise-request` addressed approved local edits and scoped rework risk?
 - [ ] Have the developmental and character passes required by the calling orchestrator been completed?
 - [ ] Is the audit scope clearly defined (which chapter, which passages)?
 

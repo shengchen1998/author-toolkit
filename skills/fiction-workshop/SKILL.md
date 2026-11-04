@@ -13,7 +13,7 @@ Novel projects span weeks or months, and agent sessions do not reliably preserve
 
 - **At session start:** Read the baseline named by the caller, or `story-bible.md` in a standalone project. Skim recent files in `sessions/` for unresolved threads.
 - **At session end:** Write a brief note at `sessions/YYYY-MM-DD_topic-slug.md` summarizing what was done, decisions made, backups created, and the stopping point. Two to five sentences is enough.
-- **When foundations shift:** Record approved changes to premise, character bios, world rules, or major plot turns promptly. Standalone work asks the author to confirm the update; workflow work returns the proposed change to `write-fiction`, `revise-fiction`, `revise-draft`, or `revise-increment` for approval and writing to the applicable baseline or story state.
+- **When foundations shift:** Record approved changes to premise, character bios, world rules, or major plot turns promptly. Standalone work asks the author to confirm the update; workflow work returns the proposed change to `write-fiction`, `revise-fiction`, `revise-draft`, `revise-increment`, or `revise-request` for approval and writing to the applicable baseline or story state.
 - **Surface unresolved questions:** At the start of new work, list questions left open from prior sessions and ask the user which to address before continuing.
 
 ## When to Use
@@ -273,7 +273,7 @@ If the author explicitly asks you to continue past a stopping point, fine—but 
 
 Standalone developmental-editing critiques and continuity-tracking flags conform to `../../references/finding-schema.json`: `audit` = the mode name, `technique` = the named craft technique, `severity`, `location`, `issue`, `confidence: "judgment"`, and optional `exemplar`. Serialize findings as JSON, using one JSON code block when embedding them in Markdown; YAML does not satisfy this contract. Brainstorming and drafting proposals remain outside the finding contract.
 
-When `write-fiction`, `revise-fiction`, `revise-draft`, or `revise-increment` supplies workflow report context, load `../../references/workflow-reporting.md` and use finding v2 for diagnostics. Return reports and proposed baseline updates without advancing pending state. After a revision orchestrator obtains edit approval, return the affected file list and wait for its backup confirmation before editing; it records backups through `author-project`.
+When `write-fiction`, `revise-fiction`, `revise-draft`, `revise-increment`, or `revise-request` supplies workflow report context, load `../../references/workflow-reporting.md` and use finding v2 for diagnostics. Return reports and proposed baseline updates without advancing pending state. After a revision orchestrator obtains edit approval, return the affected file list and wait for its backup confirmation before editing; it records backups through `author-project`.
 
 When `write-fiction` invokes Chapter Development, use the supplied approved plan and context package. Write only beneath the registered `<paths.creation>/staging/<batch-id>/`; never write the intended manuscript target, update current story state, or commit the batch. Return each staged path, SHA-256 hash, and intended target path with proposed story-state differences. The caller owns chapter review, acceptance, publication, and scope updates. Standalone behavior remains unchanged: use the normal creation and editing workflows above and leave shared project state untouched.
 

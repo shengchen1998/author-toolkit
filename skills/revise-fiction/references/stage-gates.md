@@ -4,7 +4,7 @@ Load the section for the current operation. A gate describes the evidence needed
 
 For every report, follow `state-and-findings.md`. A clean report contains zero findings and still records engine, `scope_id`, input versions, operation coverage, subchecks when applicable, and language coverage.
 
-At a stable operation gate, the author may switch to `write-fiction`, `revise-draft`, or `revise-increment` through its exact command; no entry starts automatically. Reuse a local coverage unit only when every path, hash, subcheck, and dependency matches. Reevaluate every applicable whole-book synthesis after relevant changes instead of carrying it forward with unchanged local units. Creation evidence does not satisfy `chapter-revision`.
+At a stable operation gate, the author may switch to `write-fiction`, `revise-draft`, `revise-increment`, or `revise-request` through its exact command; no entry starts automatically. Reuse a local coverage unit only when every path, hash, subcheck, and dependency matches. Reevaluate every applicable whole-book synthesis after relevant changes instead of carrying it forward with unchanged local units. Creation evidence does not satisfy `chapter-revision`.
 
 ## 1. Intake
 

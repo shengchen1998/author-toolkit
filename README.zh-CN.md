@@ -1,9 +1,9 @@
 # Author Toolkit 中文快速上手
 
-Author Toolkit 3.1.0 提供增量小说创作, 三个小说修订策略和六个独立写作技能. 创作与修订共享
+Author Toolkit 3.1.0 提供增量小说创作, 四个小说修订策略和六个独立写作技能. 创作与修订共享
 同一项目证据模型, 支持 Claude Code 与 Kimi Code. 完整说明见 [英文 README](README.md).
 
-## 包含的 15 个技能
+## 包含的 16 个技能
 
 用户入口:
 
@@ -15,15 +15,16 @@ Author Toolkit 3.1.0 提供增量小说创作, 三个小说修订策略和六个
 | `revise-fiction` | 面向全书, 通过 Story Bible, 宏观结构, 完整人物弧线和全书终审进行修订. |
 | `revise-draft` | 面向当前稿, 通过稿件基线, 局部叙事诊断和当前范围复核进行修订. |
 | `revise-increment` | 在增量创作后复用未变章节的有效证据, 修订新增或受影响章节并完成整个目标范围复核. |
+| `revise-request` | 在完整当前稿已收敛后处理任意类型的存量内容修订请求, 并恢复全稿当前稿收敛. |
 
-`write-fiction`, `revise-fiction`, `revise-draft` 与 `revise-increment` 都必须先运行同一个
+`write-fiction`, `revise-fiction`, `revise-draft`, `revise-increment` 与 `revise-request` 都必须先运行同一个
 `setup-author-toolkit`. setup 不接受 workflow 名称或 entry stage 参数, 对所有后续策略使用
 相同的登记和 intake 规则.
 
 共享编排技能为 `author-project`, `author-handoff`, `author-review`. 它们支撑上述入口,
 不是独立的用户工作流. 六个独立技能为 `fiction-workshop`, `character-archetypes`,
 `story-structure`, `narrative-nonfiction`, `prose-mechanics`, `avoid-ai-writing`.
-合计 15 个技能.
+合计 16 个技能.
 
 ## 安装
 
@@ -67,12 +68,12 @@ npx skills update
 
 根据安装方式选择命令:
 
-| 安装方式 | 宿主 | Setup | 创作 | 全书修订 | 当前稿修订 | 增量修订 |
-| --- | --- | --- | --- | --- | --- | --- |
-| 插件 | Claude Code | `/author-toolkit:setup-author-toolkit` | `/author-toolkit:write-fiction` | `/author-toolkit:revise-fiction` | `/author-toolkit:revise-draft` | `/author-toolkit:revise-increment` |
-| 插件 | Kimi Code | `/skill:author-toolkit:setup-author-toolkit` | `/skill:author-toolkit:write-fiction` | `/skill:author-toolkit:revise-fiction` | `/skill:author-toolkit:revise-draft` | `/skill:author-toolkit:revise-increment` |
-| 裸技能 | Claude Code | `/setup-author-toolkit` | `/write-fiction` | `/revise-fiction` | `/revise-draft` | `/revise-increment` |
-| 裸技能 | Kimi Code | `/skill:setup-author-toolkit` | `/skill:write-fiction` | `/skill:revise-fiction` | `/skill:revise-draft` | `/skill:revise-increment` |
+| 安装方式 | 宿主 | Setup | 创作 | 全书修订 | 当前稿修订 | 增量修订 | 请求修订 |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 插件 | Claude Code | `/author-toolkit:setup-author-toolkit` | `/author-toolkit:write-fiction` | `/author-toolkit:revise-fiction` | `/author-toolkit:revise-draft` | `/author-toolkit:revise-increment` | `/author-toolkit:revise-request` |
+| 插件 | Kimi Code | `/skill:author-toolkit:setup-author-toolkit` | `/skill:author-toolkit:write-fiction` | `/skill:author-toolkit:revise-fiction` | `/skill:author-toolkit:revise-draft` | `/skill:author-toolkit:revise-increment` | `/skill:author-toolkit:revise-request` |
+| 裸技能 | Claude Code | `/setup-author-toolkit` | `/write-fiction` | `/revise-fiction` | `/revise-draft` | `/revise-increment` | `/revise-request` |
+| 裸技能 | Kimi Code | `/skill:setup-author-toolkit` | `/skill:write-fiction` | `/skill:revise-fiction` | `/skill:revise-draft` | `/skill:revise-increment` | `/skill:revise-request` |
 
 `ask-author` 使用相同的命令形式替换技能名.
 
@@ -83,8 +84,9 @@ npx skills update
    新项目根目录没有 `AGENTS.md` 时, setup 会安装项目级 agent 指令模板; 已有指令文件保持不变.
    不指定 workflow 或 entry stage.
 3. setup 验证共享 manifest 后, 根据目标选择 `write-fiction`, `revise-fiction`,
-   `revise-draft` 或 `revise-increment`. 增量修订用于复用未变章节的有效证据, 处理新增或
-   受影响章节并恢复整个目标范围的当前稿收敛. 需要时由所选策略建立并确认初始 scope.
+   `revise-draft`, `revise-increment` 或 `revise-request`. 增量修订用于复用未变章节的有效证据,
+   处理新增或受影响章节并恢复整个目标范围的当前稿收敛. 请求修订用于在全稿已收敛后处理存量内容
+   并重新收敛. 需要时由所选策略建立并确认初始 scope.
 4. 在作者确认节点审阅证据和提案. agent 每次只提出一个待决项, 让你先讨论证据和备选方案
    再作决定. 计划, 正文写入, 批次验收和 restore 分别需要对应授权.
 
@@ -139,7 +141,7 @@ AI, 作者和混合创作使用相同门禁. 每本书只保留一个 active cre
 9. `current-scope-review`: 以三个独立视角复核当前范围, 全书不适用项记录为 `skipped`
    并说明范围理由.
 
-三个修订入口共用 characters 能力. 当前稿与增量路径只要求当前弧线和连续性, 完整全书门禁要求
+四个修订入口共用 characters 能力. 当前稿, 增量与请求路径只要求当前弧线和连续性, 完整全书门禁要求
 更多人物弧线和全书连续性子检查. 当前稿任务可以直接进入 `prose` 或 `ai-cleanup`. 不需要改稿时,
 可记录原因并跳过 `revision-plan` 和 `chapter-revision`. 直接或有限范围任务本身不代表当前稿
 已完全收敛.
@@ -160,11 +162,27 @@ AI, 作者和混合创作使用相同门禁. 每本书只保留一个 active cre
 5. 处理复核 findings; 获批修改后重跑受影响操作和复核. 只有证据, findings, 批准, coverage 和
    复核条件均为当前状态时才声明收敛.
 
+### `revise-request`: 已收敛全稿的请求驱动修订
+
+当完整当前稿已经从 `revise-draft` 视角收敛, 作者对存量内容提出任意类型的修订请求时使用此入口.
+请求可以涉及情节, 场景, 人物, 连续性, 视角, 句子或 AI cleanup; 宏观结构请求可额外使用
+`story-structure` Audit, 但不会因此改走 `revise-fiction` 的全书终审门禁.
+
+1. 核对完整当前稿的 base scope 和收敛证据. 未收敛时先回到 `revise-draft`; 创作或导入扩大范围时
+   先运行 `revise-increment`.
+2. 确认请求结果, 约束, request set, 完整 target 和初始 work set. 请求范围决定改什么, 完整目标范围
+   决定需要重新证明什么.
+3. 在备份后只执行获批批次. 按实际文本和依赖变化扩大 work set, 重跑受影响操作并组合新的全目标
+   coverage 和 syntheses; 匹配的未变 full local units 可以复用.
+4. 保留原收敛 pass 的适用 subchecks, 并加入新请求的检查. 局部请求不会静默缩小收敛所需 coverage.
+5. 任何正文修改后重新完成全目标三视角复核, fresh reader 顺序阅读全稿. 处理复核 findings 和返工,
+   分别报告请求是否完成以及全稿是否重新收敛; 请求批次完成本身不等于收敛.
+
 叙事非虚构请直接调用 `narrative-nonfiction`. 多书籍项目和其他宿主不在 3.1 支持范围内.
 
 ## 共享项目产物与证据
 
-四个策略共用中性的 `.author-toolkit/project.json` 和同一组登记路径. 新项目和迁移终态使用
+五个策略共用中性的 `.author-toolkit/project.json` 和同一组登记路径. 新项目和迁移终态使用
 schema 3.1.0; v3.0 manifest 仍可读取, 并可进行增量 3.1 升级.
 
 - `project.json`: 项目登记, 产物路径, 以及可选的 `current_scope` 和 `pending_action`.
@@ -184,8 +202,8 @@ chapter/volume story state 从已验收正文和有版本的来源派生, 用于
 的意图或正文事实. 被拒绝的 staging 文本不会进入 story state 或 manuscript scope.
 
 实际路径以 manifest 登记为准, 包括自定义位置. 在稳定 operation 门禁处, 可在 `write-fiction`,
-`revise-fiction`, `revise-draft` 与 `revise-increment` 之间切换并复用这些产物, 无需第二套项目
-目录或迁移. 切换不会自动恢复 pending write.
+`revise-fiction`, `revise-draft`, `revise-increment` 与 `revise-request` 之间切换并复用这些产物,
+无需第二套项目目录或迁移. 切换不会自动恢复 pending write.
 
 证据是否可以复用, 由 `operation`, `scope_id`, 输入版本, coverage, subchecks 和依赖共同判断.
 新 scope 需要作者确认. 输入或依赖变化时, 受影响证据标为 `stale`; 旧报告符合 schema 并不代表
@@ -235,10 +253,10 @@ reader state 使用独立产物契约. 项目登记使用 `references/project-sc
 
 ## 恢复, 切换与返工
 
-在已登记项目中再次调用 `write-fiction`, `revise-fiction`, `revise-draft` 或 `revise-increment`,
-说明要继续, 审阅报告, 切换策略还是返工. 四个入口通过同一份 manifest, tracker, Story Bible,
-报告, session notes, 备份, handoff 和适用的 creation state 恢复上下文, 并根据当前 scope,
-pending operation, 证据和依赖决定下一步.
+在已登记项目中再次调用 `write-fiction`, `revise-fiction`, `revise-draft`, `revise-increment`
+或 `revise-request`, 说明要继续, 审阅报告, 切换策略还是返工. 五个入口通过同一份 manifest,
+tracker, Story Bible, 报告, session notes, 备份, handoff 和适用的 creation state 恢复上下文,
+并根据当前 scope, pending operation, 证据和依赖决定下一步.
 
 使用其他策略时可以保留 staged draft. 返回后根据 dependency fingerprint 和当前项目状态决定重新
 复核还是重新规划. 策略切换和 pending action 都不会自动发布它.
@@ -285,9 +303,9 @@ AI 关联发现只描述文本模式, 不能证明文本由 AI 生成.
 
 ## 验证状态
 
-3.1.0 工作树的仓库检查已通过: 123 项协议测试和 19 项默认校验, 详见
+3.1.0 工作树的仓库检查已通过: 125 项协议测试和 19 项默认校验, 详见
 [docs/VALIDATION.md](docs/VALIDATION.md). Kimi Code 已完成有限范围的创作提交和双向切换验证; 完整宿主流程,
-`revise-increment` 端到端运行, 15 技能安装发现和百万字稿件的创作质量仍未验证.
+`revise-increment` 与 `revise-request` 端到端运行, 16 技能安装发现和百万字稿件的创作质量仍未验证.
 3.0 和 2.0 的历史结果单独保留, 不能作为 3.1 已通过宿主或质量验证的证据.
 
 ## 开发与产物校验

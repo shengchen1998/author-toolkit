@@ -1,6 +1,6 @@
 # Author Toolkit
 
-Incremental fiction creation and three fiction revision strategies sharing one
+Incremental fiction creation and four fiction revision strategies sharing one
 project evidence model, plus six independent writing skills for Claude Code and
 Kimi Code.
 
@@ -11,7 +11,7 @@ Kimi Code.
 
 ## What is included
 
-Version 3.1.0 contains 15 skills in three groups.
+Version 3.1.0 contains 16 skills in three groups.
 
 ### User entry points
 
@@ -23,8 +23,9 @@ Version 3.1.0 contains 15 skills in three groups.
 | `revise-fiction` | Revise a whole novel through its Story Bible, macro structure, character arcs, and final whole-book review. |
 | `revise-draft` | Revise the current draft through a draft baseline, local narrative diagnostics, and a review of the selected scope. |
 | `revise-increment` | Revise added or affected chapters after incremental creation while reusing valid unchanged-chapter evidence and completing a full target-scope review. |
+| `revise-request` | Apply any author-defined revision to existing content in a converged full current draft and restore full-manuscript current-draft convergence. |
 
-`write-fiction`, `revise-fiction`, `revise-draft`, and `revise-increment` must all run the same
+`write-fiction`, `revise-fiction`, `revise-draft`, `revise-increment`, and `revise-request` must all run the same
 `setup-author-toolkit` first. Setup does not accept a workflow name or entry
 stage; registration and intake are identical for every subsequent strategy.
 
@@ -70,6 +71,8 @@ unfinished draft; its diagnostics address the selected narrative scope rather
 than judging the percentage of a future book or penalizing beats that do not yet
 exist. `revise-increment` applies the same current-draft standard after scope
 growth, reusing only valid unchanged evidence and reviewing the full target.
+`revise-request` starts after full current-draft convergence, applies an
+author-defined revision to existing content, and restores that convergence.
 
 Narrative nonfiction remains a direct `narrative-nonfiction` task. Multi-book
 projects and integrations with other hosts are outside the supported 3.1
@@ -141,12 +144,12 @@ installation path.
 
 Use the command forms that match the installation method:
 
-| Installation | Host | Setup | Creation | Whole-book revision | Current-draft revision | Incremental revision |
-| --- | --- | --- | --- | --- | --- | --- |
-| Plugin | Claude Code | `/author-toolkit:setup-author-toolkit` | `/author-toolkit:write-fiction` | `/author-toolkit:revise-fiction` | `/author-toolkit:revise-draft` | `/author-toolkit:revise-increment` |
-| Plugin | Kimi Code | `/skill:author-toolkit:setup-author-toolkit` | `/skill:author-toolkit:write-fiction` | `/skill:author-toolkit:revise-fiction` | `/skill:author-toolkit:revise-draft` | `/skill:author-toolkit:revise-increment` |
-| Bare skills | Claude Code | `/setup-author-toolkit` | `/write-fiction` | `/revise-fiction` | `/revise-draft` | `/revise-increment` |
-| Bare skills | Kimi Code | `/skill:setup-author-toolkit` | `/skill:write-fiction` | `/skill:revise-fiction` | `/skill:revise-draft` | `/skill:revise-increment` |
+| Installation | Host | Setup | Creation | Whole-book revision | Current-draft revision | Incremental revision | Request revision |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Plugin | Claude Code | `/author-toolkit:setup-author-toolkit` | `/author-toolkit:write-fiction` | `/author-toolkit:revise-fiction` | `/author-toolkit:revise-draft` | `/author-toolkit:revise-increment` | `/author-toolkit:revise-request` |
+| Plugin | Kimi Code | `/skill:author-toolkit:setup-author-toolkit` | `/skill:author-toolkit:write-fiction` | `/skill:author-toolkit:revise-fiction` | `/skill:author-toolkit:revise-draft` | `/skill:author-toolkit:revise-increment` | `/skill:author-toolkit:revise-request` |
+| Bare skills | Claude Code | `/setup-author-toolkit` | `/write-fiction` | `/revise-fiction` | `/revise-draft` | `/revise-increment` | `/revise-request` |
+| Bare skills | Kimi Code | `/skill:setup-author-toolkit` | `/skill:write-fiction` | `/skill:revise-fiction` | `/skill:revise-draft` | `/skill:revise-increment` | `/skill:revise-request` |
 
 For `ask-author`, use the same command form with that skill name.
 
@@ -161,10 +164,10 @@ A quick run looks like this:
    existing agent instructions. Do not pass a workflow name or entry stage.
 3. After setup validates the shared manifest, choose `write-fiction` to create
    or continue a novel, `revise-fiction` for whole-book revision, `revise-draft`
-   for the available draft and current-scope review, or `revise-increment` to
-   bring added or affected chapters to current-draft convergence while reusing
-   valid evidence for unchanged chapters. The selected strategy establishes and
-   confirms the initial scope when one is needed.
+   for the available draft and current-scope review, `revise-increment` to
+   converge added or affected chapters, or `revise-request` to revise existing
+   content after full current-draft convergence. The selected strategy
+   establishes and confirms the initial scope when one is needed.
 4. Review evidence and proposals at the author gates. The agent presents one
    active decision at a time so you can discuss evidence and alternatives before
    deciding. Planning, manuscript writes, batch acceptance, and restores have
@@ -238,13 +241,13 @@ The mirrored nine stages are:
    perspectives. Mark whole-book checks that do not apply as `skipped` with
    their scope rationale.
 
-All three revision entry points share the character capability. The draft and
-incremental paths require current arcs and continuity; the whole-book gate
-requires additional subchecks for complete arcs and book-level continuity. A
-draft engagement may enter directly at `prose` or `ai-cleanup`. If no manuscript
-revision is requested, `revision-plan` and `chapter-revision` may be skipped
-with the reason recorded. A direct or limited pass is not by itself a claim of
-full current-draft convergence.
+All four revision entry points share the character capability. The draft,
+incremental, and request-driven paths require current arcs and continuity; the
+whole-book gate requires additional subchecks for complete arcs and book-level
+continuity. A draft engagement may enter directly at `prose` or `ai-cleanup`. If
+no manuscript revision is requested, `revision-plan` and `chapter-revision` may
+be skipped with the reason recorded. A direct or limited pass is not by itself a
+claim of full current-draft convergence.
 
 ### `revise-increment`: revision after incremental creation
 
@@ -270,11 +273,34 @@ state:
    accepted edits. Claim convergence only when the shared evidence, finding,
    approval, coverage, and review conditions are all current.
 
+### `revise-request`: request-driven revision after convergence
+
+Use this entry when the full current manuscript is converged from the
+`revise-draft` perspective and the author has any type of revision request for
+existing content. Requests may concern plot, scenes, characters, continuity,
+POV, prose, or AI cleanup. Requested macro-structure work can additionally use
+`story-structure` Audit without adopting the `revise-fiction` final-review gate.
+
+1. Verify the full-manuscript base scope and its current convergence evidence.
+   Return to `revise-draft` when that base is unfinished, or to
+   `revise-increment` when creation or import has grown the scope.
+2. Confirm the requested outcome, constraints, request set, full target, and
+   initial work set. The request set determines what to change; the full target
+   determines what must be proven current again.
+3. Apply only approved batches with backups. Expand the work set by actual text
+   and dependency impact, rerun affected operations, and compose new full-target
+   coverage and syntheses while reusing matching unchanged local units.
+4. Preserve the converged pass's applicable subchecks and add newly requested
+   checks. A local request does not silently reduce convergence coverage.
+5. After any manuscript change, review the full target again with all three
+   perspectives and a sequential fresh reader. Process findings and rework, then
+   report request completion and full-manuscript convergence separately.
+
 The skill definitions contain the full gates and audit rules.
 
 ## Shared project files and evidence
 
-All four strategies use the same neutral `.author-toolkit/project.json` and
+All five strategies use the same neutral `.author-toolkit/project.json` and
 artifact paths. New projects and migrated projects use schema 3.1.0; v3.0
 manifests remain readable and can receive the additive 3.1 upgrade.
 
@@ -305,9 +331,10 @@ Story Bible's intent or the manuscript's facts. Rejected staging text does not
 enter story state or manuscript scope.
 
 The manifest records the actual paths, including custom locations. Switching
-among `write-fiction`, `revise-fiction`, `revise-draft`, and `revise-increment`
-at a stable operation gate reuses these artifacts and requires no second project
-tree or migration. It does not automatically resume a pending write.
+among `write-fiction`, `revise-fiction`, `revise-draft`, `revise-increment`, and
+`revise-request` at a stable operation gate reuses these artifacts and requires
+no second project tree or migration. It does not automatically resume a pending
+write.
 
 ### Evidence reuse and pending operations
 
@@ -406,13 +433,13 @@ creation or revision orchestration.
 
 ## Resume, switch strategies, or request rework
 
-Start `write-fiction`, `revise-fiction`, `revise-draft`, or `revise-increment`
-in the registered project and describe whether you want to resume, review a
-report, switch strategies, or rework a finding. All four use the same manifest,
-tracker, Story Bible, reports, session notes, backups, handoffs, and applicable
-creation state to recover context. They evaluate the current scope, pending operation, evidence,
-and dependencies instead of reconstructing stage status by moving or renaming
-files.
+Start `write-fiction`, `revise-fiction`, `revise-draft`, `revise-increment`, or
+`revise-request` in the registered project and describe whether you want to
+resume, review a report, switch strategies, or rework a finding. All five use
+the same manifest, tracker, Story Bible, reports, session notes, backups,
+handoffs, and applicable creation state to recover context. They evaluate the
+current scope, pending operation, evidence, and dependencies instead of
+reconstructing stage status by moving or renaming files.
 
 A staged draft may remain while another strategy is used. On return, its
 dependency fingerprint and the current project state determine whether it can be

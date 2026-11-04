@@ -1,6 +1,6 @@
 # Avoid AI Writing adapter
 
-Use this reference for an `ai-cleanup` operation explicitly called by `revise-fiction`, `revise-draft`, or `revise-increment`, and for the AI-Isms audit in `prose-mechanics`. It connects the English upstream `avoid-ai-writing` skill and the local [Chinese AI-writing candidate catalog](avoid-ai-writing-zh-CN.md) to the appropriate finding format, scope, and approval gates. It is not a skill and does not change standalone upstream invocation or output.
+Use this reference for an `ai-cleanup` operation explicitly called by `revise-fiction`, `revise-draft`, `revise-increment`, or `revise-request`, and for the AI-Isms audit in `prose-mechanics`. It connects the English upstream `avoid-ai-writing` skill and the local [Chinese AI-writing candidate catalog](avoid-ai-writing-zh-CN.md) to the appropriate finding format, scope, and approval gates. It is not a skill and does not change standalone upstream invocation or output.
 
 The audit reports AI-associated textual patterns. It does not determine whether text was AI-generated, identify its author, or establish generation provenance.
 
@@ -53,7 +53,7 @@ Set `engine.name` to `scriptorium` when that engine ran and `conversational` oth
 Detection is the default. For a rewrite:
 
 1. Present detected issues, proposed rewrite scope, language spans, and exact affected files. Obtain explicit author approval for that change batch and record it in the shared tracker's `Approvals` section with its approval ID, operation, scope ID, paths, status, reason, and timestamp.
-2. Before any write, have the calling `revise-fiction`, `revise-draft`, or `revise-increment` orchestrator complete `author-project` backup for every affected file. The backup record must cite the same `approval_id` and `scope_id` and contain the original input hashes. Proceed only after all backups succeed and the current hashes still match.
+2. Before any write, have the calling `revise-fiction`, `revise-draft`, `revise-increment`, or `revise-request` orchestrator complete `author-project` backup for every affected file. The backup record must cite the same `approval_id` and `scope_id` and contain the original input hashes. Proceed only after all backups succeed and the current hashes still match.
 3. Rewrite only the approved spans in registered manuscript files. English spans use upstream `rewrite` mode with the same profile and full English rules. Chinese spans use the local catalog's context-aware revision directions; upstream availability is irrelevant to a pure Chinese rewrite. Preserve meaning, voice, facts, quotations, and justified exceptions rather than mechanically replacing every candidate.
 4. Run a separate second detection pass over the resulting text. Re-scan every rewritten Chinese span against all `ZH-01` through `ZH-12` categories and every rewritten English span against the complete upstream second-pass checks. Write a new immutable report with remaining findings, stable IDs, actual coverage, and engine details. Record the backup ID, approval ID, and scope ID in `engine.notes` and the session note.
 5. Return remaining findings to the author. Another rewrite requires its own approval and backup. Claim a clean result only when second detection finds no remaining issues in the stated full coverage; a partial or skipped second pass cannot establish a clean requested operation.

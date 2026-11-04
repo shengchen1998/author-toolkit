@@ -45,7 +45,7 @@ AI, author-written, and mixed batches use the same acceptance and state-synchron
 
 ## Strategy switching
 
-`write-fiction`, `revise-draft`, `revise-fiction`, and `revise-increment` share the same manifest and artifacts. At any stable operation gate, show the exact command for the author's selected next strategy. Do not switch automatically or require the other strategy's full sequence to finish.
+`write-fiction`, `revise-draft`, `revise-fiction`, `revise-increment`, and `revise-request` share the same manifest and artifacts. At any stable operation gate, show the exact command for the author's selected next strategy. Do not switch automatically or require the other strategy's full sequence to finish.
 
 A staged draft may remain while the author uses a revision entry. On return, compare its dependency fingerprint with current inputs. Re-review or replan affected drafts; unrelated scope growth alone does not invalidate the staged text. Never publish after an interrupted write or restore until reconciliation is complete.
 
@@ -59,4 +59,4 @@ Validate newly written artifacts with the installed `scripts/validate.mjs` optio
 
 ## Finish
 
-Finish each invocation with the operation, batch and scope IDs, staged or published paths, approvals and backups used, dependency or evidence changes, unresolved questions, revision-convergence status, and the exact next action. Show the `write-fiction`, `revise-increment`, `revise-draft`, or `revise-fiction` command that matches the author's next goal. Use `author-handoff` for session transfer after shared state is current.
+Finish each invocation with the operation, batch and scope IDs, staged or published paths, approvals and backups used, dependency or evidence changes, unresolved questions, revision-convergence status, and the exact next action. Show the `write-fiction`, `revise-increment`, `revise-draft`, `revise-fiction`, or `revise-request` command that matches the author's next goal. Use `author-handoff` for session transfer after shared state is current.

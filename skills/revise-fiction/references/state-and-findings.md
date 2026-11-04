@@ -86,7 +86,7 @@ Record each stale reason with the changed path and decision or edit batch. Old e
 
 ## Evidence reuse across skills
 
-`write-fiction`, `revise-fiction`, `revise-draft`, and `revise-increment` share this evidence at stable operation gates. Switching requires the author's exact command and does not reset state or resume pending writes. Reuse evidence by operation, scope, input versions, subchecks, and dependency state rather than by report title. Creation evidence does not satisfy `chapter-revision`, and creation operations remain outside report v2 `stage`.
+`write-fiction`, `revise-fiction`, `revise-draft`, `revise-increment`, and `revise-request` share this evidence at stable operation gates. Switching requires the author's exact command and does not reset state or resume pending writes. Reuse evidence by operation, scope, input versions, subchecks, and dependency state rather than by report title. Creation evidence does not satisfy `chapter-revision`, and creation operations remain outside report v2 `stage`.
 
 - Story Bible can supply facts to draft-baseline and creation planning, but the current manuscript still needs its requested coverage. Draft-baseline with unknown foundation fields cannot satisfy Story Bible.
 - Full-book structure can supply local leads, but does not replace scene-level diagnostics. Local diagnostics cannot satisfy full-book landmark coverage.

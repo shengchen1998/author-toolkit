@@ -31,7 +31,7 @@ This skill is NOT for:
 Structure placement is meant to persist in the project's Story Bible, not be re-derived each session.
 
 - **At session start:** If a Story Bible exists, check its "Plot Foundation" section for an existing Structure Profile block (see `assets/structure-profile-template.md`). Don't re-run Map on a story that already has one unless the author asks for a re-check.
-- **When a beat is newly placed or moved:** Return the profile block to the author or calling orchestrator. Standalone calls leave Story Bible changes to the author; `revise-fiction` writes only author-approved changes.
+- **When a beat is newly placed or moved:** Return the profile block to the author or calling orchestrator. Standalone calls leave Story Bible changes to the author; `revise-fiction` and `revise-request` write only author-approved changes.
 
 ## The Landmark Beat Skeleton
 
@@ -58,7 +58,7 @@ Load only the reference file matching the currently invoked mode, plus `landmark
 2. **Load `references/landmark-beats.md` and `references/signposts.md`**, plus the mode file for the identified mode.
 3. **Run the mode's workflow** exactly as documented in its reference file.
 4. **Stop at the mode's documented stop condition** (see Stopping Points below). Hand results back to the author.
-5. **If a new or changed Structure Profile results**, return the `assets/structure-profile-template.md` block. In standalone use, the author places it in the Story Bible; in `revise-fiction`, the orchestrator writes it after author approval.
+5. **If a new or changed Structure Profile results**, return the `assets/structure-profile-template.md` block. In standalone use, the author places it in the Story Bible; in `revise-fiction` or `revise-request`, the orchestrator writes approved changes to the applicable baseline or Story Bible.
 
 ## Integration with `fiction-workshop`
 
@@ -80,7 +80,7 @@ Each mode has a defined end. Stop at it. Do not auto-advance to the other mode, 
 
 Standalone audit-mode output (missing/misplaced landmark beats, signpost gaps) conforms to `../../references/finding-schema.json`: `audit` = "story-structure-audit", `technique` = the specific landmark or signpost involved, `severity`, `location`, `confidence: "judgment"`, and optional `exemplar`. Map-building mode is not diagnostic and remains outside the finding contract.
 
-When `revise-fiction` supplies workflow report context, load `../../references/workflow-reporting.md` and use finding v2. Use chapter scope for a missing or chapter-wide beat; do not invent a line number or quotation. Return the Structure Profile and report to the orchestrator, which writes approved profile changes to the Story Bible.
+When `revise-fiction` or `revise-request` supplies workflow report context, load `../../references/workflow-reporting.md` and use finding v2. Use chapter scope for a missing or chapter-wide beat; do not invent a line number or quotation. Return the Structure Profile and report to the orchestrator, which writes approved profile changes to the applicable baseline or Story Bible.
 
 ## Common Mistakes
 

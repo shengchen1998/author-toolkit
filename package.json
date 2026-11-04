@@ -3,7 +3,7 @@
   "version": "3.1.0",
   "private": true,
   "type": "module",
-  "description": "Incremental fiction creation and three revision strategies sharing one project evidence model, plus six independent writing skills for Claude Code and Kimi Code.",
+  "description": "Incremental fiction creation and four revision strategies sharing one project evidence model, plus six independent writing skills for Claude Code and Kimi Code.",
   "scripts": {
     "test": "node --test tests/*.test.mjs",
     "validate": "node scripts/validate.mjs"

@@ -2,7 +2,7 @@
 
 Load only the current operation. Evidence comes from the shared project and is judged by operation, scope, input versions, subchecks, and dependencies. Finish each operation with `awaiting_author`; the author starts the next one explicitly. At every author gate, also follow the [Author decision loop](../../revise-fiction/references/state-and-findings.md#author-decision-loop).
 
-At a stable operation gate, the author may switch to `write-fiction`, `revise-fiction`, or `revise-increment` through its exact command; no entry starts automatically. Reuse a local coverage unit only when every path, hash, subcheck, and dependency matches. Reevaluate every applicable whole-book synthesis after relevant changes instead of carrying it forward with unchanged local units. Creation evidence does not satisfy `chapter-revision`. Before claiming that a full pass has converged, apply the shared [Current-draft revision convergence](../../revise-fiction/references/state-and-findings.md#current-draft-revision-convergence) definition.
+At a stable operation gate, the author may switch to `write-fiction`, `revise-fiction`, `revise-increment`, or `revise-request` through its exact command; no entry starts automatically. Reuse a local coverage unit only when every path, hash, subcheck, and dependency matches. Reevaluate every applicable whole-book synthesis after relevant changes instead of carrying it forward with unchanged local units. Creation evidence does not satisfy `chapter-revision`. Before claiming that a full pass has converged, apply the shared [Current-draft revision convergence](../../revise-fiction/references/state-and-findings.md#current-draft-revision-convergence) definition.
 
 ## 1. Intake
 

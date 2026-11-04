@@ -58,6 +58,24 @@ flowchart TD
     RIC -->|否| RIDONE["target 修订收敛"]
   end
 
+  subgraph RR["revise-request｜请求驱动修订"]
+    direction LR
+    RR0([入口]) --> RRV["验证 full-manuscript base<br/>当前稿已收敛"]
+    RRV --> RRBASE{"base 已收敛？"}
+    RRBASE -->|否：范围增长| RRISTOP["显示 revise-increment 命令<br/>停止跳过基础工作"]
+    RRBASE -->|否：其他缺口| RRDSTOP["显示 revise-draft 命令<br/>停止跳过基础工作"]
+    RRBASE -->|是| RR1["记录 request / constraints<br/>target / request set / work set"]
+    RR1 --> RR2["intake<br/>确认请求计划"]
+    RR2 --> RR3["按请求选择 diagnostics / structure<br/>characters / prose / ai-cleanup"]
+    RR3 --> RR4["revision-plan<br/>exact approved batches"]
+    RR4 --> RR5["chapter-revision 或 no-edit skip<br/>stale propagation → 扩大 work set"]
+    RR5 --> RR6["重跑受影响操作<br/>复用 matching local units<br/>新 full-target syntheses"]
+    RR6 --> RR7["current-scope-review<br/>正文修改后重跑 full target 三视角<br/>无变化复用有效 base review"]
+    RR7 --> RRC{"accepted edits<br/>或证据仍失效？"}
+    RRC -->|是| RR4
+    RRC -->|否| RRDONE["请求完成 + full target 重新收敛"]
+  end
+
   subgraph WF["write-fiction｜增量创作"]
     direction LR
     WF0([入口]) --> WFV["v3.0 创作写入前<br/>作者确认 upgrade-v31"]
@@ -78,7 +96,8 @@ flowchart TD
   COMMON ~~~ RF
   RF ~~~ RD
   RD ~~~ RI
-  RI ~~~ WF
+  RI ~~~ RR
+  RR ~~~ WF
 
   classDef startEnd fill:#263238,stroke:#263238,color:#FFFFFF;
   classDef control fill:#ECEFF1,stroke:#78909C,color:#263238;
@@ -87,15 +106,16 @@ flowchart TD
   classDef unique fill:#FFF3E0,stroke:#FB8C00,color:#E65100;
   classDef note fill:#FAFAFA,stroke:#90A4AE,color:#37474F,stroke-dasharray:4 3;
 
-  class START,RF0,RD0,RI0,WF0 startEnd;
-  class SETUP,READ,STATE,GATES,WAIT,RDN,RIV,RIBASE,RISTOP,RDC,RIC,WFV,WFTYPE,WFA,WFR,WF8 control;
-  class RF1,RF4,RF5,RF6,RF7,RF8,RD1,RD4,RD5,RD6,RD7,RD8,RI2,RI5,RI6,RI7,RI8,RI9 shared;
-  class RD2,RD3,RD9,RI3,RI4,RI10 draftShared;
-  class RF2,RF3,RF9,RI1,WF1,WF2,WF3,WF4,WF5,WF6,WF7 unique;
-  class RDDONE,RIDONE note;
+  class START,RF0,RD0,RI0,RR0,WF0 startEnd;
+  class SETUP,READ,STATE,GATES,WAIT,RDN,RIV,RIBASE,RISTOP,RDC,RIC,RRV,RRBASE,RRISTOP,RRDSTOP,RRC,WFV,WFTYPE,WFA,WFR,WF8 control;
+  class RF1,RF4,RF5,RF6,RF7,RF8,RD1,RD4,RD5,RD6,RD7,RD8,RI2,RI5,RI6,RI7,RI8,RI9,RR2,RR4,RR5,RR6 shared;
+  class RD2,RD3,RD9,RI3,RI4,RI10,RR3,RR7 draftShared;
+  class RF2,RF3,RF9,RI1,RR1,WF1,WF2,WF3,WF4,WF5,WF6,WF7 unique;
+  class RDDONE,RIDONE,RRDONE note;
 
   style COMMON fill:#FAFAFA,stroke:#78909C,stroke-width:1.5px
   style RF fill:#FFFFFF,stroke:#FB8C00,stroke-width:1.5px
   style RD fill:#FFFFFF,stroke:#1E88E5,stroke-width:1.5px
   style RI fill:#FFFFFF,stroke:#8E24AA,stroke-width:1.5px
+  style RR fill:#FFFFFF,stroke:#00897B,stroke-width:1.5px
   style WF fill:#FFFFFF,stroke:#FB8C00,stroke-width:1.5px

@@ -2,12 +2,13 @@
 
 ## Project overview
 
-Author Toolkit 3.1.0 is a source-distributed collection of 15 writing skills for Claude Code and Kimi Code, plus Node.js tools for validating and migrating its project contracts. It provides incremental creation and three revision strategies over one shared evidence model:
+Author Toolkit 3.1.0 is a source-distributed collection of 16 writing skills for Claude Code and Kimi Code, plus Node.js tools for validating and migrating its project contracts. It provides incremental creation and four revision strategies over one shared evidence model:
 
 - `write-fiction` coordinates author-reviewed creation batches, staging, story-state synchronization, imports, and milestone reviews.
 - `revise-fiction` coordinates whole-book fiction revision.
 - `revise-draft` coordinates revision of the available draft without requiring an outline, ending, or whole-book structure audit.
 - `revise-increment` brings added or affected chapters to current-draft revision convergence while reusing valid evidence for unchanged chapters.
+- `revise-request` applies an author-defined revision to existing content in a converged full current draft and restores full-manuscript current-draft convergence.
 - Six independent skills (`fiction-workshop`, `character-archetypes`, `story-structure`, `narrative-nonfiction`, `prose-mechanics`, and `avoid-ai-writing`) also work without a shared creation or revision strategy.
 
 The production runtime is the host coding agent interpreting `SKILL.md` files and their references. There is no web application, server, database, compiled frontend, vector store, or long-running local process. Node.js is used for contract tests, schema and artifact validation, manuscript inventory, and migration from v2 or v3.0 to v3.1.
@@ -44,7 +45,7 @@ The examples under `examples/fiction-revision-en/` and `examples/fiction-revisio
 
 ### Skill groups
 
-The six explicit user entry points are `ask-author`, `setup-author-toolkit`, `write-fiction`, `revise-fiction`, `revise-draft`, and `revise-increment`. Their frontmatter includes `disable-model-invocation: true`; routers and orchestrators show their host commands rather than invoking them through the Skill tool.
+The seven explicit user entry points are `ask-author`, `setup-author-toolkit`, `write-fiction`, `revise-fiction`, `revise-draft`, `revise-increment`, and `revise-request`. Their frontmatter includes `disable-model-invocation: true`; routers and orchestrators show their host commands rather than invoking them through the Skill tool.
 
 `author-project`, `author-handoff`, and `author-review` are shared orchestration capabilities. The six independent writing skills retain standalone behavior. Every skill directory name must match its frontmatter `name`; `tests/skills.test.mjs` checks the complete skill inventory and invocation modes.
 
@@ -62,7 +63,7 @@ The six explicit user entry points are `ask-author`, `setup-author-toolkit`, `wr
 
 ## Runtime architecture and state contracts
 
-All four strategies require the same user-invoked `setup-author-toolkit`. Setup registers existing paths without imposing a manuscript layout. `write-fiction`, `revise-fiction`, `revise-draft`, and `revise-increment` then execute one evidence-gated operation at a time and stop for author review at operation gates. Their exact sequences, delegation rules, and gates live in their `SKILL.md` and `references/stage-gates.md` files. At any stable operation gate, the author can switch among all four strategies over the same state without completing another strategy's full sequence.
+All five strategies require the same user-invoked `setup-author-toolkit`. Setup registers existing paths without imposing a manuscript layout. `write-fiction`, `revise-fiction`, `revise-draft`, `revise-increment`, and `revise-request` then execute one evidence-gated operation at a time and stop for author review at operation gates. Their exact sequences, delegation rules, and gates live in their `SKILL.md` and `references/stage-gates.md` files. At any stable operation gate, the author can switch among all five strategies over the same state without completing another strategy's full sequence.
 
 The canonical manifest is `<project-root>/.author-toolkit/project.json`. A v3.1 manifest stores registration, `manuscript_root`, seven operational paths, and optional `current_scope` and `pending_action`. It has no `workflow.name`, `current_stage`, or `stages` state. New and migrated manifests use schema 3.1.0. The runtime still reads valid v3.0 manifests; creation work requires the confirmed additive `upgrade-v31`. Recognize v2 only for setup migration. `author-project` owns state and path operations; creative content belongs to the writing skills.
 
@@ -87,6 +88,8 @@ Workflow reports are immutable Markdown files with human-readable coverage and e
 Coverage units and the living coverage index live beneath the registered reports path. Reuse only full local units whose source-report identity, operation, paths and hashes, requested subchecks, and dependencies match. Keep the unit's original scope for provenance and use the requested scope for the composed index and synthesis. Reevaluate affected volume, phase, current-scope, and whole-book synthesis whenever text, membership, order, dependencies, or child coverage changes. Local summaries never extend an old whole-book synthesis into a new scope.
 
 `revise-increment` uses creation batches to locate changes, then derives a work set from added, affected, stale, or non-reusable paths. It reuses the current-draft operations and report stages without adding manifest or schema state. Edits stay within approved work-set batches, while target syntheses and current-scope review cover the full expanded scope. Accepted review findings trigger another affected revision and review pass before convergence can be claimed.
+
+`revise-request` starts from a verified converged full-manuscript scope and an author-defined revision of existing content. Its request set guides the craft work, while its work set grows with actual stale evidence and missing reusable local units. It preserves the converged pass's applicable coverage, recomposes affected target syntheses, and requires a new full-target current-scope review after manuscript changes. Request completion and full-target convergence are separate completion states. On resume, an active request continues from session and plan records even though its own edits staled the historical base. The entry adds no manifest or schema state.
 
 `author-review` reads actual manuscript chunks, then volume or story-phase syntheses, then a book synthesis for final review. Intent and standards may run in parallel. Fresh-reader review is sequential within one logical reviewer and carries only that reviewer's isolated reader-state. Summaries and story state cannot replace manuscript reading. Claim `full` only for actual requested-scope coverage.
 

@@ -1,13 +1,13 @@
 {
   "name": "author-toolkit",
-  "description": "Incremental fiction creation, three revision workflows, and six independent writing skills for Claude Code and Kimi Code",
+  "description": "Incremental fiction creation, four revision workflows, and six independent writing skills for Claude Code and Kimi Code",
   "owner": {
     "name": "shengchen1998"
   },
   "plugins": [
     {
       "name": "author-toolkit",
-      "description": "Incremental fiction creation, three revision workflows, and six independent writing skills for Claude Code and Kimi Code",
+      "description": "Incremental fiction creation, four revision workflows, and six independent writing skills for Claude Code and Kimi Code",
       "version": "3.1.0",
       "source": "./",
       "author": {

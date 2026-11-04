@@ -10,6 +10,7 @@ const expectedSkills = [
   "revise-fiction",
   "revise-draft",
   "revise-increment",
+  "revise-request",
   "write-fiction",
   "author-project",
   "author-handoff",
@@ -27,6 +28,7 @@ const userEntries = new Set([
   "revise-fiction",
   "revise-draft",
   "revise-increment",
+  "revise-request",
   "write-fiction",
 ]);
 
@@ -47,7 +49,7 @@ for (const skill of expectedSkills) {
   });
 }
 
-test("the inventory contains exactly 15 skills and six user entries", async () => {
+test("the inventory contains exactly 16 skills and seven user entries", async () => {
   const entries = await readdir(path.join(root, "skills"), { withFileTypes: true });
   const actual = entries
     .filter((entry) => entry.isDirectory())
@@ -55,8 +57,8 @@ test("the inventory contains exactly 15 skills and six user entries", async () =
     .sort();
 
   assert.deepEqual(actual, [...expectedSkills].sort());
-  assert.equal(expectedSkills.length, 15);
-  assert.equal(userEntries.size, 6);
+  assert.equal(expectedSkills.length, 16);
+  assert.equal(userEntries.size, 7);
 });
 
 test("the upstream AI-writing skill has no local integration section", async () => {
@@ -195,6 +197,46 @@ test("incremental revision reuses unchanged evidence and converges the full targ
   assert.match(state, /## Current-draft revision convergence/);
   assert.match(state, /no open finding, stale required evidence, missing synthesis, or approved but unexecuted edit remains/);
   assert.match(state, /Recompute this state from current evidence at each resume/);
+});
+
+test("request-driven revision restores full current-draft convergence", async () => {
+  const [request, draft, increment, fiction, write, setup, ask, state, reporting, structure] =
+    await Promise.all([
+      readFile(path.join(root, "skills/revise-request/SKILL.md"), "utf8"),
+      readFile(path.join(root, "skills/revise-draft/SKILL.md"), "utf8"),
+      readFile(path.join(root, "skills/revise-increment/SKILL.md"), "utf8"),
+      readFile(path.join(root, "skills/revise-fiction/SKILL.md"), "utf8"),
+      readFile(path.join(root, "skills/write-fiction/SKILL.md"), "utf8"),
+      readFile(path.join(root, "skills/setup-author-toolkit/SKILL.md"), "utf8"),
+      readFile(path.join(root, "skills/ask-author/SKILL.md"), "utf8"),
+      readFile(
+        path.join(root, "skills/revise-fiction/references/state-and-findings.md"),
+        "utf8",
+      ),
+      readFile(path.join(root, "references/workflow-reporting.md"), "utf8"),
+      readFile(path.join(root, "skills/story-structure/SKILL.md"), "utf8"),
+    ]);
+
+  assert.match(request, /confirmed base scope covers that full current manuscript/);
+  assert.match(request, /Show `revise-increment` when creation or import grew the scope/);
+  assert.match(request, /otherwise show `revise-draft`/);
+  assert.match(request, /entry's own approved edits are expected to stale that base/);
+  assert.match(request, /request set[\s\S]*work set/);
+  assert.match(request, /Requested macro structure[\s\S]*`story-structure` Audit/);
+  assert.match(
+    request,
+    /Required convergence coverage includes every applicable subcheck from the verified converged pass plus newly requested checks/,
+  );
+  assert.match(request, /After any manuscript change, run a new full-target current-scope review/);
+  assert.match(request, /fresh reader reads the full target sequentially/);
+  assert.match(request, /Request completion alone does not establish current-draft convergence/);
+  assert.match(request, /adds no report stage, pending-operation name, manifest field, or separate state tree/);
+
+  for (const text of [draft, increment, fiction, write, setup, ask, state, reporting, structure]) {
+    assert.match(text, /revise-request/);
+  }
+  assert.match(ask, /Revise existing content after full current-draft convergence/);
+  assert.match(state, /## Current-draft revision convergence/);
 });
 
 test("project operations register creation state and resumable publication", async () => {
