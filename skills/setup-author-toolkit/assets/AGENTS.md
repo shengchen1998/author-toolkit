@@ -26,7 +26,8 @@ Use the independent skills directly when their standalone scope matches the requ
 | Identify or audit character archetypes | `character-archetypes` |
 | Develop or revise narrative nonfiction | `narrative-nonfiction` |
 | Run sentence-level diagnostics on stabilized prose | `prose-mechanics` |
-| Detect or rewrite AI writing patterns | `avoid-ai-writing` |
+| Detect or rewrite Chinese AI-associated writing patterns | `prose-mechanics` with its AI-Isms audit and local Chinese catalog |
+| Detect or rewrite English AI writing patterns through the upstream catalog | `avoid-ai-writing` |
 
 `author-project`, `author-handoff`, and `author-review` serve shared orchestration. They do not replace an author-selected strategy.
 

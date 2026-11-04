@@ -62,7 +62,7 @@ Run audits **one at a time, in the table order**. Earlier audits change what lat
 | 18 | POV Consistency | semantic | "Run pov-consistency audit on..." | Head-hopping, knowledge violations |
 | 19 | AI-Isms | hybrid | "Run ai-isms audit on..." | AI-associated patterns through the adapter |
 
-Load only the reference file matching the currently invoked audit. For AI-Isms, load `../../references/avoid-ai-writing-adapter.md`. Before a workflow or non-English audit, also load `references/language-support.md` and record full, partial, or skipped coverage.
+Load only the reference file matching the currently invoked audit. Before a workflow or non-English audit, also load `references/language-support.md` and record full, partial, or skipped coverage. For Chinese, load `references/chinese-rules.md`; its procedures replace the language-specific rules in the individual audit references. For AI-Isms, load `../../references/avoid-ai-writing-adapter.md`, which supplies the local Chinese catalog and the standalone Chinese detection path.
 
 ## Finding Format
 
@@ -72,12 +72,14 @@ When `revise-fiction`, `revise-draft`, or `revise-increment` supplies workflow r
 
 ## Engine Hook
 
-Before running any audit, check `command -v scriptorium` when shell discovery is available. If it succeeds:
+Before running any audit, check `command -v scriptorium` when shell discovery is available. For English, if it succeeds:
 - **Deterministic audits:** run `scriptorium prose audit <name> <chapter>` and treat its JSON as the detection result within the engine's documented coverage.
 - **Hybrid audits:** run `scriptorium prose prepare <name> <chapter>` to get code-detected candidates, judge each per that audit's reference file, then submit findings through the engine.
 - **Semantic audits:** prepare the raw chapter, judge it per the embedded instructions, then submit findings.
 
-Sentence Variance uses the hybrid path because the engine implements only detection pattern #1; apply patterns #2-5 as additional judgment. If `scriptorium` or shell discovery is unavailable, perform the audit conversationally using the reference file's complete detection rules. Workflow reports record the selected engine and its coverage without claiming equivalent results across execution paths.
+Sentence Variance uses the hybrid path because the engine implements only detection pattern #1; apply patterns #2-5 as additional judgment. If `scriptorium` or shell discovery is unavailable, perform the audit conversationally using the reference file's complete detection rules.
+
+For Chinese, apply `references/chinese-rules.md` through the conversational path. Use `scriptorium` only for subchecks whose installed version explicitly documents Chinese support; an English-only result is not Chinese coverage. A complete Chinese conversational run can be full and non-degraded. Workflow reports record the selected engine, segmentation method, actual subchecks, and coverage without claiming equivalent results across execution paths.
 
 ## Workflow
 
@@ -178,4 +180,6 @@ If the author explicitly asks you to continue past a stopping point (e.g., "just
 - `references/parallel-structure-audit.md` - Grammatical parallelism in lists, comparisons, series
 - `references/sentence-length-variance.md` - Rhythm diagnostics for paragraphs
 - `references/accessibility-audit.md` - Readability scoring and structural accessibility
+- `references/language-support.md` - Language-specific coverage and degradation rules
+- `references/chinese-rules.md` - Chinese procedures for all 19 audits
 - `assets/audit-tracker-template.md` - Per-project tracker for audit runs and findings

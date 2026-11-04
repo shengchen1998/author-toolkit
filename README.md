@@ -50,12 +50,15 @@ workflow.
 | `character-archetypes` | Identify archetype pairings and audit cliches, drift, and cast balance. | "What archetype is this character?" |
 | `story-structure` | Map a new structure or audit landmark beats and signposts in an existing draft. | "Audit this manuscript's structure." |
 | `narrative-nonfiction` | Develop narrative nonfiction, reader transformation, metaphors, exercises, reveals, and voice. | "Design the transformation arc for this book." |
-| `prose-mechanics` | Run 19 focused sentence-level audits on stabilized drafts. | "Run an echoes audit on chapter 7." |
-| `avoid-ai-writing` | Detect AI writing patterns or rewrite text to remove them. | "Detect mode: flag AI patterns in this chapter." |
+| `prose-mechanics` | Run 19 focused sentence-level audits on stabilized drafts, including the local Chinese AI-Isms catalog. | "Run an echoes audit on chapter 7." |
+| `avoid-ai-writing` | Run the vendored English AI-writing detection and rewrite catalog. | "Detect mode: flag AI patterns in this English chapter." |
 
 `avoid-ai-writing` is vendored from
 [conorbronsdon/avoid-ai-writing](https://github.com/conorbronsdon/avoid-ai-writing)
-under MIT. See [ATTRIBUTION.md](ATTRIBUTION.md).
+under MIT. See [ATTRIBUTION.md](ATTRIBUTION.md). Its standalone upstream behavior
+remains English-specific. For standalone Chinese AI-associated pattern detection
+or rewriting, invoke `prose-mechanics` with its AI-Isms audit; shared
+`ai-cleanup` selects the English or local Chinese procedure by actual text span.
 
 ## Scope and language support
 
@@ -72,10 +75,20 @@ Narrative nonfiction remains a direct `narrative-nonfiction` task. Multi-book
 projects and integrations with other hosts are outside the supported 3.1
 workflows.
 
-English and Chinese are the core workflow languages. Where a diagnostic has
-narrower language coverage, it follows its language-support rules and records
-partial or skipped checks. Other languages use the documented fallback rules;
-reduced rule coverage is not reported as an equivalent completed audit.
+English and Chinese are the core workflow languages. Chinese prose audits use
+`skills/prose-mechanics/references/chinese-rules.md`, with Chinese sentence
+boundaries, character-based measurement, declared segmentation, grammar rules,
+and local word and phrase catalogs. Full Chinese coverage means completion of
+the requested Chinese subchecks; it never means that an English metric or an
+English-only engine was treated as equivalent. Chinese AI-associated findings
+describe textual patterns and do not establish AI authorship.
+
+Workflow reports and living trackers retain English headings, columns, and
+status values as their machine-readable Markdown contract. Chinese explanations,
+finding text, quotations, and manuscript paths remain supported as content.
+JSON report fields and machine enums retain their versioned contracts. Other
+languages use the documented fallback rules, and reduced rule coverage is
+recorded as partial or skipped.
 
 ## Installation
 

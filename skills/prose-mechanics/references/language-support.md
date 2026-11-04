@@ -2,28 +2,32 @@
 
 Record language coverage in every workflow report under a `Language coverage` heading. Mark each requested rule `full`, `partial`, or `skipped` with a reason. A stage can finish with partial or skipped rules after author review; the report must not imply equivalent coverage across languages.
 
-The reference files were written primarily for English prose. English runs apply their documented rules. Chinese runs use this matrix:
+The audit reference files were written primarily for English prose. English runs apply their documented rules.
 
-| Audit | Chinese coverage | Rule |
-|---|---|---|
-| Active/Passive | skipped | English voice patterns do not detect Chinese constructions such as 被、由、让. |
-| Parallel Structure | full | Apply the semantic judgment without relying on English morphology. |
-| Sentence Variance | partial | Use Chinese sentence segmentation and judgment; English word-count thresholds are not calibrated targets. |
-| Readability | partial | Keep paragraph and structural checks; skip Flesch-Kincaid and other English grade-level metrics. |
-| Echoes | partial | Detect repeated Chinese words and phrases conversationally; do not apply the English 100-word window as a calibrated measure. |
-| Frequency | partial | Report repeated Chinese expressions without claiming equivalent word segmentation or stopword coverage. |
-| Crutch Words | full | Use the author's configured Chinese terms and context judgment. |
-| Filter Words | skipped | The built-in list is English; an author-supplied Chinese list can enable a project-specific audit. |
-| Adverb Audit | skipped | The `-ly` detection rule is English-specific. |
-| Dialogue Tags | partial | Review attribution and repetition in Chinese dialogue without applying said-bookism vocabulary mechanically. |
-| Sticky Sentences | skipped | The glue-word inventory and density thresholds are English-specific. |
-| Sentence Starters | partial | Compare Chinese openings by meaning and syntax rather than English token counts. |
-| Tense Consistency | skipped | English tense-inflection checks do not describe Chinese aspect and time expression. |
-| Invented-Term Consistency | full | Check spelling, capitalization where applicable, naming, and variant drift. |
-| Clichés | skipped | Use the catalog only for English; an author-supplied Chinese catalog can enable a project-specific audit. |
-| Pronoun Clarity | full | Check antecedents, omitted subjects, and referent ambiguity. |
-| Show vs. Tell | full | Apply the narrative judgment with Chinese examples from the manuscript. |
-| POV Consistency | full | Check viewpoint, knowledge, and perception boundaries. |
-| AI-Isms | skipped | Use the AI-writing adapter; the upstream pattern catalog is English-specific. |
+For Chinese, also load [`chinese-rules.md`](chinese-rules.md). Its Chinese procedures replace the English vocabulary lists, morphology, token windows, word-count thresholds, and grade-level formulas in the individual audit references. For AI-Isms, load the toolkit root's `references/avoid-ai-writing-adapter.md` and its Chinese catalog as directed there.
+
+`full` Chinese coverage means that every requested subcheck in the Chinese procedure was actually applied to every requested Chinese span. It does not mean that an English metric was translated or that an English-only engine produced a result. A deliberate complete conversational run can be full and non-degraded. Record the actual segmentation method and any unavailable input or subcheck; omissions are `partial`, and an unexecuted audit is `skipped`.
+
+| Audit | Chinese procedure |
+|---|---|
+| Active/Passive | Identify 被、由、让、受、遭 and 为…所… constructions, causative/passive ambiguity, and whether agency is actually obscured. |
+| Parallel Structure | Compare Chinese predicates, phrases, clauses, and semantic roles without relying on English morphology. |
+| Sentence Variance | Segment Chinese sentences, measure character-based length distributions, and inspect rhythm in context. |
+| Readability | Inspect sentence load, paragraph load, nesting, terminology, and reference distance. English grade-level formulas are inapplicable and are not replaced with an invented Chinese score. |
+| Echoes | Detect repeated Chinese words and phrases within sentences, adjacent sentences, and paragraphs; judge intentional motif and emphasis. |
+| Frequency | Use declared Chinese segmentation and project terms to profile repeated expressions; label conversational counts as approximate. |
+| Crutch Words | Apply the built-in Chinese candidate list plus the author's configured terms, frequency, and context. |
+| Filter Words | Identify Chinese perception and cognition filters and preserve passages where the act of perceiving matters. |
+| Adverb Audit | Inspect 地 constructions, degree/manner adverbs, weak-verb combinations, and repetition without treating every adverb as an error. |
+| Dialogue Tags | Parse Chinese quotation and attribution forms, speaker clarity, action beats, and repetitive or ornate tags. |
+| Sticky Sentences | Inspect 的 chains, function-word stacking, nominal style, and clause load without an English glue-word threshold. |
+| Sentence Starters | Compare the first meaningful Chinese syntactic constituent and opening pattern rather than an English token count. |
+| Tense Consistency | Check 着、了、过, time expressions, aspect, and timeline consistency without requiring English-style inflection. |
+| Invented-Term Consistency | Check Chinese names, transliterations, script and width variants, aliases, and applicable Latin capitalization. |
+| Clichés | Apply the Chinese candidate catalog with contextual judgment; a stock phrase is a candidate, not an automatic replacement order. |
+| Pronoun Clarity | Check 他、她、它、其、此、彼 and omitted-subject reference in Chinese discourse. |
+| Show vs. Tell | Judge named emotion, dramatization, action, sensation, and thought in Chinese narrative context. |
+| POV Consistency | Check Chinese viewpoint, omitted subjects, knowledge, and perception boundaries. |
+| AI-Isms | Apply the local Chinese catalog in the AI-writing adapter. Never use it to infer authorship or AI provenance. |
 
 For other languages, run only rules the author and agent can ground in the manuscript's grammar and the selected reference. Mark the remainder skipped. Never translate the manuscript solely to make an English detector produce a result.

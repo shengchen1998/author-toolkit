@@ -12,7 +12,7 @@ Author Toolkit 3.1.0 is a source-distributed collection of 15 writing skills for
 
 The production runtime is the host coding agent interpreting `SKILL.md` files and their references. There is no web application, server, database, compiled frontend, vector store, or long-running local process. Node.js is used for contract tests, schema and artifact validation, manuscript inventory, and migration from v2 or v3.0 to v3.1.
 
-The shared creation and revision workflows support one single-book fiction project per manifest, with Markdown or plain-text manuscripts. English and Chinese are the core workflow languages; individual diagnostics document narrower coverage and must report partial or skipped checks truthfully.
+The shared creation and revision workflows support one single-book fiction project per manifest, with Markdown or plain-text manuscripts. English and Chinese are the core workflow languages. Chinese prose uses dedicated sentence, segmentation, grammar, and catalog procedures; Chinese AI-Isms uses a local adapter catalog and never claims to prove AI authorship. Reports record actual language subchecks and partial or skipped coverage truthfully.
 
 ## Technology and configuration
 
@@ -129,6 +129,9 @@ Run the full test and validation commands before finishing changes to scripts, s
 - `migration.test.mjs` exercises the real migration CLI against copied projects, including direct v2-to-v3.1 migration, idempotence, and protected-file preservation.
 - `cli.test.mjs` exercises core validator exit statuses and diagnostics; `cli-artifacts.test.mjs` covers repeated new-artifact options and their exit statuses.
 - `skills.test.mjs` checks skill metadata and cross-file orchestration contracts.
+- `chinese-prose.test.mjs` checks all 19 Chinese audit procedures and their engine-coverage boundaries.
+- `chinese-ai-writing.test.mjs` checks the local Chinese AI-writing catalog, language routing, provenance limits, and vendored-skill isolation.
+- `chinese-writing-skills.test.mjs` checks Chinese line-editing, review, nonfiction, and length-configuration pointers.
 - `approval-paths.test.mjs` covers special-character parsing in approval paths.
 
 Tests use `node:assert/strict`, shared readers in `tests/helpers.mjs`, and copied fixtures for writes. Filesystem and CLI tests create temporary directories beneath `.test-output/` and register cleanup with `t.after`. `.test-output/` and `tests/.tmp/` are ignored; keep temporary projects and generated output out of commits. There is no configured coverage threshold.
@@ -158,7 +161,8 @@ For development, run migration against a disposable copy as the tests do. Migrat
 - JSON uses two-space indentation and a trailing newline. Keep schema `additionalProperties` and legacy compatibility behavior deliberate; validators are closed contracts, not permissive examples.
 - Skill documentation and code are primarily English. Keep user-facing workflow changes synchronized across the relevant skill references, `README.md`, `README.zh-CN.md`, schemas, examples, and tests.
 - Preserve exact relative Markdown links from each skill's location. Avoid introducing reference cycles; `references/workflow-reporting.md` points to `state-and-findings.md`, not the reverse.
-- `skills/avoid-ai-writing/` is vendored upstream content with its own license and recorded commit in `ATTRIBUTION.md`. Keep Author Toolkit integration in `references/avoid-ai-writing-adapter.md`; the test suite checks that local integration text is not added to the upstream skill.
+- `skills/avoid-ai-writing/` is vendored upstream content with its own license and recorded commit in `ATTRIBUTION.md`. Keep Author Toolkit integration and the Chinese candidate catalog in `references/avoid-ai-writing-adapter.md` and `references/avoid-ai-writing-zh-CN.md`; the test suite checks that local integration text is not added to the upstream skill. Chinese standalone AI-Isms routes through `prose-mechanics`, leaving the upstream standalone skill English-specific.
+- Workflow report headings, tracker columns, and Markdown status values remain English machine contracts for every project language. Chinese explanations, finding text, quotations, and manuscript paths are supported as content. Do not add localized aliases for these contract labels or statuses; keep parsers, templates, and tests aligned on the English forms.
 - No automated formatter or linter is configured, so follow the existing file's conventions rather than introducing a new style tool incidentally.
 
 ## Safety and data integrity

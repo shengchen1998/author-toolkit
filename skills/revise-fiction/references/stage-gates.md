@@ -66,9 +66,9 @@ At a stable operation gate, the author may switch to `write-fiction`, `revise-dr
 
 **Inputs:** Current manuscript scope, tracker, language metadata, and any prose reports.
 
-**Work:** Read the toolkit root's `references/avoid-ai-writing-adapter.md` and follow it exactly. Run detection through the upstream `avoid-ai-writing` skill. Rewrites require the standard approval and backup gate and a second detection pass.
+**Work:** Read the toolkit root's `references/avoid-ai-writing-adapter.md` and follow it exactly. Run English spans through the upstream `avoid-ai-writing` skill and Chinese spans through the adapter's local Chinese catalog. Rewrites require the standard approval and backup gate and a second detection pass.
 
-**Gate:** Each in-scope file has a full English detection result or an explicit `skipped` or `partial` language result. Reports contain severity mappings, engine and fallback details, coverage, and degradation. Every rewrite has approval, a backup ID, and second-pass detection. Every finding has a tracker decision. An upstream execution failure leaves the operation blocked rather than producing a clean result.
+**Gate:** Each in-scope file has a full result for its requested language procedure or an explicit `skipped` or `partial` language result. Reports contain severity mappings, engine and fallback details, coverage, and degradation. Every rewrite has approval, a backup ID, and second-pass detection. Every finding has a tracker decision. A failure in a required upstream or local execution path leaves the affected coverage blocked rather than producing a clean result.
 
 ## 9. Final review
 

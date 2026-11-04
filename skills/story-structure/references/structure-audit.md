@@ -4,7 +4,7 @@ For an existing manuscript, or a manuscript-in-progress with enough chapters wri
 
 ## Workflow
 
-1. **Establish total length.** Get total word count or chapter count so percentages can be computed. If the manuscript is incomplete, ask whether to audit what exists so far (percentages will be rougher) or wait until a fuller draft exists.
+1. **Establish total length.** Get total word count or chapter count so percentages can be computed. For a Chinese manuscript, use an author-approved character count or chapter count rather than converting Chinese text into English words. All resulting percentages are rough placement guides, not targets to enforce. If the manuscript is incomplete, ask whether to audit what exists so far (percentages will be rougher) or wait until a fuller draft exists.
 2. **Locate each of the 11 landmark beats** (see `landmark-beats.md`) in the actual text — ask the author to point to the scene, or read the manuscript if provided, and compute its approximate percentage-through.
 3. **Compare actual vs. expected placement.** Flag any beat that has drifted more than ~10 percentage points from its expected mark (e.g., a Midpoint landing at 38% or 63% instead of ~50%) as **mistimed**.
 4. **Flag missing beats.** If a beat cannot be located at all, flag it as **missing** — don't force-fit an unrelated scene onto it.

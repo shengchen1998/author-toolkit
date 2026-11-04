@@ -256,8 +256,8 @@ pending operation, 证据和依赖决定下一步.
 | `character-archetypes` | "分析这个角色的原型组合." |
 | `story-structure` | "审计这份稿件的宏观结构." |
 | `narrative-nonfiction` | "设计这本书的读者转变弧线." |
-| `prose-mechanics` | "对第 7 章运行 echoes 审计." 共 19 项独立审计. |
-| `avoid-ai-writing` | "仅检测这一章的 AI 写作模式, 不改写." |
+| `prose-mechanics` | "对第 7 章运行 echoes 审计." 共 19 项独立审计, 中文 AI-Isms 也走这里. |
+| `avoid-ai-writing` | "仅检测这一章英文文本的 AI 写作模式, 不改写." 上游独立目录保留英文规则. |
 
 独立技能的命令模式:
 
@@ -268,15 +268,24 @@ pending operation, 证据和依赖决定下一步.
 | Claude Code 裸技能 | `/<skill-name>` |
 | Kimi Code 裸技能 | `/skill:<skill-name>` |
 
-## 语言与格式限制
+中文 AI 写作检测或改写请调用 `prose-mechanics` 的 AI-Isms 审计. 它使用本地中文目录;
+独立上游 `avoid-ai-writing` 保持英文专用. 共享 `ai-cleanup` 会按实际中英文片段选择对应程序.
+AI 关联发现只描述文本模式, 不能证明文本由 AI 生成.
 
-共享流程处理 Markdown 和纯文本, 核心语言为中文和英文. 某项诊断的语言覆盖较窄时, 按技能中的
-语言规则降级, 并在报告中记录部分执行或跳过项. 其他语言使用文档中的降级规则, 不把规则覆盖减少
-报告为等效完整审计.
+## 语言与格式支持
+
+共享流程处理 Markdown 和纯文本, 核心语言为中文和英文. 中文 prose 审计使用
+`skills/prose-mechanics/references/chinese-rules.md`, 包括中文分句, 字符计数, 分词方法声明,
+中文语法规则及本地词表. 中文 `full` 表示请求的中文子检查已完整执行, 不表示英文指标或
+英文检测器获得了等价结果. 未实际执行的片段和子检查仍须记录为 `partial` 或 `skipped`.
+
+工作流报告标题, tracker 列名和状态值继续固定使用英文, 作为机器可读 Markdown 契约.
+中文说明, finding 文本, 引文和稿件路径可正常使用中文. JSON 字段, 机器键和封闭枚举
+继续遵循原有版本契约. 其他语言使用文档中的降级规则.
 
 ## 验证状态
 
-3.1.0 工作树的仓库检查已通过: 106 项协议测试和 19 项默认校验, 详见
+3.1.0 工作树的仓库检查已通过: 123 项协议测试和 19 项默认校验, 详见
 [docs/VALIDATION.md](docs/VALIDATION.md). Kimi Code 已完成有限范围的创作提交和双向切换验证; 完整宿主流程,
 `revise-increment` 端到端运行, 15 技能安装发现和百万字稿件的创作质量仍未验证.
 3.0 和 2.0 的历史结果单独保留, 不能作为 3.1 已通过宿主或质量验证的证据.

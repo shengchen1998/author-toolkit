@@ -21,7 +21,7 @@ Use the installed review-job and reader-state artifact contracts. This handoff r
 List only the inputs assigned to this perspective in `author-review/SKILL.md`.
 
 - Intent: manuscript paths, Story Bible path, approved draft-baseline path when supplied, approved revision-plan path, and `skills/author-review/references/checklists.md`.
-- Standards: manuscript paths and `skills/author-review/references/checklists.md` only; no baselines, plans, or prior reports.
+- Standards: manuscript paths and `skills/author-review/references/checklists.md`, plus `skills/author-review/references/chinese-writing-standards.md` for Chinese work; no baselines, plans, or prior reports.
 - Fresh: the next actual manuscript unit in reading order, target reader description, this reviewer's own reader-state path after the first unit, and `skills/author-review/references/checklists.md` only; no baselines, plans, prior reports, other reader-state, or author explanations.
 
 Delete the two lines that do not apply. State the fresh target reader inline in one concise metadata line without author explanation or plot summary. Keep all three perspectives isolated.
@@ -30,7 +30,7 @@ Delete the two lines that do not apply. State the fresh target reader inline in 
 
 1. Start or resume a session with no earlier review or self-assessment context. For fresh, restore only the named reader-state so the same logical reviewer continues in strict manuscript order.
 2. Invoke the exact registered `author-review` skill with the named perspective, review mode, scope ID, and this handoff path.
-3. Read `skills/author-review/references/chunked-review.md`, only the assigned checklist section, and permitted inputs. Validate the review job, source hashes, next unit, and applicable parent synthesis before reviewing.
+3. Read `skills/author-review/references/chunked-review.md`, only the assigned checklist section, the Chinese standards reference when permitted, and the other permitted inputs. Validate the review job, source hashes, next unit, and applicable parent synthesis before reviewing.
 4. Review actual manuscript text within the context budget. Produce finding v2 with the narrowest truthful location, a recommendation, and judgment confidence. Link related cross-file findings without inventing one location.
 5. Write the assigned immutable chunk or synthesis report with human-readable scope, `Language coverage` and `Review coverage` sections, and exactly one report v2 JSON envelope at the report destination. Use the handoff's report stage and disclose every `partial` or `skipped` unit and check.
 6. Use `engine.name: "conversational"` and record separate-session execution, version or `unknown`, and degradation. Include `scope_id=<actual-scope-id>`, actual `operation_coverage=full|partial|skipped`, and the single actual `subchecks=intent|standards|fresh` value in `engine.notes`.

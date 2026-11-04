@@ -64,7 +64,7 @@ At a stable operation gate, the author may switch to `write-fiction`, `revise-fi
 
 **Inputs:** Confirmed scope, language metadata, current manuscript, and tracker.
 
-**Work:** Follow `../../../references/avoid-ai-writing-adapter.md`. Detection and approved rewrites use the shared approval and backup records. A second detection follows every rewrite. Persist full local units for every fully covered path and requested check, including engine and dependency identity.
+**Work:** Follow `../../../references/avoid-ai-writing-adapter.md`. Use the upstream skill for English spans and the local Chinese catalog for Chinese spans. Detection and approved rewrites use the shared approval and backup records. A second detection follows every rewrite. Persist full local units for every fully covered path and requested check, including engine and dependency identity.
 
 **Gate:** Every in-scope file has full, partial, or skipped language coverage with engine and degradation details. Every finding has a tracker decision. An upstream failure blocks the operation rather than producing a clean result. Partial or skipped requested applicable coverage prevents a full convergence claim; a narrowed pass names its actual limits. Documented inapplicable language checks remain explicitly `skipped` with their reasons.
 

@@ -38,7 +38,7 @@ Inputs: manuscript, Story Bible, approved draft-baseline when supplied, and appr
 
 ## Writing standards
 
-Inputs: manuscript and this checklist. Review the text on its own without earlier self-assessment or other reviewers' findings.
+Inputs: manuscript and this checklist. For `language=zh*` or an actually Chinese manuscript, also load [`chinese-writing-standards.md`](chinese-writing-standards.md) and use its Chinese semantic mappings for the English checklist terms below. Follow the actual manuscript when its language differs from the label. Review the text on its own without earlier self-assessment or other reviewers' findings. This Chinese reference belongs only to the standards perspective.
 
 ### Structure and scene causality
 

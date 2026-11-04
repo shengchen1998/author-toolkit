@@ -27,11 +27,13 @@ This skill is for:
 ## When NOT to Use
 
 This skill is NOT for:
-- ❌ Flash fiction or single scenes (< 2000 words) - too lightweight for the workflow
+- ❌ Flash fiction or single scenes (English guideline only: < 2,000 words) - too lightweight for the workflow
 - ❌ Poetry or experimental prose - needs different editorial approach
 - ❌ Screenplays or stage plays - different format conventions
 - ❌ Technical writing, documentation, or academic papers
 - ❌ Business writing or marketing copy
+
+For Chinese work, use an author-approved character count or another author-approved length unit to decide whether the workflow fits. Do not derive a Chinese threshold through a fixed English-word conversion.
 
 For narrative nonfiction (memoir, self-help with story elements), use the `narrative-nonfiction` skill instead.
 
@@ -135,12 +137,15 @@ Key relationship: Tension with Handler (wants to trust, can't fully)
 When a specific editorial persona is invoked, load the corresponding reference file:
 
 - Developmental editing → `references/developmental-editing.md`
-- Line editing → `references/line-editing.md`
+- Line editing in English or other non-Chinese work → `references/line-editing.md`
+- Chinese line editing (`language=zh*` or an actually Chinese manuscript) → `references/chinese-line-editing.md`
 - Character work → `references/character-work.md`
 - Continuity → `references/continuity-tracking.md`
 - Brainstorming → `references/brainstorming.md`
 - Thriller-specific craft → `references/thriller-craft.md`
 - Sci-fi worldbuilding → `references/scifi-worldbuilding.md`
+
+For Chinese work, follow the actual manuscript if its language differs from the label. The Chinese Line Editor must load `references/chinese-line-editing.md` instead of `references/line-editing.md`; do not transfer the English `said`, cut-`that`, `I`/`The` opening, or `-ly` rules to Chinese. Chinese developmental editing, character work, and continuity tracking keep their existing references and workflow.
 
 ---
 
@@ -277,7 +282,8 @@ When `write-fiction` invokes Chapter Development, use the supplied approved plan
 ## Files
 
 - `references/developmental-editing.md` - Plot, structure, pacing analysis (see also the `story-structure` skill for landmark-beat percentages and signpost diagnostics)
-- `references/line-editing.md` - Prose-level refinement
+- `references/line-editing.md` - English and other non-Chinese prose-level refinement
+- `references/chinese-line-editing.md` - Chinese prose-level refinement with contextual language rules
 - `references/character-work.md` - Voice, motivation, arc tracking (see also the `character-archetypes` skill for role/personality archetype analysis)
 - `references/continuity-tracking.md` - Timeline and fact consistency
 - `references/brainstorming.md` - Idea generation techniques

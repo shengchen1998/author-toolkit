@@ -88,6 +88,8 @@ Modes are primarily for Stage 2 (Chapter Development) and Stage 3 (Arc Integrity
 
 Load only the reference file matching the currently invoked mode. Do not preload all references at session start—it wastes context budget. If switching modes mid-session, load the new reference file and treat the prior one as out-of-scope unless the work explicitly bridges both.
 
+For Voice Editor or Content Editor work with `language=zh*` or an actually Chinese manuscript, also load `references/chinese-voice-and-content.md`. Follow the actual manuscript if its language differs from the label. Use that reference for Chinese reader address, register, and expression instead of mechanically translating English `you`/`we`/`one` or passive-voice rules from the mode references.
+
 For Reveal Engineer specifically: `reveal-engineering.md` is an index across four reveal patterns (permission-reframe, empirical, structural, conceptual). Read its "Choosing a Reveal Pattern" section first, identify which pattern fits the project, then load *only* that pattern's reference file. Don't preload all four.
 
 See `references/` for detailed guidance on each mode.
@@ -292,5 +294,6 @@ Narrative nonfiction remains standalone in 3.0. It does not consume the `revise-
 - `references/structural-reveal.md` - Invisible-mechanism reveal pattern (Bastiat-style)
 - `references/conceptual-reveal.md` - Category-shift reveal pattern (Antifragile-style)
 - `references/voice-editing.md` - Tone and persona consistency
+- `references/chinese-voice-and-content.md` - Chinese reader address, register, teaching expression, metaphors, and exercises
 - `assets/book-blueprint-template.md` - Book planning document
 - `assets/chapter-template.md` - Chapter structure template

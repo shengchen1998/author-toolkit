@@ -28,5 +28,8 @@ The full MIT license text and copyright notice are preserved unmodified at
 vendored `SKILL.md` corresponds to the commit above.
 
 Local integration guidance is maintained separately in
-`references/avoid-ai-writing-adapter.md`. That adapter belongs to Author
-Toolkit and is not an upstream file.
+`references/avoid-ai-writing-adapter.md`, with the Author Toolkit Chinese
+candidate catalog in `references/avoid-ai-writing-zh-CN.md`. Those files belong
+to Author Toolkit and are not upstream files. The Chinese catalog is a local
+writing-pattern heuristic; it is not attributed to the upstream author and does
+not establish AI authorship.

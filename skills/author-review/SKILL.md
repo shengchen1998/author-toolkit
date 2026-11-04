@@ -29,14 +29,18 @@ This skill does not revise prose, update Story Bible creative content, or apply 
 | Perspective | Permitted inputs |
 |---|---|
 | Intent and consistency | Manuscript, Story Bible, approved draft-baseline when supplied, approved revision plan, and intent checklist |
-| Writing standards | Manuscript and writing standards checklist only; exclude previous self-assessments, Story Bible, draft-baseline and other baselines, plans, and prior review reports |
+| Writing standards | Manuscript and writing standards checklist only, plus [`references/chinese-writing-standards.md`](references/chinese-writing-standards.md) for Chinese work; exclude previous self-assessments, Story Bible, draft-baseline and other baselines, plans, and prior review reports |
 | Fresh reader | Actual manuscript units in sequence, target reader description, fresh-reader questions, and only its own reader-state after the first unit; exclude all other review and baseline inputs |
+
+For `language=zh*` or an actually Chinese manuscript, the standards reviewer must load [`references/chinese-writing-standards.md`](references/chinese-writing-standards.md). If the language label and manuscript disagree, follow the actual manuscript and disclose the mismatch. Include this reference in that reviewer's permitted inputs and handoff; do not give it to the intent or fresh-reader perspectives.
 
 ## Run layered reviews
 
 Follow [`references/chunked-review.md`](references/chunked-review.md) for unit coverage, synthesis dependencies, reader-state, findings, and completion. Dispatch independent perspectives with fresh contexts. `intent` and `standards` chunk work may run in parallel; the `fresh` chain remains strictly sequential with one logical reviewer. Do not share one perspective's output with another.
 
 Write immutable chunk reports and each applicable volume/phase and book synthesis report with human-readable scope, a `Language coverage` section, a `Review coverage` section, and exactly one report v2 JSON envelope. Mark inapplicable whole-book checklist items `skipped` with reasons in current-scope mode and record every other gap truthfully.
+
+For Chinese standards, `Language coverage` must itemize the Chinese subchecks in the loaded reference as actually performed, with `full`, `partial`, or `skipped` status and reasons for gaps. Claim `full` only when every applicable Chinese subcheck covers the requested actual manuscript scope; a sampled, translated, unread, or unexecuted check cannot be folded into `full`. Keep `Review coverage` tied to actual manuscript units and syntheses.
 
 Use `engine.name: "conversational"` and record the actual execution path, version or `unknown`, and degradation. Every report's `engine.notes` contains:
 

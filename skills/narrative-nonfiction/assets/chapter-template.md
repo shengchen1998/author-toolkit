@@ -130,7 +130,7 @@ Before submitting for review:
 - [ ] Metaphor is present (not forced)
 - [ ] Voice is consistent with book
 - [ ] Bridge to next chapter works
-- [ ] Word count appropriate (~3,000-5,000 words typical)
+- [ ] Length matches the author-approved target (English example only: ~3,000-5,000 words; Chinese uses an author-approved character target, with no universal Chinese character target or fixed word conversion)
 
 ---
 
@@ -146,6 +146,12 @@ Before submitting for review:
 
 ---
 
-*Target word count: ____*  
-*Draft word count: ____*  
+*Target English word count: ____*
+
+*Actual English word count: ____*
+
+*Target Chinese character count (author-approved): ____*
+
+*Actual Chinese character count: ____*
+
 *Status: [ ] Outline / [ ] First draft / [ ] Revised / [ ] Final*
