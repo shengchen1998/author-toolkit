@@ -1,0 +1,101 @@
+flowchart TD
+  subgraph COMMON["所有入口共用规则（贯穿每次调用）"]
+    direction LR
+    START([开始]) --> SETUP["必要时由用户运行<br/>setup-author-toolkit"]
+    SETUP --> READ["author-project<br/>read → validate → status"]
+    READ --> STATE["读取共享 manifest / tracker / sessions<br/>scope / reports / creation state"]
+    STATE --> GATES["选择入口并记录 pending<br/>author decision loop · 审批与备份<br/>report v2 · finding v2 · coverage · stale propagation"]
+    GATES --> WAIT["记录 tracker / session / artifact<br/>稳定操作门等待作者，或显式切换入口"]
+  end
+
+  subgraph RF["revise-fiction｜全书修订"]
+    direction LR
+    RF0([入口]) --> RF1["intake"]
+    RF1 --> RF2["story-bible<br/>完整全书基线"]
+    RF2 --> RF3["structure<br/>全书结构审计"]
+    RF3 --> RF4["characters<br/>全书角色弧线与连续性"]
+    RF4 --> RF5["revision-plan"]
+    RF5 --> RF6["chapter-revision"]
+    RF6 --> RF7["prose"]
+    RF7 --> RF8["ai-cleanup"]
+    RF8 --> RF9["final-review<br/>全书终审，仅产出 findings"]
+  end
+
+  subgraph RD["revise-draft｜当前草稿修订"]
+    direction LR
+    RD0([入口]) --> RDN["允许未完成草稿和未知结局<br/>支持 diagnosis-only、direct prose / ai-cleanup、limited review"]
+    RDN --> RD1["intake"]
+    RD1 --> RD2["draft-baseline"]
+    RD2 --> RD3["diagnostics<br/>场景与章节局部诊断"]
+    RD3 --> RD4["characters<br/>当前文本与连续性"]
+    RD4 --> RD5["revision-plan<br/>无修改时记录 skip"]
+    RD5 --> RD6["chapter-revision<br/>无修改时记录 skip"]
+    RD6 --> RD7["prose"]
+    RD7 --> RD8["ai-cleanup"]
+    RD8 --> RD9["current-scope-review<br/>当前 scope · 三种视角"]
+    RD9 --> RDC{"有 accepted edits<br/>或失效证据？"}
+    RDC -->|是：回到受影响操作| RD5
+    RDC -->|否| RDDONE["当前草稿收敛"]
+  end
+
+  subgraph RI["revise-increment｜增量修订"]
+    direction LR
+    RI0([入口]) --> RIV["验证 previous<br/>converged scope"]
+    RIV --> RIBASE{"上一 scope<br/>已收敛？"}
+    RIBASE -->|否| RISTOP["显示 revise-draft 命令<br/>停止跳过基础工作"]
+    RIBASE -->|是| RI1["确定 target / change set<br/>work set / reusable evidence"]
+    RI1 --> RI2["intake<br/>确认 target + work set"]
+    RI2 --> RI3["draft-baseline<br/>更新 full target"]
+    RI3 --> RI4["diagnostics<br/>work set → full-target coverage"]
+    RI4 --> RI5["characters<br/>affected → full-target coverage"]
+    RI5 --> RI6["revision-plan<br/>exact work-set batches"]
+    RI6 --> RI7["chapter-revision<br/>仅修改 approved work set"]
+    RI7 --> RI8["prose<br/>work set + target synthesis"]
+    RI8 --> RI9["ai-cleanup<br/>work set + target coverage"]
+    RI9 --> RI10["current-scope-review<br/>始终覆盖 full target"]
+    RI10 --> RIC{"有 accepted edits？"}
+    RIC -->|是| RI6
+    RIC -->|否| RIDONE["target 修订收敛"]
+  end
+
+  subgraph WF["write-fiction｜增量创作"]
+    direction LR
+    WF0([入口]) --> WFV["v3.0 创作写入前<br/>作者确认 upgrade-v31"]
+    WFV --> WFTYPE{"任务类型"}
+    WFTYPE -->|缺少基础| WF1["creation-baseline"]
+    WFTYPE -->|外部稿件变化| WF2["creation-import"]
+    WFTYPE -->|卷 / 故事阶段| WF3["milestone-review"]
+    WFTYPE -->|下一批次| WF4["writing-plan<br/>默认一章，批准 exact write batch"]
+    WF4 --> WF5["chapter-creation<br/>仅写入 staging"]
+    WF5 --> WF6["chapter-review<br/>检查完整批次"]
+    WF6 --> WFA{"作者接受批次？"}
+    WFA -->|拒绝| WFR["保留 staging<br/>正文 / story state / scope 不变"]
+    WFA -->|接受| WF7["creation-commit<br/>无额外审批门，发布并同步状态"]
+    WF7 --> WF8["发布 ≠ 修订收敛<br/>修订新增或受影响章节时转 revise-increment"]
+    WF8 -.->|下一批次| WF4
+  end
+
+  COMMON ~~~ RF
+  RF ~~~ RD
+  RD ~~~ RI
+  RI ~~~ WF
+
+  classDef startEnd fill:#263238,stroke:#263238,color:#FFFFFF;
+  classDef control fill:#ECEFF1,stroke:#78909C,color:#263238;
+  classDef shared fill:#E8F5E9,stroke:#43A047,color:#1B5E20;
+  classDef draftShared fill:#E3F2FD,stroke:#1E88E5,color:#0D47A1;
+  classDef unique fill:#FFF3E0,stroke:#FB8C00,color:#E65100;
+  classDef note fill:#FAFAFA,stroke:#90A4AE,color:#37474F,stroke-dasharray:4 3;
+
+  class START,RF0,RD0,RI0,WF0 startEnd;
+  class SETUP,READ,STATE,GATES,WAIT,RDN,RIV,RIBASE,RISTOP,RDC,RIC,WFV,WFTYPE,WFA,WFR,WF8 control;
+  class RF1,RF4,RF5,RF6,RF7,RF8,RD1,RD4,RD5,RD6,RD7,RD8,RI2,RI5,RI6,RI7,RI8,RI9 shared;
+  class RD2,RD3,RD9,RI3,RI4,RI10 draftShared;
+  class RF2,RF3,RF9,RI1,WF1,WF2,WF3,WF4,WF5,WF6,WF7 unique;
+  class RDDONE,RIDONE note;
+
+  style COMMON fill:#FAFAFA,stroke:#78909C,stroke-width:1.5px
+  style RF fill:#FFFFFF,stroke:#FB8C00,stroke-width:1.5px
+  style RD fill:#FFFFFF,stroke:#1E88E5,stroke-width:1.5px
+  style RI fill:#FFFFFF,stroke:#8E24AA,stroke-width:1.5px
+  style WF fill:#FFFFFF,stroke:#FB8C00,stroke-width:1.5px
