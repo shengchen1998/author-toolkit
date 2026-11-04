@@ -1,6 +1,6 @@
 # Avoid AI Writing adapter
 
-Use this reference for an `ai-cleanup` operation explicitly called by `revise-fiction` or `revise-draft`, and for the AI-Isms audit in `prose-mechanics`. It adapts the upstream `avoid-ai-writing` skill to shared project reports, scope, and approval gates. It is not a skill and does not change standalone `avoid-ai-writing` invocation or output.
+Use this reference for an `ai-cleanup` operation explicitly called by `revise-fiction`, `revise-draft`, or `revise-increment`, and for the AI-Isms audit in `prose-mechanics`. It adapts the upstream `avoid-ai-writing` skill to shared project reports, scope, and approval gates. It is not a skill and does not change standalone `avoid-ai-writing` invocation or output.
 
 ## Resolve and scope
 
@@ -35,7 +35,7 @@ If the upstream skill is unavailable or fails, write no clean result. When repor
 Detection is the default. For a rewrite:
 
 1. Present detected issues, proposed rewrite scope, and exact affected files. Obtain explicit author approval for that change batch and record it in the shared tracker's `Approvals` section with its approval ID, operation, scope ID, paths, status, reason, and timestamp.
-2. Before invoking any rewrite that writes text, have the calling `revise-fiction` or `revise-draft` orchestrator complete `author-project` backup for every affected file. The backup record must cite the same `approval_id` and `scope_id` and contain the original input hashes. Proceed only after all backups succeed and the current hashes still match.
+2. Before invoking any rewrite that writes text, have the calling `revise-fiction`, `revise-draft`, or `revise-increment` orchestrator complete `author-project` backup for every affected file. The backup record must cite the same `approval_id` and `scope_id` and contain the original input hashes. Proceed only after all backups succeed and the current hashes still match.
 3. Invoke upstream `avoid-ai-writing` in `rewrite` mode with the same profile and full rules. Apply only the approved rewrite to registered manuscript files.
 4. Run a separate upstream `detect` pass over resulting text, including the upstream second-pass checks. Write a new report with remaining findings, stable IDs, and actual engine details. Record the backup ID, approval ID, and scope ID in `engine.notes` and the session note.
 5. Return remaining findings to the author. Another rewrite requires its own approval and backup. Claim a clean result only when second detection finds no remaining issues in the stated coverage.

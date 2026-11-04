@@ -1,9 +1,9 @@
 # Migrating to Author Toolkit 3.1
 
 Author Toolkit 3.1.0 adds `write-fiction` and creation state to the shared
-project evidence model. `write-fiction`, `revise-fiction`, and `revise-draft`
-use one manifest and can switch at stable operation gates without another
-migration. All three still require `setup-author-toolkit` first.
+project evidence model. `write-fiction`, `revise-fiction`, `revise-draft`, and
+`revise-increment` use one manifest and can switch at stable operation gates
+without another migration. All four still require `setup-author-toolkit` first.
 
 The migration is additive for v3.0 projects. It registers creation storage and
 preserves manuscripts, reports, findings, approvals, scopes, pending work, and

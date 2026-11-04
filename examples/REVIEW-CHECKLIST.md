@@ -16,12 +16,12 @@
 
 ## 2. 统一 setup 与共享项目
 
-- [ ] 对 `write-fiction`, `revise-fiction` 和 `revise-draft` 都先运行同一个 `setup-author-toolkit`; 确认 setup 不接受 workflow 或 entry stage 参数, 三个入口的登记和 intake 行为一致.
-- [ ] 确认三个入口使用同一份中性 `.author-toolkit/project.json` (v3.1), 以及共享的 `audit-tracker.md`, `story-bible.md`, `reports/`, `sessions/`, `backups/` 和 `handoffs/`.
+- [ ] 对 `write-fiction`, `revise-fiction`, `revise-draft` 和 `revise-increment` 都先运行同一个 `setup-author-toolkit`; 确认 setup 不接受 workflow 或 entry stage 参数, 四个入口的登记和 intake 行为一致.
+- [ ] 确认四个入口使用同一份中性 `.author-toolkit/project.json` (v3.1), 以及共享的 `audit-tracker.md`, `story-bible.md`, `reports/`, `sessions/`, `backups/` 和 `handoffs/`.
 - [ ] 检查 v3.1 manifest 只将 `current_scope` 与 `pending_action` 作为可选进度字段, 其余内容用于项目登记, 证据和路径; 不读取或手改 v2 阶段状态.
 - [ ] 确认 `paths.creation` 默认指向 `.author-toolkit/creation/`, 自定义路径也按 manifest 解析; `state/current.md`, `state/chapters/`, `state/volumes/`, `batches/` 和 `staging/` 位于该根目录下.
 - [ ] 确认 creation root 和 staging 被排除在 manuscript inventory 外, 没有把 story state, batch 或 staged draft 统计为正文.
-- [ ] 确认没有策略专属目录或第二套状态. 在三个技能的稳定 operation 门禁之间切换后复用共享产物, 不执行迁移.
+- [ ] 确认没有策略专属目录或第二套状态. 在四个技能的稳定 operation 门禁之间切换后复用共享产物, 不执行迁移.
 - [ ] 登记后核对稿件仍在原路径, 自定义产物路径仍有效; setup 和技能切换都不移动 manuscript, reports 或 backups.
 - [ ] 对 v3.0 项目确认 3.1 工具仍可读取; 在创作写入前完成作者确认的增量 `upgrade-v31`, 并核对原有 scope, pending action, findings, approvals 和 backups 未丢失.
 
@@ -56,6 +56,10 @@
 - [ ] **prose**: 验证可以直接进入句子层审计, 证据仍记录 operation, scope, 输入版本, coverage 和依赖.
 - [ ] **ai-cleanup**: 验证可以直接进入 Detect 或明确授权的 Rewrite, 不强制先完成全书结构或人物门禁.
 - [ ] **current-scope-review**: 以三个独立视角复核当前范围, 全书不适用项明确记录为 `skipped` 和范围理由, 不把 `skipped` 当作全书通过.
+- [ ] **`revise-increment` 五章续写场景**: 先让五章在当前稿视角收敛并保留可复用 full local units, 再通过 `write-fiction` 发布第六章. 确认创作提交只报告发布完成, 并提供增量修订入口, 不直接宣称六章收敛.
+- [ ] **增量范围**: 确认入口提出六章目标 scope, 以及第六章和受影响旧文本组成的 work set. 在创作批次加入一处旧章 continuity patch, 确认该旧章也进入 change set 和 work set, 而不是只筛选 `create`.
+- [ ] **证据组合**: 未变五章只在 operation, source report, 路径和 hash, subchecks 及依赖匹配时复用 full local units. 移除一个可复用单元, 确认对应旧章进入 work set, 旧整份报告没有被直接改名成六章证据.
+- [ ] **全目标复核与返工**: 三个视角都复核六章, fresh reader 顺序阅读六章. 让复核产生一项获批修改, 确认受影响操作和六章复核重跑; 存在 open findings, stale evidence, 缺失 synthesis 或未执行获批批次时不得报告收敛.
 
 ## 5. `write-fiction` 创作循环与 story state
 
@@ -95,7 +99,7 @@
 
 ## 8. 修订批准, 备份与写入保护
 
-- [ ] 确认三个入口的批准记录都写入共享 `audit-tracker.md`, 并能追溯到 operation, scope, 输入版本和作者决定.
+- [ ] 确认四个入口的批准记录都写入共享 `audit-tracker.md`, 并能追溯到 operation, scope, 输入版本和作者决定.
 - [ ] 修改前记录正文 SHA-256. 在 structure Audit, draft diagnostics, Character Consult, archetype Audit, prose 单项审计和 AI Detect 后重新计算, 确认正文未变.
 - [ ] 在每种审计中提出一个直接改写请求, 检查技能是否停在诊断边界并要求明确修订任务; 记录实际回应.
 - [ ] 确认报告中的 recommendation 只是建议, 不会自动变成正文, 故事圣经或作者决定.
@@ -107,7 +111,7 @@
 
 - [ ] 会话结束时在共享 `sessions/` 记录已完成工作, 作者决定, 未决问题, 当前 scope, pending operation 和停止点.
 - [ ] 开一个全新的宿主会话, 不依赖上一会话的聊天记忆. 先读持久文件, 再根据证据和依赖恢复下一操作.
-- [ ] 在 `write-fiction`, `revise-fiction` 和 `revise-draft` 的稳定 operation 门禁之间逐对双向切换, 确认读取同一 manifest 和共享产物, 没有迁移, 目录分叉或自动恢复写入.
+- [ ] 在 `write-fiction`, `revise-fiction`, `revise-draft` 和 `revise-increment` 的稳定 operation 门禁之间逐对双向切换, 确认读取同一 manifest 和共享产物, 没有迁移, 目录分叉或自动恢复写入.
 - [ ] 在 staged draft 存在时切换到修订入口再返回, 核对 dependency fingerprint 和当前项目状态; 可复用时重新复核, 依赖不匹配时重新规划, 不直接发布.
 - [ ] 切换后重新判断 operation, scope, coverage 和依赖; 可复用证据继续复用, 不匹配证据标为 stale 或要求新审计, 不清空历史记录.
 - [ ] 记录恢复过程中实际读了哪些文件, 以及 pending operation 的依据, 而不是只记录 "已恢复上下文". pending action 本身不能作为发布许可.
@@ -162,7 +166,7 @@
 - [ ] 在 **Kimi Code** 的新会话中对另一份干净副本执行相同任务, 同样记录证据; 不复用第一宿主的聊天上下文或生成结果.
 - [ ] 比较两宿主是否读取同一持久状态, 是否遵守审计停止点, 是否产生可验证 envelope, 是否按依赖处理 stale, 而不是比较逐字输出.
 - [ ] 对宿主特有的斜杠命令, 插件发现或文件权限差异分别记录, 不引入中央 workflow runner 来掩盖差异.
-- [ ] 验证 14 个技能的安装与发现, 特别是 `write-fiction` 的 user-entry 调用模式; 静态 frontmatter 检查不能替代真实宿主发现.
+- [ ] 验证 15 个技能的安装与发现, 特别是 `write-fiction` 和 `revise-increment` 的 user-entry 调用模式; 静态 frontmatter 检查不能替代真实宿主发现.
 - [ ] 任一宿主失败时保留失败报告和复现步骤; 另一宿主通过不能抵消该失败. 未实际运行的 3.1 宿主路径明确标为未验证.
 
 ## 14. 人工写作质量与规模评价

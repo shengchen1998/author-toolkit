@@ -7,7 +7,7 @@ description: Use when initializing, reading, validating, or updating a neutral a
 
 Manage persistent state for one book. The manifest is `<project-root>/.author-toolkit/project.json`; accept v3.0 and v3.1 without resetting either. V3.1 registers `paths.creation` for shared creation state, batches, staging, and commit journals.
 
-This skill owns state, paths, validation, backup records, and commit bookkeeping. Manuscript prose and Story Bible creative content belong to the writing skills. `write-fiction`, `revise-fiction`, and `revise-draft` are explicit author-selected strategies over this same state.
+This skill owns state, paths, validation, backup records, and commit bookkeeping. Manuscript prose and Story Bible creative content belong to the writing skills. `write-fiction`, `revise-fiction`, `revise-draft`, and `revise-increment` are explicit author-selected strategies over this same state.
 
 ## Operations
 
@@ -33,4 +33,4 @@ This skill calls no other skills. Use text reads and writes for normal operation
 
 ## Completion
 
-Finish the requested operation and report the manifest path, changed fields, validation result, and any missing inputs. Leave creative files untouched. Initialization ends with shared project state ready for the author to choose `write-fiction`, `revise-fiction`, or `revise-draft`; it does not start a skill or select an entry operation.
+Finish the requested operation and report the manifest path, changed fields, validation result, and any missing inputs. Leave creative files untouched. Initialization ends with shared project state ready for the author to choose `write-fiction`, `revise-fiction`, `revise-draft`, or `revise-increment`; it does not start a skill or select an entry operation.

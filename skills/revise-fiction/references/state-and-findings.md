@@ -86,7 +86,7 @@ Record each stale reason with the changed path and decision or edit batch. Old e
 
 ## Evidence reuse across skills
 
-`write-fiction`, `revise-fiction`, and `revise-draft` share this evidence at stable operation gates. Switching requires the author's exact command and does not reset state or resume pending writes. Reuse evidence by operation, scope, input versions, subchecks, and dependency state rather than by report title. Creation evidence does not satisfy `chapter-revision`, and creation operations remain outside report v2 `stage`.
+`write-fiction`, `revise-fiction`, `revise-draft`, and `revise-increment` share this evidence at stable operation gates. Switching requires the author's exact command and does not reset state or resume pending writes. Reuse evidence by operation, scope, input versions, subchecks, and dependency state rather than by report title. Creation evidence does not satisfy `chapter-revision`, and creation operations remain outside report v2 `stage`.
 
 - Story Bible can supply facts to draft-baseline and creation planning, but the current manuscript still needs its requested coverage. Draft-baseline with unknown foundation fields cannot satisfy Story Bible.
 - Full-book structure can supply local leads, but does not replace scene-level diagnostics. Local diagnostics cannot satisfy full-book landmark coverage.
@@ -100,7 +100,19 @@ Store reusable local coverage units and the living coverage index beneath the re
 
 A changed input invalidates only affected local units and their dependents; unrelated unchanged units can remain current. Reevaluate every applicable volume, phase, current-scope, or whole-book synthesis whenever its text, membership, reading order, dependencies, or child coverage changes. Record a new synthesis report for the current inputs. Never extend an old whole-book synthesis to a new scope because its local units still match.
 
-Chunk reports and their syntheses retain report v2 and finding v2. Creation operations remain outside report v2 `stage`; their batches, commit journals, story state, review jobs, and reader state use their own artifact contracts rather than masquerading as revision evidence.
+Chunk reports and their syntheses retain report v2 and finding v2. Creation operations remain outside report v2 `stage`; their batches, commit journals, story state, review jobs, and reader state use their own artifact contracts rather than masquerading as revision evidence. Review jobs and fresh-reader continuity also require their own same-scope evidence. Composed local units from another scope never replace actual target-scope reading or an unbroken fresh reviewer chain.
+
+## Current-draft revision convergence
+
+For a confirmed target scope, current-draft revision is converged only when all of these conditions hold after the latest manuscript change:
+
+- Intake and draft-baseline identify the target's current ordered paths, hashes, exclusions, and labeled facts and unknowns.
+- Diagnostics, characters, prose, and AI cleanup have current full local units for every target path and each subcheck applicable to its language and the requested pass, with a composed coverage index and new target synthesis for every affected operation. Unchanged local units may come from a previous scope only under the reuse rules above.
+- Revision-plan and chapter-revision cover every accepted finding through an executed approved batch, an explicit deferral, or the recorded no-edit skip for the current pass.
+- Every current finding has an author decision. Deferred and dismissed findings remain visible; no open finding, stale required evidence, missing synthesis, or approved but unexecuted edit remains.
+- Current-scope review completes intent, standards, and fresh-reader coverage over the same target scope after the latest edits, including every required unit and applicable synthesis. Its findings have entered the same decision and, when accepted, revision loop.
+
+Partial, skipped, or degraded requested applicable coverage prevents a claim of full convergence unless the author explicitly narrows the requested pass; identify that limited pass and its gaps instead. Inapplicable whole-book or language-specific checks may remain explicitly `skipped` with their reasons; a skipped unit is not reusable full local proof. A completed creation batch, chapter review, or diagnostic pass alone is not revision convergence. Recompute this state from current evidence at each resume rather than storing a standalone convergence flag.
 
 ## Pending operations and session writes
 

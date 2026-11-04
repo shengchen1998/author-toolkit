@@ -1,6 +1,6 @@
 # Author Toolkit
 
-Incremental fiction creation and two fiction revision strategies sharing one
+Incremental fiction creation and three fiction revision strategies sharing one
 project evidence model, plus six independent writing skills for Claude Code and
 Kimi Code.
 
@@ -11,7 +11,7 @@ Kimi Code.
 
 ## What is included
 
-Version 3.1.0 contains 14 skills in three groups.
+Version 3.1.0 contains 15 skills in three groups.
 
 ### User entry points
 
@@ -22,8 +22,9 @@ Version 3.1.0 contains 14 skills in three groups.
 | `write-fiction` | Create or continue a novel through reviewed writing batches, staged drafts, synchronized story state, and milestone reviews. |
 | `revise-fiction` | Revise a whole novel through its Story Bible, macro structure, character arcs, and final whole-book review. |
 | `revise-draft` | Revise the current draft through a draft baseline, local narrative diagnostics, and a review of the selected scope. |
+| `revise-increment` | Revise added or affected chapters after incremental creation while reusing valid unchanged-chapter evidence and completing a full target-scope review. |
 
-`write-fiction`, `revise-fiction`, and `revise-draft` must all run the same
+`write-fiction`, `revise-fiction`, `revise-draft`, and `revise-increment` must all run the same
 `setup-author-toolkit` first. Setup does not accept a workflow name or entry
 stage; registration and intake are identical for every subsequent strategy.
 
@@ -64,7 +65,8 @@ without a complete outline or ending and can also continue an existing draft.
 `revise-fiction` addresses the whole book. `revise-draft` can work on an
 unfinished draft; its diagnostics address the selected narrative scope rather
 than judging the percentage of a future book or penalizing beats that do not yet
-exist.
+exist. `revise-increment` applies the same current-draft standard after scope
+growth, reusing only valid unchanged evidence and reviewing the full target.
 
 Narrative nonfiction remains a direct `narrative-nonfiction` task. Multi-book
 projects and integrations with other hosts are outside the supported 3.1
@@ -126,12 +128,12 @@ installation path.
 
 Use the command forms that match the installation method:
 
-| Installation | Host | Setup | Creation | Whole-book revision | Current-draft revision |
-| --- | --- | --- | --- | --- | --- |
-| Plugin | Claude Code | `/author-toolkit:setup-author-toolkit` | `/author-toolkit:write-fiction` | `/author-toolkit:revise-fiction` | `/author-toolkit:revise-draft` |
-| Plugin | Kimi Code | `/skill:author-toolkit:setup-author-toolkit` | `/skill:author-toolkit:write-fiction` | `/skill:author-toolkit:revise-fiction` | `/skill:author-toolkit:revise-draft` |
-| Bare skills | Claude Code | `/setup-author-toolkit` | `/write-fiction` | `/revise-fiction` | `/revise-draft` |
-| Bare skills | Kimi Code | `/skill:setup-author-toolkit` | `/skill:write-fiction` | `/skill:revise-fiction` | `/skill:revise-draft` |
+| Installation | Host | Setup | Creation | Whole-book revision | Current-draft revision | Incremental revision |
+| --- | --- | --- | --- | --- | --- | --- |
+| Plugin | Claude Code | `/author-toolkit:setup-author-toolkit` | `/author-toolkit:write-fiction` | `/author-toolkit:revise-fiction` | `/author-toolkit:revise-draft` | `/author-toolkit:revise-increment` |
+| Plugin | Kimi Code | `/skill:author-toolkit:setup-author-toolkit` | `/skill:author-toolkit:write-fiction` | `/skill:author-toolkit:revise-fiction` | `/skill:author-toolkit:revise-draft` | `/skill:author-toolkit:revise-increment` |
+| Bare skills | Claude Code | `/setup-author-toolkit` | `/write-fiction` | `/revise-fiction` | `/revise-draft` | `/revise-increment` |
+| Bare skills | Kimi Code | `/skill:setup-author-toolkit` | `/skill:write-fiction` | `/skill:revise-fiction` | `/skill:revise-draft` | `/skill:revise-increment` |
 
 For `ask-author`, use the same command form with that skill name.
 
@@ -145,9 +147,11 @@ A quick run looks like this:
    project-level `AGENTS.md` template when no such file exists, preserving any
    existing agent instructions. Do not pass a workflow name or entry stage.
 3. After setup validates the shared manifest, choose `write-fiction` to create
-   or continue a novel, `revise-fiction` for whole-book revision, or
-   `revise-draft` for the available draft and current-scope review. The selected
-   strategy establishes and confirms the initial scope when one is needed.
+   or continue a novel, `revise-fiction` for whole-book revision, `revise-draft`
+   for the available draft and current-scope review, or `revise-increment` to
+   bring added or affected chapters to current-draft convergence while reusing
+   valid evidence for unchanged chapters. The selected strategy establishes and
+   confirms the initial scope when one is needed.
 4. Review evidence and proposals at the author gates. The agent presents one
    active decision at a time so you can discuss evidence and alternatives before
    deciding. Planning, manuscript writes, batch acceptance, and restores have
@@ -182,7 +186,8 @@ including paths, actions, and input versions. After staging, one acceptance
 decision covers the exact manuscript content, proposed story-state differences,
 and resulting ordered scope; manuscript and scope approvals are recorded
 separately. Acceptance allows `creation-commit` to proceed without another
-author gate.
+author gate. Publication alone does not make the expanded scope
+revision-converged; continue with `revise-increment` when that is the goal.
 
 ### `revise-fiction`: whole-book revision
 
@@ -220,18 +225,43 @@ The mirrored nine stages are:
    perspectives. Mark whole-book checks that do not apply as `skipped` with
    their scope rationale.
 
-Both revision entry points share the character capability. The draft path
-requires only current arcs and continuity; the whole-book gate requires
-additional subchecks for complete arcs and book-level continuity. A draft
-engagement may enter directly at `prose` or `ai-cleanup`. If no manuscript
+All three revision entry points share the character capability. The draft and
+incremental paths require current arcs and continuity; the whole-book gate
+requires additional subchecks for complete arcs and book-level continuity. A
+draft engagement may enter directly at `prose` or `ai-cleanup`. If no manuscript
 revision is requested, `revision-plan` and `chapter-revision` may be skipped
-with the reason recorded.
+with the reason recorded. A direct or limited pass is not by itself a claim of
+full current-draft convergence.
+
+### `revise-increment`: revision after incremental creation
+
+Use this entry when a previous scope is current-draft-converged and creation or
+import adds or affects chapters. For example, five converged chapters plus a new
+sixth chapter require new evidence for chapter 6 and any affected earlier text,
+not an assumption that creation review completed revision.
+
+The incremental pass uses the same nine current-draft operations and shared
+state:
+
+1. Confirm the previous scope, full target scope, change set, and work set.
+2. Update the full-target baseline and run diagnostics, character checks, prose,
+   and AI cleanup on the work set. Reuse unchanged full local units only when
+   their operation, source report, paths and hashes, subchecks, and dependencies
+   match. Missing reusable units add the affected old paths to the work set.
+3. Plan and apply only approved work-set edits with backups, then compose new
+   target-scope coverage and syntheses.
+4. Run current-scope review over the full target with all three perspectives.
+   The fresh reader reads the full target sequentially; limiting edits does not
+   limit review reading.
+5. Process review findings and repeat affected operations and review after
+   accepted edits. Claim convergence only when the shared evidence, finding,
+   approval, coverage, and review conditions are all current.
 
 The skill definitions contain the full gates and audit rules.
 
 ## Shared project files and evidence
 
-All three strategies use the same neutral `.author-toolkit/project.json` and
+All four strategies use the same neutral `.author-toolkit/project.json` and
 artifact paths. New projects and migrated projects use schema 3.1.0; v3.0
 manifests remain readable and can receive the additive 3.1 upgrade.
 
@@ -262,9 +292,9 @@ Story Bible's intent or the manuscript's facts. Rejected staging text does not
 enter story state or manuscript scope.
 
 The manifest records the actual paths, including custom locations. Switching
-among `write-fiction`, `revise-fiction`, and `revise-draft` at a stable operation
-gate reuses these artifacts and requires no second project tree or migration.
-It does not automatically resume a pending write.
+among `write-fiction`, `revise-fiction`, `revise-draft`, and `revise-increment`
+at a stable operation gate reuses these artifacts and requires no second project
+tree or migration. It does not automatically resume a pending write.
 
 ### Evidence reuse and pending operations
 
@@ -363,11 +393,11 @@ creation or revision orchestration.
 
 ## Resume, switch strategies, or request rework
 
-Start `write-fiction`, `revise-fiction`, or `revise-draft` in the registered
-project and describe whether you want to resume, review a report, switch
-strategies, or rework a finding. All three use the same manifest, tracker, Story
-Bible, reports, session notes, backups, handoffs, and applicable creation state
-to recover context. They evaluate the current scope, pending operation, evidence,
+Start `write-fiction`, `revise-fiction`, `revise-draft`, or `revise-increment`
+in the registered project and describe whether you want to resume, review a
+report, switch strategies, or rework a finding. All four use the same manifest,
+tracker, Story Bible, reports, session notes, backups, handoffs, and applicable
+creation state to recover context. They evaluate the current scope, pending operation, evidence,
 and dependencies instead of reconstructing stage status by moving or renaming
 files.
 

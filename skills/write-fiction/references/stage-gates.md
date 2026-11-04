@@ -42,7 +42,7 @@ Construct the context package from relevant Story Bible entries, chapter records
 
 **Work:** Follow the commit procedure in `creation-state.md`. Reread the manifest and scope, compare dependencies, verify old-file hashes and new-file absence, back up every existing target, and write a recovery journal before publication. Publish each file atomically, update story state, record the accepted scope, propagate evidence changes, and validate the result. There is no additional author gate.
 
-**Gate:** Every file and state artifact verifies against its accepted output hash, the new scope is current, and the immutable batch and committed journal agree. An interruption records exact completed and pending actions and stops automatic publication.
+**Gate:** Every file and state artifact verifies against its accepted output hash, the new scope is current, and the immutable batch and committed journal agree. An interruption records exact completed and pending actions and stops automatic publication. This is a creation gate, not current-draft revision convergence; offer `revise-increment` for the added and affected paths when revision is the next goal.
 
 A creation restore requires separate explicit approval naming the batch, commit, and files. Safety-back up current content, restore old text, move newly created files into the safety backup before removing them from the manuscript, and confirm the resulting scope.
 

@@ -10,7 +10,7 @@ Coordinate current-draft revision from the same shared project evidence as `revi
 
 ## Start or resume
 
-1. Locate `.author-toolkit/project.json`. If it is absent or has `schema_version: "2.0.0"`, display the host command for user-invoked `setup-author-toolkit` and stop. Use the same setup command forms as `revise-fiction`. Setup is identical for all three workflow entries.
+1. Locate `.author-toolkit/project.json`. If it is absent or has `schema_version: "2.0.0"`, display the host command for user-invoked `setup-author-toolkit` and stop. Use the same setup command forms as `revise-fiction`. Setup is identical for all four workflow entries.
 2. Resolve callees only when needed and copy their actual registered names. Never invoke a user-invoked entry through the Skill tool.
 3. Invoke `author-project` in separate calls with `read`, `validate`, and `status`. Read the shared tracker, sessions, current plan, current scope, pending action, and relevant evidence. Switching from `revise-fiction` requires no migration and changes no scope or status.
 4. On the first run for a new scope, complete the read-only `intake` inventory and a proposed `draft-baseline`, then stop at the first item in the author decision loop, normally confirmation of the proposed scope. Show the proposed baseline as context without requesting its confirmation in the same turn. On later runs, select the author-requested operation or the earliest missing, partial, or stale evidence in the sequence below. Read only the relevant section in [`references/stage-gates.md`](references/stage-gates.md).
@@ -44,7 +44,7 @@ For each diagnostic callee, supply the workflow stage, destination report path, 
 
 ## Direct entry and skips
 
-The author may request diagnosis-only work, direct `prose` or `ai-cleanup`, or a limited review. These entries require a valid intake, confirmed scope, and language metadata; chapter revision still requires an approved plan and batch. Record skipped operations in the session and tracker rather than manufacturing evidence. When no accepted finding requires edits, `revision-plan` and `chapter-revision` may be skipped for the current scope.
+The author may request diagnosis-only work, direct `prose` or `ai-cleanup`, or a limited review. These entries require a valid intake, confirmed scope, and language metadata; chapter revision still requires an approved plan and batch. Record skipped operations in the session and tracker rather than manufacturing evidence. When no accepted finding requires edits, `revision-plan` and `chapter-revision` may be skipped for the current scope. A direct or limited pass does not by itself establish full current-draft revision convergence.
 
 Before prose over text with approved but unexecuted changes, explain the rework risk. If the author continues, record a `prose-risk` approval for that exact scope. Unknown future structure and issues outside the selected scope do not block prose.
 
@@ -56,14 +56,16 @@ Baseline writes distinguish text-established facts, interpretations, and unknown
 
 ## Strategy switching and evidence reuse
 
-`write-fiction` and `revise-fiction` use this same manifest and state. At any stable operation gate, show the exact command for the author's selected strategy and wait; do not switch automatically or require the other strategy's sequence to finish. Preserve scope, evidence, approvals, staged drafts, and backups. Reconcile an interrupted write or commit before dependent work.
+`write-fiction`, `revise-fiction`, and `revise-increment` use this same manifest and state. At any stable operation gate, show the exact command for the author's selected strategy and wait; do not switch automatically or require the other strategy's sequence to finish. Preserve scope, evidence, approvals, staged drafts, and backups. Reconcile an interrupted write or commit before dependent work. After shared creation adds or affects chapters, offer `revise-increment` when the author wants to preserve valid unchanged-chapter evidence and bring the expanded scope to current-draft convergence.
 
-Reuse full local coverage units only when source-report identity, operation, paths and hashes, subchecks, and dependencies match. Keep the unit's original scope for provenance and use the requested scope for the composed index and synthesis. Reevaluate every applicable whole-book synthesis after changed text, membership, reading order, or dependencies, even when some local units remain reusable. Creation evidence does not satisfy `chapter-revision`.
+Reuse full local coverage units only when source-report identity, operation, paths and hashes, subchecks, and dependencies match. Keep the unit's original scope for provenance and use the requested scope for the composed index and synthesis. Reevaluate every applicable whole-book synthesis after changed text, membership, reading order, or dependencies, even when some local units remain reusable. Creation evidence does not satisfy `chapter-revision`. Review jobs and fresh-reader continuity retain their same-scope and actual-reading requirements.
 
-## Reports and shared state
+## Convergence and reports
+
+Use the shared [Current-draft revision convergence](../revise-fiction/references/state-and-findings.md#current-draft-revision-convergence) definition before claiming that a full pass has converged. Persist full local units for independently covered paths so later `revise-increment` work can reuse them. After current-scope review, process every finding; accepted edits return to the affected planning and revision operations and require new downstream coverage and review. A completed review with open findings is not converged.
 
 Before writing any report or changing finding or approval status, read [`../revise-fiction/references/state-and-findings.md`](../revise-fiction/references/state-and-findings.md). Reports use the shared `reports/` directories and report v2; there is no separate `revise-draft` state tree. Record `scope_id`, `operation_coverage`, and applicable `subchecks` in `engine.notes`.
 
 Do not repeatedly recommend outlining, choosing an ending, or switching to `revise-fiction`. Mention that path only when the author asks for full-book structure or final review. Do not auto-write future scenes or invoke `story-structure` Map as a substitute for current-draft revision.
 
-Finish each invocation with the current operation and scope, actual coverage, stale evidence, artifact paths, approvals or backups, unknowns, and the exact next action. Use `author-handoff` for session transfer after shared state is current.
+Finish each invocation with the current operation and scope, actual coverage, stale evidence, artifact paths, approvals or backups, unknowns, convergence status and blockers, and the exact next action. Use `author-handoff` for session transfer after shared state is current.

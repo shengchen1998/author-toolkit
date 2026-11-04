@@ -7,7 +7,7 @@ description: Use when running independent final or current-scope manuscript revi
 
 Organize three independent reviews and produce findings only. Accept `all`, one perspective (`intent`, `standards`, or `fresh`), or `collect`, plus a project root, review job, or review handoff. Accept `review_mode=final|current-scope`; the default is `final`.
 
-This skill does not revise prose, update Story Bible creative content, or apply fixes. When called by `write-fiction`, `revise-fiction`, or `revise-draft`, the caller owns manifest and tracker writes. Standalone use leaves shared project state unchanged unless the author explicitly incorporates the resulting reports later.
+This skill does not revise prose, update Story Bible creative content, or apply fixes. When called by `write-fiction`, `revise-fiction`, `revise-draft`, or `revise-increment`, the caller owns manifest and tracker writes. Standalone use leaves shared project state unchanged unless the author explicitly incorporates the resulting reports later.
 
 ## Prepare
 

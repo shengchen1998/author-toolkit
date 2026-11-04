@@ -13,13 +13,14 @@ the quality of generated fiction.
 
 | Check | Status | Evidence |
 | --- | --- | --- |
-| Protocol tests | **Pass** | `npm test`: 104 tests passed, 0 failed. Coverage includes v2 compatibility, v3.0/v3.1 manifests and upgrades, creation batches and interrupted commits, story state, coverage reuse, layered review jobs, fresh-reader ordering, artifact CLI exit statuses, and all 14 skill contracts. |
+| Protocol tests | **Pass** | `npm test`: 106 tests passed, 0 failed. Coverage includes v2 compatibility, v3.0/v3.1 manifests and upgrades, creation batches and interrupted commits, story state, coverage reuse, layered review jobs, fresh-reader ordering, artifact CLI exit statuses, incremental-revision convergence contracts, and all 15 skill contracts. |
 | Default validation | **Pass** | `npm run validate`: 19 checks passed, 0 failures, including every shipped schema, both legacy v2 examples, their reports and on-disk state, and workflow fixtures. |
 | Real migration CLI | **Pass** | Copied projects exercised direct v2-to-v3.1 migration and additive v3.0-to-v3.1 upgrade through the real CLI, including preserved snapshots, unchanged manuscript/tracker/evidence content, and idempotent v3.1 reruns with `snapshot: null`. |
 | Million-character structural scale check | **Pass** | `tests/scale.test.mjs` inventoried 250 synthetic Chinese chapters containing one million repeated Han characters plus headings, verified creation-state exclusion, and detected a newly added manuscript file. This is not generated-text quality evidence. |
 | Kimi Code actual run | **Pass (limited scope)** | Kimi Code 2.4.1 with `--skills-dir` completed setup, creation baseline and planning, staged drafting, an atomically published first chapter and commit finalization, `revise-draft` intake, and a return `writing-plan` for batch-002. Final host checks passed for the committed artifacts, intake, and return plan. Several 600-second processes timed out after writing valid artifacts and required subsequent invocations; completed invocations also emitted a post-run `runtime.not_found` checkpoint warning. No full nine-stage revision, `revise-fiction` run, or layered model review is claimed. |
+| `revise-increment` actual run | **Pass (routing only)** | Kimi Code 2.4.0 with `--skills-dir` received `/skill:revise-increment` in an empty disposable project, read the new `SKILL.md`, stopped at the missing manifest, and displayed the exact setup command. This does not verify registered skill discovery, creative quality, or a complete five-chapter-plus-one convergence pass. Static contracts separately cover delta selection, unchanged-unit reuse, full-target review, and revision after review findings. |
 | Claude Code actual run | **Not exercised** | The 3.1 working tree has not been exercised through Claude Code host runs. |
-| Generic installation and 14-skill discovery | **Not exercised** | No 3.1 installation or discovery result is claimed. |
+| Generic installation and 15-skill discovery | **Not exercised** | No 3.1 installation or discovery result is claimed. |
 | Million-character creative quality | **Not exercised** | No real million-character creation, chunked final review, or human quality evaluation is claimed. |
 
 Historical 3.0 and 2.0 evidence does not verify `write-fiction`, v3.1 creation

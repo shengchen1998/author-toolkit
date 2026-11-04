@@ -41,11 +41,11 @@ Unrelated open findings remain visible without blocking creation. A finding that
 | `creation-import` | Reconcile author-added, modified, deleted, or reordered manuscript files |
 | `milestone-review` | Summarize the selected volume or story phase and run requested local checks |
 
-AI, author-written, and mixed batches use the same acceptance and state-synchronization rules. New chapters and necessary small continuity patches may share one approved batch. Send structural rewrites and requested full prose or AI cleanup to the appropriate revision entry.
+AI, author-written, and mixed batches use the same acceptance and state-synchronization rules. New chapters and necessary small continuity patches may share one approved batch. Send structural rewrites and requested full prose or AI cleanup to the appropriate revision entry. After `creation-commit`, state that the batch is published but the expanded scope is not thereby revision-converged. Offer `revise-increment` to revise added or affected paths while reusing valid unchanged-chapter evidence and completing a new full-scope review.
 
 ## Strategy switching
 
-`write-fiction`, `revise-draft`, and `revise-fiction` share the same manifest and artifacts. At any stable operation gate, show the exact command for the author's selected next strategy. Do not switch automatically or require the other strategy's full sequence to finish.
+`write-fiction`, `revise-draft`, `revise-fiction`, and `revise-increment` share the same manifest and artifacts. At any stable operation gate, show the exact command for the author's selected next strategy. Do not switch automatically or require the other strategy's full sequence to finish.
 
 A staged draft may remain while the author uses a revision entry. On return, compare its dependency fingerprint with current inputs. Re-review or replan affected drafts; unrelated scope growth alone does not invalidate the staged text. Never publish after an interrupted write or restore until reconciliation is complete.
 
@@ -59,4 +59,4 @@ Validate newly written artifacts with the installed `scripts/validate.mjs` optio
 
 ## Finish
 
-Finish each invocation with the operation, batch and scope IDs, staged or published paths, approvals and backups used, dependency or evidence changes, unresolved questions, and the exact next action. Show the `write-fiction`, `revise-draft`, or `revise-fiction` command that matches the author's next goal. Use `author-handoff` for session transfer after shared state is current.
+Finish each invocation with the operation, batch and scope IDs, staged or published paths, approvals and backups used, dependency or evidence changes, unresolved questions, revision-convergence status, and the exact next action. Show the `write-fiction`, `revise-increment`, `revise-draft`, or `revise-fiction` command that matches the author's next goal. Use `author-handoff` for session transfer after shared state is current.

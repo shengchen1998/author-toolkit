@@ -9,6 +9,7 @@ const expectedSkills = [
   "setup-author-toolkit",
   "revise-fiction",
   "revise-draft",
+  "revise-increment",
   "write-fiction",
   "author-project",
   "author-handoff",
@@ -25,6 +26,7 @@ const userEntries = new Set([
   "setup-author-toolkit",
   "revise-fiction",
   "revise-draft",
+  "revise-increment",
   "write-fiction",
 ]);
 
@@ -45,7 +47,7 @@ for (const skill of expectedSkills) {
   });
 }
 
-test("the inventory contains exactly 14 skills and five user entries", async () => {
+test("the inventory contains exactly 15 skills and six user entries", async () => {
   const entries = await readdir(path.join(root, "skills"), { withFileTypes: true });
   const actual = entries
     .filter((entry) => entry.isDirectory())
@@ -53,8 +55,8 @@ test("the inventory contains exactly 14 skills and five user entries", async () 
     .sort();
 
   assert.deepEqual(actual, [...expectedSkills].sort());
-  assert.equal(expectedSkills.length, 14);
-  assert.equal(userEntries.size, 5);
+  assert.equal(expectedSkills.length, 15);
+  assert.equal(userEntries.size, 6);
 });
 
 test("the upstream AI-writing skill has no local integration section", async () => {
@@ -93,6 +95,7 @@ test("revision strategies share one project and keep distinct evidence gates", a
   const setup = await readFile(path.join(root, "skills/setup-author-toolkit/SKILL.md"), "utf8");
   const fiction = await readFile(path.join(root, "skills/revise-fiction/SKILL.md"), "utf8");
   const draft = await readFile(path.join(root, "skills/revise-draft/SKILL.md"), "utf8");
+  const increment = await readFile(path.join(root, "skills/revise-increment/SKILL.md"), "utf8");
   const draftGates = await readFile(
     path.join(root, "skills/revise-draft/references/stage-gates.md"),
     "utf8",
@@ -107,7 +110,7 @@ test("revision strategies share one project and keep distinct evidence gates", a
   );
   const reporting = await readFile(path.join(root, "references/workflow-reporting.md"), "utf8");
 
-  for (const text of [setup, fiction, draft]) {
+  for (const text of [setup, fiction, draft, increment]) {
     assert.match(text, /\.author-toolkit\/project\.json/);
     assert.doesNotMatch(text, /\.author-toolkit\/revise-draft\//);
   }
@@ -115,16 +118,18 @@ test("revision strategies share one project and keep distinct evidence gates", a
     fiction,
     /intake`, `story-bible`, `structure`, `characters`, `revision-plan`, `chapter-revision`, `prose`, `ai-cleanup`, and `final-review/,
   );
-  assert.match(
-    draft,
-    /intake`, `draft-baseline`, `diagnostics`, `characters`, `revision-plan`, `chapter-revision`, `prose`, `ai-cleanup`, and `current-scope-review/,
-  );
+  for (const text of [draft, increment]) {
+    assert.match(
+      text,
+      /intake`, `draft-baseline`, `diagnostics`, `characters`, `revision-plan`, `chapter-revision`, `prose`, `ai-cleanup`, and `current-scope-review/,
+    );
+  }
   assert.match(draft, /unknown future story is not a finding/i);
   assert.match(draftGates, /Unknown future turns and ending are valid entries/);
   assert.match(draftGates, /Reports list actual subchecks/);
   assert.match(fiction, /current-scope review does not satisfy final review/);
 
-  for (const text of [fiction, draft, fictionGates, draftGates, reporting]) {
+  for (const text of [fiction, draft, increment, fictionGates, draftGates, reporting]) {
     assert.match(text, /\[Author decision loop\]\(/);
   }
   assert.match(state, /## Author decision loop/);
@@ -136,13 +141,14 @@ test("revision strategies share one project and keep distinct evidence gates", a
   assert.match(draft, /normally confirmation of the proposed scope/);
 });
 
-test("creation and both revision strategies share state and stable switching gates", async () => {
-  const [setup, instructions, ask, fiction, draft, write, state] = await Promise.all([
+test("creation and revision strategies share state and stable switching gates", async () => {
+  const [setup, instructions, ask, fiction, draft, increment, write, state] = await Promise.all([
     readFile(path.join(root, "skills/setup-author-toolkit/SKILL.md"), "utf8"),
     readFile(path.join(root, "skills/setup-author-toolkit/assets/AGENTS.md"), "utf8"),
     readFile(path.join(root, "skills/ask-author/SKILL.md"), "utf8"),
     readFile(path.join(root, "skills/revise-fiction/SKILL.md"), "utf8"),
     readFile(path.join(root, "skills/revise-draft/SKILL.md"), "utf8"),
+    readFile(path.join(root, "skills/revise-increment/SKILL.md"), "utf8"),
     readFile(path.join(root, "skills/write-fiction/SKILL.md"), "utf8"),
     readFile(
       path.join(root, "skills/revise-fiction/references/state-and-findings.md"),
@@ -150,17 +156,45 @@ test("creation and both revision strategies share state and stable switching gat
     ),
   ]);
 
-  for (const text of [fiction, draft, write]) {
+  for (const text of [fiction, draft, increment, write]) {
     assert.match(text, /\.author-toolkit\/project\.json/);
     assert.match(text, /stable operation gate/i);
   }
   for (const text of [setup, instructions, ask]) {
     assert.match(text, /write-fiction/);
+    assert.match(text, /revise-increment/);
   }
   assert.match(ask, /standalone `fiction-workshop`/);
   assert.match(instructions, /staging/);
   assert.match(instructions, /stable operation gate/i);
   assert.match(state, /Creation evidence does not satisfy `chapter-revision`/);
+});
+
+test("incremental revision reuses unchanged evidence and converges the full target", async () => {
+  const [increment, write, state, ask] = await Promise.all([
+    readFile(path.join(root, "skills/revise-increment/SKILL.md"), "utf8"),
+    readFile(path.join(root, "skills/write-fiction/SKILL.md"), "utf8"),
+    readFile(
+      path.join(root, "skills/revise-fiction/references/state-and-findings.md"),
+      "utf8",
+    ),
+    readFile(path.join(root, "skills/ask-author/SKILL.md"), "utf8"),
+  ]);
+
+  assert.match(increment, /previous converged scope, the requested target scope, and the change set/);
+  assert.match(increment, /show the `revise-draft` command and stop rather than skipping unfinished base work/);
+  assert.match(increment, /`create` action alone cannot prove that other chapters are unaffected/);
+  assert.match(increment, /Missing reusable units add the affected old paths to the work set/);
+  assert.match(increment, /fresh reader must read the full target sequentially/);
+  assert.match(increment, /accepted edit returns to `revision-plan` and `chapter-revision`/i);
+  assert.match(increment, /another target review/);
+  assert.match(increment, /adds no report stage, pending-operation name, manifest field, or separate state tree/);
+  assert.match(write, /published but the expanded scope is not thereby revision-converged/);
+  assert.match(write, /Offer `revise-increment`/);
+  assert.match(ask, /Revise added or affected chapters after a converged scope grows/);
+  assert.match(state, /## Current-draft revision convergence/);
+  assert.match(state, /no open finding, stale required evidence, missing synthesis, or approved but unexecuted edit remains/);
+  assert.match(state, /Recompute this state from current evidence at each resume/);
 });
 
 test("project operations register creation state and resumable publication", async () => {
