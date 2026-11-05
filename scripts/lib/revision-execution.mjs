@@ -850,7 +850,7 @@ export async function verifyRevisionExecution(projectRoot, request, options = {}
       },
       recovery_position: {
         operation: "current-scope-review",
-        reason: "Verified request outputs require current affected coverage and another full-target current-scope review.",
+        reason: "Verified revision outputs require current affected coverage and another full-target current-scope review.",
         required_strategy: cycle.current_strategy,
       },
       updated_at: verifiedAt,

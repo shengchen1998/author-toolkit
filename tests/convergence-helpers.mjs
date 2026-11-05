@@ -289,7 +289,13 @@ export async function createNoEditEvidence(projectRoot, options = {}) {
     reason: "Author confirmed that no accepted finding requires a manuscript edit.",
   });
 
-  async function writeReport(reportId, stage, reportPath, subchecks = ["full-review"]) {
+  async function writeReport(
+    reportId,
+    stage,
+    reportPath,
+    subchecks = ["full-review"],
+    reportFiles = versionedPaths,
+  ) {
     const envelope = {
       schema_version: "2.0.0",
       report_id: reportId,
@@ -298,7 +304,7 @@ export async function createNoEditEvidence(projectRoot, options = {}) {
       created_at: timestamp,
       language: manifest.language,
       skill: { name: "revise-draft", version: "3.2.0" },
-      inputs: versionedPaths.map((file) => ({
+      inputs: reportFiles.map((file) => ({
         path: file.path,
         version: file.sha256,
         version_type: "sha256",
@@ -339,34 +345,56 @@ export async function createNoEditEvidence(projectRoot, options = {}) {
   const coverageArtifacts = [];
   for (const operation of coverageOperations) {
     const requirement = requiredOperations.find((entry) => entry.operation === operation);
-    const localReport = await writeReport(
-      `${passId}-${operation}-local`,
-      operation,
-      `reports/${operation}/${passId}-local.md`,
-      requirement.subchecks,
+    const reused = (options.reusedCoverageUnits ?? []).filter(
+      ({ unit }) => unit.operation === operation,
     );
-    const unit = {
-      schema_version: "1.0.0",
-      unit_id: `${passId}-${operation}-local`,
-      source_report: localReport.path,
-      source_report_sha256: localReport.sha256,
-      scope_id: scopeReference.scope_id,
-      operation,
-      kind: "local",
-      paths: versionedPaths,
-      subchecks: requirement.subchecks,
-      dependencies: [dependency],
-      coverage: "full",
-      created_at: timestamp,
-    };
-    const unitRelative = `reports/coverage/${unit.unit_id}.json`;
-    await writeJson(path.join(projectRoot, unitRelative), unit);
-    const unitReference = {
-      unit_id: unit.unit_id,
-      ...(await artifactAt(projectRoot, unitRelative)),
-    };
-    coverageUnits.push({ unit, reference: unitReference, sourceReport: localReport });
-    coverageArtifacts.push(localReport, unitReference);
+    const reusedPaths = new Set(reused.flatMap(({ unit }) => unit.paths.map((file) => file.path)));
+    const localPaths = versionedPaths.filter((file) => !reusedPaths.has(file.path));
+    const unitReferences = reused.map(({ reference }) => ({
+      unit_id: reference.unit_id,
+      path: reference.path,
+      sha256: reference.sha256,
+    }));
+    coverageUnits.push(...reused);
+    for (const entry of reused) {
+      coverageArtifacts.push(entry.sourceReport, entry.reference);
+    }
+    if (localPaths.length > 0) {
+      const localReport = await writeReport(
+        `${passId}-${operation}-local`,
+        operation,
+        `reports/${operation}/${passId}-local.md`,
+        requirement.subchecks,
+        localPaths,
+      );
+      const unit = {
+        schema_version: "1.0.0",
+        unit_id: `${passId}-${operation}-local`,
+        source_report: localReport.path,
+        source_report_sha256: localReport.sha256,
+        scope_id: scopeReference.scope_id,
+        operation,
+        kind: "local",
+        paths: localPaths,
+        subchecks: requirement.subchecks,
+        dependencies: [dependency],
+        coverage: "full",
+        created_at: timestamp,
+      };
+      const unitRelative = `reports/coverage/${unit.unit_id}.json`;
+      await writeJson(path.join(projectRoot, unitRelative), unit);
+      const unitReference = {
+        unit_id: unit.unit_id,
+        ...(await artifactAt(projectRoot, unitRelative)),
+      };
+      coverageUnits.push({ unit, reference: unitReference, sourceReport: localReport });
+      coverageArtifacts.push(localReport, unitReference);
+      unitReferences.push({
+        unit_id: unit.unit_id,
+        path: unitReference.path,
+        sha256: unitReference.sha256,
+      });
+    }
 
     const synthesisReport = await writeReport(
       `${passId}-${operation}-synthesis`,
@@ -377,7 +405,7 @@ export async function createNoEditEvidence(projectRoot, options = {}) {
     coverageArtifacts.push(synthesisReport);
     coverageEntries.push({
       operation,
-      units: [{ unit_id: unit.unit_id, path: unitReference.path, sha256: unitReference.sha256 }],
+      units: unitReferences,
       synthesis_report: synthesisReport.path,
       synthesis_report_sha256: synthesisReport.sha256,
       synthesis_coverage: "full",
