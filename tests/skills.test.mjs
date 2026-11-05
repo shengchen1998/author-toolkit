@@ -211,7 +211,7 @@ test("incremental revision restores current-draft revision convergence for the t
     write,
     /creation acceptance and publication do not establish current-draft revision convergence for the publication scope/,
   );
-  assert.match(write, /Offer `revise-increment`/);
+  assert.match(write, /For ordinary creation, offer `revise-increment`/);
   assert.match(
     ask,
     /Revise added or affected chapters after the previous scope has reached current-draft revision convergence and the manuscript grows/,
@@ -240,8 +240,8 @@ test("request-driven revision restores current-draft revision convergence for th
     ]);
 
   assert.match(request, /confirmed base scope is a full-manuscript scope that has reached/);
-  assert.match(request, /Show `revise-increment` when creation or import grew the scope/);
-  assert.match(request, /otherwise show `revise-draft`/);
+  assert.match(request, /Show `revise-increment` only when ordinary creation or import grew the scope from a satisfied previous scope/);
+  assert.match(request, /show `revise-draft` after first-time bootstrap publication or for other recovery gaps/);
   assert.match(request, /entry's own approved edits are expected to stale that base scope/);
   assert.match(request, /request set[\s\S]*work set/);
   assert.match(request, /Requested macro structure[\s\S]*`story-structure` Audit/);

@@ -8,6 +8,7 @@ import { recordScope } from "../scripts/lib/index.mjs";
 import {
   artifactAt,
   createConvergenceProject,
+  createFirstPublicationArtifacts,
   createNoEditEvidence,
   currentScopeReference,
   runAuthorProject,
@@ -68,6 +69,7 @@ async function preparedProject(t) {
     now: new Date(timestamp),
   });
   const scope = await currentScopeReference(projectRoot);
+  const firstPublication = await createFirstPublicationArtifacts(projectRoot);
   const evidence = await createNoEditEvidence(projectRoot);
   const transitioned = await runInput(projectRoot, "transition-cycle", {
     cycle_id: "cycle-bootstrap-001",
@@ -79,6 +81,7 @@ async function preparedProject(t) {
     },
     target_scope: scope,
     requested_pass: evidence.passReference,
+    related_artifacts: firstPublication.relatedArtifacts,
   });
   assert.equal(transitioned.status, 0, transitioned.stderr);
 
@@ -771,6 +774,9 @@ test("a narrow no-change request keeps full-target coverage and reuses eligible 
     now: new Date(timestamp),
   });
   const baseScope = await currentScopeReference(projectRoot);
+  const firstPublication = await createFirstPublicationArtifacts(projectRoot, {
+    scopeApprovalId: "SCOPE-201",
+  });
   const base = await createNoEditEvidence(projectRoot, { passId: "pass-base-201" });
   const baseLinked = await runInput(projectRoot, "transition-cycle", {
     cycle_id: "cycle-bootstrap-001",
@@ -783,6 +789,7 @@ test("a narrow no-change request keeps full-target coverage and reuses eligible 
     target_scope: baseScope,
     requested_pass: base.passReference,
     related_artifacts: {
+      ...firstPublication.relatedArtifacts,
       review_groups: [base.reviewGroupReference],
       reviews: base.reviewJobs.map(({ reference }) => reference),
       no_edit_skips: [base.noEditReference],

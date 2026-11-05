@@ -676,3 +676,137 @@ export async function createNoEditEvidence(projectRoot, options = {}) {
     },
   };
 }
+
+
+export async function createFirstPublicationArtifacts(projectRoot, options = {}) {
+  const batchId = options.batchId ?? "batch-first-001";
+  const commitId = options.commitId ?? "commit-first-001";
+  const manuscriptApprovalId = options.manuscriptApprovalId ?? "MANUSCRIPT-001";
+  const scopeApprovalId = options.scopeApprovalId ?? "SCOPE-001";
+  const manifest = JSON.parse(
+    await readFile(path.join(projectRoot, ".author-toolkit", "project.json"), "utf8"),
+  );
+  if (!manifest.current_scope || manifest.current_scope.files.length === 0) {
+    throw new Error("First publication artifacts require a confirmed nonempty current scope");
+  }
+  const targetScope = await currentScopeReference(projectRoot);
+  const files = manifest.current_scope.files.map((file) => ({
+    path: file.path,
+    action: "create",
+    input_sha256: null,
+    output_sha256: file.sha256,
+  }));
+  for (const file of files) {
+    const stagingRelative = `.author-toolkit/creation/staging/${batchId}/${path.basename(file.path)}`;
+    await mkdir(path.dirname(path.join(projectRoot, stagingRelative)), { recursive: true });
+    await writeFile(
+      path.join(projectRoot, stagingRelative),
+      await readFile(path.join(projectRoot, file.path), "utf8"),
+      "utf8",
+    );
+  }
+
+  const storyBible = await artifactAt(projectRoot, "story-bible.md");
+  const context = [{
+    path: storyBible.path,
+    version: storyBible.sha256,
+    version_type: "sha256",
+  }];
+  const planSummary = `Publish the first accepted manuscript batch ${batchId}.`;
+  const dependencyFingerprint = createHash("sha256").update(JSON.stringify({
+    plan: planSummary,
+    context,
+    files: files.map(({ path: filePath, action, input_sha256 }) => ({
+      path: filePath,
+      action,
+      input_sha256,
+    })).sort((left, right) => left.path.localeCompare(right.path)),
+  })).digest("hex");
+  for (const approval of [{
+    id: manuscriptApprovalId,
+    type: "creation-manuscript",
+    paths: files.map((file) => file.path),
+    reason: "Author accepted the exact first manuscript batch.",
+  }, {
+    id: scopeApprovalId,
+    type: "creation-scope",
+    paths: files.map((file) => file.path),
+    reason: "Author accepted the complete first publication scope.",
+  }]) {
+    await appendTrackerApproval(projectRoot, {
+      ...approval,
+      operation: "chapter-review",
+      scopeId: targetScope.scope_id,
+      reason: `${approval.reason} batch_id=${batchId} dependency_fingerprint=${dependencyFingerprint} scope_fingerprint=${targetScope.scope_fingerprint}`,
+    });
+  }
+
+  const currentStateRelative = ".author-toolkit/creation/state/current.md";
+  await mkdir(path.dirname(path.join(projectRoot, currentStateRelative)), { recursive: true });
+  const currentState = {
+    schema_version: "1.0.0",
+    state_id: "current",
+    level: "current",
+    scope_id: targetScope.scope_id,
+    updated_at: timestamp,
+    sources: files.map((file) => ({ path: file.path, sha256: file.output_sha256 })),
+    summary: "The first accepted manuscript establishes the current story state.",
+    records: [],
+    children: [],
+  };
+  await writeFile(
+    path.join(projectRoot, currentStateRelative),
+    `# Current story state\n\n${currentState.summary}\n\n\`\`\`json\n${JSON.stringify(currentState, null, 2)}\n\`\`\`\n`,
+    "utf8",
+  );
+  const currentStateReference = await artifactAt(projectRoot, currentStateRelative);
+
+  const commitRelative = `.author-toolkit/creation/batches/${commitId}.json`;
+  await writeJson(path.join(projectRoot, commitRelative), {
+    schema_version: "1.0.0",
+    batch_id: batchId,
+    commit_id: commitId,
+    status: "committed",
+    scope_before_id: null,
+    scope_after_id: targetScope.scope_id,
+    files: files.map((file) => ({ ...file, backup_id: null, status: "verified" })),
+    created_at: timestamp,
+    updated_at: timestamp,
+  });
+  const batchRelative = `.author-toolkit/creation/batches/${batchId}.json`;
+  await writeJson(path.join(projectRoot, batchRelative), {
+    schema_version: "1.0.0",
+    batch_id: batchId,
+    operation: "chapter-creation",
+    source_mode: "author",
+    status: "committed",
+    scope_id: targetScope.scope_id,
+    plan: {
+      summary: planSummary,
+      context,
+      dependency_fingerprint: dependencyFingerprint,
+    },
+    files: files.map((file) => ({ ...file, status: "verified" })),
+    story_state: [currentStateReference],
+    approvals: [manuscriptApprovalId, scopeApprovalId],
+    commit: commitRelative,
+    next_action: "Run revise-draft for the initial full-manuscript convergence evaluation.",
+    created_at: timestamp,
+    updated_at: timestamp,
+  });
+  const batchReference = { batch_id: batchId, ...(await artifactAt(projectRoot, batchRelative)) };
+  const commitReference = {
+    commit_id: commitId,
+    batch_id: batchId,
+    ...(await artifactAt(projectRoot, commitRelative)),
+  };
+  return {
+    targetScope,
+    batchReference,
+    commitReference,
+    relatedArtifacts: {
+      creation_batches: [batchReference],
+      creation_commits: [commitReference],
+    },
+  };
+}

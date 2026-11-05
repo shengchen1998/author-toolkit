@@ -8,6 +8,7 @@ import { computeScopeFingerprint, recordScope } from "../scripts/lib/index.mjs";
 import {
   artifactAt,
   createConvergenceProject,
+  createFirstPublicationArtifacts,
   createNoEditEvidence,
   currentScopeReference,
   runAuthorProject,
@@ -105,6 +106,7 @@ async function establishSatisfiedBase(t, { twoChapters = false } = {}) {
     await writeFile(path.join(projectRoot, "manuscript", "chapter-002.md"), secondOriginal, "utf8");
   }
   const startingScope = await confirmScope(projectRoot, "scope-base-001", baseFiles, "SCOPE-001");
+  const firstPublication = await createFirstPublicationArtifacts(projectRoot);
   const evidence = await createNoEditEvidence(projectRoot);
   const transitioned = await runInput(projectRoot, "transition-cycle", {
     cycle_id: "cycle-bootstrap-001",
@@ -117,6 +119,7 @@ async function establishSatisfiedBase(t, { twoChapters = false } = {}) {
     target_scope: startingScope,
     requested_pass: evidence.passReference,
     related_artifacts: {
+      ...firstPublication.relatedArtifacts,
       review_groups: [evidence.reviewGroupReference],
       reviews: evidence.reviewJobs.map(({ reference }) => reference),
       no_edit_skips: [evidence.noEditReference],
