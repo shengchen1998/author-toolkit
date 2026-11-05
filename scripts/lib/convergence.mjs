@@ -5,6 +5,11 @@ import { canReuseCoverageUnit, validateCoverageIndex } from "./artifacts.mjs";
 import { validateManifest } from "./manifest.mjs";
 import { validateEvidenceReport } from "./markdown.mjs";
 import {
+  getRequestCompletion,
+  validateRevisionExecution,
+  validateRevisionExecutionAgainstDisk,
+} from "./revision-execution.mjs";
+import {
   validateReaderStateForJob,
   validateReaderStateMarkdown,
   validateReviewJob,
@@ -939,23 +944,80 @@ async function computeEvaluation(project, cycle, roots, evaluationId, createdAt)
   for (const finding of tracker.findings) {
     if (finding.status === "stale" || finding.status === "open") continue;
     currentFindingIds.add(finding.id);
-    if (!reports.has(finding.report)) {
+  }
+
+  const executions = [];
+  for (const reference of cycle.related_artifacts?.revision_executions ?? []) {
+    const execution = await computation.json(
+      reference,
+      "revision-execution",
+      reference.execution_id,
+      validateRevisionExecution,
+    );
+    if (!execution) continue;
+    const currentExecution = samePassReference(execution.requested_pass, roots.requested_pass) &&
+      sameScopeReference(execution.target_scope, roots.target_scope);
+    executions.push({ execution, currentExecution });
+    if (execution.execution_id !== reference.execution_id || execution.cycle_id !== cycle.cycle_id) {
+      block("revision-execution-identity-mismatch", `Revision execution ${reference.execution_id} is not bound to this cycle.`);
+    }
+    const disk = await validateRevisionExecutionAgainstDisk(project.root, execution, {
+      expectedPass: currentExecution ? roots.requested_pass : execution.requested_pass,
+      expectedScope: currentExecution ? roots.target_scope : execution.target_scope,
+      requireOutputs: currentExecution && execution.status === "verified",
+      requireCurrentTarget: currentExecution && execution.status === "verified",
+      requireCurrentDecisions: currentExecution,
+    });
+    for (const error of disk.errors) {
+      block(error.code, error.message, "indeterminate", {
+        path: error.path,
+        artifact_id: error.artifact_id ?? execution.execution_id,
+      });
+    }
+    if (execution.status !== "verified") {
       block(
-        "finding-report-not-in-evidence",
-        `Finding ${finding.id} names ${finding.report}, which is not in the evaluation evidence graph.`,
-        "indeterminate",
-        { path: finding.report, artifact_id: finding.id },
+        "approved-edit-unexecuted",
+        `Approved revision execution ${execution.execution_id} is ${execution.status}; approval is not verified execution.`,
+        "not_satisfied",
+        { artifact_id: execution.execution_id },
       );
     }
-    if (finding.status === "resolved") {
-      block(
-        "verified-execution-required",
-        `Resolved finding ${finding.id} requires verified revision execution evidence rather than a no-edit skip.`,
-        "not_satisfied",
-        { artifact_id: finding.id },
+    await computation.bytes(execution.plan, "revision-plan", execution.plan.plan_id);
+    await computation.bytes(execution.batch, "revision-batch", execution.batch.batch_id);
+    const inputScope = await computation.json(
+      {
+        path: execution.input_scope.snapshot_path,
+        sha256: execution.input_scope.snapshot_sha256,
+      },
+      "execution-input-scope",
+      execution.input_scope.scope_id,
+      validateScopeSnapshot,
+    );
+    if (inputScope?.inventory) {
+      await computation.json(
+        inputScope.inventory,
+        "execution-input-inventory",
+        inputScope.inventory.inventory_fingerprint,
+        validateInventorySnapshot,
       );
+      for (const file of inputScope.files) {
+        record("execution-input-manuscript", `${execution.execution_id}:${file.path}`, file);
+      }
+    }
+    for (const backup of execution.backups) {
+      await computation.bytes(backup.manifest, "revision-backup-manifest", backup.backup_id);
+      for (const file of backup.files) {
+        await computation.bytes(
+          { path: file.backup_path, sha256: file.sha256 },
+          "revision-backup",
+          backup.backup_id,
+        );
+      }
     }
   }
+  const verifiedExecutions = executions
+    .filter(({ execution, currentExecution }) => execution.status === "verified" && currentExecution)
+    .map(({ execution }) => execution);
 
   const skips = [];
   for (const reference of cycle.related_artifacts?.no_edit_skips ?? []) {
@@ -974,19 +1036,42 @@ async function computeEvaluation(project, cycle, roots, evaluationId, createdAt)
     if (!passRequirements(pass, operation)) {
       block("required-operation-missing", `Requested pass does not require ${operation}.`, "not_satisfied");
     }
-    if (!skips.some((skip) => skip.operations.includes(operation))) {
-      block("no-edit-evidence-missing", `No current no-edit skip covers ${operation}.`);
+    if (verifiedExecutions.length === 0 && !skips.some((skip) => skip.operations.includes(operation))) {
+      block("no-edit-evidence-missing", `No verified execution or current no-edit skip covers ${operation}.`);
     }
   }
   const coveredFindings = new Set(skips.flatMap((skip) => skip.covered_findings));
   for (const findingId of currentFindingIds) {
-    if (!coveredFindings.has(findingId)) {
-      block(
-        "no-edit-finding-decision-missing",
-        `No-edit skips do not cover current finding ${findingId}.`,
-        "indeterminate",
-        { artifact_id: findingId },
+    const finding = tracker.findings.find((candidate) => candidate.id === findingId);
+    if (finding.status === "resolved") {
+      const executed = verifiedExecutions.some((execution) =>
+        execution.finding_dispositions.some((disposition) =>
+          disposition.finding_id === findingId && disposition.disposition === "execute"
+        )
       );
+      if (!executed) {
+        block(
+          "verified-execution-required",
+          `Resolved finding ${findingId} requires verified revision execution evidence rather than a no-edit skip.`,
+          "not_satisfied",
+          { artifact_id: findingId },
+        );
+      }
+    } else {
+      const requiredDisposition = finding.status === "deferred" ? "defer" : "dismiss";
+      const decidedByExecution = verifiedExecutions.some((execution) =>
+        execution.finding_dispositions.some((disposition) =>
+          disposition.finding_id === findingId && disposition.disposition === requiredDisposition
+        )
+      );
+      if (!decidedByExecution && !coveredFindings.has(findingId)) {
+        block(
+          "finding-author-decision-missing",
+          `Current ${finding.status} finding ${findingId} lacks a matching execution disposition or an authorized no-edit skip.`,
+          "not_satisfied",
+          { artifact_id: findingId },
+        );
+      }
     }
   }
   for (const skip of skips) {
@@ -1158,6 +1243,18 @@ async function computeEvaluation(project, cycle, roots, evaluationId, createdAt)
     }
   }
 
+  for (const finding of tracker.findings) {
+    if (finding.status === "stale" || finding.status === "open") continue;
+    if (!reports.has(finding.report)) {
+      block(
+        "finding-report-not-in-evidence",
+        `Finding ${finding.id} names ${finding.report}, which is not in the evaluation evidence graph.`,
+        "indeterminate",
+        { path: finding.report, artifact_id: finding.id },
+      );
+    }
+  }
+
   const attestationRecords = [];
   for (const reference of roots.semantic_attestations) {
     const attestation = await computation.json(
@@ -1245,7 +1342,7 @@ async function computeEvaluation(project, cycle, roots, evaluationId, createdAt)
   }
 
   for (const artifact of computation.artifacts.values()) {
-    if (["manuscript", "dependency", "attested-artifact"].includes(artifact.role)) continue;
+    if (["manuscript", "execution-input-manuscript", "dependency", "attested-artifact"].includes(artifact.role)) continue;
     try {
       const contents = await readFile(path.resolve(project.root, artifact.path));
       if (sha256Bytes(contents) !== artifact.sha256) {
@@ -1677,7 +1774,7 @@ export async function completeCycle(projectRoot, request, options = {}) {
   return locked.lockFailure ?? locked.value;
 }
 
-function missingEvaluationStatus(cycle, pendingAction = null) {
+function missingEvaluationStatus(cycle, pendingAction = null, requestCompletion = null) {
   const requiredAction = cycle?.recovery_position ? {
     strategy: cycle.recovery_position.required_strategy,
     operation: cycle.recovery_position.operation,
@@ -1690,6 +1787,7 @@ function missingEvaluationStatus(cycle, pendingAction = null) {
     evaluation: null,
     cycle: cycle ?? null,
     pending_action: pendingAction,
+    request_completion: requestCompletion,
     required_action: requiredAction,
     blockers: [{
       code: "current-evaluation-unavailable",
@@ -1713,6 +1811,7 @@ export async function getConvergenceStatus(projectRoot) {
       evaluation: null,
       cycle: null,
       pending_action: null,
+      request_completion: null,
       required_action: null,
       blockers: [{ code: "cycle-state-invalid", message: error.message, required_action: null }],
     };
@@ -1724,7 +1823,14 @@ export async function getConvergenceStatus(projectRoot) {
     cycle = completed.at(-1) ?? null;
     reference = cycle?.target_evaluation ?? null;
   }
-  if (!reference) return missingEvaluationStatus(active?.value ?? null, project.manifest.pending_action ?? null);
+  const requestCompletion = await getRequestCompletion(project.root, cycle);
+  if (!reference) {
+    return missingEvaluationStatus(
+      active?.value ?? null,
+      project.manifest.pending_action ?? null,
+      requestCompletion,
+    );
+  }
 
   try {
     const result = await recomputeStoredEvaluation(project, cycle, reference);
@@ -1744,6 +1850,7 @@ export async function getConvergenceStatus(projectRoot) {
       current_evaluation: result.recomputed,
       cycle: active?.value ?? null,
       pending_action: project.manifest.pending_action ?? null,
+      request_completion: requestCompletion,
       required_action: requiredAction,
       blockers: result.recomputed.blockers,
     };
@@ -1756,6 +1863,7 @@ export async function getConvergenceStatus(projectRoot) {
       evaluation_reference: reference,
       cycle: active?.value ?? null,
       pending_action: project.manifest.pending_action ?? null,
+      request_completion: requestCompletion,
       required_action: DEFAULT_ACTION,
       blockers: [{
         code: "current-evaluation-unavailable",

@@ -195,6 +195,28 @@ node <toolkit-root>/scripts/validate.mjs --semantic-attestation <attestation.jso
 node <toolkit-root>/scripts/validate.mjs --convergence-evaluation <evaluation.json>
 ```
 
+## Revision execution and request completion
+
+Use the deployed closed `revision-execution-schema.json` for approved manuscript revision batches. Preserve execution records beneath `executions/<execution-id>.json` in the convergence state root. A record binds its cycle, plan, exact batch, requested pass, input and target scope snapshots, finding dispositions and decisions, edit approvals, backup manifests and preserved bytes, every file action and input/output hash, `prepared` or `verified` status, and timestamps. Create actions require a null input hash and expected absence; delete actions require a null output hash. Every modify, delete, or reorder action requires preserved input bytes.
+
+Run the public operations with exact cycle ID and expected revision:
+
+```bash
+node <toolkit-root>/scripts/author-project.mjs prepare-revision-execution --project-root <project-root> --input <preparation.json>
+node <toolkit-root>/scripts/author-project.mjs verify-revision-execution --project-root <project-root> --input <verification.json>
+node <toolkit-root>/scripts/validate.mjs --revision-execution <execution.json>
+```
+
+Preparation requires the active `chapter-revision` recovery position, the active requested pass and full-manuscript input scope, an existing exact author plan decision and chapter-revision approval, and every required backup. It validates tracker decisions and approval paths, backup manifest identity and raw backup hashes, referenced plan and batch hashes, and current input hashes. It writes only a `prepared` execution and its cycle reference. It does not create an author decision or approval, write manuscript, infer a backup, or mark execution complete.
+
+After the approved write, confirm the full-manuscript target scope and requested pass. Verification accepts only the execution ID, final pass, and final target beyond the cycle identity and expected revision; it does not accept replacement output hashes from the caller. It rereads every current output and compares it with the prepared record, verifies the approved change set against input and target snapshots, then writes `verified` and links the new pass, target, execution hash, cumulative change set, and full-target current-scope review recovery position to the cycle. Missing, changed, extra, or unrecorded output stops verification without advancing the cycle. `approved-edit-unexecuted` is `not_satisfied`; changed or inconsistent output proof is `indeterminate` unless another known failed condition takes precedence.
+
+Both operations acquire the same `active-cycle.lock/` used by transitions and evaluations and recheck the expected cycle revision inside the lock. A revision race returns `cycle-revision-conflict` without overwriting the winner. Verified execution is immutable thereafter. Later approved batches preserve earlier executions, their approvals, and their input/output scopes as history; only executions bound to the current requested pass and full-manuscript target satisfy current accepted findings. Superseding a later approval does not rewrite or invalidate the historical execution it approved.
+
+Every resolved finding maps to a current verified execution whose finding disposition is `execute`. Deferred and dismissed findings retain their current decisions. With no edited batch, the no-edit skip rules above remain required; a no-edit skip cannot substitute for a resolved finding or conceal a prepared approved execution. Review findings use the same decision and execution loop. Accepted fixes produce new affected coverage and another full-target current-scope review group before evaluation can become satisfied.
+
+`cycle-status`, `convergence-status`, and validator status return `request_completion` separately from the convergence evaluation. Its `complete` status means every approved request batch and request decision is finished through current verified executions or lawful no-edit decisions. `incomplete` names open findings, prepared executions, missing decisions, or changed current outputs. Request completion can therefore be `complete` while current-draft revision convergence remains `indeterminate` pending coverage or review, and it never substitutes for a satisfied target evaluation or the explicit cycle completion decision.
+
 ## Set pending
 
 Read the manifest immediately before each write. Write the requested `pending_action` values: `operation`, `status`, `scope_id`, `reason`, and `artifacts`. Status is `in_progress`, `awaiting_author`, or `blocked`; reason is always nonempty and identifies the decision, interruption, or dependency. Preserve `current_scope` and all historical records. Append unique artifact paths and set both `pending_action.updated_at` and top-level `updated_at` to the current UTC timestamp.

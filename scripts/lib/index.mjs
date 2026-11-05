@@ -98,3 +98,11 @@ export {
   validateReviewGroup,
   validateSemanticAttestation,
 } from "./convergence.mjs";
+export {
+  getRequestCompletion,
+  prepareRevisionExecution,
+  validateRevisionExecution,
+  validateRevisionExecutionAgainstDisk,
+  verifyRevisionExecution,
+} from "./revision-execution.mjs";
+export { validateRevisionExecutionSchema } from "./schemas.mjs";

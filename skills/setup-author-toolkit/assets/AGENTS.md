@@ -53,6 +53,7 @@ Before any manuscript edit:
 2. Obtain explicit author approval for that batch and record it in the shared tracker with its input versions.
 3. Use `author-project` to back up every existing affected file under that approval.
 4. Reread the manifest and scope, recompute each existing file's SHA-256 hash and each create target's absence, and write only when every path, hash, approval, and dependency still matches. A mismatch stops the batch for reconciliation.
+5. For a revision batch, use `prepare-revision-execution` before writing and `verify-revision-execution` after confirming the resulting scope and requested pass. Preparation does not create approval; approval without verified execution does not establish current-draft revision convergence.
 
 For shared creation, write proposed text only beneath `<paths.creation>/staging/<batch-id>/` before acceptance. The author approves the write plan and later accepts the exact staged batch and resulting scope. `creation-commit` then verifies dependencies, expected absence and old hashes, existing-file backups, and its recovery journal before publication. Acceptance supplies the commit approval; interrupted commits stop for reconciliation.
 

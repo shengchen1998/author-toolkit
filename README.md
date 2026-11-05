@@ -393,6 +393,8 @@ Use the executable `author-project` facade for lifecycle operations:
 ```bash
 node scripts/author-project.mjs start-cycle --project-root <project-root> --input <request.json>
 node scripts/author-project.mjs transition-cycle --project-root <project-root> --input <transition.json>
+node scripts/author-project.mjs prepare-revision-execution --project-root <project-root> --input <preparation.json>
+node scripts/author-project.mjs verify-revision-execution --project-root <project-root> --input <verification.json>
 node scripts/author-project.mjs evaluate-cycle --project-root <project-root> --input <evaluation-request.json>
 node scripts/author-project.mjs complete-cycle --project-root <project-root> --input <completion.json>
 node scripts/author-project.mjs cycle-status --project-root <project-root>
@@ -409,6 +411,16 @@ claim, and a leftover lock directory requires explicit recovery. Pending action
 still describes only the current operation and author gate; it does not own the
 cycle or authorize writes.
 
+Request-driven edits use revision execution records under `executions/`. Preparation
+verifies existing author decisions, exact edit approvals, backup manifests and
+bytes, and current input hashes without creating approval or writing manuscript.
+Verification rereads actual output bytes against the prepared hashes and binds
+the final requested pass and full-manuscript target scope. `prepared` never
+satisfies current-draft revision convergence. Resolved findings require a current verified execution;
+deferred and dismissed findings retain their decisions, and accepted review fixes
+require new affected coverage and another full-target current-scope review. Earlier verified
+executions remain historical after later approved batches.
+
 A full-manuscript no-edit pass records its requested-pass fingerprint, inherited
 and newly requested subchecks, hashed coverage evidence, no-edit decisions,
 three-perspective review group, complete fresh reader chain, and semantic
@@ -422,7 +434,9 @@ that decision to the tracker, recomputes and saves a new evaluation with the
 changed tracker hash, and completes only if the new evaluation remains
 `satisfied`. Deterministic checks verify evidence identity and structure, but
 actual reading and editorial judgments remain bounded by trust in the host and
-logical-reviewer attestations and the recorded author decisions.
+logical-reviewer attestations and the recorded author decisions. Status also
+returns `request_completion` independently: approved request batches and decisions
+can be complete while full-manuscript evidence is not yet satisfied.
 
 Independent convergence status and convergence gate queries are read-only:
 

@@ -40,17 +40,17 @@ At a stable operation gate, apply the [current-draft convergence cycle rules](..
 
 **Inputs:** Current baselines, diagnostics and character reports, tracker, and scope.
 
-**Work:** Copy `../../revise-fiction/assets/revision-plan-template.md` to `.author-toolkit/revision-plan/<plan-id>.md`. Link every accepted finding to a concrete local action, file, order, scope, baseline impact, and batch. Keep deferred and dismissed decisions visible.
+**Work:** Copy `../../revise-fiction/assets/revision-plan-template.md` to `.author-toolkit/revision-plan/<plan-id>.md`. Link every accepted finding to a concrete local action, file, order, scope, baseline impact, batch, and author decision. Keep deferred and dismissed decisions visible. Preserve the plan and exact batch as hashed artifacts for the revision execution record.
 
-**Gate:** Accepted findings map to batches or explicit deferrals, conflicts are resolved with the author, and the author approves the plan and file scope. With no accepted edits, record this operation and chapter revision as skipped for the requested pass.
+**Gate:** Accepted findings map to batches or explicit deferrals or dismissals, conflicts are resolved with the author, and the author approves the plan and file scope. With no accepted edits, record this operation and chapter revision as skipped for the requested pass through a no-edit skip. An approved plan is not execution evidence.
 
 ## 6. Chapter revision
 
-**Inputs:** Approved plan, draft-baseline, manuscript, and tracker.
+**Inputs:** Approved plan, exact batch, draft-baseline, manuscript, tracker, and the active requested pass and scope.
 
-**Work:** Diagnose one batch and show exact changes before writing. Local chapter splits, merges, reordering, cuts, and scene rewrites require the same explicit approval and backups as other edits. Implement only the approved batch, update current-scope hashes, and recheck affected continuity and baseline differences.
+**Work:** Diagnose one batch and show exact changes before writing. Local chapter splits, merges, reordering, cuts, and scene rewrites require the same explicit approval and backups as other edits. Run `author-project` `prepare-revision-execution` before editing; it validates the existing decisions, approvals, backup manifests and bytes, planned outputs, and current input hashes without creating approval or writing manuscript. Implement only the approved batch, establish the resulting confirmed scope and requested pass, then run `verify-revision-execution` to reread actual output hashes and link the verified record to the cycle. Recheck affected continuity and baseline differences.
 
-**Gate:** Every planned batch is accepted or explicitly deferred, each modified file has a backup linked to its approval, no requested batch is partially edited, and affected evidence is marked stale by dependency.
+**Gate:** Every planned batch is accepted or explicitly deferred, each existing affected file has a verified backup linked to its approval, no requested batch is partially edited, and affected evidence is marked stale by dependency. Every accepted edit has a `verified` revision execution record bound to the requested pass and full-manuscript target scope. A `prepared` record, approval without execution, changed backup, or output-hash mismatch blocks current-draft revision convergence. Later batches preserve earlier verified executions as history; only executions bound to the requested pass and target satisfy current accepted findings.
 
 ## 7. Prose
 

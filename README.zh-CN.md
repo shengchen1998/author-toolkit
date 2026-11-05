@@ -234,6 +234,8 @@ v3.2 在 `<convergence-state-root>/active-cycle.json` 中至多保存一个已�
 ```bash
 node scripts/author-project.mjs start-cycle --project-root <project-root> --input <request.json>
 node scripts/author-project.mjs transition-cycle --project-root <project-root> --input <transition.json>
+node scripts/author-project.mjs prepare-revision-execution --project-root <project-root> --input <preparation.json>
+node scripts/author-project.mjs verify-revision-execution --project-root <project-root> --input <verification.json>
 node scripts/author-project.mjs evaluate-cycle --project-root <project-root> --input <evaluation-request.json>
 node scripts/author-project.mjs complete-cycle --project-root <project-root> --input <completion.json>
 node scripts/author-project.mjs cycle-status --project-root <project-root>
@@ -245,6 +247,11 @@ node scripts/author-project.mjs cycle-gate --project-root <project-root>
 同一预期 revision 只能有一个写入成功, 后续写入返回 `cycle-revision-conflict`. 锁超时或异常不会报告成功,
 崩溃遗留的锁目录需要明确恢复. 待处理操作仍只描述当前操作和作者门禁, 不拥有周期, 也不授权正文写入.
 
+请求驱动修改在 `executions/` 下保存修订执行记录. 准备操作核对已有作者决定, 准确编辑批准, 备份清单及字节和当前输入哈希,
+不会伪造批准或写入正文. 验证操作按准备阶段的哈希重读实际输出字节, 并绑定最终请求修订轮次和全稿目标范围.
+`prepared` 不能满足当前草稿修订收敛. 已解决发现项要求当前 verified 执行; defer 和 dismiss 保留作者决定, 获批的复核返工需要新的受影响覆盖度和全目标范围的当前范围复核.
+后续获批批次保留先前 verified 执行作为历史证据.
+
 全稿无修改跳过路径记录请求修订轮次指纹, 继承与新增子检查, 带哈希的覆盖证据, 无修改作者决定,
 三视角复核组, 完整新读者链和语义证明. `evaluate-cycle` 根据证据推导结果并生成不可变证据图,
 调用方不能直接填写结果. 评估器可以复用前一轮符合要求的局部覆盖单元, 但当前轮次仍需新的全目标范围索引,
@@ -252,7 +259,8 @@ node scripts/author-project.mjs cycle-gate --project-root <project-root>
 
 完成需要单独明确的作者完成决定. 操作先把决定追加到 tracker, 再根据变化后的 tracker 哈希重新计算并保存评估,
 只有新评估仍为 `satisfied` 时才完成周期. 确定性检查验证证据身份和结构, 但实际阅读与编辑判断仍以宿主和逻辑读者的
-语义证明以及记录的作者决定为信任边界.
+语义证明以及记录的作者决定为信任边界. 状态查询还独立返回 `request_completion`: 请求批次和决定可以已经完成,
+而全稿证据尚未达到 `satisfied`.
 
 独立收敛状态和收敛门禁查询均为只读:
 

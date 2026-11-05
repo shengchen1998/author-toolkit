@@ -49,6 +49,9 @@ _Avoid_: Target scope, request set
 **Convergence evaluation**:
 An immutable judgment of current-draft revision convergence bound to exact scope and evidence identities. Its outcome is satisfied, not satisfied, or indeterminate; missing trustworthy proof is indeterminate rather than success or a known editorial defect.
 
+**Request completion**:
+The independent state in which every approved request batch and request decision is finished through verified current executions or lawful no-edit decisions. It does not imply current-draft revision convergence.
+
 **Semantic attestation**:
 A structured host statement identifying editorial claims, the attester, and the exact pass, scope, and artifact evidence supporting those claims. It does not replace an author decision or prove its own underlying judgment.
 
