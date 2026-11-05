@@ -917,8 +917,19 @@ export async function getRequestCompletion(projectRoot, cycle) {
       if (!executed) {
         block("verified-execution-required", `Resolved request finding ${finding.id} lacks verified execution.`);
       }
-    } else if (verifiedExecutions.length === 0 && !coveredFindings.has(finding.id)) {
-      block("no-edit-finding-decision-missing", `No-edit decisions do not cover request finding ${finding.id}.`);
+    } else {
+      const requiredDisposition = finding.status === "deferred" ? "defer" : "dismiss";
+      const decidedByExecution = verifiedExecutions.some((execution) =>
+        execution.finding_dispositions.some((disposition) =>
+          disposition.finding_id === finding.id && disposition.disposition === requiredDisposition
+        )
+      );
+      if (!decidedByExecution && !coveredFindings.has(finding.id)) {
+        block(
+          "finding-author-decision-missing",
+          `Current ${finding.status} finding ${finding.id} lacks a matching execution disposition or an authorized no-edit skip.`,
+        );
+      }
     }
   }
 

@@ -1057,13 +1057,21 @@ async function computeEvaluation(project, cycle, roots, evaluationId, createdAt)
           { artifact_id: findingId },
         );
       }
-    } else if (verifiedExecutions.length === 0 && !coveredFindings.has(findingId)) {
-      block(
-        "no-edit-finding-decision-missing",
-        `No-edit skips do not cover current finding ${findingId}.`,
-        "indeterminate",
-        { artifact_id: findingId },
+    } else {
+      const requiredDisposition = finding.status === "deferred" ? "defer" : "dismiss";
+      const decidedByExecution = verifiedExecutions.some((execution) =>
+        execution.finding_dispositions.some((disposition) =>
+          disposition.finding_id === findingId && disposition.disposition === requiredDisposition
+        )
       );
+      if (!decidedByExecution && !coveredFindings.has(findingId)) {
+        block(
+          "finding-author-decision-missing",
+          `Current ${finding.status} finding ${findingId} lacks a matching execution disposition or an authorized no-edit skip.`,
+          "not_satisfied",
+          { artifact_id: findingId },
+        );
+      }
     }
   }
   for (const skip of skips) {

@@ -976,3 +976,170 @@ test("independent preparation processes serialize on the active cycle revision",
     winner.result.execution.execution_id,
   );
 });
+
+
+async function evaluateEditedRequestFinding(t, findingStatus, { withNoEditDecision = false } = {}) {
+  const fixture = await preparedProject(t);
+  await completeBootstrapBase(fixture);
+  const started = await runInput(fixture.projectRoot, "start-cycle", {
+    cycle_id: "cycle-request-finding-gate",
+    initiating_strategy: "revise-request",
+    bootstrap: false,
+    starting_scope: fixture.scope,
+  });
+  assert.equal(started.status, 0, `${started.stdout}\n${started.stderr}`);
+  const beforeEdit = await createNoEditEvidence(fixture.projectRoot, {
+    passId: "pass-finding-gate-plan",
+    baselinePass: fixture.evidence.passReference,
+    noEditDecisionId: "NOEDIT-301",
+  });
+  const planned = await runInput(fixture.projectRoot, "transition-cycle", {
+    cycle_id: "cycle-request-finding-gate",
+    expected_revision: 1,
+    current_strategy: "revise-request",
+    recovery_position: {
+      operation: "chapter-revision",
+      reason: "Prepare one verified edit before testing an independent finding decision.",
+    },
+    target_scope: fixture.scope,
+    requested_pass: beforeEdit.passReference,
+    work_set: {
+      entries: [{
+        path: "manuscript/chapter-001.md",
+        operations: ["chapter-revision"],
+        reason: "Only this requested passage needs an edit.",
+      }],
+    },
+  });
+  assert.equal(planned.status, 0, planned.stderr);
+  const prepared = await runInput(fixture.projectRoot, "prepare-revision-execution", {
+    ...fixture.execution,
+    cycle_id: "cycle-request-finding-gate",
+    expected_revision: 2,
+    requested_pass: beforeEdit.passReference,
+  });
+  assert.equal(prepared.status, 0, `${prepared.stdout}\n${prepared.stderr}`);
+  const manuscriptPath = path.join(fixture.projectRoot, "manuscript", "chapter-001.md");
+  await writeFile(manuscriptPath, fixture.output, "utf8");
+  await recordScope(fixture.projectRoot, {
+    scope_id: fixture.scope.scope_id,
+    description: "The complete edited manuscript for the finding-decision gate.",
+    status: "confirmed",
+    files: [{
+      path: "manuscript/chapter-001.md",
+      sha256: createHash("sha256").update(fixture.output).digest("hex"),
+    }],
+    excluded_files: [],
+    created_at: timestamp,
+  }, {
+    authorConfirmation: {
+      decision_id: "SCOPE-301",
+      confirmed_at: timestamp,
+      reading_order_confirmed: true,
+    },
+    now: new Date("2026-11-05T03:00:00Z"),
+  });
+  const target = await currentScopeReference(fixture.projectRoot);
+  const evidence = await createNoEditEvidence(fixture.projectRoot, {
+    passId: "pass-finding-gate-target",
+    baselinePass: fixture.evidence.passReference,
+    noEditDecisionId: "NOEDIT-302",
+  });
+  const finding = reviewFinding("REVIEWGATE-001");
+  await injectOpenReviewFinding(fixture.projectRoot, evidence, finding);
+  const trackerPath = path.join(fixture.projectRoot, "audit-tracker.md");
+  const tracker = await readFile(trackerPath, "utf8");
+  await writeFile(
+    trackerPath,
+    tracker.replace(
+      `| ${finding.id} | current-scope-review | intent | manuscript/chapter-001.md | open | ${evidence.reviewReports[0].path} | ${timestamp} | Author decision is required after full-target review. |`,
+      `| ${finding.id} | current-scope-review | intent | manuscript/chapter-001.md | ${findingStatus} | ${evidence.reviewReports[0].path} | ${timestamp} | Tracker status was edited without a finding-decision record. |`,
+    ),
+    "utf8",
+  );
+  if (withNoEditDecision) {
+    evidence.noEditSkip.covered_findings.push(finding.id);
+    const skipPath = path.join(fixture.projectRoot, evidence.noEditReference.path);
+    await writeJson(skipPath, evidence.noEditSkip);
+    evidence.noEditReference.sha256 = createHash("sha256")
+      .update(await readFile(skipPath))
+      .digest("hex");
+  }
+  const verified = await runInput(fixture.projectRoot, "verify-revision-execution", {
+    cycle_id: "cycle-request-finding-gate",
+    expected_revision: 3,
+    execution_id: "execution-001",
+    requested_pass: evidence.passReference,
+    target_scope: target,
+  });
+  assert.equal(verified.status, 0, `${verified.stdout}\n${verified.stderr}`);
+  const linked = await runInput(fixture.projectRoot, "transition-cycle", {
+    cycle_id: "cycle-request-finding-gate",
+    expected_revision: 4,
+    current_strategy: "revise-request",
+    recovery_position: {
+      operation: "current-scope-review",
+      reason: "Evaluate the independent finding after the verified request edit.",
+    },
+    related_artifacts: {
+      review_groups: [evidence.reviewGroupReference],
+      reviews: evidence.reviewJobs.map(({ reference }) => reference),
+      ...(withNoEditDecision ? { no_edit_skips: [evidence.noEditReference] } : {}),
+    },
+  });
+  assert.equal(linked.status, 0, linked.stderr);
+  const evaluated = await runInput(
+    fixture.projectRoot,
+    "evaluate-cycle",
+    evidence.evaluationInput(
+      `evaluation-finding-${findingStatus}-${withNoEditDecision ? "decided" : "undecided"}`,
+      5,
+      "cycle-request-finding-gate",
+    ),
+  );
+  const status = runValidator([
+    "--convergence-status",
+    path.join(fixture.projectRoot, ".author-toolkit", "project.json"),
+  ]);
+  assert.equal(status.status, 0, status.stderr);
+  return {
+    finding,
+    evaluated,
+    evaluationResult: JSON.parse(evaluated.stdout),
+    requestCompletion: JSON.parse(status.stdout).request_completion,
+  };
+}
+
+for (const findingStatus of ["deferred", "dismissed"]) {
+  test(`an edited execution does not bypass an undecided ${findingStatus} finding`, async (t) => {
+    const result = await evaluateEditedRequestFinding(t, findingStatus);
+    assert.equal(result.evaluated.status, 1, `${result.evaluated.stdout}\n${result.evaluated.stderr}`);
+    assert.equal(result.evaluationResult.evaluation.outcome, "not_satisfied");
+    const blocker = result.evaluationResult.evaluation.blockers.find(
+      (candidate) => candidate.code === "finding-author-decision-missing"
+    );
+    assert.ok(blocker, JSON.stringify(result.evaluationResult.evaluation.blockers, null, 2));
+    assert.equal(blocker.artifact_id, result.finding.id);
+    assert.equal(result.requestCompletion.status, "incomplete");
+    assert.ok(result.requestCompletion.blockers.some(
+      (candidate) => candidate.code === "finding-author-decision-missing" &&
+        candidate.message.includes(result.finding.id)
+    ), JSON.stringify(result.requestCompletion, null, 2));
+  });
+}
+
+
+for (const findingStatus of ["deferred", "dismissed"]) {
+  test(`an edited execution preserves a lawful ${findingStatus} no-edit decision`, async (t) => {
+    const result = await evaluateEditedRequestFinding(t, findingStatus, {
+      withNoEditDecision: true,
+    });
+    assert.equal(result.evaluated.status, 0, `${result.evaluated.stdout}\n${result.evaluated.stderr}`);
+    assert.equal(result.evaluationResult.evaluation.outcome, "satisfied");
+    assert.ok(!result.evaluationResult.evaluation.blockers.some(
+      (candidate) => candidate.code === "finding-author-decision-missing"
+    ));
+    assert.equal(result.requestCompletion.status, "complete");
+    assert.deepEqual(result.requestCompletion.blockers, []);
+  });
+}
