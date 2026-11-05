@@ -8,7 +8,7 @@ Resolve the project root before reading or writing. The canonical manifest is `.
 
 Keep stored paths relative to the project root and use forward slashes. Resolve them against the root when reading. Reject absolute paths, backslashes, URI schemes, home paths, and `..` segments. Resolve `paths.creation` and the convergence state root by the same rules and exclude them from manuscript inventory. Setup deploys shared runtime contracts to the fixed `.author-toolkit/references/` directory beneath the project root. This directory has no manifest field and is excluded by the `.author-toolkit` operational root. One manifest represents one book. A separate book needs its own project root and manifest.
 
-`write-fiction`, `revise-fiction`, `revise-draft`, `revise-increment`, and `revise-request` are author-invoked strategies over the same manifest, tracker, reports, sessions, backups, and handoffs. No strategy owns the shared project state. Do not create a strategy-specific subdirectory or a second tracker. At any stable operation gate, switching preserves current scope, evidence, decisions, staged drafts, and pending action; it never resumes writing automatically.
+`write-fiction`, `revise-fiction`, `revise-draft`, `revise-increment`, and `revise-request` are author-invoked strategies over the same manifest, tracker, reports, sessions, backups, and handoffs. No strategy owns the shared project state. Do not create a strategy-specific subdirectory or a second tracker. At a stable operation gate, an active current-draft convergence cycle permits its exact recovery work and read-only inspection; it blocks a parallel manuscript-changing cycle. With no active cycle, switching preserves current scope, evidence, decisions, staged drafts, and pending action. Every switch waits for the author's exact command and never resumes writing automatically.
 
 Valid pending-action operation names are `intake`, `story-bible`, `draft-baseline`, `structure`, `characters`, `diagnostics`, `revision-plan`, `chapter-revision`, `prose`, `ai-cleanup`, `current-scope-review`, `final-review`, `creation-baseline`, `writing-plan`, `chapter-creation`, `chapter-review`, `creation-commit`, `creation-import`, and `milestone-review`. The legacy `STAGES` remains revision-only; do not add creation operations to it or to report v2 `stage`.
 
@@ -101,12 +101,53 @@ Return a compact shared state view containing:
 
 - project root, manifest schema and creation timestamps, project type, language, and manuscript root;
 - current scope ID, scope fingerprint when available, confirmation status, ordered paths and hashes, exclusions, snapshot paths, and the v3.2 full-manuscript result;
+- the active current-draft convergence cycle, its revision, current strategy, recovery position, and related references, or its absence;
 - pending action, status, scope ID, reason, and artifacts, or its absence;
+- convergence status with `query_valid`, `outcome`, `current`, `evaluation`, `cycle`, `blockers`, and `required_action`;
 - every stale or blocked evidence item with its operation, scope, dependency reason, and source report or tracker row;
-- the next action recorded in the tracker or latest session note;
+- the active cycle's exact next action, or the next action recorded in the tracker or latest session note when no cycle is active;
 - validation errors, missing paths, and unresolved approval, backup, commit, or restore requirements.
 
-Status does not infer operation completion, select a strategy, advance pending action, or claim current-draft revision convergence from a full-manuscript result alone.
+Status does not infer operation completion, select a strategy, advance pending action, or claim current-draft revision convergence from a full-manuscript result alone. A valid convergence status query reports `satisfied`, `not_satisfied`, or `indeterminate` without changing state. When no current satisfied convergence evaluation is available, report `indeterminate`, `current: false`, and the missing-proof blocker. The separate convergence gate succeeds only for `satisfied` with current evidence; both other outcomes and stale evidence fail with structured blockers. Neither query treats an ordinary unfinished lifecycle as a malformed file.
+
+## Current-draft convergence cycle
+
+The active current-draft convergence cycle lives at `<convergence-state-root>/active-cycle.json`. At most one active record exists for the book. Completed records are immutable beneath `<convergence-state-root>/cycles/<cycle-id>.json`; when no cycle is active, the active record is absent. Use the deployed closed cycle contract beneath `<project-root>/.author-toolkit/references/` for artifact validation. Do not put lifecycle ownership in session notes, tracker prose, or pending action.
+
+A versioned cycle records `cycle_id`, `revision`, `active` or `completed` status, initiating and current strategies, bootstrap, starting and target scope references, requested-pass reference, recovery position, related artifacts, change set, work set, starting and target evaluation references, completion, and timestamps. Scope references carry the scope ID, fingerprint, snapshot path, and snapshot SHA-256. Pass and evaluation references carry their IDs and content-addressed artifact identities. Related artifacts cover plans, creation batches, at most one creation commit, revision execution records, review groups, review jobs, and no-edit skips. The change set records its two scope references, created, modified, deleted, and reordered paths, and evidence-affected and dependency-affected paths. The work set records required operations and reasons by path. These references let later execution, review, evaluation, and completion operations extend the same lifecycle without changing the closed cycle contract.
+
+For first-time bootstrap, require `initiating_strategy: "write-fiction"`, `bootstrap: true`, a null `starting_scope`, no current scope, an actually empty manuscript inventory, and no completed bootstrap. Bootstrap creates an active record with no starting scope or starting evaluation; it does not claim that an empty manuscript has reached current-draft revision convergence. A nonempty manuscript, an existing current scope, or a completed bootstrap receives `bootstrap-requires-empty-project` and the exact `revise-draft` recovery action.
+
+Every non-bootstrap start requires a full-manuscript starting scope whose immutable snapshot is current at entry, plus a current satisfied starting convergence evaluation. Request base scope and increment previous scope are strategy-specific names for this same starting-scope role. A scope result, pending action, session note, staged draft, or caller-supplied outcome never supplies the evaluation. An untrustworthy snapshot returns `starting-scope-indeterminate`; unavailable evaluation proof returns `starting-evaluation-indeterminate`. Neither case creates an active record. Preserve the starting snapshot as historical evidence after expected manuscript edits instead of reapplying the entry check to that historical record.
+
+Use the public facade for starts and optimistic transitions:
+
+```bash
+node <toolkit-root>/scripts/author-project.mjs start-cycle --project-root <project-root> --input <request.json>
+node <toolkit-root>/scripts/author-project.mjs transition-cycle --project-root <project-root> --input <transition.json>
+node <toolkit-root>/scripts/author-project.mjs cycle-status --project-root <project-root>
+node <toolkit-root>/scripts/author-project.mjs cycle-gate --project-root <project-root>
+node <toolkit-root>/scripts/author-project.mjs check-operation --project-root <project-root> --input <operation.json>
+```
+
+The transition input names `cycle_id` and `expected_revision`. It may change current strategy, recovery position, target scope, requested pass, related artifacts, change set, and work set. It cannot change cycle ID, initiating strategy, bootstrap, starting scope, status, evaluation references, or completion. A newly assigned target scope must be the current confirmed full-manuscript scope. An existing starting or target snapshot remains valid historical evidence after expected edits. Recompute every referenced artifact hash before the write. A stale revision, ID mismatch, unsafe reference, missing artifact, or changed hash stops the transition without replacing active state.
+
+Before those checks, acquire `<convergence-state-root>/active-cycle.lock/` through atomic directory creation and record the owning PID and random token. Reread the active record inside this cross-process critical section and recheck cycle ID and expected revision before validating references or writing. A later writer that acquires the lock after a successful transition therefore receives `cycle-revision-conflict` instead of overwriting the winner. The default wait is 10 seconds with bounded retries; JavaScript callers can supply shorter test timeouts. `cycle-transition-lock-timeout` and `cycle-transition-lock-error` report coordination failure without writing state. Do not steal or silently remove a leftover lock directory after a crash; dependent work remains blocked for explicit recovery. Read-only status remains available.
+
+Create the first active record through a verified temporary sibling and no-clobber publication. Apply later active updates with the cross-process lock, expected revision, a verified temporary sibling, and atomic rename. Release the lock only after verifying its PID and token. `cycle-transition-lock-release-error` reports a release failure with truthful `state_written` state instead of claiming normal completion. Completed history is never overwritten. Cycle, manifest, pending, and lock-directory writes are coordinated records, not a claimed multi-file filesystem transaction; identity mismatches stop dependent work for reconciliation.
+
+`check-operation` always permits read-only status, diagnostics, and review. For manuscript-changing work it requires the active cycle ID, current strategy, and exact recovery-position operation. Other manuscript-changing work returns `active-cycle-exists` or `cycle-operation-mismatch` with `required_action.strategy`, `required_action.operation`, and `required_action.command`. The command is the exact registered strategy name; render the host's command prefix without changing that name and wait for the author. This operation gate does not replace exact manuscript approval, backups, or input-hash checks.
+
+Pending action continues to describe only the current operation and author gate through `in_progress`, `awaiting_author`, or `blocked`. It has no cycle ownership field and does not supply cycle history, resume permission, evaluation evidence, or completion. Starting or transitioning a cycle does not infer or advance pending action.
+
+For independent read-only checks, use:
+
+```bash
+node <toolkit-root>/scripts/validate.mjs --convergence-status <manifest-path>
+node <toolkit-root>/scripts/validate.mjs --convergence-gate <manifest-path>
+```
+
+Convergence status exits successfully when the query itself is valid, including an `indeterminate` outcome. Convergence gate exits nonzero for `not_satisfied`, `indeterminate`, stale evidence, or malformed state. Usage errors retain the validator's exit status 2. Both commands are read-only. Evaluation and completion require their dedicated evidence operations; `transition-cycle` never substitutes for them.
 
 ## Set pending
 

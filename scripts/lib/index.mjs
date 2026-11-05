@@ -64,3 +64,12 @@ export {
   validateInventorySnapshot,
   validateScopeSnapshot,
 } from "./scope.mjs";
+export { validateConvergenceCycleSchema } from "./schemas.mjs";
+export {
+  assertCycleAllowsOperation,
+  checkConvergenceGate,
+  getCycleStatus,
+  startCycle,
+  transitionCycle,
+  validateConvergenceCycle,
+} from "./cycles.mjs";

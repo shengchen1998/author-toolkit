@@ -36,7 +36,7 @@ These skills support the user entries. They are not separate user workflows.
 
 | Skill | Purpose |
 | --- | --- |
-| `author-project` | Read and update project registration, neutral evidence, current scope, pending actions, artifact paths, backups, and restores. |
+| `author-project` | Read and update project registration, neutral evidence, current scope, pending actions, current-draft convergence cycles, artifact paths, backups, and restores. |
 | `author-handoff` | Preserve session context and support resume, rework, and switching between creation and revision user entries. |
 | `author-review` | Run independent intent, craft, and fresh-reader reviews without editing the manuscript, including resumable chunked review for large books. |
 
@@ -363,8 +363,61 @@ enter story state or manuscript scope.
 The manifest records the actual paths, including custom locations. Switching
 among `write-fiction`, `revise-fiction`, `revise-draft`, `revise-increment`, and
 `revise-request` at a stable operation gate reuses these artifacts and requires
-no second project tree or migration. It does not automatically resume a pending
-write.
+no second project tree or migration. An active current-draft convergence cycle
+instead requires its exact recovery work for manuscript changes and blocks a
+parallel manuscript-changing cycle. Read-only inspection remains available, and
+no switch automatically resumes a pending write.
+
+### Current-draft convergence cycles
+
+V3.2 stores at most one active current-draft convergence cycle in
+`<convergence-state-root>/active-cycle.json`. Completed records remain immutable under
+`<convergence-state-root>/cycles/`. The versioned contract records initiating and
+current strategies, bootstrap, starting and target scope references, requested
+pass, recovery position, related artifacts, change set, work set, evaluation
+references, and completion. Request base scope and increment previous scope map
+to the same `starting_scope` role. Execution, review, evaluation, and completion
+references connect later evidence without making the reference itself proof of
+current-draft revision convergence.
+
+First-time bootstrap is available only for `write-fiction` with an actually empty
+manuscript and no existing scope. It uses a null starting scope without treating
+the empty manuscript as having reached current-draft revision convergence. Every
+ordinary start requires a current satisfied starting convergence evaluation. A
+valid full-manuscript scope, pending action, or caller-supplied claim cannot
+manufacture that result; unavailable proof blocks the start with
+`starting-evaluation-indeterminate`.
+
+Use the executable `author-project` facade for lifecycle operations:
+
+```bash
+node scripts/author-project.mjs start-cycle --project-root <project-root> --input <request.json>
+node scripts/author-project.mjs transition-cycle --project-root <project-root> --input <transition.json>
+node scripts/author-project.mjs cycle-status --project-root <project-root>
+node scripts/author-project.mjs cycle-gate --project-root <project-root>
+```
+
+A second manuscript-changing cycle returns `active-cycle-exists` with the active
+cycle's required strategy, operation, and command. Transitions acquire a
+cross-process lock directory, reread the active cycle ID and expected revision
+inside that lock, and verify referenced artifact hashes before an atomic update.
+Only one writer can succeed for the same expected revision; later writers get
+`cycle-revision-conflict`. Lock timeouts and errors block without a success
+claim, and a leftover lock directory requires explicit recovery. Pending action
+still describes only the current operation and author gate; it does not own the
+cycle or authorize writes.
+
+Independent convergence status and convergence gate queries are read-only:
+
+```bash
+node scripts/validate.mjs --convergence-status <manifest-path>
+node scripts/validate.mjs --convergence-gate <manifest-path>
+```
+
+A valid status query exits successfully for `satisfied`, `not_satisfied`, or
+`indeterminate`. The gate succeeds only for current `satisfied` evidence. Missing
+proof returns `indeterminate`, `current: false`, and structured blockers without
+preventing status, diagnostics, or review.
 
 ### Evidence reuse and pending actions
 
@@ -382,7 +435,8 @@ by itself invalidate the staged content.
 
 `pending_action` describes the single next operation awaiting work or an author
 decision. It replaces stage-specific progress state and is not permission to
-publish or resume a manuscript write.
+publish or resume a manuscript write. It does not replace current-draft
+convergence cycle history or its recovery position.
 
 ### Creation staging, commits, and restores
 
@@ -473,10 +527,11 @@ handoffs, and applicable creation state to recover context. They evaluate the
 current scope, pending action, evidence, and dependencies instead of inferring
 operation completion by moving or renaming files.
 
-A staged draft may remain while another strategy is used. On return, its
-dependency fingerprint and the current project state determine whether it can be
-reviewed again or needs a new plan. Neither a strategy switch nor a pending
-action publishes it.
+A staged draft may remain during read-only work or the active cycle's required
+revision strategy; a parallel manuscript-changing cycle remains blocked. On
+return, its dependency fingerprint and the current project state determine
+whether it can be reviewed again or needs a new plan. Neither a strategy switch
+nor a pending action publishes it.
 
 Use backups to inspect or restore pre-edit manuscript content. Ask for
 restoration explicitly; a resume, strategy switch, or report rerun does not
