@@ -183,8 +183,13 @@ test("incremental revision reuses unchanged evidence and converges the full targ
     readFile(path.join(root, "skills/ask-author/SKILL.md"), "utf8"),
   ]);
 
+  assert.match(increment, /On a new increment, establish the previous converged scope/);
   assert.match(increment, /previous converged scope, the requested target scope, and the change set/);
   assert.match(increment, /show the `revise-draft` command and stop rather than skipping unfinished base work/);
+  assert.match(increment, /On resume, locate the active increment in the latest session and any current plan/);
+  assert.match(increment, /own approved edits may stale that base without reopening the entry gate/);
+  assert.match(increment, /Rederive the current change set, work set, and target convergence/);
+  assert.match(increment, /Reconcile external manuscript changes and any interrupted write or commit/);
   assert.match(increment, /`create` action alone cannot prove that other chapters are unaffected/);
   assert.match(increment, /Missing reusable units add the affected old paths to the work set/);
   assert.match(increment, /fresh reader must read the full target sequentially/);
