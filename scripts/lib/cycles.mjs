@@ -4,8 +4,13 @@ import path from "node:path";
 import { validateCreationBatch, validateCreationCommit } from "./artifacts.mjs";
 import { collectManuscriptInventory } from "./manuscript.mjs";
 import { validateManifest } from "./manifest.mjs";
-import { validateConvergenceCycleSchema } from "./schemas.mjs";
 import {
+  validateConvergenceCycleSchema,
+  validateManuscriptReconciliationSchema,
+} from "./schemas.mjs";
+import {
+  collectVersionedInventory,
+  diffManuscriptInventories,
   validateFullManuscriptScope,
   validateScopeSnapshot,
 } from "./scope.mjs";
@@ -130,6 +135,44 @@ function blocked(code, message, cycle) {
   };
 }
 
+const EXTERNAL_RECONCILIATION_ACTION = {
+  strategy: "write-fiction",
+  operation: "creation-import",
+  command: "write-fiction",
+};
+
+export async function externalReconciliationBlock(project, reference, cycle = null) {
+  if (!reference) return null;
+  const previous = JSON.parse(
+    await readFile(path.resolve(project.root, reference.snapshot_path), "utf8"),
+  );
+  const current = await collectVersionedInventory(project.root, project.manifest);
+  const currentScope = project.manifest.current_scope;
+  let orderedCurrent = current;
+  if (currentScope) {
+    const actualByPath = new Map(current.files.map((file) => [file.path, file.sha256]));
+    const scopeMatchesDisk = currentScope.files.length === current.files.length &&
+      currentScope.files.every((file) => actualByPath.get(file.path) === file.sha256);
+    if (scopeMatchesDisk) orderedCurrent = { ...current, files: currentScope.files };
+  }
+  const changes = diffManuscriptInventories(previous, orderedCurrent);
+  const exclusionsChanged = JSON.stringify([...previous.excluded_files].sort()) !==
+    JSON.stringify([...current.excluded_files].sort());
+  if (changes.evidence_affected.length === 0 && !exclusionsChanged) return null;
+  const message = "External manuscript changes require creation-import inventory and story-state reconciliation before dependent work.";
+  return {
+    ...blocked("external-reconciliation-required", message, cycle),
+    required_action: EXTERNAL_RECONCILIATION_ACTION,
+    blockers: [{
+      code: "external-reconciliation-required",
+      message,
+      required_action: EXTERNAL_RECONCILIATION_ACTION,
+    }],
+    external_changes: changes,
+    state_written: false,
+  };
+}
+
 function emptyRelatedArtifacts() {
   return {
     plans: [],
@@ -211,12 +254,57 @@ export async function startCycle(projectRoot, request, options = {}) {
       active.value,
     );
   }
+  const currentScope = manifest.current_scope;
+  const external = await externalReconciliationBlock(
+    project,
+    currentScope ? {
+      scope_id: currentScope.scope_id,
+      scope_fingerprint: currentScope.scope_fingerprint,
+      snapshot_path: currentScope.snapshot_path,
+      snapshot_sha256: currentScope.snapshot_sha256,
+    } : null,
+  );
+  if (external) return external;
 
   let startingEvaluation = null;
+  let reconciledStart = null;
   if (!request.bootstrap) {
+    if (manifest.manuscript_reconciliation) {
+      try {
+        const reference = manifest.manuscript_reconciliation;
+        await verifyArtifactReference(root, reference);
+        const value = JSON.parse(await readFile(path.resolve(root, reference.path), "utf8"));
+        if (!validateManuscriptReconciliationSchema(value).valid) {
+          throw new Error("The manifest reconciliation artifact is invalid");
+        }
+        const current = manifest.current_scope;
+        const currentReference = current ? {
+          scope_id: current.scope_id,
+          scope_fingerprint: current.scope_fingerprint,
+          snapshot_path: current.snapshot_path,
+          snapshot_sha256: current.snapshot_sha256,
+        } : null;
+        if (
+          value.reconciliation_id === reference.reconciliation_id &&
+          value.required_strategy === request.initiating_strategy &&
+          value.previous_evaluation &&
+          JSON.stringify(value.previous_scope) === JSON.stringify(request.starting_scope) &&
+          JSON.stringify(value.target_scope) === JSON.stringify(currentReference)
+        ) {
+          reconciledStart = value;
+        }
+      } catch {
+        reconciledStart = null;
+      }
+    }
     try {
       if (!request.starting_scope) throw new Error("A starting scope snapshot is required");
-      await verifyScopeReference(project, request.starting_scope);
+      await verifyScopeReference(project, request.starting_scope, {
+        requireCurrent: !reconciledStart,
+      });
+      if (reconciledStart) {
+        await verifyScopeReference(project, reconciledStart.target_scope);
+      }
     } catch (error) {
       return blocked(
         "starting-scope-indeterminate",
@@ -229,8 +317,17 @@ export async function startCycle(projectRoot, request, options = {}) {
         },
       );
     }
-    const { findSatisfiedStartingEvaluation } = await import("./convergence.mjs");
-    const starting = await findSatisfiedStartingEvaluation(project, request.starting_scope);
+    const {
+      findHistoricalSatisfiedEvaluation,
+      findSatisfiedStartingEvaluation,
+    } = await import("./convergence.mjs");
+    const starting = reconciledStart
+      ? await findHistoricalSatisfiedEvaluation(
+          project,
+          request.starting_scope,
+          reconciledStart.previous_evaluation,
+        )
+      : await findSatisfiedStartingEvaluation(project, request.starting_scope);
     if (!starting) {
       return blocked(
         "starting-evaluation-indeterminate",
@@ -285,18 +382,25 @@ export async function startCycle(projectRoot, request, options = {}) {
     current_strategy: request.initiating_strategy,
     bootstrap: request.bootstrap,
     starting_scope: request.starting_scope,
-    target_scope: request.bootstrap ? null : request.starting_scope,
+    target_scope: request.bootstrap ? null : reconciledStart?.target_scope ?? request.starting_scope,
     requested_pass: null,
     recovery_position: {
       operation: INITIAL_OPERATIONS[request.initiating_strategy],
       reason: request.bootstrap
         ? "First-time bootstrap must establish a nonempty manuscript and its initial convergence evaluation."
-        : "The verified starting evaluation begins this cycle; its target must restore current-draft revision convergence.",
+        : reconciledStart
+          ? "The approved external reconciliation joins this cycle; its complete target must restore current-draft revision convergence."
+          : "The verified starting evaluation begins this cycle; its target must restore current-draft revision convergence.",
       required_strategy: request.initiating_strategy,
     },
-    related_artifacts: emptyRelatedArtifacts(),
-    change_set: emptyChangeSet(),
-    work_set: { entries: [] },
+    related_artifacts: reconciledStart
+      ? {
+          ...emptyRelatedArtifacts(),
+          reconciliations: [manifest.manuscript_reconciliation],
+        }
+      : emptyRelatedArtifacts(),
+    change_set: reconciledStart?.change_set ?? emptyChangeSet(),
+    work_set: reconciledStart?.work_set ?? { entries: [] },
     starting_evaluation: startingEvaluation,
     target_evaluation: null,
     completion: null,
@@ -369,6 +473,20 @@ export async function assertCycleAllowsOperation(projectRoot, request) {
       blockers: [],
     };
   }
+  const currentScope = manifest.current_scope;
+  const trackedReference = active?.value.target_scope ?? active?.value.starting_scope ??
+    (currentScope ? {
+      scope_id: currentScope.scope_id,
+      scope_fingerprint: currentScope.scope_fingerprint,
+      snapshot_path: currentScope.snapshot_path,
+      snapshot_sha256: currentScope.snapshot_sha256,
+    } : null);
+  const external = await externalReconciliationBlock(
+    { root, manifest },
+    trackedReference,
+    active?.value ?? null,
+  );
+  if (external) return { ...external, read_only: false };
   if (!active) {
     if (request.strategy !== "revise-draft") {
       const gate = await checkConvergenceGate(projectRoot);
@@ -853,6 +971,17 @@ async function transitionCycleLocked(project, request, options) {
         cycle,
       ),
     };
+  }
+
+  const creationDiagnosticLink = cycle.initiating_strategy === "write-fiction" &&
+    (request.related_artifacts?.creation_batches?.length ?? 0) > 0;
+  if ((request.related_artifacts?.creation_commits?.length ?? 0) === 0 && !creationDiagnosticLink) {
+    const external = await externalReconciliationBlock(
+      project,
+      cycle.target_scope ?? cycle.starting_scope,
+      cycle,
+    );
+    if (external) return { stateWritten: false, result: external };
   }
 
   const currentStrategy = request.current_strategy ?? cycle.current_strategy;

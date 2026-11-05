@@ -317,6 +317,13 @@ AI 草稿先写入 `staging/<batch-id>/`, 作者和混合批次也遵守相同�
 文件, 先移入安全备份再从正文稿件移除. 作者外部改动通过 `creation-import` 协调, 不能静默刷新
 hash 或故事状态.
 
+`author-project reconcile-manuscript` 核对 tracker 中准确的导入决定, 当前正文清单,
+已确认范围或空目标以及故事状态来源, 并保存不可变的正文协调记录. 活跃周期内,
+它扩展同一周期的目标范围, 变化集合和工作集合, 不改写起始快照. 只有前一全稿范围的
+`satisfied` 证据仍可证明时才使用 `revise-increment`; 否则执行全稿 `revise-draft`.
+全部删除不能满足或完成周期; 必须经过批准的非空恢复或导入, 再执行全稿 `revise-draft`.
+该命令不写正文, 也不替代备份, 恢复或输入 hash 批准.
+
 ### 覆盖度与分块复核
 
 只有来源报告身份, 操作, 准确路径和 hash, 请求的子检查及依赖全部匹配的完整局部覆盖单元才能复用.
@@ -331,6 +338,8 @@ hash 或故事状态.
 Finding v2 和 report v2 的版本保持不变, 创作操作不加入封闭的报告 v2 `stage` 枚举.
 共享工作流从 `.author-toolkit/references/` 读取这些契约; 独立技能从各自技能目录读取 finding v1.
 创作批次, 提交日志, 故事状态, 覆盖单元和覆盖索引, 复核任务和读者状态使用独立产物契约.
+外部变化使用封闭的 `references/manuscript-reconciliation-schema.json` 产物契约,
+manifest 的可选 `manuscript_reconciliation` 字段指向最新不可变正文协调记录.
 项目登记的源契约为 `references/project-schema-v3.1.json`, setup 将其与其他共享契约一起部署到写作项目;
 v3.0 schema 保留用于读取和升级旧项目.
 

@@ -294,6 +294,16 @@
         "sha256": { "$ref": "#/$defs/sha256" }
       }
     },
+    "reconciliationReference": {
+      "type": "object",
+      "required": ["reconciliation_id", "path", "sha256"],
+      "additionalProperties": false,
+      "properties": {
+        "reconciliation_id": { "$ref": "#/$defs/id" },
+        "path": { "$ref": "relative-path-schema.json" },
+        "sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
     "relatedArtifacts": {
       "type": "object",
       "required": [
@@ -335,6 +345,10 @@
         "no_edit_skips": {
           "type": "array",
           "items": { "$ref": "#/$defs/skipReference" }
+        },
+        "reconciliations": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/reconciliationReference" }
         }
       }
     },

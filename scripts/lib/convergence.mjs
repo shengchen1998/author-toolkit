@@ -6,8 +6,10 @@ import {
   validateCoverageIndex,
   validateCreationBatch,
   validateCreationCommit,
+  validateStoryStateMarkdown,
 } from "./artifacts.mjs";
 import { collectManuscriptInventory } from "./manuscript.mjs";
+import { externalReconciliationBlock } from "./cycles.mjs";
 import { validateManifest } from "./manifest.mjs";
 import { validateEvidenceReport } from "./markdown.mjs";
 import {
@@ -23,6 +25,7 @@ import {
 import {
   validateConvergenceCycleSchema,
   validateConvergenceEvaluationSchema,
+  validateManuscriptReconciliationSchema,
   validateNoEditSkipSchema,
   validateReaderStateSchema,
   validateRelativePath,
@@ -670,6 +673,30 @@ async function computeEvaluation(project, cycle, roots, evaluationId, createdAt)
     no_edit_skips: roots.no_edit_skips ?? [],
     review_groups: roots.review_group ? [roots.review_group] : [],
   };
+  const currentScope = project.manifest.current_scope;
+  const trackedReference = cycle?.target_scope ?? cycle?.starting_scope ??
+    (currentScope ? {
+      scope_id: currentScope.scope_id,
+      scope_fingerprint: currentScope.scope_fingerprint,
+      snapshot_path: currentScope.snapshot_path,
+      snapshot_sha256: currentScope.snapshot_sha256,
+    } : null);
+  try {
+    const external = await externalReconciliationBlock(project, trackedReference, cycle);
+    if (external) {
+      block(
+        "external-reconciliation-required",
+        external.blockers[0].message,
+        "indeterminate",
+        { required_action: external.required_action },
+      );
+    }
+  } catch (error) {
+    block(
+      "external-inventory-unproven",
+      `The previous manuscript inventory cannot be compared with current disk state: ${error.message}`,
+    );
+  }
   const fullScope = await validateFullManuscriptScope(project.manifest, project.manifestPath);
   const inventory = await collectManuscriptInventory(
     project.root,
@@ -769,6 +796,58 @@ async function computeEvaluation(project, cycle, roots, evaluationId, createdAt)
         "starting-evaluation-identity-mismatch",
         "The preserved starting evaluation is not satisfied for the cycle starting scope.",
       );
+    }
+  }
+  const reconciliationReferences = relatedArtifacts.reconciliations ?? [];
+  for (const [index, reference] of reconciliationReferences.entries()) {
+    const isLatest = index === reconciliationReferences.length - 1;
+    const reconciliation = await computation.json(
+      reference,
+      "manuscript-reconciliation",
+      reference.reconciliation_id,
+      validateManuscriptReconciliationSchema,
+    );
+    if (!reconciliation) continue;
+    if (
+      reconciliation.reconciliation_id !== reference.reconciliation_id ||
+      (reconciliation.cycle_id !== null && reconciliation.cycle_id !== roots.cycle_id)
+    ) {
+      block(
+        "reconciliation-identity-mismatch",
+        "Reconciliation identity or cycle ownership differs from the evaluated cycle.",
+      );
+    }
+    if (isLatest && !sameScopeReference(reconciliation.target_scope, roots.target_scope)) {
+      block(
+        "reconciliation-target-mismatch",
+        "Reconciliation target does not match the evaluated full-manuscript target.",
+      );
+    }
+    if (isLatest) {
+      for (const proof of reconciliation.proof_blockers) {
+        block(proof.code, proof.message);
+      }
+    }
+    await computation.json(
+      reconciliation.inventory,
+      "reconciliation-inventory",
+      reconciliation.inventory.inventory_fingerprint,
+      validateInventorySnapshot,
+    );
+    if (isLatest) {
+      for (const storyReference of reconciliation.story_state) {
+        const contents = await computation.bytes(storyReference, "story-state", storyReference.path);
+        if (!contents) continue;
+        const storyValidation = validateStoryStateMarkdown(contents.toString("utf8"));
+        if (!storyValidation.valid) {
+          block(
+            "story-state-contract-invalid",
+            `Reconciled story state ${storyReference.path} is invalid.`,
+            "indeterminate",
+            { path: storyReference.path },
+          );
+        }
+      }
     }
   }
   const creationBatches = [];
@@ -2098,12 +2177,101 @@ export async function getConvergenceStatus(projectRoot) {
     reference = source?.evaluationReference ?? null;
   }
   const requestCompletion = await getRequestCompletion(project.root, cycle);
+  const observedInventory = await collectManuscriptInventory(
+    project.root,
+    project.manifest.manuscript_root,
+    project.manifest.paths,
+  );
+  if (
+    observedInventory.files.length === 0 &&
+    (reference || (active?.value.related_artifacts.reconciliations ?? []).length > 0)
+  ) {
+    const requiredAction = active?.value.recovery_position ? {
+      strategy: active.value.recovery_position.required_strategy,
+      operation: active.value.recovery_position.operation,
+      command: active.value.recovery_position.required_strategy,
+    } : {
+      strategy: "write-fiction",
+      operation: "creation-import",
+      command: "write-fiction",
+    };
+    return {
+      query_valid: true,
+      outcome: "not_satisfied",
+      current: false,
+      evaluation: null,
+      evaluation_reference: reference,
+      cycle: active?.value ?? null,
+      pending_action: project.manifest.pending_action ?? null,
+      request_completion: requestCompletion,
+      required_action: requiredAction,
+      blockers: [{
+        code: "empty-manuscript",
+        message: "An empty manuscript cannot satisfy current-draft revision convergence; restore or import nonempty manuscript before full-manuscript revise-draft recovery.",
+        required_action: requiredAction,
+      }],
+    };
+  }
   if (!reference) {
-    return missingEvaluationStatus(
+    const missing = missingEvaluationStatus(
       active?.value ?? null,
       project.manifest.pending_action ?? null,
       requestCompletion,
     );
+    if (active?.value.starting_scope) {
+      const historicalReferences = [{
+        path: active.value.starting_scope.snapshot_path,
+        sha256: active.value.starting_scope.snapshot_sha256,
+      }];
+      if (active.value.starting_evaluation) historicalReferences.push(active.value.starting_evaluation);
+      try {
+        for (const historical of historicalReferences) {
+          const contents = await readFile(path.resolve(project.root, historical.path));
+          if (sha256Bytes(contents) !== historical.sha256) {
+            throw new Error(`Historical artifact hash changed: ${historical.path}`);
+          }
+        }
+      } catch (error) {
+        return {
+          ...missing,
+          required_action: DEFAULT_ACTION,
+          blockers: [{
+            code: "starting-scope-unproven",
+            message: `The preserved starting scope or evaluation cannot be proven: ${error.message}`,
+            required_action: DEFAULT_ACTION,
+          }, ...missing.blockers],
+        };
+      }
+    }
+    const reconciliations = active?.value.related_artifacts.reconciliations ?? [];
+    if (reconciliations.length === 0) return missing;
+    const reconciliationReference = reconciliations.at(-1);
+    try {
+      const contents = await readFile(path.resolve(project.root, reconciliationReference.path), "utf8");
+      if (sha256Bytes(contents) !== reconciliationReference.sha256) {
+        throw new Error("Reconciliation content hash changed");
+      }
+      const reconciliation = JSON.parse(contents);
+      return {
+        ...missing,
+        blockers: [
+          ...(reconciliation.proof_blockers ?? []).map((blocker) => ({
+            ...blocker,
+            required_action: missing.required_action,
+          })),
+          ...missing.blockers,
+        ],
+      };
+    } catch (error) {
+      return {
+        ...missing,
+        blockers: [{
+          code: "reconciliation-artifact-unavailable",
+          message: `The latest reconciliation cannot be trusted: ${error.message}`,
+          required_action: missing.required_action,
+        }, ...missing.blockers],
+      };
+    }
   }
 
   try {
@@ -2168,6 +2336,48 @@ export async function findSatisfiedStartingEvaluation(project, scopeReference) {
           current_evaluation: result.recomputed,
         };
       }
+    } catch {
+      continue;
+    }
+  }
+  return null;
+}
+
+
+export async function findHistoricalSatisfiedEvaluation(project, scopeReference, preferredReference = null) {
+  for (const source of (await evaluationSources(project)).reverse()) {
+    if (
+      preferredReference &&
+      (source.evaluationReference.evaluation_id !== preferredReference.evaluation_id ||
+        source.evaluationReference.path !== preferredReference.path ||
+        source.evaluationReference.sha256 !== preferredReference.sha256)
+    ) continue;
+    try {
+      const { value: evaluation } = await readEvaluationReference(project, source.evaluationReference);
+      if (evaluation.outcome !== "satisfied" || !sameScopeReference(evaluation.target_scope, scopeReference)) {
+        continue;
+      }
+      for (const artifact of evaluation.evidence_graph.artifacts) {
+        if (["manuscript", "tracker", "story-state"].includes(artifact.role)) continue;
+        const contents = await readFile(path.resolve(project.root, artifact.path));
+        if (sha256Bytes(contents) !== artifact.sha256) throw new Error("Historical evidence changed");
+      }
+      const scopeText = await readFile(path.resolve(project.root, scopeReference.snapshot_path), "utf8");
+      if (sha256Bytes(scopeText) !== scopeReference.snapshot_sha256) continue;
+      const scope = JSON.parse(scopeText);
+      if (!validateScopeSnapshot(scope).valid) continue;
+      const inventoryText = await readFile(path.resolve(project.root, scope.inventory.path), "utf8");
+      if (sha256Bytes(inventoryText) !== scope.inventory.sha256) continue;
+      const inventory = JSON.parse(inventoryText);
+      if (!validateInventorySnapshot(inventory).valid) continue;
+      const scopeFiles = scope.files.map((file) => `${file.path}\0${file.sha256}`).sort();
+      const inventoryFiles = inventory.files.map((file) => `${file.path}\0${file.sha256}`).sort();
+      if (JSON.stringify(scopeFiles) !== JSON.stringify(inventoryFiles)) continue;
+      return {
+        cycle: source.cycle,
+        evaluation,
+        evaluation_reference: source.evaluationReference,
+      };
     } catch {
       continue;
     }

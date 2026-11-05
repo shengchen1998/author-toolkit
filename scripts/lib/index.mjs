@@ -91,6 +91,7 @@ export {
   deriveRequestedPassBaseline,
   evaluateCycle,
   evaluateDraft,
+  findHistoricalSatisfiedEvaluation,
   findSatisfiedStartingEvaluation,
   getConvergenceStatus,
   validateConvergenceEvaluation,
@@ -108,4 +109,13 @@ export {
   verifyDraftRevisionExecution,
   verifyRevisionExecution,
 } from "./revision-execution.mjs";
-export { validateRevisionExecutionSchema } from "./schemas.mjs";
+export {
+  validateManuscriptReconciliationSchema,
+  validateRevisionExecutionSchema,
+} from "./schemas.mjs";
+export {
+  collectVersionedInventory,
+  diffManuscriptInventories,
+  recordInventorySnapshot,
+} from "./scope.mjs";
+export { reconcileManuscript } from "./reconciliation.mjs";

@@ -50,9 +50,9 @@ A creation restore requires separate explicit approval naming the batch, commit,
 
 **Inputs:** Current manifest, recorded scope, actual manuscript inventory, and existing story state.
 
-**Work:** Account for every added, modified, missing, or reordered manuscript file. Extract proposed chapter-state differences for author-written or externally changed text. Show reading-order and evidence effects. Missing or damaged operational artifacts block the import.
+**Work:** Account for every added, modified, missing, or reordered manuscript file. Extract proposed chapter-state differences for author-written or externally changed text. Show reading-order and evidence effects. Missing or damaged operational artifacts block the import. Record the confirmed result through `author-project reconcile-manuscript`; without an active cycle, identify the previous scope explicitly. During an active cycle, keep the same starting snapshot and update its target, cumulative change set, work set, and recovery position rather than opening a parallel cycle.
 
-**Gate:** The author confirms the actual manuscript, state differences, and resulting scope. Never silently refresh hashes or treat extracted facts as approved creative decisions.
+**Gate:** The author confirms the actual manuscript, state differences, and resulting scope in a current tracker `creation-import` decision bound to the reconciliation ID, exact inventory fingerprint, and scope fingerprint or null empty scope. Chapter and current story-state artifacts must bind the actual sources and target, including a null-scope current state with no chapter children after complete deletion. Never silently refresh hashes or treat extracted facts as approved creative decisions. A satisfied previous full-manuscript evaluation with intact required evidence routes to `revise-increment`; missing or untrustworthy history routes to full-manuscript `revise-draft`. An empty target remains `not_satisfied` and requires an approved nonempty restore or import followed by full-manuscript `revise-draft`.
 
 ## 7. Milestone review
 

@@ -322,8 +322,8 @@ test("independent preparation rejects changed current input without publishing a
   const result = JSON.parse(prepared.stdout);
   assert.equal(result.valid, false);
   assert.equal(result.state_written, false);
-  assert.equal(result.blockers[0].code, "revision-execution-preparation-invalid");
-  assert.match(result.blockers[0].message, /Current manuscript input changed/);
+  assert.equal(result.blockers[0].code, "external-reconciliation-required");
+  assert.match(result.blockers[0].message, /creation-import/);
   await assert.rejects(
     readFile(path.join(
       projectRoot,

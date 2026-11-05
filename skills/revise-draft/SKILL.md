@@ -30,6 +30,8 @@ For an independent full-manuscript recovery with accepted edits, run `prepare-dr
 
 When status reports an active cycle that requires `revise-draft`, recover the same cycle. Link the requested pass, full-manuscript target, revision executions, review group, and no-edit skips through `transition-cycle`, then run `evaluate-cycle` with its cycle ID and expected revision. `evaluate-draft` rejects this work with `active-cycle-exists`; never start a parallel cycle. Wait for the author's explicit completion decision before `complete-cycle`.
 
+External manuscript changes first require `author-project reconcile-manuscript` with exact inventory, story-state, scope, and author-decision evidence. Use this full-manuscript `revise-draft` route when the previous satisfied scope or its required evidence is unproven. Complete deletion first leaves the cycle awaiting an approved nonempty restore or import; after that recovery, always run a full-manuscript `revise-draft` pass even if the older starting evaluation remains intact. The reconciliation record and latest story-state hashes join the evaluation evidence graph.
+
 After first-time bootstrap publication, continue the same cycle through `revise-draft` and establish its initial full-manuscript evaluation. The first publication has no previous scope that has reached current-draft revision convergence, so do not route it to `revise-increment`. Link the first creation batch and commit journal with the initial pass and review evidence; for bootstrap, run `evaluate-cycle` and never `evaluate-draft` while that cycle is active. Only a current satisfied target evaluation and the author's completion decision permit a later ordinary creation cycle.
 
 ## Author interaction
