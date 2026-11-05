@@ -57,4 +57,4 @@ For missing, malformed, or stale story state, rebuild only affected chapter reco
 
 ## Evidence changes
 
-New membership, deletion, or reading-order changes require a new scope. Text-only changes can retain the scope ID with new input hashes. Preserve historical reports and their original scope IDs. Use coverage units and the living coverage index under the registered reports path to compose current local coverage. Recompute every affected whole-book synthesis; milestone and chapter summaries never substitute for final reading of actual manuscript text.
+New membership, deletion, or reading-order changes require a new scope. Text-only changes can retain the scope ID with new input hashes and, on v3.2, a new scope fingerprint after author confirmation. Preserve historical reports and their original scope IDs, scope snapshots, and inventory snapshots. Use coverage units and the living coverage index under the registered reports path to compose current local coverage. Recompute every affected whole-book synthesis; milestone and chapter summaries never substitute for final reading of actual manuscript text.

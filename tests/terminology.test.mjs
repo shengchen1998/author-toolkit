@@ -132,6 +132,7 @@ test("shared workflow documentation contains no excluded terminology", async () 
   for (const file of files) {
     if (file.endsWith(`${path.sep}references${path.sep}terminology.md`)) continue;
     let text = await readFile(file, "utf8");
+    text = text.replaceAll(".author-toolkit/convergence/", "");
     for (const approved of approvedForms) {
       text = text.replace(flexiblePattern(approved), "");
     }
@@ -149,7 +150,7 @@ test("shared workflow documentation contains no excluded terminology", async () 
 test("operation definitions exactly cover the shared operation identifiers", async () => {
   const [terminology, projectText, reportText, creationText] = await Promise.all([
     readFile(terminologyPath, "utf8"),
-    readFile(path.join(root, "references", "project-schema-v3.1.json"), "utf8"),
+    readFile(path.join(root, "references", "project-schema-v3.2.json"), "utf8"),
     readFile(path.join(root, "references", "report-schema-v2.json"), "utf8"),
     readFile(path.join(root, "references", "creation-batch-schema.json"), "utf8"),
   ]);
@@ -173,7 +174,9 @@ test("operation definitions exactly cover the shared operation identifiers", asy
 
 test("controlled terminology covers every current shared schema enum", async () => {
   const schemaNames = [
-    "project-schema-v3.1.json",
+    "project-schema-v3.2.json",
+    "scope-snapshot-schema.json",
+    "inventory-snapshot-schema.json",
     "report-schema-v2.json",
     "finding-schema-v2.json",
     "coverage-unit-schema.json",

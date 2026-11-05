@@ -67,7 +67,7 @@ An approval applies only to its named operation, paths, scope, and input version
 
 ## Scope and input currency
 
-A scope records its ID, description, `proposed` or `confirmed` status, ordered file paths and SHA-256 hashes, exclusions, and creation time. Reports, findings, plan batches, approvals, and reviews reference the applicable `scope_id`.
+A scope records its ID, description, `proposed` or `confirmed` status, ordered file paths and SHA-256 hashes, exclusions, and creation time. Reports, findings, plan batches, approvals, and reviews reference the applicable `scope_id`. On v3.2, the current scope also records its scope fingerprint and confirmed snapshot identity; preserve the linked scope snapshot and inventory snapshot as historical evidence.
 
 Only the author can confirm a new scope or expand an existing one. New chapters do not silently extend old reports. Reuse unchanged evidence by its actual operation and input versions, and create new coverage for added or affected text. Before every manuscript write, recompute the hashes; if they differ, stop and reconcile the scope and stale evidence instead of overwriting newer work.
 

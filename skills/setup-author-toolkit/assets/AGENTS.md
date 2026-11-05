@@ -35,7 +35,7 @@ Use the independent skills directly when their standalone scope matches the requ
 
 ## Run creation or revision from shared state
 
-Use one manifest per book. `author-project` owns manifest, path, validation, backup, commit, and restore operations; writing skills own creative content. Resolve the Story Bible, tracker, reports, sessions, backups, handoffs, and `paths.creation` through the manifest rather than assumed defaults. Resolve shared runtime contracts from `<project-root>/.author-toolkit/references/`; this fixed operational directory has no manifest field. All five strategies use this same state.
+Use one manifest per book. `author-project` owns manifest, path, validation, backup, commit, and restore operations; writing skills own creative content. Resolve the Story Bible, tracker, reports, sessions, backups, handoffs, `paths.creation`, and the convergence state root through the manifest rather than assumed defaults. Resolve shared runtime contracts from `<project-root>/.author-toolkit/references/`; this fixed operational directory has no manifest field. All five strategies use this same state.
 
 At the start or resumption of an invocation, follow the active entry skill's procedure, including separate `author-project` calls for `read`, `validate`, and `status`. Read the current scope, pending action, tracker, relevant sessions and plan, active creation batch, and evidence for the requested operation. Run one evidence-gated operation and stop at its author gate. At a stable operation gate, show the author's selected strategy command and wait. Switching preserves scope, evidence, decisions, staging, and backups; it never resumes a write or commit automatically.
 

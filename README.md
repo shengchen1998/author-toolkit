@@ -323,8 +323,8 @@ The skill definitions contain the full gates and audit rules.
 ## Shared project files and evidence
 
 All five strategies use the same neutral `.author-toolkit/project.json` and
-artifact paths. New projects and migrated projects use schema 3.1.0; v3.0
-manifests remain readable and can receive the additive 3.1 upgrade.
+artifact paths. New projects use schema 3.2.0; v3.0 and v3.1 manifests remain
+readable. The existing migration command retains its documented 3.1 target.
 
 - `project.json` records project registration, artifact locations, and optional
   `current_scope` and `pending_action`. It has no `workflow.name`,
@@ -350,6 +350,10 @@ manifests remain readable and can receive the additive 3.1 upgrade.
 - `paths.creation` registers creation state and defaults to
   `.author-toolkit/creation/`. It contains `state/current.md`,
   `state/chapters/`, `state/volumes/`, `batches/`, and `staging/`.
+- The convergence state root defaults to `.author-toolkit/convergence/` on v3.2.
+  Confirming a scope preserves an immutable scope snapshot and inventory snapshot
+  there. The scope fingerprint covers ordered path/hash pairs and sorted
+  exclusions; record metadata and timestamps are excluded.
 
 Chapter and volume story state is derived from accepted manuscript text and
 versioned source artifacts. It supports continuation; it does not replace the
@@ -490,13 +494,15 @@ npm run validate
 ```
 
 Validate a manifest or report directly with the corresponding CLI option. The
-validator also provides options for creation batches, commit journals, story
-state, coverage artifacts, and review jobs; use the installed CLI as the source
-for their exact names:
+validator also provides options for scope snapshots, inventory snapshots,
+creation batches, commit journals, story state, coverage artifacts, and review
+jobs; use the installed CLI as the source for their exact names:
 
 ```bash
 node scripts/validate.mjs --help
 node scripts/validate.mjs --manifest /path/to/.author-toolkit/project.json
+node scripts/validate.mjs --scope-snapshot /path/to/scope.json
+node scripts/validate.mjs --inventory-snapshot /path/to/inventory.json
 node scripts/validate.mjs --report /path/to/report.md
 ```
 

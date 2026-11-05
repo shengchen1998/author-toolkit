@@ -60,7 +60,8 @@ export async function validateProjectFiles(manifest, manifestPath) {
 
   const checks = [["/manuscript_root", manifest.manuscript_root]];
   const operationalPaths = [...OPERATIONAL_PATHS];
-  if (manifest.schema_version === "3.1.0") operationalPaths.push("creation");
+  if (["3.1.0", "3.2.0"].includes(manifest.schema_version)) operationalPaths.push("creation");
+  if (manifest.schema_version === "3.2.0") operationalPaths.push("convergence");
 
   for (const name of operationalPaths) {
     checks.push([`/paths/${name}`, manifest.paths?.[name]]);

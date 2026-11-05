@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "inventory-snapshot-schema.json",
+  "title": "author-toolkit immutable manuscript inventory snapshot",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "inventory_fingerprint",
+    "manuscript_root",
+    "files",
+    "excluded_files",
+    "created_at"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": { "const": "1.0.0" },
+    "inventory_fingerprint": { "$ref": "#/$defs/sha256" },
+    "manuscript_root": { "$ref": "relative-path-schema.json" },
+    "files": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/file" }
+    },
+    "excluded_files": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "$ref": "relative-path-schema.json" }
+    },
+    "created_at": { "type": "string", "format": "date-time" }
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "file": {
+      "type": "object",
+      "required": ["path", "sha256"],
+      "additionalProperties": false,
+      "properties": {
+        "path": { "$ref": "relative-path-schema.json" },
+        "sha256": { "$ref": "#/$defs/sha256" }
+      }
+    }
+  }
+}

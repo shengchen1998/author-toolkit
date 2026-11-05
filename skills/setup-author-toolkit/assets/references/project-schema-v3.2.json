@@ -1,0 +1,163 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "project-schema-v3.2.json",
+  "title": "author-toolkit project manifest v3.2",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "project_type",
+    "language",
+    "manuscript_root",
+    "paths",
+    "created_at",
+    "updated_at"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "format": "uri-reference",
+      "description": "Optional relative or absolute pointer to this schema."
+    },
+    "schema_version": { "const": "3.2.0" },
+    "project_type": { "const": "fiction" },
+    "language": { "$ref": "#/$defs/language" },
+    "manuscript_root": { "$ref": "relative-path-schema.json" },
+    "paths": {
+      "type": "object",
+      "required": [
+        "story_bible",
+        "audit_tracker",
+        "reports",
+        "sessions",
+        "backups",
+        "handoffs",
+        "creation",
+        "convergence"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "story_bible": { "$ref": "relative-path-schema.json" },
+        "audit_tracker": { "$ref": "relative-path-schema.json" },
+        "reports": { "$ref": "relative-path-schema.json" },
+        "sessions": { "$ref": "relative-path-schema.json" },
+        "backups": { "$ref": "relative-path-schema.json" },
+        "handoffs": { "$ref": "relative-path-schema.json" },
+        "creation": { "$ref": "relative-path-schema.json" },
+        "convergence": { "$ref": "relative-path-schema.json" }
+      }
+    },
+    "current_scope": {
+      "type": "object",
+      "required": [
+        "scope_id",
+        "description",
+        "status",
+        "files",
+        "excluded_files",
+        "created_at",
+        "scope_fingerprint"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "scope_id": { "$ref": "#/$defs/scope_id" },
+        "description": { "type": "string", "minLength": 1 },
+        "status": { "enum": ["proposed", "confirmed"] },
+        "files": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["path", "sha256"],
+            "additionalProperties": false,
+            "properties": {
+              "path": { "$ref": "relative-path-schema.json" },
+              "sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              }
+            }
+          }
+        },
+        "excluded_files": {
+          "type": "array",
+          "items": { "$ref": "relative-path-schema.json" }
+        },
+        "created_at": { "$ref": "#/$defs/timestamp" },
+        "scope_fingerprint": { "$ref": "#/$defs/sha256" },
+        "snapshot_path": { "$ref": "relative-path-schema.json" },
+        "snapshot_sha256": { "$ref": "#/$defs/sha256" }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "status": { "const": "confirmed" } }
+          },
+          "then": {
+            "required": ["snapshot_path", "snapshot_sha256"],
+            "properties": {
+              "snapshot_path": { "$ref": "relative-path-schema.json" },
+              "snapshot_sha256": { "$ref": "#/$defs/sha256" }
+            }
+          }
+        }
+      ]
+    },
+    "pending_action": {
+      "type": "object",
+      "required": ["operation", "status", "reason", "updated_at"],
+      "additionalProperties": false,
+      "properties": {
+        "operation": {
+          "enum": [
+            "intake",
+            "story-bible",
+            "draft-baseline",
+            "structure",
+            "characters",
+            "diagnostics",
+            "revision-plan",
+            "chapter-revision",
+            "prose",
+            "ai-cleanup",
+            "current-scope-review",
+            "final-review",
+            "creation-baseline",
+            "writing-plan",
+            "chapter-creation",
+            "chapter-review",
+            "creation-commit",
+            "creation-import",
+            "milestone-review"
+          ]
+        },
+        "status": { "enum": ["in_progress", "awaiting_author", "blocked"] },
+        "scope_id": { "$ref": "#/$defs/scope_id" },
+        "reason": { "type": "string", "minLength": 1 },
+        "artifacts": {
+          "type": "array",
+          "items": { "$ref": "relative-path-schema.json" }
+        },
+        "updated_at": { "$ref": "#/$defs/timestamp" }
+      }
+    },
+    "created_at": { "$ref": "#/$defs/timestamp" },
+    "updated_at": { "$ref": "#/$defs/timestamp" }
+  },
+  "$defs": {
+    "language": {
+      "type": "string",
+      "pattern": "^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$",
+      "description": "BCP 47 language tag such as en, en-US, zh, or zh-CN."
+    },
+    "scope_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "timestamp": { "type": "string", "format": "date-time" }
+  }
+}

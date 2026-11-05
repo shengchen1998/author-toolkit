@@ -13,6 +13,9 @@ const relativePathSchema = readSchema("relative-path-schema.json");
 const projectSchema = readSchema("project-schema.json");
 const projectV3Schema = readSchema("project-schema-v3.json");
 const projectV31Schema = readSchema("project-schema-v3.1.json");
+const projectV32Schema = readSchema("project-schema-v3.2.json");
+const scopeSnapshotSchema = readSchema("scope-snapshot-schema.json");
+const inventorySnapshotSchema = readSchema("inventory-snapshot-schema.json");
 const reportSchema = readSchema("report-schema-v2.json");
 const storyStateSchema = readSchema("story-state-schema.json");
 const creationBatchSchema = readSchema("creation-batch-schema.json");
@@ -30,6 +33,9 @@ ajv.addSchema(relativePathSchema);
 ajv.addSchema(projectSchema);
 ajv.addSchema(projectV3Schema);
 ajv.addSchema(projectV31Schema);
+ajv.addSchema(projectV32Schema);
+ajv.addSchema(scopeSnapshotSchema);
+ajv.addSchema(inventorySnapshotSchema);
 ajv.addSchema(reportSchema);
 ajv.addSchema(storyStateSchema);
 ajv.addSchema(creationBatchSchema);
@@ -45,6 +51,9 @@ const relativePathValidator = ajv.getSchema("relative-path-schema.json");
 const projectValidator = ajv.getSchema("project-schema.json");
 const projectV3Validator = ajv.getSchema("project-schema-v3.json");
 const projectV31Validator = ajv.getSchema("project-schema-v3.1.json");
+const projectV32Validator = ajv.getSchema("project-schema-v3.2.json");
+const scopeSnapshotValidator = ajv.getSchema("scope-snapshot-schema.json");
+const inventorySnapshotValidator = ajv.getSchema("inventory-snapshot-schema.json");
 const reportValidator = ajv.getSchema("report-schema-v2.json");
 const storyStateValidator = ajv.getSchema("story-state-schema.json");
 const creationBatchValidator = ajv.getSchema("creation-batch-schema.json");
@@ -80,6 +89,18 @@ export function validateProjectV3Schema(value) {
 
 export function validateProjectV31Schema(value) {
   return evaluate(projectV31Validator, value);
+}
+
+export function validateProjectV32Schema(value) {
+  return evaluate(projectV32Validator, value);
+}
+
+export function validateScopeSnapshotSchema(value) {
+  return evaluate(scopeSnapshotValidator, value);
+}
+
+export function validateInventorySnapshotSchema(value) {
+  return evaluate(inventorySnapshotValidator, value);
 }
 
 export function validateReportEnvelope(value) {
@@ -127,6 +148,9 @@ export function validateSchemaDefinitions() {
     ["project-schema.json", projectSchema],
     ["project-schema-v3.json", projectV3Schema],
     ["project-schema-v3.1.json", projectV31Schema],
+    ["project-schema-v3.2.json", projectV32Schema],
+    ["scope-snapshot-schema.json", scopeSnapshotSchema],
+    ["inventory-snapshot-schema.json", inventorySnapshotSchema],
     ["report-schema-v2.json", reportSchema],
     ["story-state-schema.json", storyStateSchema],
     ["creation-batch-schema.json", creationBatchSchema],

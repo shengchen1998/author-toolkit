@@ -10,6 +10,8 @@ import {
   validateCreationBatch,
   validateCreationCommit,
   validateEvidenceReport,
+  validateFullManuscriptScope,
+  validateInventorySnapshot,
   validateManifest,
   validateMarkdownReport,
   validateProjectFiles,
@@ -18,6 +20,7 @@ import {
   validateReviewJob,
   validateSchemaDefinitions,
   validateScopeCurrency,
+  validateScopeSnapshot,
   validateStoryState,
   validateStoryStateMarkdown,
   validateTracker,
@@ -28,6 +31,12 @@ import { V3_SCHEMA_VERSIONS } from "./lib/constants.mjs";
 const root = fileURLToPath(new URL("../", import.meta.url));
 const examples = ["fiction-revision-en", "fiction-revision-zh"];
 const artifactTypes = [
+  { key: "scopeSnapshots", option: "--scope-snapshot", validate: validateScopeSnapshot },
+  {
+    key: "inventorySnapshots",
+    option: "--inventory-snapshot",
+    validate: validateInventorySnapshot,
+  },
   { key: "creationBatches", option: "--creation-batch", validate: validateCreationBatch },
   { key: "creationCommits", option: "--creation-commit", validate: validateCreationCommit },
   { key: "coverageUnits", option: "--coverage-unit", validate: validateCoverageUnit },
@@ -51,6 +60,7 @@ function usage() {
   console.log(`Usage:
   node scripts/validate.mjs
   node scripts/validate.mjs [--manifest FILE] [--report FILE] [--workflow-fixture FILE]...
+  node scripts/validate.mjs [--scope-snapshot FILE] [--inventory-snapshot FILE]...
   node scripts/validate.mjs [--creation-batch FILE] [--creation-commit FILE]...
   node scripts/validate.mjs [--coverage-unit FILE] [--coverage-index FILE]...
   node scripts/validate.mjs [--review-job FILE] [--reader-state FILE] [--story-state FILE]...
@@ -154,11 +164,20 @@ async function main() {
       if (result.valid) {
         check(`${path.relative(root, file)}#files`, await validateProjectFiles(manifest, file));
         if (V3_SCHEMA_VERSIONS.has(manifest.schema_version) && manifest.current_scope) {
-          check(`${path.relative(root, file)}#scope`, await validateScopeCurrency(manifest, file));
+          const scopeResult =
+            manifest.schema_version === "3.2.0"
+              ? await validateFullManuscriptScope(manifest, file)
+              : await validateScopeCurrency(manifest, file);
+          check(`${path.relative(root, file)}#scope`, scopeResult);
+          if (manifest.schema_version === "3.2.0") {
+            console.log(
+              `  scope_id=${scopeResult.scope_id} scope_fingerprint=${scopeResult.scope_fingerprint} full_manuscript=${scopeResult.full_manuscript}`,
+            );
+          }
         }
         check(`${path.relative(root, file)}#tracker`, await validateTracker(manifest, file));
       } else if (
-        !["2.0.0", "3.0.0", "3.1.0"].includes(manifest?.schema_version) ||
+        !["2.0.0", "3.0.0", "3.1.0", "3.2.0"].includes(manifest?.schema_version) ||
         manifest?.project_type !== "fiction" ||
         (manifest?.schema_version === "2.0.0" &&
           manifest?.workflow?.name !== "revise-fiction")
