@@ -90,6 +90,7 @@ export {
   computeRequestedPassFingerprint,
   deriveRequestedPassBaseline,
   evaluateCycle,
+  evaluateDraft,
   findSatisfiedStartingEvaluation,
   getConvergenceStatus,
   validateConvergenceEvaluation,

@@ -366,29 +366,79 @@ async function readEvaluationReference(project, reference) {
   return { value, text };
 }
 
-async function latestSatisfiedPass(project, excludeCycleId = null) {
-  const candidates = [];
-  for (const cycle of await completedCycles(project)) {
-    if (cycle.cycle_id === excludeCycleId || !cycle.target_evaluation || !cycle.requested_pass) {
-      continue;
-    }
+async function evaluationSources(project) {
+  const sources = (await completedCycles(project)).map((cycle) => ({
+    cycle,
+    evaluationReference: cycle.target_evaluation,
+    passReference: cycle.requested_pass,
+    sortAt: cycle.completion?.completed_at ?? cycle.updated_at,
+  }));
+  const directory = path.resolve(project.root, project.manifest.paths.convergence, "evaluations");
+  let entries;
+  try {
+    entries = await readdir(directory, { withFileTypes: true });
+  } catch (error) {
+    if (error.code === "ENOENT") return sources;
+    throw error;
+  }
+  for (const entry of entries) {
+    if (!entry.isFile() || !entry.name.endsWith(".json")) continue;
+    const relative = path.posix.join(
+      project.manifest.paths.convergence,
+      "evaluations",
+      entry.name,
+    );
+    const text = await readFile(path.resolve(project.root, relative), "utf8");
+    const evaluationReference = {
+      evaluation_id: entry.name.slice(0, -".json".length),
+      path: relative,
+      sha256: sha256Bytes(text),
+    };
+    const { value: evaluation } = await readEvaluationReference(project, evaluationReference);
+    if (evaluation.cycle_id !== null) continue;
+    sources.push({
+      cycle: null,
+      evaluationReference,
+      passReference: evaluation.requested_pass,
+      sortAt: evaluation.created_at,
+    });
+  }
+  return sources.sort((left, right) =>
+    left.sortAt.localeCompare(right.sortAt) ||
+    left.evaluationReference.path.localeCompare(right.evaluationReference.path)
+  );
+}
+
+async function latestSatisfiedPass(project, excludeCycleId = null, excludeEvaluationId = null) {
+  for (const source of (await evaluationSources(project)).reverse()) {
+    if (
+      source.cycle?.cycle_id === excludeCycleId ||
+      source.evaluationReference.evaluation_id === excludeEvaluationId ||
+      !source.passReference
+    ) continue;
     try {
-      const { value: evaluation } = await readEvaluationReference(project, cycle.target_evaluation);
+      const { value: evaluation } = await readEvaluationReference(project, source.evaluationReference);
       if (evaluation.outcome !== "satisfied") continue;
-      const passText = await readFile(path.resolve(project.root, cycle.requested_pass.path), "utf8");
-      if (sha256Bytes(passText) !== cycle.requested_pass.sha256) continue;
+      const passText = await readFile(path.resolve(project.root, source.passReference.path), "utf8");
+      if (sha256Bytes(passText) !== source.passReference.sha256) continue;
       const pass = JSON.parse(passText);
       if (!validateRequestedPass(pass).valid || pass.narrowing !== null) continue;
       if (
-        pass.pass_id !== cycle.requested_pass.pass_id ||
-        pass.pass_fingerprint !== cycle.requested_pass.pass_fingerprint
+        pass.pass_id !== source.passReference.pass_id ||
+        pass.pass_fingerprint !== source.passReference.pass_fingerprint
       ) continue;
-      candidates.push({ cycle, evaluation, pass, passReference: cycle.requested_pass });
+      return {
+        cycle: source.cycle,
+        evaluation,
+        evaluationReference: source.evaluationReference,
+        pass,
+        passReference: source.passReference,
+      };
     } catch {
       continue;
     }
   }
-  return candidates.at(-1) ?? null;
+  return null;
 }
 
 function newComputation(project, cycle, roots, evaluationId, createdAt) {
@@ -609,6 +659,11 @@ async function loadReport(computation, reference, { currentPass = true, inputFil
 async function computeEvaluation(project, cycle, roots, evaluationId, createdAt) {
   const computation = newComputation(project, cycle, roots, evaluationId, createdAt);
   const { block, record } = computation;
+  const relatedArtifacts = cycle?.related_artifacts ?? {
+    revision_executions: [],
+    no_edit_skips: roots.no_edit_skips ?? [],
+    review_groups: roots.review_group ? [roots.review_group] : [],
+  };
   const fullScope = await validateFullManuscriptScope(project.manifest, project.manifestPath);
   if (!fullScope.valid) {
     const code = project.manifest.current_scope?.files?.length === 0
@@ -695,7 +750,7 @@ async function computeEvaluation(project, cycle, roots, evaluationId, createdAt)
     for (const dependency of pass.dependencies) {
       await computation.bytes(dependency, "dependency", dependency.path);
     }
-    const baseline = await latestSatisfiedPass(project, roots.cycle_id);
+    const baseline = await latestSatisfiedPass(project, roots.cycle_id, evaluationId);
     if (baseline && !pass.baseline_pass) {
       block(
         "requested-pass-baseline-missing",
@@ -753,7 +808,7 @@ async function computeEvaluation(project, cycle, roots, evaluationId, createdAt)
         }
       }
       if (baseline) {
-        record("baseline-evaluation", baseline.evaluation.evaluation_id, baseline.cycle.target_evaluation);
+        record("baseline-evaluation", baseline.evaluation.evaluation_id, baseline.evaluationReference);
       }
     }
   }
@@ -947,7 +1002,7 @@ async function computeEvaluation(project, cycle, roots, evaluationId, createdAt)
   }
 
   const executions = [];
-  for (const reference of cycle.related_artifacts?.revision_executions ?? []) {
+  for (const reference of relatedArtifacts.revision_executions ?? []) {
     const execution = await computation.json(
       reference,
       "revision-execution",
@@ -1020,7 +1075,7 @@ async function computeEvaluation(project, cycle, roots, evaluationId, createdAt)
     .map(({ execution }) => execution);
 
   const skips = [];
-  for (const reference of cycle.related_artifacts?.no_edit_skips ?? []) {
+  for (const reference of relatedArtifacts.no_edit_skips ?? []) {
     const skip = await computation.json(reference, "no-edit-skip", reference.skip_id, validateNoEditSkip);
     if (!skip) continue;
     skips.push(skip);
@@ -1117,7 +1172,7 @@ async function computeEvaluation(project, cycle, roots, evaluationId, createdAt)
   if (reviewGroup) {
     reviewClaimPaths.add(roots.review_group.path);
     if (
-      !(cycle.related_artifacts?.review_groups ?? []).some((reference) =>
+      !(relatedArtifacts.review_groups ?? []).some((reference) =>
         reference.review_group_id === roots.review_group.review_group_id && sameReference(reference, roots.review_group)
       )
     ) {
@@ -1400,6 +1455,15 @@ function sameEvidenceGraph(left, right) {
 
 async function recomputeStoredEvaluation(project, cycle, reference) {
   const { value: stored } = await readEvaluationReference(project, reference);
+  const independentNoEditSkips = stored.cycle_id === null
+    ? stored.evidence_graph.artifacts
+      .filter((artifact) => artifact.role === "no-edit-skip")
+      .map((artifact) => ({
+        skip_id: artifact.artifact_id,
+        path: artifact.path,
+        sha256: artifact.sha256,
+      }))
+    : null;
   const recomputed = await computeEvaluation(
     project,
     cycle,
@@ -1411,6 +1475,7 @@ async function recomputeStoredEvaluation(project, cycle, reference) {
       reports: stored.reports,
       review_group: stored.review_group,
       semantic_attestations: stored.semantic_attestations,
+      ...(independentNoEditSkips ? { no_edit_skips: independentNoEditSkips } : {}),
     },
     stored.evaluation_id,
     stored.created_at,
@@ -1439,50 +1504,65 @@ function publicFailure(code, message, cycle = null, details = {}) {
   };
 }
 
-function validateEvaluationRequest(request) {
+function validateEvaluationRequest(request, { independent = false } = {}) {
+  const operation = independent ? "evaluate-draft" : "evaluate-cycle";
   const allowed = new Set([
-    "cycle_id",
-    "expected_revision",
     "evaluation_id",
     "coverage_index",
     "reports",
     "review_group",
     "semantic_attestations",
+    ...(independent
+      ? ["requested_pass", "target_scope", "no_edit_skips"]
+      : ["cycle_id", "expected_revision"]),
   ]);
   for (const key of Object.keys(request)) {
-    if (!allowed.has(key)) throw new Error(`Unknown evaluate-cycle input field: ${key}`);
+    if (!allowed.has(key)) throw new Error(`Unknown ${operation} input field: ${key}`);
   }
+  const identityValid = independent
+    ? request.requested_pass && request.target_scope && Array.isArray(request.no_edit_skips)
+    : /^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(request.cycle_id ?? "") &&
+      Number.isInteger(request.expected_revision);
   if (
-    !/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(request.cycle_id ?? "") ||
-    !Number.isInteger(request.expected_revision) ||
+    !identityValid ||
     !/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(request.evaluation_id ?? "") ||
     !request.coverage_index ||
     !Array.isArray(request.reports) ||
     !request.review_group ||
     !Array.isArray(request.semantic_attestations)
   ) {
-    throw new Error("evaluate-cycle requires cycle, revision, evaluation, and evidence root identities");
+    throw new Error(`${operation} requires ${independent ? "pass, target, no-edit," : "cycle, revision,"} evaluation, and evidence root identities`);
   }
   const references = [
-    [request.coverage_index, ["path", "sha256"], null],
-    ...request.reports.map((reference) => [reference, ["report_id", "path", "sha256"], "report_id"]),
-    [request.review_group, ["review_group_id", "path", "sha256"], "review_group_id"],
+    [request.coverage_index, ["path", "sha256"]],
+    ...request.reports.map((reference) => [reference, ["report_id", "path", "sha256"]]),
+    [request.review_group, ["review_group_id", "path", "sha256"]],
     ...request.semantic_attestations.map((reference) => [
       reference,
       ["attestation_id", "path", "sha256"],
-      "attestation_id",
     ]),
+    ...(independent
+      ? [
+          [request.requested_pass, ["pass_id", "pass_fingerprint", "path", "sha256"]],
+          [request.target_scope, ["scope_id", "scope_fingerprint", "snapshot_path", "snapshot_sha256"]],
+          ...request.no_edit_skips.map((reference) => [reference, ["skip_id", "path", "sha256"]]),
+        ]
+      : []),
   ];
-  for (const [reference, fields, idField] of references) {
+  for (const [reference, fields] of references) {
     if (
       !reference ||
       Object.keys(reference).length !== fields.length ||
       !fields.every((field) => Object.hasOwn(reference, field)) ||
-      !validateRelativePath(reference.path).valid ||
-      !/^[0-9a-f]{64}$/.test(reference.sha256) ||
-      (idField && !/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(reference[idField]))
+      !validateRelativePath(reference.path ?? reference.snapshot_path).valid ||
+      !fields.filter((field) => field.endsWith("_id")).every((field) =>
+        /^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(reference[field])
+      ) ||
+      !fields.filter((field) => field === "sha256" || field.endsWith("_sha256") || field.endsWith("_fingerprint")).every((field) =>
+        /^[0-9a-f]{64}$/.test(reference[field])
+      )
     ) {
-      throw new Error("evaluate-cycle evidence roots require closed identities, safe paths, and SHA-256 hashes");
+      throw new Error(`${operation} evidence roots require closed identities, safe paths, and SHA-256 hashes`);
     }
   }
 }
@@ -1594,6 +1674,64 @@ export async function evaluateCycle(projectRoot, request, options = {}) {
       evaluation,
       evaluation_path: absolute,
       evaluation_reference: reference,
+      state_written: true,
+      blockers: evaluation.blockers,
+    };
+  });
+  return locked.lockFailure ?? locked.value;
+}
+
+export async function evaluateDraft(projectRoot, request, options = {}) {
+  validateEvaluationRequest(request, { independent: true });
+  const project = await readProject(projectRoot);
+  const initial = await readActiveCycle(project);
+  if (initial) {
+    return publicFailure(
+      "active-cycle-exists",
+      `Cycle ${initial.value.cycle_id} is active; link revise-draft recovery through evaluate-cycle instead of an independent evaluation.`,
+      initial.value,
+    );
+  }
+  const locked = await lockProjectCycle(project, options, async () => {
+    const active = await readActiveCycle(project);
+    if (active) {
+      return publicFailure(
+        "active-cycle-exists",
+        `Cycle ${active.value.cycle_id} is active; link revise-draft recovery through evaluate-cycle instead of an independent evaluation.`,
+        active.value,
+      );
+    }
+    const roots = {
+      cycle_id: null,
+      requested_pass: request.requested_pass,
+      target_scope: request.target_scope,
+      coverage_index: request.coverage_index,
+      reports: request.reports,
+      review_group: request.review_group,
+      no_edit_skips: request.no_edit_skips,
+      semantic_attestations: request.semantic_attestations,
+    };
+    const evaluation = await computeEvaluation(
+      project,
+      null,
+      roots,
+      request.evaluation_id,
+      operationTime(options),
+    );
+    const relative = path.posix.join(
+      project.manifest.paths.convergence,
+      "evaluations",
+      `${evaluation.evaluation_id}.json`,
+    );
+    const absolute = path.resolve(project.root, relative);
+    const text = `${JSON.stringify(evaluation, null, 2)}\n`;
+    await publishImmutable(absolute, text);
+    return {
+      valid: evaluation.outcome === "satisfied",
+      cycle: null,
+      evaluation,
+      evaluation_path: absolute,
+      evaluation_reference: evaluationReference(evaluation, relative, text),
       state_written: true,
       blockers: evaluation.blockers,
     };
@@ -1819,9 +1957,9 @@ export async function getConvergenceStatus(projectRoot) {
   let cycle = active?.value ?? null;
   let reference = cycle?.target_evaluation ?? null;
   if (!reference && !cycle) {
-    const completed = await completedCycles(project);
-    cycle = completed.at(-1) ?? null;
-    reference = cycle?.target_evaluation ?? null;
+    const source = (await evaluationSources(project)).at(-1) ?? null;
+    cycle = source?.cycle ?? null;
+    reference = source?.evaluationReference ?? null;
   }
   const requestCompletion = await getRequestCompletion(project.root, cycle);
   if (!reference) {
@@ -1875,15 +2013,22 @@ export async function getConvergenceStatus(projectRoot) {
 }
 
 export async function findSatisfiedStartingEvaluation(project, scopeReference) {
-  for (const cycle of (await completedCycles(project)).reverse()) {
-    if (!sameScopeReference(cycle.target_scope, scopeReference) || !cycle.target_evaluation) continue;
+  for (const source of (await evaluationSources(project)).reverse()) {
     try {
-      const result = await recomputeStoredEvaluation(project, cycle, cycle.target_evaluation);
-      if (result.current && result.recomputed.outcome === "satisfied") {
+      const result = await recomputeStoredEvaluation(
+        project,
+        source.cycle,
+        source.evaluationReference,
+      );
+      if (
+        sameScopeReference(result.stored.target_scope, scopeReference) &&
+        result.current &&
+        result.recomputed.outcome === "satisfied"
+      ) {
         return {
-          cycle,
+          cycle: source.cycle,
           evaluation: result.stored,
-          evaluation_reference: cycle.target_evaluation,
+          evaluation_reference: source.evaluationReference,
           current_evaluation: result.recomputed,
         };
       }
