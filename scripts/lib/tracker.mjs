@@ -343,11 +343,180 @@ export function validateApprovalsMarkdown(markdown) {
   return { valid: errors.length === 0, errors };
 }
 
+const CYCLE_COMPLETION_COLUMNS = [
+  ["id", "decision id"],
+  ["cycleId", "cycle id"],
+  ["scopeFingerprint", "target scope fingerprint"],
+  ["status", "status"],
+  ["reason", "reason"],
+  ["updated", "updated"],
+];
+
+function namedSection(markdown, name) {
+  const lines = markdown.split(/\r?\n/);
+  const headings = lines.flatMap((line, index) =>
+    new RegExp(`^ {0,3}##[ \\t]+${name}[ \\t]*$`).test(line) ? [index] : [],
+  );
+  if (headings.length !== 1) return { lines, error: headings.length };
+  const start = headings[0] + 1;
+  let end = lines.length;
+  for (let index = start; index < lines.length; index += 1) {
+    if (/^ {0,3}##[ \t]+/.test(lines[index])) {
+      end = index;
+      break;
+    }
+  }
+  return { lines: lines.slice(start, end), heading: headings[0], error: undefined };
+}
+
+function tableWithColumns(lines, definitions) {
+  for (let index = 0; index < lines.length - 1; index += 1) {
+    const header = splitRow(lines[index]);
+    const separator = splitRow(lines[index + 1]);
+    if (!header || !isSeparator(separator)) continue;
+    const normalized = header.map(normalizeHeader);
+    const columns = Object.fromEntries(
+      definitions.map(([name, label]) => [name, normalized.indexOf(label)]),
+    );
+    if (Object.values(columns).every((column) => column >= 0)) {
+      return { header, columns, index };
+    }
+  }
+  return null;
+}
+
+function parsedRows(lines, table, definitions) {
+  const rows = [];
+  for (const line of lines.slice(table.index + 2)) {
+    if (!line.trim()) continue;
+    const cells = splitRow(line);
+    if (!cells) break;
+    const row = Object.fromEntries(
+      definitions.map(([name]) => [name, cleanCell(cells[table.columns[name]])]),
+    );
+    row.cellCount = cells.length;
+    rows.push(row);
+  }
+  return rows;
+}
+
+export async function parseTrackerState(markdown, projectRoot) {
+  const findingValidation = await validateTrackerMarkdown(markdown, projectRoot);
+  const approvalValidation = validateApprovalsMarkdown(markdown);
+  const errors = [...findingValidation.errors, ...approvalValidation.errors];
+  const findings = [];
+  const findingSection = findingsSection(markdown);
+  if (findingSection.error === undefined) {
+    const definitions = Object.entries(COLUMN_ALIASES).map(([name, aliases]) => [name, aliases[0]]);
+    const table = tableWithColumns(findingSection.lines, definitions);
+    if (table) {
+      for (const row of parsedRows(findingSection.lines, table, definitions)) {
+        row.report = reportCell(row.report);
+        row.status = row.status.toLowerCase();
+        delete row.cellCount;
+        findings.push(row);
+      }
+    }
+  }
+
+  const approvals = [];
+  const approvalSection = approvalsSection(markdown);
+  if (approvalSection.error === undefined) {
+    const table = tableWithColumns(approvalSection.lines, APPROVAL_COLUMNS);
+    if (table) {
+      for (const row of parsedRows(approvalSection.lines, table, APPROVAL_COLUMNS)) {
+        row.paths = parseApprovalPaths(row.paths).paths;
+        delete row.cellCount;
+        approvals.push(row);
+      }
+    }
+  }
+
+  const completionDecisions = [];
+  const completionSection = namedSection(markdown, "Cycle completions");
+  if (completionSection.error === undefined) {
+    const table = tableWithColumns(completionSection.lines, CYCLE_COMPLETION_COLUMNS);
+    if (!table || table.header.length !== CYCLE_COMPLETION_COLUMNS.length) {
+      errors.push(trackerError(
+        "/Cycle completions",
+        "Cycle completions requires Decision ID, Cycle ID, Target scope fingerprint, Status, Reason, and Updated columns",
+      ));
+    } else {
+      const ids = new Set();
+      for (const [index, row] of parsedRows(
+        completionSection.lines,
+        table,
+        CYCLE_COMPLETION_COLUMNS,
+      ).entries()) {
+        const rowPath = `/Cycle completions/${index}`;
+        if (row.cellCount !== CYCLE_COMPLETION_COLUMNS.length) {
+          errors.push(trackerError(rowPath, "cycle completion row has the wrong number of columns"));
+        }
+        if (!/^[A-Z][A-Z0-9]*-[0-9]{3,}$/.test(row.id)) {
+          errors.push(trackerError(`${rowPath}/id`, "completion decision ID has an invalid format"));
+        } else if (ids.has(row.id)) {
+          errors.push(trackerError(`${rowPath}/id`, `duplicate completion decision ID: ${row.id}`));
+        }
+        ids.add(row.id);
+        if (!/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(row.cycleId)) {
+          errors.push(trackerError(`${rowPath}/cycleId`, "cycle ID has an invalid format"));
+        }
+        if (!/^[0-9a-f]{64}$/.test(row.scopeFingerprint)) {
+          errors.push(trackerError(`${rowPath}/scopeFingerprint`, "target scope fingerprint must be SHA-256"));
+        }
+        if (!APPROVAL_STATUSES.includes(row.status)) {
+          errors.push(trackerError(`${rowPath}/status`, "completion decision status is invalid"));
+        }
+        if (!row.reason || !row.updated) {
+          errors.push(trackerError(rowPath, "completion decision reason and updated time are required"));
+        }
+        delete row.cellCount;
+        completionDecisions.push(row);
+      }
+    }
+  } else if (completionSection.error > 1) {
+    errors.push(trackerError("/Cycle completions", "expected at most one ## Cycle completions heading"));
+  }
+
+  return {
+    valid: errors.length === 0,
+    errors,
+    findings,
+    approvals,
+    completion_decisions: completionDecisions,
+  };
+}
+
+function completionCell(value) {
+  return String(value).replace(/\r?\n/g, " ").replaceAll("|", "\\|").trim();
+}
+
+export function appendCycleCompletionDecision(markdown, decision) {
+  const section = namedSection(markdown, "Cycle completions");
+  const row = `| ${decision.decision_id} | ${decision.cycle_id} | ${decision.scope_fingerprint} | approved | ${completionCell(decision.reason)} | ${decision.updated_at} |\n`;
+  if (section.error === undefined) {
+    const table = tableWithColumns(section.lines, CYCLE_COMPLETION_COLUMNS);
+    if (!table) throw new Error("Cycle completions table is invalid");
+    for (const existing of parsedRows(section.lines, table, CYCLE_COMPLETION_COLUMNS)) {
+      if (existing.id === decision.decision_id) throw new Error(`Duplicate completion decision: ${decision.decision_id}`);
+    }
+    const lines = markdown.split(/\r?\n/);
+    const separatorIndex = section.heading + 1 + table.index + 1;
+    lines.splice(separatorIndex + 1, 0, row.trimEnd());
+    return lines.join("\n");
+  }
+
+  const block = `## Cycle completions\n\n| Decision ID | Cycle ID | Target scope fingerprint | Status | Reason | Updated |\n|---|---|---|---|---|---|\n${row}\n`;
+  const openQuestions = markdown.match(/^ {0,3}##[ \t]+Open questions[ \t]*$/m);
+  if (openQuestions?.index !== undefined) {
+    return `${markdown.slice(0, openQuestions.index)}${block}\n${markdown.slice(openQuestions.index)}`;
+  }
+  return `${markdown.trimEnd()}\n\n${block}`;
+}
+
 export async function validateTrackerV3Markdown(markdown, projectRoot) {
-  const findings = await validateTrackerMarkdown(markdown, projectRoot);
-  const approvals = validateApprovalsMarkdown(markdown);
-  const errors = [...findings.errors, ...approvals.errors];
-  return { valid: errors.length === 0, errors };
+  const state = await parseTrackerState(markdown, projectRoot);
+  return { valid: state.valid, errors: state.errors };
 }
 
 export async function validateTracker(manifest, manifestPath) {

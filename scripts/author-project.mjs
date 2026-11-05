@@ -6,6 +6,8 @@ import path from "node:path";
 import {
   assertCycleAllowsOperation,
   checkConvergenceGate,
+  completeCycle,
+  evaluateCycle,
   getCycleStatus,
   projectRootFromManifest,
   startCycle,
@@ -15,8 +17,12 @@ import {
 const commands = new Set([
   "start-cycle",
   "transition-cycle",
+  "evaluate-cycle",
+  "complete-cycle",
   "cycle-status",
   "cycle-gate",
+  "convergence-status",
+  "convergence-gate",
   "check-operation",
 ]);
 
@@ -24,12 +30,17 @@ function usage() {
   console.log(`Usage:
   node scripts/author-project.mjs start-cycle --project-root ROOT --input FILE
   node scripts/author-project.mjs transition-cycle --project-root ROOT --input FILE
+  node scripts/author-project.mjs evaluate-cycle --project-root ROOT --input FILE
+  node scripts/author-project.mjs complete-cycle --project-root ROOT --input FILE
   node scripts/author-project.mjs cycle-status --project-root ROOT
   node scripts/author-project.mjs cycle-gate --project-root ROOT
+  node scripts/author-project.mjs convergence-status --project-root ROOT
+  node scripts/author-project.mjs convergence-gate --project-root ROOT
   node scripts/author-project.mjs check-operation --project-root ROOT --input FILE
 
 Use --manifest FILE instead of --project-root ROOT when addressing the manifest directly.
-Transitions serialize independent processes with active-cycle.lock and recheck expected_revision in the lock.
+Transitions, evaluations, and completions serialize independent processes with active-cycle.lock and recheck expected_revision in the lock.
+Completion records the author decision, reevaluates the changed tracker evidence, and completes only a still-satisfied cycle.
 These are author-project operations; they do not invoke a writing strategy.`);
 }
 
@@ -53,10 +64,10 @@ function parseArguments(args) {
   if (Boolean(selection.projectRoot) === Boolean(selection.manifest)) {
     throw new Error("Select exactly one of --project-root or --manifest");
   }
-  if (["start-cycle", "transition-cycle", "check-operation"].includes(command) && !selection.input) {
+  if (["start-cycle", "transition-cycle", "evaluate-cycle", "complete-cycle", "check-operation"].includes(command) && !selection.input) {
     throw new Error(`${command} requires --input`);
   }
-  if (["cycle-status", "cycle-gate"].includes(command) && selection.input) {
+  if (["cycle-status", "cycle-gate", "convergence-status", "convergence-gate"].includes(command) && selection.input) {
     throw new Error(`${command} is read-only and does not accept --input`);
   }
   return selection;
@@ -72,9 +83,9 @@ async function main() {
     ? projectRootFromManifest(selection.manifest)
     : selection.projectRoot;
   let result;
-  if (selection.command === "cycle-status") {
+  if (["cycle-status", "convergence-status"].includes(selection.command)) {
     result = await getCycleStatus(projectRoot);
-  } else if (selection.command === "cycle-gate") {
+  } else if (["cycle-gate", "convergence-gate"].includes(selection.command)) {
     result = await checkConvergenceGate(projectRoot);
   } else {
     const input = JSON.parse(await readFile(selection.input, "utf8"));
@@ -82,12 +93,16 @@ async function main() {
     if (selection.command === "transition-cycle") {
       result = await transitionCycle(projectRoot, input);
     }
+    if (selection.command === "evaluate-cycle") result = await evaluateCycle(projectRoot, input);
+    if (selection.command === "complete-cycle") result = await completeCycle(projectRoot, input);
     if (selection.command === "check-operation") {
       result = await assertCycleAllowsOperation(projectRoot, input);
     }
   }
   console.log(JSON.stringify(result, null, 2));
-  const succeeded = selection.command === "cycle-status" ? result.query_valid : result.valid;
+  const succeeded = ["cycle-status", "convergence-status"].includes(selection.command)
+    ? result.query_valid
+    : result.valid;
   if (!succeeded) process.exitCode = 1;
 }
 

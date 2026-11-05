@@ -44,7 +44,7 @@ For each diagnostic callee, supply the operation identifier, destination report 
 
 ## Direct entry and skips
 
-The author may request diagnosis-only work, direct `prose` or `ai-cleanup`, or a limited review. These entries require current intake evidence, a confirmed scope, and language metadata; chapter revision still requires an approved plan and batch. Record skipped operations in the session and tracker rather than manufacturing evidence. When no accepted finding requires edits, `revision-plan` and `chapter-revision` may be skipped for the current scope. A direct entry or narrowed requested pass does not by itself establish current-draft revision convergence.
+The author may request diagnosis-only work, direct `prose` or `ai-cleanup`, or a limited review. These entries require current intake evidence, a confirmed scope, and language metadata; chapter revision still requires an approved plan and batch. Record skipped operations in the session and tracker rather than manufacturing evidence. When no accepted finding requires edits, record a no-edit skip for `revision-plan` and `chapter-revision` using `<project-root>/.author-toolkit/references/no-edit-skip-schema.json`, bound to the requested pass, target fingerprint, covered findings, explicit author decision, and reason. A direct entry or narrowed requested pass does not by itself establish current-draft revision convergence.
 
 Before prose over text with approved but unexecuted changes, explain the rework risk. If the author continues, record a `prose-risk` approval for that exact scope. Unknown future structure and issues outside the target scope do not block prose.
 
@@ -63,6 +63,8 @@ Reuse full local coverage units only when source-report identity, operation, pat
 ## Current-draft revision convergence and reports
 
 Use the shared [Current-draft revision convergence](../revise-fiction/references/state-and-findings.md#current-draft-revision-convergence) definition before claiming that state for a requested pass. Persist full local coverage units for independently covered paths so later `revise-increment` or `revise-request` work can reuse them. After current-scope review, process every finding; accepted edits return to the affected planning and revision operations and require new downstream coverage and review. A completed current-scope review with open findings does not establish current-draft revision convergence.
+
+For a full-manuscript no-edit pass, create the requested pass and its fingerprint, bind current reports and coverage hashes, group the three review perspectives, and record the required host and logical-reviewer semantic attestations. Inherit every applicable subcheck from the latest satisfied full-manuscript pass and add only explicitly requested checks. Run `author-project evaluate-cycle`, inspect its outcome and blockers, and wait for the author's explicit completion decision before `complete-cycle`. Follow the [public evaluation and completion rules](../author-project/references/operations.md#no-edit-convergence-evaluation-and-completion); never write an outcome into fixture or request input.
 
 Before writing any report or changing finding or approval status, read [`../revise-fiction/references/state-and-findings.md`](../revise-fiction/references/state-and-findings.md). Reports use the shared `reports/` directories and report v2; there is no separate `revise-draft` state tree. Record `scope_id`, `operation_coverage`, and applicable `subchecks` in `engine.notes`.
 

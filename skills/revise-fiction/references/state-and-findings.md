@@ -16,6 +16,7 @@ Populate the actual v2 fields:
 - `inputs` lists every manuscript, baseline, plan, or prior-report input with its available content hash or other truthful version. Current v3 manuscript scopes require SHA-256 hashes.
 - `engine.name` is exactly `conversational` or `scriptorium`. Record the actual version or `unknown`, a truthful `degraded` boolean, and detailed notes containing the execution path, fallback, context profile, mode, and degradation.
 - `engine.notes` also contains `scope_id=<id>` and `operation_coverage=full|partial|skipped`. For `characters`, `diagnostics`, and `current-scope-review`, add `subchecks=` followed by the actual checks covered. Operation coverage is distinct from language coverage.
+- On v3.2, reports used for convergence evaluation also set top-level `scope_id`, `scope_fingerprint`, and `requested_pass` with the pass ID, fingerprint, path, and SHA-256. These additive optional fields keep legacy reports schema-valid; the evaluator requires them for current full-target and review reports and preserves an earlier pass on reusable local source reports.
 - Under `Language coverage`, mark each requested rule or category `full`, `partial`, or `skipped` with a reason. Repeat the concise language summary in `engine.notes`.
 - Every finding has an uppercase audit-specific ID prefix and at least three digits, a nonempty `recommendation`, and the narrowest truthful `location.scope`. Do not invent a line or quotation for a broad issue.
 
@@ -98,7 +99,7 @@ Record each stale reason with the changed path and decision or edit batch. Old e
 
 ## Coverage units and synthesis
 
-Store reusable coverage units and the living coverage index beneath the registered `paths.reports` directory, using the installed artifact contracts. A coverage unit records its source report, operation, original scope, exact paths and hashes, subchecks, dependencies, and actual coverage. Reuse only a full local coverage unit whose source-report identity, operation, paths and hashes, requested subchecks, and dependencies all match. Its original scope remains unchanged for provenance; a composed coverage index and new synthesis use the target scope. Partial, skipped, or stale coverage units and synthesis units are not reusable.
+Store reusable coverage units and the living coverage index beneath the registered `paths.reports` directory, using the installed artifact contracts. A coverage unit records its source report, operation, original scope, exact paths and hashes, subchecks, dependencies, and actual coverage. Evaluation evidence also requires `source_report_sha256`, hashed unit references in the index, `synthesis_report_sha256`, and the index's `scope_fingerprint` and `requested_pass` reference; these fields are optional for legacy schema-only validation. Reuse only a full local coverage unit whose source-report identity, operation, paths and hashes, requested subchecks, and dependencies all match. Its original scope remains unchanged for provenance; a composed coverage index and new synthesis use the target scope. Partial, skipped, or stale coverage units and synthesis units are not reusable.
 
 A changed input invalidates only affected local units and their dependents; unrelated unchanged units can remain current. Reevaluate every applicable volume, phase, current-scope, or whole-book synthesis whenever its text, membership, reading order, dependencies, or child coverage changes. Record a new synthesis report for the current inputs. Never extend an old whole-book synthesis to a new scope because its local units still match.
 
@@ -115,6 +116,8 @@ For a confirmed target scope, the target scope has reached current-draft revisio
 - The full-target current-scope review completes intent, standards, and fresh-reader coverage over the same target scope after the latest edits, including every required unit and applicable synthesis. Its findings have entered the same decision and, when accepted, revision loop.
 
 Partial, skipped, or degraded requested applicable coverage prevents current-draft revision convergence unless the author explicitly narrows the requested pass; identify that narrowed requested pass and its gaps instead. Inapplicable whole-book or language-specific checks may remain explicitly `skipped` with their reasons; a skipped coverage unit cannot be reused as a full local coverage unit. A completed creation batch, chapter review, or diagnostic pass alone does not establish current-draft revision convergence. Recompute this state from current evidence at each resume rather than storing a standalone flag for this state.
+
+Use the [public evaluation and completion rules](../../author-project/references/operations.md#no-edit-convergence-evaluation-and-completion) to bind the requested pass, no-edit skips, review group, semantic attestations, and immutable evidence graph. Those operations implement this definition; they do not replace it with schema validity or a stored outcome.
 
 ## Pending actions and session writes
 

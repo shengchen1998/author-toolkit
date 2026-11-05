@@ -73,3 +73,28 @@ export {
   transitionCycle,
   validateConvergenceCycle,
 } from "./cycles.mjs";
+
+export {
+  appendCycleCompletionDecision,
+  parseTrackerState,
+} from "./tracker.mjs";
+export {
+  validateConvergenceEvaluationSchema,
+  validateNoEditSkipSchema,
+  validateRequestedPassSchema,
+  validateReviewGroupSchema,
+  validateSemanticAttestationSchema,
+} from "./schemas.mjs";
+export {
+  completeCycle,
+  computeRequestedPassFingerprint,
+  deriveRequestedPassBaseline,
+  evaluateCycle,
+  findSatisfiedStartingEvaluation,
+  getConvergenceStatus,
+  validateConvergenceEvaluation,
+  validateNoEditSkip,
+  validateRequestedPass,
+  validateReviewGroup,
+  validateSemanticAttestation,
+} from "./convergence.mjs";

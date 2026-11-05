@@ -52,6 +52,12 @@ An immutable judgment of current-draft revision convergence bound to exact scope
 **Semantic attestation**:
 A structured host statement identifying editorial claims, the attester, and the exact pass, scope, and artifact evidence supporting those claims. It does not replace an author decision or prove its own underlying judgment.
 
+**Evidence graph**:
+The immutable artifact roles, identities, paths, and content hashes bound to one evaluation. Current status recomputes every hash; the graph excludes the living cycle and the evaluation itself to avoid self-hashing.
+
+**No-edit skip**:
+The recorded author decision that revision planning and chapter revision require no manuscript edit for one requested pass and target fingerprint, including every covered finding and the reason.
+
 **Revision execution record**:
 The verified record linking revision intent and approvals to actual input and output manuscript versions.
 _Avoid_: Approval without execution

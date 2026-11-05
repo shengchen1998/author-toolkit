@@ -303,3 +303,24 @@ test("fresh reader state matches its job identity, chunks, sources, reports, and
   assert.equal(chainResult.valid, false);
   assert.ok(chainResult.errors.some((error) => error.keyword === "reader-job-chain"));
 });
+
+
+test("a completed fresh job requires the reader state to contain every job chunk", () => {
+  const job = reviewJob();
+  const state = readerState();
+  state.status = "complete";
+
+  const result = validateReaderStateForJob(state, job);
+  assert.equal(result.valid, false);
+  assert.ok(result.errors.some((error) => error.keyword === "reader-job-chain"));
+
+  const complete = structuredClone(state);
+  complete.chunks.push({
+    chunk_id: job.chunks[1].chunk_id,
+    sequence: 2,
+    sources: structuredClone(job.chunks[1].sources),
+    report: job.chunks[1].report,
+  });
+  complete.next_sequence = 3;
+  assert.equal(validateReaderStateForJob(complete, job).valid, true);
+});
