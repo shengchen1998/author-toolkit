@@ -177,6 +177,7 @@ test("controlled terminology covers every current shared schema enum", async () 
     "project-schema-v3.2.json",
     "scope-snapshot-schema.json",
     "inventory-snapshot-schema.json",
+    "convergence-cycle-schema.json",
     "report-schema-v2.json",
     "finding-schema-v2.json",
     "coverage-unit-schema.json",

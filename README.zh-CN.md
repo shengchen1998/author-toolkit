@@ -213,7 +213,47 @@ schema 3.2.0; v3.0 和 v3.1 manifest 仍可读取. 现有迁移命令仍以其�
 
 实际路径以 manifest 登记为准, 包括自定义位置. 在稳定操作门禁处, 可在 `write-fiction`,
 `revise-fiction`, `revise-draft`, `revise-increment` 与 `revise-request` 之间切换并复用这些产物,
-无需第二套项目目录或迁移. 切换不会自动恢复待处理写入.
+无需第二套项目目录或迁移. 已激活的当前草稿收敛周期要求正文变更执行其恢复位置指定的下一步,
+并阻止并行正文变更周期. 只读检查保持可用, 切换不会自动恢复待处理写入.
+
+### 当前草稿收敛周期
+
+v3.2 在 `<convergence-state-root>/active-cycle.json` 中至多保存一个已激活的当前草稿收敛周期,
+已完成记录不可变地保存在 `<convergence-state-root>/cycles/`. 版本化契约记录发起与当前策略,
+首次创作引导, 起始与目标范围引用, 请求修订轮次, 恢复位置, 关联产物, 变化集合, 工作集合,
+收敛评估引用和完成决定. 请求修订的基准范围与增量修订的前一范围映射到同一个 `starting_scope` 角色.
+执行, 复核, 评估和完成引用用于连接后续证据, 引用本身不证明当前草稿修订收敛.
+
+首次创作引导只适用于正文清单实际为空且没有现有范围的 `write-fiction` 项目. 它使用空起始范围,
+但不把空正文视为已达到当前草稿修订收敛. 普通启动要求当前 `satisfied` 的起始收敛评估.
+有效全稿范围, 待处理操作或调用方声明都不能伪造该结果; 证据缺失时以
+`starting-evaluation-indeterminate` 阻止启动.
+
+通过可执行 `author-project` 门面运行周期操作:
+
+```bash
+node scripts/author-project.mjs start-cycle --project-root <project-root> --input <request.json>
+node scripts/author-project.mjs transition-cycle --project-root <project-root> --input <transition.json>
+node scripts/author-project.mjs cycle-status --project-root <project-root>
+node scripts/author-project.mjs cycle-gate --project-root <project-root>
+```
+
+第二个正文变更周期返回 `active-cycle-exists`, 并给出当前周期要求的策略, 操作和命令.
+续接要求准确的周期 ID 和预期 revision, 在原子更新前核对引用产物哈希. 待处理操作仍只描述当前操作和
+作者门禁, 不拥有周期, 也不授权正文写入.
+
+独立收敛状态和收敛门禁查询均为只读:
+
+```bash
+node scripts/validate.mjs --convergence-status <manifest-path>
+node scripts/validate.mjs --convergence-gate <manifest-path>
+```
+
+有效状态查询对 `satisfied`, `not_satisfied` 或 `indeterminate` 都正常退出. 门禁只有当前证据为
+`satisfied` 时才通过. 证据缺失返回 `indeterminate`, `current: false` 和结构化阻断原因,
+不妨碍状态查询, 诊断或复核.
+
+### 证据复用与待处理操作
 
 证据是否可以复用, 由 `operation`, `scope_id`, 输入版本, 覆盖度, 子检查和依赖共同判断.
 新范围需要作者确认. 输入或依赖变化时, 受影响证据标为 `stale`; 旧报告符合 schema 并不代表
@@ -222,7 +262,8 @@ schema 3.2.0; v3.0 和 v3.1 manifest 仍可读取. 现有迁移命令仍以其�
 创作批次还记录计划, 所选上下文和目标输入的依赖指纹. 返回暂存稿时重新计算依赖指纹.
 纳入的依赖变化需要重新复核或规划; 无关正文增长只要求刷新发布范围, 不会单独使暂存内容失效.
 
-`pending_action` 只记录一个待执行或等待作者决定的待处理操作, 不是发布或恢复正文写入的许可.
+`pending_action` 只记录一个待执行或等待作者决定的待处理操作, 不是发布或恢复正文写入的许可,
+也不能替代当前草稿收敛周期历史或其恢复位置.
 
 ### 暂存, 提交与恢复
 
@@ -268,8 +309,8 @@ v3.0 schema 保留用于读取和升级旧项目.
 tracker, 故事圣经, 报告, session notes, 备份, handoff 和适用的创作状态恢复上下文,
 并根据当前范围, 待处理操作, 证据和依赖决定下一步.
 
-使用其他策略时可以保留暂存稿. 返回后根据依赖指纹和当前项目状态决定重新复核还是重新规划.
-策略切换和待处理操作都不会自动发布它.
+只读工作或当前周期要求的修订策略执行期间可以保留暂存稿, 并行正文变更周期仍被阻止.
+返回后根据依赖指纹和当前项目状态决定重新复核还是重新规划. 策略切换和待处理操作都不会自动发布它.
 
 恢复备份需要明确请求和作者确认. 继续流程, 切换技能或重新生成报告不会自动恢复备份, 也不会自动
 改写旧报告.

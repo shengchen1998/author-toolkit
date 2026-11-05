@@ -9,6 +9,16 @@ shared-state and creation contracts, review jobs, scale fixtures, and
 command-line behavior. They do not verify a complete creative run in a host or
 the quality of generated fiction.
 
+## 3.2 cycle working-tree validation
+
+| Check | Status | Evidence |
+| --- | --- | --- |
+| Protocol tests | **Pass** | `npm test`: 172 tests passed, 0 failed. This includes 10 current-draft convergence cycle tests over real disposable-project disk state, the closed active/completed contract, first-time bootstrap, optimistic resume, pending-action boundaries, historical scope references, parallel-change blocking, concurrent no-clobber starts, read-only inspection, and truthful `indeterminate` gate results, plus all prior contract regressions. |
+| Default validation | **Pass** | `npm run validate`: 19 checks passed, 0 failures, including every shipped schema, both legacy v2 examples, their reports and on-disk state, and workflow fixtures. |
+| Executable lifecycle operations | **Pass (disposable projects)** | Real `scripts/author-project.mjs` calls exercised bootstrap start and parallel-start blocking. Real validator calls exercised cycle artifact validation and both convergence status and convergence gate exit semantics. Public JavaScript operations exercised content-checked transitions and preserved pending action and historical snapshots. No strategy was invoked automatically. |
+| Full evaluator and ordinary satisfied starts | **Not implemented in this slice** | Ordinary starts correctly stop with `starting-evaluation-indeterminate`; a valid full-manuscript scope or caller claim is not treated as satisfied evidence. Evaluation creation, author completion, and a completed lifecycle driven by evaluated evidence remain for their dedicated implementation slice. |
+| Host lifecycle run | **Not exercised** | No Claude Code or Kimi Code host run is claimed for cycle routing, bootstrap creation, revision, evaluation, or completion. The executable facade and disposable-project tests are repository contract evidence, not creative-quality or complete host-run evidence. |
+
 ## 3.1 working-tree validation
 
 | Check | Status | Evidence |

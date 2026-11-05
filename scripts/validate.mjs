@@ -5,6 +5,10 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import {
+  checkConvergenceGate,
+  getCycleStatus,
+  projectRootFromManifest,
+  validateConvergenceCycle,
   validateCoverageIndex,
   validateCoverageUnit,
   validateCreationBatch,
@@ -37,6 +41,11 @@ const artifactTypes = [
     option: "--inventory-snapshot",
     validate: validateInventorySnapshot,
   },
+  {
+    key: "convergenceCycles",
+    option: "--convergence-cycle",
+    validate: validateConvergenceCycle,
+  },
   { key: "creationBatches", option: "--creation-batch", validate: validateCreationBatch },
   { key: "creationCommits", option: "--creation-commit", validate: validateCreationCommit },
   { key: "coverageUnits", option: "--coverage-unit", validate: validateCoverageUnit },
@@ -61,6 +70,9 @@ function usage() {
   node scripts/validate.mjs
   node scripts/validate.mjs [--manifest FILE] [--report FILE] [--workflow-fixture FILE]...
   node scripts/validate.mjs [--scope-snapshot FILE] [--inventory-snapshot FILE]...
+  node scripts/validate.mjs [--convergence-cycle FILE]...
+  node scripts/validate.mjs --convergence-status MANIFEST
+  node scripts/validate.mjs --convergence-gate MANIFEST
   node scripts/validate.mjs [--creation-batch FILE] [--creation-commit FILE]...
   node scripts/validate.mjs [--coverage-unit FILE] [--coverage-index FILE]...
   node scripts/validate.mjs [--review-job FILE] [--reader-state FILE] [--story-state FILE]...
@@ -87,6 +99,8 @@ function parseArguments(args) {
     manifests: [],
     reports: [],
     workflowFixtures: [],
+    convergenceStatus: [],
+    convergenceGate: [],
     ...Object.fromEntries(artifactTypes.map(({ key }) => [key, []])),
     help: false,
   };
@@ -94,6 +108,8 @@ function parseArguments(args) {
     "--manifest": "manifests",
     "--report": "reports",
     "--workflow-fixture": "workflowFixtures",
+    "--convergence-status": "convergenceStatus",
+    "--convergence-gate": "convergenceGate",
     ...Object.fromEntries(artifactTypes.map(({ key, option }) => [option, key])),
   };
 
@@ -117,6 +133,26 @@ async function main() {
   const selection = parseArguments(process.argv.slice(2));
   if (selection.help) {
     usage();
+    return;
+  }
+
+  const queryRequested = selection.convergenceStatus.length > 0 || selection.convergenceGate.length > 0;
+  if (queryRequested) {
+    const selectedCount = Object.entries(selection).reduce(
+      (count, [key, files]) => count + (key === "help" ? 0 : files.length),
+      0,
+    );
+    if (selectedCount !== 1) {
+      throw new Error("A convergence query cannot be repeated or combined with other checks");
+    }
+    const isStatus = selection.convergenceStatus.length === 1;
+    const manifestPath = isStatus ? selection.convergenceStatus[0] : selection.convergenceGate[0];
+    const projectRoot = projectRootFromManifest(manifestPath);
+    const result = isStatus
+      ? await getCycleStatus(projectRoot)
+      : await checkConvergenceGate(projectRoot);
+    console.log(JSON.stringify(result, null, 2));
+    if (isStatus ? !result.query_valid : !result.valid) process.exitCode = 1;
     return;
   }
 

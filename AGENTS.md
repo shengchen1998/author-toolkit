@@ -41,9 +41,10 @@ Shared workflows support one single-book fiction project per manifest with Markd
 | `skills/*/SKILL.md` | Host-executable skill instructions with YAML frontmatter. |
 | `skills/*/references/` | Craft rules, operation gates, creation recovery, review procedures, and audit instructions loaded as needed. |
 | `skills/*/assets/` | Project, agent-instruction, report, tracker, handoff, baseline, writing-plan, creation-batch, and story-state templates. |
-| `scripts/validate.mjs` | CLI for schemas, manifests, on-disk project state, Markdown reports and story state, scope and inventory snapshots, creation and coverage artifacts, review jobs, and legacy workflow fixtures. |
+| `scripts/validate.mjs` | CLI for schemas, manifests, on-disk project state, Markdown reports and story state, scope, inventory and cycle artifacts, convergence status and gate queries, creation and coverage artifacts, review jobs, and legacy workflow fixtures. |
+| `scripts/author-project.mjs` | Executable facade for cycle start, optimistic transition, operation checks, convergence status, and convergence gate operations; it does not invoke strategies. |
 | `scripts/migrate-v3.mjs` | CLI for v2 or v3.0 to v3.1 migration and idempotent v3.1 validation. |
-| `scripts/lib/` | Validation, scope recording, and migration implementation, exported through `index.mjs`. |
+| `scripts/lib/` | Validation, scope recording, cycle lifecycle, verified state writes, and migration implementation, exported through `index.mjs`. |
 | `references/` | Canonical shared JSON Schemas, controlled terminology, reporting rules, and AI-writing integration documents. |
 | `examples/` | English and Chinese manuscript, report, tracker, and workflow fixtures used by tests and default validation. |
 | `tests/` | Node test files and shared fixture helpers. |
@@ -54,6 +55,7 @@ The main JavaScript boundaries are:
 - `schemas.mjs` loads the shared schemas and configures Ajv; `manifest.mjs` dispatches v2, v3.0, v3.1, and v3.2 validation, while `workflow.mjs` retains legacy v2 sequence invariants.
 - `manuscript.mjs` inventories `.md`, `.markdown`, and `.txt` files and excludes registered operational paths, including creation, staging, and the convergence state root. `project-files.mjs` checks registered files, artifacts, scope hashes, and newly added manuscript files.
 - `scope.mjs` records v3.2 scopes, computes deterministic scope and inventory fingerprints, preserves immutable snapshots, and validates full-manuscript membership, order, exclusions, and current disk hashes.
+- `cycles.mjs` starts and transitions the authoritative current-draft convergence cycle, checks parallel manuscript changes, and reports read-only convergence status and gate results. `state-io.mjs` provides verified temporary-sibling writes, atomic replacement, and no-clobber publication for living state.
 - `markdown.mjs` extracts and validates the single JSON report envelope and language/evidence coverage. `tracker.mjs` validates living finding and approval tables; `approval-paths.mjs` parses paths containing commas, pipes, and backticks.
 - `artifacts.mjs` validates story state, creation batches, commit journals, coverage units and indexes, and coverage-reuse semantics.
 - `review.mjs` validates review-job source ranges, chunk/volume/book completion, fresh-reader sequencing, and reader-state continuity.
@@ -67,11 +69,13 @@ All five creation and revision strategies require the same user-invoked `setup-a
 
 For a new writing project, setup also copies `skills/setup-author-toolkit/assets/AGENTS.md` to the project root only when no `AGENTS.md` exists. That template routes work inside a writing project; this repository-root `AGENTS.md` documents toolkit development. Setup preserves existing agent instructions.
 
-Every shared `read`, `validate`, and `status` operation through `author-project` checks all packaged references before using project state. Missing files or hash mismatches route the author through setup; a valid v3 manifest alone does not prove reference deployment. Each strategy then runs one evidence-gated operation at a time and stops at its author gate. Exact sequences, delegation, and gates live in the strategies' `SKILL.md` and `references/stage-gates.md` files. At a stable operation gate, the author can switch among all five strategies over the same state without another migration or a second project tree.
+Every shared `read`, `validate`, and `status` operation through `author-project` checks all packaged references before using project state. Missing files or hash mismatches route the author through setup; a valid v3 manifest alone does not prove reference deployment. Each strategy then runs one evidence-gated operation at a time and stops at its author gate. Exact sequences, delegation, and gates live in the strategies' `SKILL.md` and `references/stage-gates.md` files. At a stable operation gate, an active current-draft convergence cycle permits its exact recovery work and read-only inspection, and blocks a parallel manuscript-changing cycle. Strategy switches wait for the author's exact command and never invoke another user entry automatically.
 
-The canonical manifest is `<project-root>/.author-toolkit/project.json`. A v3.1 manifest stores registration, `manuscript_root`, seven operational paths, and optional `current_scope` and `pending_action`. V3.2 adds the convergence state root and scope identity. The manifest has no `workflow.name`, `current_stage`, `stages`, or shared-reference path state. The neutral template uses schema 3.2.0. The runtime still reads valid v3.0 and v3.1 manifests; creation on v3.0 requires the separately confirmed additive `upgrade-v31`. Recognize v2 only for setup migration. `author-project` owns state, paths, validation, backups, commits, and restores; creative content belongs to the writing skills.
+The canonical manifest is `<project-root>/.author-toolkit/project.json`. A v3.1 manifest stores registration, `manuscript_root`, seven operational paths, and optional `current_scope` and `pending_action`. V3.2 adds the convergence state root, scope identity, and current-draft convergence cycle. The manifest has no `workflow.name`, `current_stage`, `stages`, or shared-reference path state. The neutral template uses schema 3.2.0. The runtime still reads valid v3.0 and v3.1 manifests; creation on v3.0 requires the separately confirmed additive `upgrade-v31`. Recognize v2 only for setup migration. `author-project` owns state, paths, validation, cycle transitions, backups, commits, and restores; creative content belongs to the writing skills.
 
-Resolve operational files through the manifest's registered `paths`, including custom report, backup, handoff, creation, and convergence state root locations. Shared runtime contracts always resolve from the fixed `.author-toolkit/references/` directory. Shared artifacts include the Story Bible, audit tracker, reports, sessions, backups, handoffs, creation state, scope snapshots, and inventory snapshots. New manifests default backups, handoffs, creation, and the convergence state root to locations beneath `.author-toolkit/`; existing projects may retain other registered locations. The convergence state root contains `scopes/<scope-id>-<scope-fingerprint>.json` and `inventories/<inventory-fingerprint>.json`; both artifact kinds are immutable.
+Resolve operational files through the manifest's registered `paths`, including custom report, backup, handoff, creation, and convergence state root locations. Shared runtime contracts always resolve from the fixed `.author-toolkit/references/` directory. Shared artifacts include the Story Bible, audit tracker, reports, sessions, backups, handoffs, creation state, scope snapshots, inventory snapshots, and cycle records. New manifests default backups, handoffs, creation, and the convergence state root to locations beneath `.author-toolkit/`; existing projects may retain other registered locations. The convergence state root contains `active-cycle.json`, `cycles/<cycle-id>.json`, `scopes/<scope-id>-<scope-fingerprint>.json`, and `inventories/<inventory-fingerprint>.json`. Active state uses verified atomic replacement with expected revisions; completed cycles, scopes, and inventories are immutable.
+
+A current-draft convergence cycle records initiating and current strategies, bootstrap, starting and target scope references, requested-pass and related-artifact references, recovery position, change set, work set, evaluation references, and completion. Pending action remains operation-scoped and does not own the cycle. `scripts/author-project.mjs` and the public exports in `scripts/lib/index.mjs` provide the shared start, transition, operation-check, convergence status, and convergence gate seam for hosts and tests. A valid full-manuscript scope alone does not manufacture a satisfied convergence evaluation; unavailable proof produces `indeterminate` and fails the gate without blocking read-only inspection.
 
 The default creation root contains:
 
@@ -130,11 +134,14 @@ node scripts/validate.mjs --help
 node scripts/validate.mjs --manifest /path/to/.author-toolkit/project.json
 node scripts/validate.mjs --scope-snapshot /path/to/scope.json
 node scripts/validate.mjs --inventory-snapshot /path/to/inventory.json
+node scripts/validate.mjs --convergence-status /path/to/.author-toolkit/project.json
+node scripts/validate.mjs --convergence-gate /path/to/.author-toolkit/project.json
 node scripts/validate.mjs --report /path/to/report.md
 node scripts/validate.mjs --workflow-fixture /path/to/fixture.json
+node scripts/author-project.mjs --help
 ```
 
-The help output is the source for scope-snapshot, inventory-snapshot, creation-batch, commit-journal, story-state, coverage, review-job, and reader-state option names. Options may be repeated or combined where documented. Manifest validation also checks registered files and the tracker; for v3 with `current_scope`, it checks current manuscript hashes. V3.2 also checks full-manuscript evidence and reports scope identity. Validation failures exit nonzero, and argument or usage errors exit with status 2.
+The help output is the source for scope-snapshot, inventory-snapshot, cycle-artifact, convergence-status, convergence-gate, creation-batch, commit-journal, story-state, coverage, review-job, and reader-state option names. Options may be repeated or combined where documented. Manifest validation also checks registered files and the tracker; for v3 with `current_scope`, it checks current manuscript hashes. V3.2 also checks full-manuscript evidence and reports scope identity. Convergence status is read-only and exits successfully for a valid query with any outcome; convergence gate succeeds only for current `satisfied` evidence. Validation failures exit nonzero, and argument or usage errors exit with status 2.
 
 Migrate an actual writing project only when migration is intended:
 
@@ -152,6 +159,7 @@ The suite divides into these contract areas:
 
 - Finding, report, manifest, path, tracker, and Markdown contracts, including v2 compatibility, v3.0/v3.1 scopes, v3.2 scope fingerprints and immutable snapshots, approvals, evidence semantics, creation operations, and additive upgrades.
 - Creation state, interrupted commits, coverage reuse, review jobs, fresh-reader ordering, on-disk files, scope currency, full-manuscript validation, migration, and validator CLI behavior.
+- Current-draft convergence cycle bootstrap, optimistic resume, pending-action boundaries, historical scope references, parallel-change blocking, read-only inspection, and truthful `indeterminate` gate results through public project operations and disposable projects.
 - Skill metadata, cross-file orchestration, setup and standalone deployment mirrors, controlled terminology, and special-character approval paths.
 - Chinese prose, AI-writing, line-editing, review, nonfiction, and length-configuration instructions. These are static language-support contracts, not model-run accuracy evidence.
 - `scale.test.mjs` inventories a synthetic million-Chinese-character manuscript and verifies creation-state exclusion and new-file detection. It is not creative-quality evidence.

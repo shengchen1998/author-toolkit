@@ -45,9 +45,9 @@ AI, author-written, and mixed batches use the same acceptance and state-synchron
 
 ## Strategy switching
 
-`write-fiction`, `revise-draft`, `revise-fiction`, `revise-increment`, and `revise-request` share the same manifest and artifacts. At any stable operation gate, show the exact command for the author's selected next strategy. Do not switch automatically or require the other strategy's full sequence to finish.
+`write-fiction`, `revise-draft`, `revise-fiction`, `revise-increment`, and `revise-request` share the same manifest and artifacts. At a stable operation gate, follow the [current-draft convergence cycle rules](../author-project/references/operations.md#current-draft-convergence-cycle). An active cycle permits its exact recovery work and read-only inspection, and blocks a parallel manuscript-changing cycle. Show the required or selected strategy's exact command and wait; do not switch automatically.
 
-A staged draft may remain while the author uses a revision entry. On return, compare its dependency fingerprint with current inputs. Re-review or replan affected drafts; unrelated scope growth alone does not invalidate the staged text. Never publish after an interrupted write or restore until reconciliation is complete.
+A staged draft may remain while the author performs read-only work or the active cycle's required revision. On return, compare its dependency fingerprint with current inputs. Re-review or replan affected drafts; unrelated scope growth alone does not invalidate the staged text. Never publish after an interrupted write or restore until reconciliation is complete.
 
 ## Reports and artifacts
 

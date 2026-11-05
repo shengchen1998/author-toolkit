@@ -16,6 +16,7 @@ const projectV31Schema = readSchema("project-schema-v3.1.json");
 const projectV32Schema = readSchema("project-schema-v3.2.json");
 const scopeSnapshotSchema = readSchema("scope-snapshot-schema.json");
 const inventorySnapshotSchema = readSchema("inventory-snapshot-schema.json");
+const convergenceCycleSchema = readSchema("convergence-cycle-schema.json");
 const reportSchema = readSchema("report-schema-v2.json");
 const storyStateSchema = readSchema("story-state-schema.json");
 const creationBatchSchema = readSchema("creation-batch-schema.json");
@@ -36,6 +37,7 @@ ajv.addSchema(projectV31Schema);
 ajv.addSchema(projectV32Schema);
 ajv.addSchema(scopeSnapshotSchema);
 ajv.addSchema(inventorySnapshotSchema);
+ajv.addSchema(convergenceCycleSchema);
 ajv.addSchema(reportSchema);
 ajv.addSchema(storyStateSchema);
 ajv.addSchema(creationBatchSchema);
@@ -54,6 +56,7 @@ const projectV31Validator = ajv.getSchema("project-schema-v3.1.json");
 const projectV32Validator = ajv.getSchema("project-schema-v3.2.json");
 const scopeSnapshotValidator = ajv.getSchema("scope-snapshot-schema.json");
 const inventorySnapshotValidator = ajv.getSchema("inventory-snapshot-schema.json");
+const convergenceCycleValidator = ajv.getSchema("convergence-cycle-schema.json");
 const reportValidator = ajv.getSchema("report-schema-v2.json");
 const storyStateValidator = ajv.getSchema("story-state-schema.json");
 const creationBatchValidator = ajv.getSchema("creation-batch-schema.json");
@@ -101,6 +104,10 @@ export function validateScopeSnapshotSchema(value) {
 
 export function validateInventorySnapshotSchema(value) {
   return evaluate(inventorySnapshotValidator, value);
+}
+
+export function validateConvergenceCycleSchema(value) {
+  return evaluate(convergenceCycleValidator, value);
 }
 
 export function validateReportEnvelope(value) {
@@ -151,6 +158,7 @@ export function validateSchemaDefinitions() {
     ["project-schema-v3.2.json", projectV32Schema],
     ["scope-snapshot-schema.json", scopeSnapshotSchema],
     ["inventory-snapshot-schema.json", inventorySnapshotSchema],
+    ["convergence-cycle-schema.json", convergenceCycleSchema],
     ["report-schema-v2.json", reportSchema],
     ["story-state-schema.json", storyStateSchema],
     ["creation-batch-schema.json", creationBatchSchema],
