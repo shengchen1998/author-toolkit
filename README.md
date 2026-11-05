@@ -529,7 +529,11 @@ full-manuscript proof remains intact; otherwise use full-manuscript
 `revise-draft`. Empty deletion cannot satisfy or complete a cycle. Recovery
 requires an approved nonempty restore or import followed by `revise-draft`.
 The command does not write manuscript and does not replace backup, restore, or
-input-hash approvals.
+input-hash approvals. For first-time bootstrap, an active null starting scope
+lets the first approved nonempty import supply initial publication evidence
+without a creation commit; it still requires initial full-manuscript
+`revise-draft` evaluation and completion. A rejected empty bootstrap cannot
+complete before such an import or publication establishes that evidence.
 
 ### Coverage units and chunked review
 

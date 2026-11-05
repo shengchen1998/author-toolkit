@@ -665,6 +665,52 @@ async function loadReport(computation, reference, { currentPass = true, inputFil
   return { report, reference: { ...reference, report_id: report.report_id }, markdown };
 }
 
+function bootstrapImportCandidate(cycle, reconciliations, scope, roots) {
+  if (!cycle?.bootstrap || !scope) return null;
+  const reconciliation = reconciliations.at(-1) ?? null;
+  if (
+    !reconciliation ||
+    reconciliation.cycle_id !== cycle.cycle_id ||
+    reconciliation.previous_scope !== null ||
+    reconciliation.change_set.from_scope !== null ||
+    reconciliation.recovery_from_empty ||
+    reconciliation.required_strategy !== "revise-draft" ||
+    reconciliation.proof_blockers.length > 0 ||
+    !sameScopeReference(reconciliation.target_scope, roots.target_scope) ||
+    JSON.stringify(reconciliation.change_set.created) !== JSON.stringify(scope.files)
+  ) {
+    return null;
+  }
+  return reconciliation;
+}
+
+async function validateBootstrapImportDecision(project, reconciliation, scope) {
+  const trackerText = await readFile(
+    path.resolve(project.root, project.manifest.paths.audit_tracker),
+    "utf8",
+  );
+  const tracker = await parseTrackerState(trackerText, project.root);
+  const decisions = tracker.approvals.filter(
+    (approval) => approval.id === reconciliation.author_decision_id,
+  );
+  const decision = decisions.length === 1 ? decisions[0] : null;
+  const tokens = new Set(decision?.reason.split(/\s+/) ?? []);
+  return Boolean(
+    tracker.valid &&
+    decision &&
+    decision.status === "approved" &&
+    decision.type === "creation-import" &&
+    decision.operation === "creation-import" &&
+    decision.scopeId === scope.scope_id &&
+    JSON.stringify(decision.paths) === JSON.stringify(scope.files.map((file) => file.path)) &&
+    scope.author_confirmation?.decision_id === reconciliation.author_decision_id &&
+    scope.author_confirmation?.reading_order_confirmed === true &&
+    tokens.has(`reconciliation_id=${reconciliation.reconciliation_id}`) &&
+    tokens.has(`inventory_fingerprint=${reconciliation.inventory.inventory_fingerprint}`) &&
+    tokens.has(`scope_fingerprint=${scope.scope_fingerprint}`)
+  );
+}
+
 async function computeEvaluation(project, cycle, roots, evaluationId, createdAt) {
   const computation = newComputation(project, cycle, roots, evaluationId, createdAt);
   const { block, record } = computation;
@@ -798,6 +844,7 @@ async function computeEvaluation(project, cycle, roots, evaluationId, createdAt)
       );
     }
   }
+  const reconciliations = [];
   const reconciliationReferences = relatedArtifacts.reconciliations ?? [];
   for (const [index, reference] of reconciliationReferences.entries()) {
     const isLatest = index === reconciliationReferences.length - 1;
@@ -808,6 +855,7 @@ async function computeEvaluation(project, cycle, roots, evaluationId, createdAt)
       validateManuscriptReconciliationSchema,
     );
     if (!reconciliation) continue;
+    reconciliations.push(reconciliation);
     if (
       reconciliation.reconciliation_id !== reference.reconciliation_id ||
       (reconciliation.cycle_id !== null && reconciliation.cycle_id !== roots.cycle_id)
@@ -892,10 +940,31 @@ async function computeEvaluation(project, cycle, roots, evaluationId, createdAt)
   }
   if (cycle?.initiating_strategy === "write-fiction") {
     const changedTarget = cycle.bootstrap || !sameScopeReference(roots.target_scope, cycle.starting_scope);
-    if (changedTarget && creationCommits.length === 0) {
+    const importCandidate = creationCommits.length === 0
+      ? bootstrapImportCandidate(cycle, reconciliations, scope, roots)
+      : null;
+    let approvedBootstrapImport = false;
+    if (importCandidate) {
+      try {
+        approvedBootstrapImport = await validateBootstrapImportDecision(
+          project,
+          importCandidate,
+          scope,
+        );
+      } catch {
+        approvedBootstrapImport = false;
+      }
+      if (!approvedBootstrapImport) {
+        block(
+          "creation-import-approval-missing",
+          "The first bootstrap import no longer has its exact approved creation-import decision.",
+        );
+      }
+    }
+    if (changedTarget && creationCommits.length === 0 && !approvedBootstrapImport) {
       block(
         "creation-commit-evidence-missing",
-        "The creation target has no linked creation commit execution record.",
+        "The creation target has no linked creation commit execution record or approved first bootstrap import.",
         "not_satisfied",
       );
     }

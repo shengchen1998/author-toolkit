@@ -330,14 +330,18 @@ export async function reconcileManuscript(projectRoot, request, options = {}) {
       const previousReference = cycle
         ? cycle.target_scope ?? cycle.starting_scope
         : request.previous_scope ?? null;
-      if (!previousReference) throw new Error("An explicit previous_scope is required for reconciliation without an active cycle");
-      let previous;
-      try {
-        previous = await readScope(project, previousReference);
-      } catch (error) {
-        error.reconciliationCode = "starting-scope-indeterminate";
-        error.reconciliationAction = action("revise-draft", "intake");
-        throw error;
+      if (!previousReference && !cycle?.bootstrap) {
+        throw new Error("An explicit previous_scope is required for reconciliation without an active cycle");
+      }
+      let previous = { files: [], excluded_files: [] };
+      if (previousReference) {
+        try {
+          previous = await readScope(project, previousReference);
+        } catch (error) {
+          error.reconciliationCode = "starting-scope-indeterminate";
+          error.reconciliationAction = action("revise-draft", "intake");
+          throw error;
+        }
       }
       const targetReference = request.target_scope;
       const target = targetReference ? await readScope(project, targetReference) : null;
@@ -375,8 +379,9 @@ export async function reconcileManuscript(projectRoot, request, options = {}) {
       }
       await validateImportDecision(project, request, previous, target, inventoryEvidence);
 
+      const bootstrapRecovery = Boolean(cycle?.bootstrap);
       const preferredEvaluation = cycle?.target_evaluation ?? cycle?.starting_evaluation ?? null;
-      const previousEvaluation = await findHistoricalSatisfiedEvaluation(
+      const previousEvaluation = bootstrapRecovery ? null : await findHistoricalSatisfiedEvaluation(
         project,
         previousReference,
         preferredEvaluation,
@@ -396,7 +401,7 @@ export async function reconcileManuscript(projectRoot, request, options = {}) {
       );
       const requiredStrategy = !target
         ? "write-fiction"
-        : recoveringFromEmpty
+        : bootstrapRecovery || recoveringFromEmpty
           ? "revise-draft"
           : previousEvaluation ? "revise-increment" : "revise-draft";
       const recoveryOperation = target ? "intake" : "creation-import";
@@ -411,7 +416,9 @@ export async function reconcileManuscript(projectRoot, request, options = {}) {
               entries: target.files.map((file) => ({
                 path: file.path,
                 operations: RECOVERY_OPERATIONS,
-                reason: "No satisfied previous full-manuscript scope remains provable; the complete target requires revise-draft recovery.",
+                reason: bootstrapRecovery
+                  ? "Bootstrap's first nonempty import requires initial full-manuscript revise-draft evidence."
+                  : "No satisfied previous full-manuscript scope remains provable; the complete target requires revise-draft recovery.",
               })),
             };
       const invalidated = await invalidatedHistory(
@@ -419,7 +426,7 @@ export async function reconcileManuscript(projectRoot, request, options = {}) {
         preferredEvaluation ?? previousEvaluation?.evaluation_reference ?? null,
         changes,
       );
-      const proofBlockers = previousEvaluation || recoveringFromEmpty ? [] : [{
+      const proofBlockers = bootstrapRecovery || previousEvaluation || recoveringFromEmpty ? [] : [{
         code: "previous-evaluation-unproven",
         message: "The previous full-manuscript scope or its required satisfied evidence can no longer be proven; revise-draft is required.",
       }];
@@ -477,11 +484,13 @@ export async function reconcileManuscript(projectRoot, request, options = {}) {
             operation: recoveryOperation,
             reason: !target
               ? "The manuscript is empty; an approved nonempty restore or import is required before full-manuscript revise-draft recovery."
-              : recoveringFromEmpty
-                ? "The approved nonempty recovery import requires a complete full-manuscript revise-draft pass."
-                : previousEvaluation
-                  ? "The author-confirmed external manuscript and story state require affected evidence and full-target review."
-                  : "The previous satisfied full-manuscript proof is unavailable; the complete target requires revise-draft recovery.",
+              : bootstrapRecovery
+                ? "The first approved nonempty bootstrap import requires its initial full-manuscript revise-draft evaluation."
+                : recoveringFromEmpty
+                  ? "The approved nonempty recovery import requires a complete full-manuscript revise-draft pass."
+                  : previousEvaluation
+                    ? "The author-confirmed external manuscript and story state require affected evidence and full-target review."
+                    : "The previous satisfied full-manuscript proof is unavailable; the complete target requires revise-draft recovery.",
             required_strategy: requiredStrategy,
           },
           related_artifacts: {
