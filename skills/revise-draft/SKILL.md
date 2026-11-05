@@ -26,6 +26,8 @@ Use `author-project check-operation` before manuscript work. With no active cycl
 
 For an independent full-manuscript no-edit pass, bind the requested pass, target scope, current reports and coverage, review group, no-edit skips, and semantic attestations, then run `author-project evaluate-draft`. This operation uses the shared evaluator without creating an active cycle; its evaluation records `cycle_id: null`. A narrowed pass produces `not_satisfied`, never a satisfied claim. Do not run `complete-cycle` for independent work. A current satisfied independent evaluation can support another strategy's starting gate and supplies the latest unrestricted satisfied subcheck baseline.
 
+For an independent full-manuscript recovery with accepted edits, run `prepare-draft-revision-execution` before changing manuscript. It checks the exact decisions, approvals, backups, planned outputs, and current inputs and publishes only a `prepared` record with `cycle_id: null`. After editing, confirm the new full-manuscript scope and pass, then run `verify-draft-revision-execution` to reread actual output bytes and produce the verified revision execution. A resolved finding in this recovery requires a verified revision execution record; approval, backup, a `prepared` record, or a caller-supplied status cannot substitute. Supply its execution reference through `revision_executions` to `evaluate-draft`, which rechecks the record and current bytes. Duplicate preparation, repeated verification, changed inputs, and changed outputs fail without a success claim or replacement publication.
+
 When status reports an active cycle that requires `revise-draft`, recover the same cycle. Link the requested pass, full-manuscript target, revision executions, review group, and no-edit skips through `transition-cycle`, then run `evaluate-cycle` with its cycle ID and expected revision. `evaluate-draft` rejects this work with `active-cycle-exists`; never start a parallel cycle. Wait for the author's explicit completion decision before `complete-cycle`.
 
 ## Author interaction
@@ -60,7 +62,7 @@ Before prose over text with approved but unexecuted changes, explain the rework 
 
 ## Approval and backup gate
 
-For manuscript changes, first diagnose and show affected paths and intended changes without editing. Record explicit author approval in the shared tracker, then invoke `author-project` with `record-backup` for every affected file and the approval ID. Apply only the approved batch after every backup succeeds. Restore requires separate explicit approval and a safety backup.
+For manuscript changes, first diagnose and show affected paths and intended changes without editing. Record explicit author approval in the shared tracker, then invoke `author-project` with `record-backup` for every affected file and the approval ID. With no active cycle, run `prepare-draft-revision-execution`; with an active cycle, run `prepare-revision-execution` before writing. Apply only the approved batch after every backup succeeds, confirm the resulting scope and pass, and use the matching independent or cycle-bound verify operation. Restore requires separate explicit approval and a safety backup.
 
 Baseline writes distinguish text-established facts, interpretations, and unknowns. Interpretations remain labeled until the author turns them into creative decisions. Only affected baseline differences are presented after an edit; unknowns never become automatic blockers.
 

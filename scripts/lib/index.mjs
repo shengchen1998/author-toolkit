@@ -101,9 +101,11 @@ export {
 } from "./convergence.mjs";
 export {
   getRequestCompletion,
+  prepareDraftRevisionExecution,
   prepareRevisionExecution,
   validateRevisionExecution,
   validateRevisionExecutionAgainstDisk,
+  verifyDraftRevisionExecution,
   verifyRevisionExecution,
 } from "./revision-execution.mjs";
 export { validateRevisionExecutionSchema } from "./schemas.mjs";

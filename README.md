@@ -274,9 +274,12 @@ may finish without a cycle or a current-draft revision convergence claim. It nev
 reduces the last satisfied full-manuscript subcheck baseline. If it leaves the
 manuscript unconverged, the other manuscript-changing entries remain blocked
 until an independent full-manuscript `evaluate-draft` operation produces a
-current satisfied evaluation. Active-cycle draft recovery instead links and
-evaluates the same cycle. Every cross-entry route displays its exact host
-command and waits for the author.
+current satisfied evaluation. A resolved finding in that recovery requires
+`prepare-draft-revision-execution` before editing and
+`verify-draft-revision-execution` afterward, producing a `cycle_id: null`
+execution whose approved inputs and actual outputs are checked. Active-cycle
+draft recovery instead links and evaluates the same cycle. Every cross-entry
+route displays its exact host command and waits for the author.
 
 ### `revise-increment`: revision after incremental creation
 
@@ -408,6 +411,8 @@ Use the executable `author-project` facade for lifecycle operations:
 ```bash
 node scripts/author-project.mjs start-cycle --project-root <project-root> --input <request.json>
 node scripts/author-project.mjs transition-cycle --project-root <project-root> --input <transition.json>
+node scripts/author-project.mjs prepare-draft-revision-execution --project-root <project-root> --input <independent-preparation.json>
+node scripts/author-project.mjs verify-draft-revision-execution --project-root <project-root> --input <independent-verification.json>
 node scripts/author-project.mjs prepare-revision-execution --project-root <project-root> --input <preparation.json>
 node scripts/author-project.mjs verify-revision-execution --project-root <project-root> --input <verification.json>
 node scripts/author-project.mjs evaluate-cycle --project-root <project-root> --input <evaluation-request.json>

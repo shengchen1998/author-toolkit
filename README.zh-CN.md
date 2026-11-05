@@ -157,6 +157,8 @@ AI, 作者和混合创作使用相同门禁. 每本书只保留一个活动创�
 独立的局部, 诊断, 直接句子层, AI 关联表达处理和收窄的当前草稿工作可以不建周期,
 但不得宣称全稿达到当前草稿修订收敛, 也不会降低最近一次 `satisfied` 全稿轮次的子检查基线. 若稿件尚未达到当前草稿修订收敛,
 其他正文变更入口保持阻断, 直到独立全稿 `evaluate-draft` 产生当前 `satisfied` 评估.
+该恢复中的已解决发现项必须在改稿前运行 `prepare-draft-revision-execution`, 随后运行
+`verify-draft-revision-execution`, 形成 `cycle_id: null` 且实际输入输出经过核对的执行记录.
 已激活周期中的当前草稿恢复则链接并评估同一周期. 所有跨入口路由只显示准确的宿主命令并等待作者.
 
 ### `revise-increment`: 增量创作后的修订
@@ -243,6 +245,8 @@ v3.2 在 `<convergence-state-root>/active-cycle.json` 中至多保存一个已�
 ```bash
 node scripts/author-project.mjs start-cycle --project-root <project-root> --input <request.json>
 node scripts/author-project.mjs transition-cycle --project-root <project-root> --input <transition.json>
+node scripts/author-project.mjs prepare-draft-revision-execution --project-root <project-root> --input <independent-preparation.json>
+node scripts/author-project.mjs verify-draft-revision-execution --project-root <project-root> --input <independent-verification.json>
 node scripts/author-project.mjs prepare-revision-execution --project-root <project-root> --input <preparation.json>
 node scripts/author-project.mjs verify-revision-execution --project-root <project-root> --input <verification.json>
 node scripts/author-project.mjs evaluate-cycle --project-root <project-root> --input <evaluation-request.json>

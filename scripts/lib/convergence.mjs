@@ -660,7 +660,7 @@ async function computeEvaluation(project, cycle, roots, evaluationId, createdAt)
   const computation = newComputation(project, cycle, roots, evaluationId, createdAt);
   const { block, record } = computation;
   const relatedArtifacts = cycle?.related_artifacts ?? {
-    revision_executions: [],
+    revision_executions: roots.revision_executions ?? [],
     no_edit_skips: roots.no_edit_skips ?? [],
     review_groups: roots.review_group ? [roots.review_group] : [],
   };
@@ -1013,7 +1013,7 @@ async function computeEvaluation(project, cycle, roots, evaluationId, createdAt)
     const currentExecution = samePassReference(execution.requested_pass, roots.requested_pass) &&
       sameScopeReference(execution.target_scope, roots.target_scope);
     executions.push({ execution, currentExecution });
-    if (execution.execution_id !== reference.execution_id || execution.cycle_id !== cycle.cycle_id) {
+    if (execution.execution_id !== reference.execution_id || execution.cycle_id !== roots.cycle_id) {
       block("revision-execution-identity-mismatch", `Revision execution ${reference.execution_id} is not bound to this cycle.`);
     }
     const disk = await validateRevisionExecutionAgainstDisk(project.root, execution, {
@@ -1464,6 +1464,15 @@ async function recomputeStoredEvaluation(project, cycle, reference) {
         sha256: artifact.sha256,
       }))
     : null;
+  const independentRevisionExecutions = stored.cycle_id === null
+    ? stored.evidence_graph.artifacts
+      .filter((artifact) => artifact.role === "revision-execution")
+      .map((artifact) => ({
+        execution_id: artifact.artifact_id,
+        path: artifact.path,
+        sha256: artifact.sha256,
+      }))
+    : null;
   const recomputed = await computeEvaluation(
     project,
     cycle,
@@ -1476,6 +1485,7 @@ async function recomputeStoredEvaluation(project, cycle, reference) {
       review_group: stored.review_group,
       semantic_attestations: stored.semantic_attestations,
       ...(independentNoEditSkips ? { no_edit_skips: independentNoEditSkips } : {}),
+      ...(independentRevisionExecutions ? { revision_executions: independentRevisionExecutions } : {}),
     },
     stored.evaluation_id,
     stored.created_at,
@@ -1506,6 +1516,7 @@ function publicFailure(code, message, cycle = null, details = {}) {
 
 function validateEvaluationRequest(request, { independent = false } = {}) {
   const operation = independent ? "evaluate-draft" : "evaluate-cycle";
+  const revisionExecutions = independent ? request.revision_executions ?? [] : [];
   const allowed = new Set([
     "evaluation_id",
     "coverage_index",
@@ -1513,14 +1524,15 @@ function validateEvaluationRequest(request, { independent = false } = {}) {
     "review_group",
     "semantic_attestations",
     ...(independent
-      ? ["requested_pass", "target_scope", "no_edit_skips"]
+      ? ["requested_pass", "target_scope", "no_edit_skips", "revision_executions"]
       : ["cycle_id", "expected_revision"]),
   ]);
   for (const key of Object.keys(request)) {
     if (!allowed.has(key)) throw new Error(`Unknown ${operation} input field: ${key}`);
   }
   const identityValid = independent
-    ? request.requested_pass && request.target_scope && Array.isArray(request.no_edit_skips)
+    ? request.requested_pass && request.target_scope &&
+      Array.isArray(request.no_edit_skips) && Array.isArray(revisionExecutions)
     : /^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(request.cycle_id ?? "") &&
       Number.isInteger(request.expected_revision);
   if (
@@ -1546,6 +1558,7 @@ function validateEvaluationRequest(request, { independent = false } = {}) {
           [request.requested_pass, ["pass_id", "pass_fingerprint", "path", "sha256"]],
           [request.target_scope, ["scope_id", "scope_fingerprint", "snapshot_path", "snapshot_sha256"]],
           ...request.no_edit_skips.map((reference) => [reference, ["skip_id", "path", "sha256"]]),
+          ...revisionExecutions.map((reference) => [reference, ["execution_id", "path", "sha256"]]),
         ]
       : []),
   ];
@@ -1709,6 +1722,7 @@ export async function evaluateDraft(projectRoot, request, options = {}) {
       reports: request.reports,
       review_group: request.review_group,
       no_edit_skips: request.no_edit_skips,
+      revision_executions: request.revision_executions ?? [],
       semantic_attestations: request.semantic_attestations,
     };
     const evaluation = await computeEvaluation(

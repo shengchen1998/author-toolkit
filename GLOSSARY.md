@@ -62,7 +62,7 @@ The immutable artifact roles, identities, paths, and content hashes bound to one
 The recorded author decision that revision planning and chapter revision require no manuscript edit for one requested pass and target fingerprint, including every covered finding and the reason.
 
 **Revision execution record**:
-The verified record linking revision intent and approvals to actual input and output manuscript versions.
+The verified record linking revision intent and approvals to actual input and output manuscript versions. Cycle-bound records carry their cycle ID; independent revise-draft records use `cycle_id: null`.
 _Avoid_: Approval without execution
 
 **Review group**:

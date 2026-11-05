@@ -20,6 +20,9 @@ test("revise-draft separates independent work from active-cycle recovery and pre
   assert.match(draft, /Independent local, diagnostic, direct `prose` or `ai-cleanup`, and narrowed requested passes may finish without a current-draft convergence cycle/);
   assert.match(draft, /must not claim full-manuscript current-draft revision convergence/);
   assert.match(draft, /evaluate-draft/);
+  assert.match(draft, /prepare-draft-revision-execution/);
+  assert.match(draft, /verify-draft-revision-execution/);
+  assert.match(draft, /resolved finding[\s\S]*verified revision execution/);
   assert.match(draft, /`cycle_id: null`/);
   assert.match(draft, /active cycle[\s\S]*same cycle[\s\S]*evaluate-cycle/);
   assert.match(draft, /does not reduce the last satisfied full-manuscript subcheck baseline/);
