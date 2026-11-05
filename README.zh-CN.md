@@ -239,8 +239,9 @@ node scripts/author-project.mjs cycle-gate --project-root <project-root>
 ```
 
 第二个正文变更周期返回 `active-cycle-exists`, 并给出当前周期要求的策略, 操作和命令.
-续接要求准确的周期 ID 和预期 revision, 在原子更新前核对引用产物哈希. 待处理操作仍只描述当前操作和
-作者门禁, 不拥有周期, 也不授权正文写入.
+续接先获取跨进程锁目录, 在锁内重新读取并核对周期 ID 和预期 revision, 再核对引用产物哈希并原子更新.
+同一预期 revision 只能有一个写入成功, 后续写入返回 `cycle-revision-conflict`. 锁超时或异常不会报告成功,
+崩溃遗留的锁目录需要明确恢复. 待处理操作仍只描述当前操作和作者门禁, 不拥有周期, 也不授权正文写入.
 
 独立收敛状态和收敛门禁查询均为只读:
 

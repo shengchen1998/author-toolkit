@@ -9,7 +9,9 @@ import {
   validateScopeSnapshot,
 } from "./scope.mjs";
 import {
+  acquireDirectoryLock,
   createNoClobberVerified,
+  releaseDirectoryLock,
   sha256Bytes,
   writeAtomicVerified,
 } from "./state-io.mjs";
@@ -514,33 +516,40 @@ async function verifyScopeReference(project, reference, { requireCurrent = true 
   }
 }
 
-export async function transitionCycle(projectRoot, request, options = {}) {
-  validateTransitionRequest(request);
-  const project = await readProject(projectRoot);
+async function transitionCycleLocked(project, request, options) {
   const active = await readActiveCycle(project.root, project.manifest);
   if (!active) {
-    return blocked(
-      "active-cycle-required",
-      "No active cycle can be resumed; start an eligible cycle or run revise-draft recovery.",
-      {
-        recovery_position: { operation: "intake", required_strategy: "revise-draft" },
-      },
-    );
+    return {
+      stateWritten: false,
+      result: blocked(
+        "active-cycle-required",
+        "No active cycle can be resumed; start an eligible cycle or run revise-draft recovery.",
+        {
+          recovery_position: { operation: "intake", required_strategy: "revise-draft" },
+        },
+      ),
+    };
   }
   const cycle = active.value;
   if (request.cycle_id !== cycle.cycle_id) {
-    return blocked(
-      "cycle-id-mismatch",
-      `The requested cycle does not match active cycle ${cycle.cycle_id}.`,
-      cycle,
-    );
+    return {
+      stateWritten: false,
+      result: blocked(
+        "cycle-id-mismatch",
+        `The requested cycle does not match active cycle ${cycle.cycle_id}.`,
+        cycle,
+      ),
+    };
   }
   if (request.expected_revision !== cycle.revision) {
-    return blocked(
-      "cycle-revision-conflict",
-      `Expected cycle revision ${request.expected_revision}, but the active revision is ${cycle.revision}.`,
-      cycle,
-    );
+    return {
+      stateWritten: false,
+      result: blocked(
+        "cycle-revision-conflict",
+        `Expected cycle revision ${request.expected_revision}, but the active revision is ${cycle.revision}.`,
+        cycle,
+      ),
+    };
   }
 
   const currentStrategy = request.current_strategy ?? cycle.current_strategy;
@@ -589,15 +598,87 @@ export async function transitionCycle(projectRoot, request, options = {}) {
       }
     }
   } catch (error) {
-    return blocked("artifact-reference-mismatch", error.message, cycle);
+    return {
+      stateWritten: false,
+      result: blocked("artifact-reference-mismatch", error.message, cycle),
+    };
   }
 
   await writeAtomicVerified(active.file, `${JSON.stringify(candidate, null, 2)}\n`);
   return {
-    valid: true,
-    cycle: candidate,
-    cycle_path: active.file,
-    required_action: requiredAction(candidate),
-    blockers: [],
+    stateWritten: true,
+    result: {
+      valid: true,
+      cycle: candidate,
+      cycle_path: active.file,
+      required_action: requiredAction(candidate),
+      blockers: [],
+    },
+  };
+}
+
+export async function transitionCycle(projectRoot, request, options = {}) {
+  validateTransitionRequest(request);
+  const project = await readProject(projectRoot);
+  const initial = await readActiveCycle(project.root, project.manifest);
+  if (!initial) {
+    return {
+      ...blocked(
+        "active-cycle-required",
+        "No active cycle can be resumed; start an eligible cycle or run revise-draft recovery.",
+        {
+          recovery_position: { operation: "intake", required_strategy: "revise-draft" },
+        },
+      ),
+      state_written: false,
+    };
+  }
+
+  const lock = await acquireDirectoryLock(
+    path.resolve(project.root, project.manifest.paths.convergence, "active-cycle.lock"),
+    {
+      timeoutMs: options.lockTimeoutMs ?? 10000,
+      retryMs: options.lockRetryMs ?? 20,
+    },
+  );
+  if (!lock.acquired) {
+    const code = lock.code === "timeout"
+      ? "cycle-transition-lock-timeout"
+      : "cycle-transition-lock-error";
+    return {
+      ...blocked(
+        code,
+        `Cannot coordinate the cycle transition at ${lock.directory}: ${lock.error.message}`,
+        initial.value,
+      ),
+      state_written: false,
+      lock_path: lock.directory,
+    };
+  }
+
+  let outcome;
+  let operationError;
+  try {
+    outcome = await transitionCycleLocked(project, request, options);
+  } catch (error) {
+    operationError = error;
+  }
+  const released = await releaseDirectoryLock(lock);
+  if (!released.released) {
+    const operationMessage = operationError ? ` Operation also failed: ${operationError.message}` : "";
+    return {
+      ...blocked(
+        "cycle-transition-lock-release-error",
+        `Cannot release transition lock ${lock.directory}: ${released.error.message}.${operationMessage}`,
+        outcome?.result.cycle ?? initial.value,
+      ),
+      state_written: outcome?.stateWritten ?? null,
+      lock_path: lock.directory,
+    };
+  }
+  if (operationError) throw operationError;
+  return {
+    ...outcome.result,
+    state_written: outcome.stateWritten,
   };
 }

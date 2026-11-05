@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import test from "node:test";
 
@@ -16,6 +16,7 @@ import {
 import {
   createConvergenceProject,
   runAuthorProject,
+  runAuthorProjectAsync,
   runValidator,
   timestamp,
   writeJson,
@@ -567,4 +568,124 @@ test("concurrent bootstrap starts cannot publish two active cycles", async (t) =
   ));
   const winner = results.find((result) => result.valid);
   assert.equal(active.cycle_id, winner.cycle.cycle_id);
+});
+
+
+test("independent CLI processes allow only one transition for the same expected revision", async (t) => {
+  const { projectRoot } = await createConvergenceProject(t);
+  await startCycle(projectRoot, {
+    cycle_id: "cycle-bootstrap-001",
+    initiating_strategy: "write-fiction",
+    bootstrap: true,
+    starting_scope: null,
+  });
+  const plans = [];
+  for (let index = 0; index < 256; index += 1) {
+    const planPath = `sessions/contended-plan-${index}.md`;
+    const contents = `Shared reference ${index}\n`;
+    await writeFile(path.join(projectRoot, planPath), contents, "utf8");
+    plans.push({
+      plan_id: `contended-plan-${index}`,
+      path: planPath,
+      sha256: createHash("sha256").update(contents).digest("hex"),
+    });
+  }
+
+  const requestPaths = [];
+  for (let index = 0; index < 8; index += 1) {
+    requestPaths.push(await writeJson(path.join(projectRoot, `transition-${index}.json`), {
+      cycle_id: "cycle-bootstrap-001",
+      expected_revision: 1,
+      current_strategy: "revise-draft",
+      recovery_position: {
+        operation: "diagnostics",
+        reason: `Worker ${index} must be the only revision-1 writer.`,
+      },
+      related_artifacts: { plans },
+      work_set: {
+        entries: [{
+          path: `manuscript/worker-${index}.md`,
+          operations: ["diagnostics"],
+          reason: `Worker ${index} owns this proposed work item.`,
+        }],
+      },
+    }));
+  }
+
+  const processes = await Promise.all(requestPaths.map((input) => runAuthorProjectAsync([
+    "transition-cycle",
+    "--project-root",
+    projectRoot,
+    "--input",
+    input,
+  ])));
+  const results = processes.map((process) => ({
+    ...process,
+    result: JSON.parse(process.stdout),
+  }));
+  const successes = results.filter(({ result }) => result.valid);
+  const conflicts = results.filter(({ result }) =>
+    !result.valid && result.blockers[0]?.code === "cycle-revision-conflict"
+  );
+  const summary = results.map(({ status, result }) => ({
+    status,
+    valid: result.valid,
+    code: result.blockers[0]?.code,
+    revision: result.cycle?.revision,
+    reason: result.cycle?.recovery_position?.reason,
+  }));
+  assert.equal(successes.length, 1, JSON.stringify(summary, null, 2));
+  assert.equal(conflicts.length, 7, JSON.stringify(summary, null, 2));
+  assert.equal(successes[0].status, 0);
+  for (const conflict of conflicts) assert.equal(conflict.status, 1);
+
+  const active = JSON.parse(await readFile(successes[0].result.cycle_path, "utf8"));
+  assert.equal(active.revision, 2);
+  assert.deepEqual(active, successes[0].result.cycle);
+  assert.equal(active.work_set.entries.length, 1);
+  assert.match(active.recovery_position.reason, /^Worker [0-7] must be the only revision-1 writer\.$/);
+  await assert.rejects(
+    readFile(path.join(
+      projectRoot,
+      ".author-toolkit",
+      "convergence",
+      "active-cycle.lock",
+      "owner.json",
+    )),
+    { code: "ENOENT" },
+  );
+});
+
+test("an existing transition lock times out truthfully without overwriting active state", async (t) => {
+  const { projectRoot } = await createConvergenceProject(t);
+  const started = await startCycle(projectRoot, {
+    cycle_id: "cycle-bootstrap-001",
+    initiating_strategy: "write-fiction",
+    bootstrap: true,
+    starting_scope: null,
+  });
+  await mkdir(path.join(
+    projectRoot,
+    ".author-toolkit",
+    "convergence",
+    "active-cycle.lock",
+  ));
+  const before = await readFile(started.cycle_path, "utf8");
+
+  const result = await transitionCycle(projectRoot, {
+    cycle_id: "cycle-bootstrap-001",
+    expected_revision: 1,
+    recovery_position: {
+      operation: "diagnostics",
+      reason: "This transition must not replace the active record while locked.",
+    },
+  }, { lockTimeoutMs: 30, lockRetryMs: 5 });
+
+  assert.equal(result.valid, false);
+  assert.equal(result.blockers[0].code, "cycle-transition-lock-timeout");
+  assert.equal(result.state_written, false);
+  assert.equal(await readFile(started.cycle_path, "utf8"), before);
+  const status = await getCycleStatus(projectRoot);
+  assert.equal(status.query_valid, true);
+  assert.equal(status.outcome, "indeterminate");
 });

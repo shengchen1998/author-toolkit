@@ -398,10 +398,14 @@ node scripts/author-project.mjs cycle-gate --project-root <project-root>
 ```
 
 A second manuscript-changing cycle returns `active-cycle-exists` with the active
-cycle's required strategy, operation, and command. Transitions require the active
-cycle ID and expected revision, and verify referenced artifact hashes before an
-atomic active-state update. Pending action still describes only the current
-operation and author gate; it does not own the cycle or authorize writes.
+cycle's required strategy, operation, and command. Transitions acquire a
+cross-process lock directory, reread the active cycle ID and expected revision
+inside that lock, and verify referenced artifact hashes before an atomic update.
+Only one writer can succeed for the same expected revision; later writers get
+`cycle-revision-conflict`. Lock timeouts and errors block without a success
+claim, and a leftover lock directory requires explicit recovery. Pending action
+still describes only the current operation and author gate; it does not own the
+cycle or authorize writes.
 
 Independent convergence status and convergence gate queries are read-only:
 

@@ -29,6 +29,7 @@ function usage() {
   node scripts/author-project.mjs check-operation --project-root ROOT --input FILE
 
 Use --manifest FILE instead of --project-root ROOT when addressing the manifest directly.
+Transitions serialize independent processes with active-cycle.lock and recheck expected_revision in the lock.
 These are author-project operations; they do not invoke a writing strategy.`);
 }
 

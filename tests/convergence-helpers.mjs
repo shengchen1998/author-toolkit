@@ -1,4 +1,4 @@
-import { spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 
@@ -79,5 +79,29 @@ export function runValidator(args) {
   return spawnSync(process.execPath, [path.join(root, "scripts", "validate.mjs"), ...args], {
     cwd: root,
     encoding: "utf8",
+  });
+}
+
+
+export async function runAuthorProjectAsync(args) {
+  return new Promise((resolve, reject) => {
+    const child = spawn(process.execPath, [authorProjectCli, ...args], {
+      cwd: root,
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    let stdout = "";
+    let stderr = "";
+    child.stdout.setEncoding("utf8");
+    child.stderr.setEncoding("utf8");
+    child.stdout.on("data", (chunk) => {
+      stdout += chunk;
+    });
+    child.stderr.on("data", (chunk) => {
+      stderr += chunk;
+    });
+    child.once("error", reject);
+    child.once("close", (status, signal) => {
+      resolve({ status, signal, stdout, stderr });
+    });
   });
 }
