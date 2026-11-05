@@ -47,7 +47,7 @@ The target-scope paths requiring new evidence or approved edits after considerin
 _Avoid_: Target scope, request set
 
 **Convergence evaluation**:
-An immutable judgment of current-draft revision convergence bound to exact scope and evidence identities. Its outcome is satisfied, not satisfied, or indeterminate; missing trustworthy proof is indeterminate rather than success or a known editorial defect.
+An immutable judgment of current-draft revision convergence bound to exact scope and evidence identities. Its outcome is satisfied, not satisfied, or indeterminate; missing trustworthy proof is indeterminate rather than success or a known editorial defect. Cycle-bound evaluations record their cycle ID; independent revise-draft evaluations record `cycle_id: null` and require no cycle completion decision.
 
 **Request completion**:
 The independent state in which every approved request batch and request decision is finished through verified current executions or lawful no-edit decisions. It does not imply current-draft revision convergence.
@@ -62,7 +62,7 @@ The immutable artifact roles, identities, paths, and content hashes bound to one
 The recorded author decision that revision planning and chapter revision require no manuscript edit for one requested pass and target fingerprint, including every covered finding and the reason.
 
 **Revision execution record**:
-The verified record linking revision intent and approvals to actual input and output manuscript versions.
+The verified record linking revision intent and approvals to actual input and output manuscript versions. Cycle-bound records carry their cycle ID; independent revise-draft records use `cycle_id: null`.
 _Avoid_: Approval without execution
 
 **Review group**:

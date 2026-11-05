@@ -129,6 +129,10 @@ AI, 作者和混合创作使用相同门禁. 每本书只保留一个活动创�
 8. `ai-cleanup`: 按作者要求检测或修改 AI 写作模式.
 9. `final-review`: 以三个独立视角完成全书终审并准备交接.
 
+只读结构分析与全书终审无需建立周期即可使用. 正文变更或会使所需证据失效的工作必须从当前
+`satisfied` 的全稿起始评估进入已链接的 `revise-fiction` 周期, 保留每项全书门禁,
+并在作者明确决定完成周期前恢复全稿的当前草稿修订收敛.
+
 ### `revise-draft`: 当前草稿修订
 
 对应的九项操作依次为:
@@ -149,6 +153,13 @@ AI, 作者和混合创作使用相同门禁. 每本书只保留一个活动创�
 完整全书门禁要求更多人物弧线和全书连续性子检查. 当前草稿任务可以直接进入 `prose` 或
 `ai-cleanup`. 不需要改稿时, 可记录原因并跳过 `revision-plan` 和 `chapter-revision`.
 直接进入或收窄的请求修订轮次本身不代表已达到当前草稿修订收敛.
+
+独立的局部, 诊断, 直接句子层, AI 关联表达处理和收窄的当前草稿工作可以不建周期,
+但不得宣称全稿达到当前草稿修订收敛, 也不会降低最近一次 `satisfied` 全稿轮次的子检查基线. 若稿件尚未达到当前草稿修订收敛,
+其他正文变更入口保持阻断, 直到独立全稿 `evaluate-draft` 产生当前 `satisfied` 评估.
+该恢复中的已解决发现项必须在改稿前运行 `prepare-draft-revision-execution`, 随后运行
+`verify-draft-revision-execution`, 形成 `cycle_id: null` 且实际输入输出经过核对的执行记录.
+已激活周期中的当前草稿恢复则链接并评估同一周期. 所有跨入口路由只显示准确的宿主命令并等待作者.
 
 ### `revise-increment`: 增量创作后的修订
 
@@ -234,9 +245,12 @@ v3.2 在 `<convergence-state-root>/active-cycle.json` 中至多保存一个已�
 ```bash
 node scripts/author-project.mjs start-cycle --project-root <project-root> --input <request.json>
 node scripts/author-project.mjs transition-cycle --project-root <project-root> --input <transition.json>
+node scripts/author-project.mjs prepare-draft-revision-execution --project-root <project-root> --input <independent-preparation.json>
+node scripts/author-project.mjs verify-draft-revision-execution --project-root <project-root> --input <independent-verification.json>
 node scripts/author-project.mjs prepare-revision-execution --project-root <project-root> --input <preparation.json>
 node scripts/author-project.mjs verify-revision-execution --project-root <project-root> --input <verification.json>
 node scripts/author-project.mjs evaluate-cycle --project-root <project-root> --input <evaluation-request.json>
+node scripts/author-project.mjs evaluate-draft --project-root <project-root> --input <independent-evaluation.json>
 node scripts/author-project.mjs complete-cycle --project-root <project-root> --input <completion.json>
 node scripts/author-project.mjs cycle-status --project-root <project-root>
 node scripts/author-project.mjs cycle-gate --project-root <project-root>

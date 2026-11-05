@@ -236,6 +236,12 @@ The nine operations are:
 9. `final-review`: Verify the whole-book result with three independent
    perspectives and prepare the handoff.
 
+Read-only structure analysis and final review remain available without opening a
+cycle. Manuscript-changing or required-evidence-invalidating work starts from a
+current satisfied full-manuscript evaluation in a linked `revise-fiction` cycle,
+retains every whole-book gate, and restores current-draft revision convergence before
+the author's explicit cycle completion decision.
+
 ### `revise-draft`: current-draft revision
 
 The mirrored nine operations are:
@@ -262,6 +268,18 @@ continuity. A draft engagement may enter directly at `prose` or `ai-cleanup`. If
 no manuscript revision is requested, `revision-plan` and `chapter-revision` may
 be skipped with the reason recorded. A direct entry or narrowed requested pass
 does not by itself establish current-draft revision convergence.
+
+Independent local, diagnostic, direct-prose, AI-cleanup, and narrowed draft work
+may finish without a cycle or a current-draft revision convergence claim. It never
+reduces the last satisfied full-manuscript subcheck baseline. If it leaves the
+manuscript unconverged, the other manuscript-changing entries remain blocked
+until an independent full-manuscript `evaluate-draft` operation produces a
+current satisfied evaluation. A resolved finding in that recovery requires
+`prepare-draft-revision-execution` before editing and
+`verify-draft-revision-execution` afterward, producing a `cycle_id: null`
+execution whose approved inputs and actual outputs are checked. Active-cycle
+draft recovery instead links and evaluates the same cycle. Every cross-entry
+route displays its exact host command and waits for the author.
 
 ### `revise-increment`: revision after incremental creation
 
@@ -393,9 +411,12 @@ Use the executable `author-project` facade for lifecycle operations:
 ```bash
 node scripts/author-project.mjs start-cycle --project-root <project-root> --input <request.json>
 node scripts/author-project.mjs transition-cycle --project-root <project-root> --input <transition.json>
+node scripts/author-project.mjs prepare-draft-revision-execution --project-root <project-root> --input <independent-preparation.json>
+node scripts/author-project.mjs verify-draft-revision-execution --project-root <project-root> --input <independent-verification.json>
 node scripts/author-project.mjs prepare-revision-execution --project-root <project-root> --input <preparation.json>
 node scripts/author-project.mjs verify-revision-execution --project-root <project-root> --input <verification.json>
 node scripts/author-project.mjs evaluate-cycle --project-root <project-root> --input <evaluation-request.json>
+node scripts/author-project.mjs evaluate-draft --project-root <project-root> --input <independent-evaluation.json>
 node scripts/author-project.mjs complete-cycle --project-root <project-root> --input <completion.json>
 node scripts/author-project.mjs cycle-status --project-root <project-root>
 node scripts/author-project.mjs cycle-gate --project-root <project-root>

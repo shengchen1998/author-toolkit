@@ -18,6 +18,14 @@ Coordinate full-book revision from the shared project evidence. This skill suppl
 
 The full-book sequence is `intake`, `story-bible`, `structure`, `characters`, `revision-plan`, `chapter-revision`, `prose`, `ai-cleanup`, and `final-review`.
 
+## Current-draft revision convergence boundary
+
+Read-only `structure` analysis and `final-review` use `manuscript_change: false` with `author-project check-operation` and do not open a current-draft convergence cycle. They remain available for an unconverged manuscript or during an active cycle. They produce reports and findings without editing manuscript; accepted changes enter the protected path below.
+
+Manuscript-changing or required-evidence-invalidating work uses `manuscript_change: true` and requires a current satisfied full-manuscript starting evaluation. With no active cycle, start one through `author-project start-cycle` with the exact starting scope and `initiating_strategy: "revise-fiction"`; a satisfied gate alone does not authorize an unlinked edit. When an active cycle exists, only its exact recovery position may proceed and no parallel cycle may start. Keep the whole-book operation gates in the sequence above, including Story Bible, structure, character, revision, and final-review gates.
+
+After approved edits, confirm the full-manuscript target scope and requested pass, verify every execution, renew affected coverage and final-review evidence, and restore current-draft revision convergence for the full-manuscript target scope. Link the evidence to the same cycle, require a satisfied `evaluate-cycle` result, and wait for the author's explicit completion decision before `complete-cycle`. A whole-book operation gate or final review alone does not complete the cycle. Display any required strategy's exact host command and wait; never invoke another user entry through the Skill tool.
+
 ## Author interaction
 
 At every author gate, follow the [Author decision loop](references/state-and-findings.md#author-decision-loop) before presenting questions or approval requests. This applies within an operation as well as at its final gate.
@@ -42,11 +50,11 @@ Honor each callee's stopping point. A pause within an operation ends with the sa
 
 ## Approval and backup gate
 
-For manuscript changes, first obtain a diagnosis or proposal without editing. Show the affected paths and intended change batch, then obtain explicit author approval. Record the approval in the shared tracker with its `approval_id`, operation, `scope_id`, paths, and reason. After approval and before the first write, invoke `author-project` with `record-backup` for every affected file and that `approval_id`. Apply only the approved batch after every backup succeeds.
+For manuscript changes, first obtain a diagnosis or proposal without editing. Show the affected paths and intended change batch, then obtain explicit author approval. Record the approval in the shared tracker with its `approval_id`, operation, `scope_id`, paths, and reason. After approval and before the first write, invoke `author-project` with `record-backup` for every affected file and that `approval_id`. Run `prepare-revision-execution` against the active cycle before editing and apply only the approved batch after every backup succeeds. Confirm the resulting full-manuscript scope and requested pass, then run `verify-revision-execution` to bind actual output hashes to the same cycle.
 
 A restore requires separate explicit approval naming the backup ID and files. Invoke `author-project` with `record-restore`, which preserves the current text in a safety backup before restoring. Never treat an earlier edit approval as restore approval.
 
-Story Bible changes require author confirmation and remain consistent with the approved plan. `author-project` handles state and backups only; it never supplies creative content.
+Story Bible changes require author confirmation and remain consistent with the approved plan. When a Story Bible or baseline change invalidates required target evidence, use the protected cycle path and restore current-draft revision convergence before completion. `author-project` handles state and backups only; it never supplies creative content.
 
 ## Reports and shared state
 

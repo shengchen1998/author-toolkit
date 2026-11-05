@@ -243,6 +243,16 @@ export async function createNoEditEvidence(projectRoot, options = {}) {
       paths,
       subchecks: [...subchecks].sort(),
     }));
+  if (options.narrowing) {
+    await appendTrackerApproval(projectRoot, {
+      id: options.narrowing.author_decision_id,
+      type: "requested-pass-narrowing",
+      operation: "intake",
+      scopeId: scopeReference.scope_id,
+      paths,
+      reason: options.narrowing.reason,
+    });
+  }
   const pass = {
     schema_version: "1.0.0",
     pass_id: passId,
@@ -253,7 +263,7 @@ export async function createNoEditEvidence(projectRoot, options = {}) {
     language: manifest.language,
     dependencies: [dependency],
     inapplicability: [],
-    narrowing: null,
+    narrowing: options.narrowing ?? null,
     baseline_pass: baselinePass,
     requested_subchecks: [...requestedSubchecks].sort((left, right) =>
       left.operation.localeCompare(right.operation) || left.subcheck.localeCompare(right.subcheck)

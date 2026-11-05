@@ -6,6 +6,8 @@ For every report, follow `state-and-findings.md` and the controlled workflow ter
 
 At a stable operation gate, apply the [current-draft convergence cycle rules](../../author-project/references/operations.md#current-draft-convergence-cycle). An active cycle permits its exact recovery work and read-only inspection, and blocks a parallel manuscript-changing cycle. With no active cycle, the author may switch to `write-fiction`, `revise-draft`, `revise-increment`, or `revise-request` through its exact command; no entry starts automatically. Reuse a local coverage unit only when every path, hash, subcheck, and dependency matches. Reevaluate every applicable whole-book synthesis after relevant changes instead of carrying it forward with unchanged local units. Creation evidence does not satisfy `chapter-revision`.
 
+Read-only analysis and review do not open a cycle. Manuscript-changing or required-evidence-invalidating work first requires a satisfied full-manuscript starting evaluation and a linked `revise-fiction` cycle. These current-draft revision convergence requirements add to every whole-book gate below; they do not replace Story Bible, structure, character, revision, or final-review evidence.
+
 ## 1. Intake
 
 **Inputs:** A v3 project root and accessible manuscript text.
@@ -50,9 +52,9 @@ At a stable operation gate, apply the [current-draft convergence cycle rules](..
 
 **Inputs:** Approved revision plan, relevant baselines, manuscript, and tracker.
 
-**Work:** For one approved batch at a time, invoke `fiction-workshop` first for diagnosis and proposed edits without writing. Show the exact files and changes, obtain and record approval, back up every file through `author-project`, and then implement that batch. Recheck affected continuity and update current-scope file hashes after the writes. Update plan batch status and finding decisions.
+**Work:** For one approved batch at a time, invoke `fiction-workshop` first for diagnosis and proposed edits without writing. Show the exact files and changes, obtain and record approval, and back up every file through `author-project`. Run `prepare-revision-execution` before editing to validate the active cycle, exact decisions, approvals, backups, planned outputs, and current inputs. Implement only that batch, confirm the resulting full-manuscript scope and requested pass, then run `verify-revision-execution` to reread and link actual output hashes to the same cycle. Recheck affected continuity and update plan batch status and finding decisions.
 
-**Gate:** Every planned batch is completed and accepted, or explicitly deferred with its downstream effect recorded. Each modified file has a successful backup record linked to its approval. No requested batch remains unapproved or partially edited. Approved structural or character-fact changes trigger stale propagation.
+**Gate:** Every planned batch is completed and accepted, or explicitly deferred with its downstream effect recorded. Each modified file has a successful backup record linked to its approval and a `verified` revision execution record for the active pass and full-manuscript target. No requested batch remains unapproved, prepared but unexecuted, or partially edited. Approved structural or character-fact changes trigger stale propagation and require restored full-target coverage and review before cycle completion.
 
 ## 7. Prose
 
@@ -74,6 +76,6 @@ At a stable operation gate, apply the [current-draft convergence cycle rules](..
 
 **Inputs:** Current manuscript, Story Bible, approved revision plan, target reader, and review checklists.
 
-**Work:** Invoke `author-review` with `review_mode=final`. Keep intent and consistency, writing standards, and fresh reader independent through its chunk -> volume/phase -> book protocol. Intent and standards chunks may run in parallel; fresh remains sequential with one logical reviewer and only its own reader-state. Without subagents, use resumable separate-session handoffs. This operation produces findings only.
+**Work:** Invoke `author-review` with `review_mode=final`. Keep intent and consistency, writing standards, and fresh reader independent through its chunk -> volume/phase -> book protocol. Intent and standards chunks may run in parallel; fresh remains sequential with one logical reviewer and only its own reader-state. Without subagents, use resumable separate-session handoffs. `final-review` produces findings only and does not open a cycle. Read-only review remains available with unconverged state or an active cycle; accepted findings that require changes enter the protected cycle path.
 
-**Gate:** For each perspective, every required chunk report and applicable synthesis report validates for the same current `scope_id`, all required final-review checks are covered, and findings are linked in the tracker. Any missing unit or synthesis leaves coverage partial or skipped. Record dissent without merging it away. Later manuscript or baseline changes make the affected final review stale. Return findings for author decisions; do not edit the manuscript. A `current-scope-review` cannot satisfy this gate.
+**Gate:** For each perspective, every required chunk report and applicable synthesis report validates for the same current `scope_id`, all required final-review checks are covered, and findings are linked in the tracker. Any missing unit or synthesis leaves coverage partial or skipped. Record dissent without merging it away. Later manuscript or baseline changes make the affected final review stale. Return findings for author decisions; do not edit the manuscript. A `current-scope-review` cannot satisfy this gate. When final review supplies same-scope and same-checks evidence for an active cycle, link its review group, evaluate the full-manuscript target, and require the author's explicit cycle completion decision; final review alone completes neither current-draft revision convergence nor the cycle.
