@@ -393,6 +393,8 @@ Use the executable `author-project` facade for lifecycle operations:
 ```bash
 node scripts/author-project.mjs start-cycle --project-root <project-root> --input <request.json>
 node scripts/author-project.mjs transition-cycle --project-root <project-root> --input <transition.json>
+node scripts/author-project.mjs evaluate-cycle --project-root <project-root> --input <evaluation-request.json>
+node scripts/author-project.mjs complete-cycle --project-root <project-root> --input <completion.json>
 node scripts/author-project.mjs cycle-status --project-root <project-root>
 node scripts/author-project.mjs cycle-gate --project-root <project-root>
 ```
@@ -406,6 +408,21 @@ Only one writer can succeed for the same expected revision; later writers get
 claim, and a leftover lock directory requires explicit recovery. Pending action
 still describes only the current operation and author gate; it does not own the
 cycle or authorize writes.
+
+A full-manuscript no-edit pass records its requested-pass fingerprint, inherited
+and newly requested subchecks, hashed coverage evidence, no-edit decisions,
+three-perspective review group, complete fresh reader chain, and semantic
+attestations. `evaluate-cycle` derives the outcome and an immutable evidence
+graph; callers cannot supply an outcome. The evaluator accepts eligible local
+units from an earlier pass while requiring a new full-target index, synthesis,
+and review group for the requested pass.
+
+Completion requires a separate explicit author decision. The operation appends
+that decision to the tracker, recomputes and saves a new evaluation with the
+changed tracker hash, and completes only if the new evaluation remains
+`satisfied`. Deterministic checks verify evidence identity and structure, but
+actual reading and editorial judgments remain bounded by trust in the host and
+logical-reviewer attestations and the recorded author decisions.
 
 Independent convergence status and convergence gate queries are read-only:
 

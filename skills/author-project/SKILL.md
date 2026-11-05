@@ -1,6 +1,6 @@
 ---
 name: author-project
-description: Use when initializing, reading, validating, or updating a neutral author-toolkit v3 project, recording its current scope or pending action, starting or resuming a current-draft convergence cycle, checking its gate, and recording manuscript backups and restores.
+description: Use when initializing, reading, validating, or updating a neutral author-toolkit v3 project, recording its current scope or pending action, starting, evaluating, completing, or checking a current-draft convergence cycle, and recording manuscript backups and restores.
 ---
 
 # Author Project
@@ -24,6 +24,8 @@ Accept one operation per invocation:
 | `record-scope` | Scope ID, description, ordered files with SHA-256 hashes, excluded files, and `proposed` or `confirmed` status; for confirmation, an author-confirmation reference with reading-order confirmation | Record the current scope; on v3.2, compute its scope fingerprint and preserve immutable inventory and scope snapshots after confirmation |
 | `start-cycle` | Cycle ID, initiating strategy, explicit bootstrap marker, and starting scope reference | Start one active current-draft convergence cycle after validating the bootstrap exception or current satisfied starting evaluation |
 | `transition-cycle` | Cycle ID, expected revision, and requested strategy, recovery position, target, pass, change set, work set, or related-artifact changes | Resume the same active cycle through an optimistic, content-checked transition |
+| `evaluate-cycle` | Cycle ID, expected revision, evaluation ID, coverage index, intake and baseline reports, review group, and semantic attestations | Derive and preserve an immutable evaluation and evidence graph without accepting a caller-supplied outcome |
+| `complete-cycle` | Cycle ID, expected revision, new evaluation ID, completion decision ID, and explicit author confirmation | Record the decision, reevaluate the changed tracker evidence, and complete only a still-satisfied cycle |
 | `cycle-status` | Project root or manifest path | Read the active cycle, pending action, recovery position, and current evaluation outcome without writing state |
 | `cycle-gate` | Project root or manifest path | Succeed only for a current satisfied evaluation; return structured blockers otherwise |
 | `check-operation` | Strategy, operation, explicit manuscript-change marker, and optional cycle ID | Allow read-only inspection or the active cycle's exact recovery work; block parallel manuscript changes |
@@ -32,11 +34,13 @@ Accept one operation per invocation:
 
 For every operation, read [`references/operations.md`](references/operations.md) and follow its state, evidence, approval, and record rules. Use [`assets/project-template.json`](assets/project-template.json) only for a new v3.2 manifest.
 
-When the installed toolkit provides `scripts/lib/index.mjs`, its public `recordScope`, `validateFullManuscriptScope`, `startCycle`, `transitionCycle`, `getCycleStatus`, `checkConvergenceGate`, and `assertCycleAllowsOperation` functions are the executable project-operation seam. Host procedures and disposable-project tests use these same functions or the executable facade:
+When the installed toolkit provides `scripts/lib/index.mjs`, its public `recordScope`, `validateFullManuscriptScope`, `startCycle`, `transitionCycle`, `evaluateCycle`, `completeCycle`, `getCycleStatus`, `checkConvergenceGate`, and `assertCycleAllowsOperation` functions are the executable project-operation seam. Host procedures and disposable-project tests use these same functions or the executable facade:
 
 ```bash
 node <toolkit-root>/scripts/author-project.mjs start-cycle --project-root <project-root> --input <request.json>
 node <toolkit-root>/scripts/author-project.mjs transition-cycle --project-root <project-root> --input <transition.json>
+node <toolkit-root>/scripts/author-project.mjs evaluate-cycle --project-root <project-root> --input <evaluation-request.json>
+node <toolkit-root>/scripts/author-project.mjs complete-cycle --project-root <project-root> --input <completion.json>
 node <toolkit-root>/scripts/author-project.mjs cycle-status --project-root <project-root>
 node <toolkit-root>/scripts/author-project.mjs cycle-gate --project-root <project-root>
 node <toolkit-root>/scripts/author-project.mjs check-operation --project-root <project-root> --input <operation.json>

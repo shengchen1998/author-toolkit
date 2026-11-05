@@ -210,6 +210,7 @@ export async function startCycle(projectRoot, request, options = {}) {
     );
   }
 
+  let startingEvaluation = null;
   if (!request.bootstrap) {
     try {
       if (!request.starting_scope) throw new Error("A starting scope snapshot is required");
@@ -226,43 +227,50 @@ export async function startCycle(projectRoot, request, options = {}) {
         },
       );
     }
-    return blocked(
-      "starting-evaluation-indeterminate",
-      "A current satisfied starting evaluation is unavailable; run a full-manuscript revise-draft recovery before starting this cycle.",
-      {
-        recovery_position: {
-          operation: "intake",
-          required_strategy: "revise-draft",
+    const { findSatisfiedStartingEvaluation } = await import("./convergence.mjs");
+    const starting = await findSatisfiedStartingEvaluation(project, request.starting_scope);
+    if (!starting) {
+      return blocked(
+        "starting-evaluation-indeterminate",
+        "A current satisfied starting evaluation is unavailable; run a full-manuscript revise-draft recovery before starting this cycle.",
+        {
+          recovery_position: {
+            operation: "intake",
+            required_strategy: "revise-draft",
+          },
         },
-      },
-    );
+      );
+    }
+    startingEvaluation = starting.evaluation_reference;
   }
 
-  if (request.initiating_strategy !== "write-fiction" || request.starting_scope !== null) {
-    throw new Error("Bootstrap requires write-fiction and a null starting_scope");
-  }
-  if (manifest.current_scope) {
-    return blocked(
-      "bootstrap-requires-empty-project",
-      "Bootstrap cannot replace an existing scope; reconcile the project through revise-draft.",
-      {
-        recovery_position: { operation: "intake", required_strategy: "revise-draft" },
-      },
+  if (request.bootstrap) {
+    if (request.initiating_strategy !== "write-fiction" || request.starting_scope !== null) {
+      throw new Error("Bootstrap requires write-fiction and a null starting_scope");
+    }
+    if (manifest.current_scope) {
+      return blocked(
+        "bootstrap-requires-empty-project",
+        "Bootstrap cannot replace an existing scope; reconcile the project through revise-draft.",
+        {
+          recovery_position: { operation: "intake", required_strategy: "revise-draft" },
+        },
+      );
+    }
+    const inventory = await collectManuscriptInventory(
+      root,
+      manifest.manuscript_root,
+      manifest.paths,
     );
-  }
-  const inventory = await collectManuscriptInventory(
-    root,
-    manifest.manuscript_root,
-    manifest.paths,
-  );
-  if (inventory.files.length > 0 || (await completedBootstrapExists(root, manifest))) {
-    return blocked(
-      "bootstrap-requires-empty-project",
-      "Bootstrap is available only for the first empty manuscript; use the full-manuscript recovery path instead.",
-      {
-        recovery_position: { operation: "intake", required_strategy: "revise-draft" },
-      },
-    );
+    if (inventory.files.length > 0 || (await completedBootstrapExists(root, manifest))) {
+      return blocked(
+        "bootstrap-requires-empty-project",
+        "Bootstrap is available only for the first empty manuscript; use the full-manuscript recovery path instead.",
+        {
+          recovery_position: { operation: "intake", required_strategy: "revise-draft" },
+        },
+      );
+    }
   }
 
   const timestamp = operationTime(options);
@@ -273,19 +281,21 @@ export async function startCycle(projectRoot, request, options = {}) {
     status: "active",
     initiating_strategy: request.initiating_strategy,
     current_strategy: request.initiating_strategy,
-    bootstrap: true,
-    starting_scope: null,
-    target_scope: null,
+    bootstrap: request.bootstrap,
+    starting_scope: request.starting_scope,
+    target_scope: request.bootstrap ? null : request.starting_scope,
     requested_pass: null,
     recovery_position: {
       operation: INITIAL_OPERATIONS[request.initiating_strategy],
-      reason: "First-time bootstrap must establish a nonempty manuscript and its initial convergence evaluation.",
+      reason: request.bootstrap
+        ? "First-time bootstrap must establish a nonempty manuscript and its initial convergence evaluation."
+        : "The verified starting evaluation begins this cycle; its target must restore current-draft revision convergence.",
       required_strategy: request.initiating_strategy,
     },
     related_artifacts: emptyRelatedArtifacts(),
     change_set: emptyChangeSet(),
     work_set: { entries: [] },
-    starting_evaluation: null,
+    starting_evaluation: startingEvaluation,
     target_evaluation: null,
     completion: null,
     created_at: timestamp,
@@ -326,47 +336,8 @@ function recoveryActionOrDefault(cycle) {
 }
 
 export async function getCycleStatus(projectRoot) {
-  let project;
-  let active;
-  try {
-    project = await readProject(projectRoot);
-    active = await readActiveCycle(project.root, project.manifest);
-  } catch (error) {
-    return {
-      query_valid: false,
-      outcome: "indeterminate",
-      current: false,
-      evaluation: null,
-      cycle: null,
-      pending_action: null,
-      required_action: null,
-      blockers: [
-        {
-          code: "cycle-state-invalid",
-          message: error.message,
-          required_action: null,
-        },
-      ],
-    };
-  }
-
-  const action = recoveryActionOrDefault(active?.value);
-  return {
-    query_valid: true,
-    outcome: "indeterminate",
-    current: false,
-    evaluation: null,
-    cycle: active?.value ?? null,
-    pending_action: project.manifest.pending_action ?? null,
-    required_action: action,
-    blockers: [
-      {
-        code: "current-evaluation-unavailable",
-        message: "No current satisfied full-manuscript evaluation is available.",
-        required_action: action,
-      },
-    ],
-  };
+  const { getConvergenceStatus } = await import("./convergence.mjs");
+  return getConvergenceStatus(projectRoot);
 }
 
 export async function checkConvergenceGate(projectRoot) {

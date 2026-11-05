@@ -8,6 +8,8 @@
   "properties": {
     "schema_version": { "const": "1.0.0" },
     "scope_id": { "$ref": "#/$defs/id" },
+    "scope_fingerprint": { "$ref": "#/$defs/sha256" },
+    "requested_pass": { "$ref": "#/$defs/passReference" },
     "entries": {
       "type": "array",
       "items": {
@@ -24,13 +26,15 @@
               "additionalProperties": false,
               "properties": {
                 "unit_id": { "$ref": "#/$defs/id" },
-                "path": { "$ref": "relative-path-schema.json" }
+                "path": { "$ref": "relative-path-schema.json" },
+                "sha256": { "$ref": "#/$defs/sha256" }
               }
             }
           },
           "synthesis_report": {
             "anyOf": [{ "$ref": "relative-path-schema.json" }, { "type": "null" }]
           },
+          "synthesis_report_sha256": { "$ref": "#/$defs/sha256" },
           "synthesis_coverage": {
             "anyOf": [{ "enum": ["full", "partial", "skipped"] }, { "type": "null" }]
           }
@@ -43,6 +47,21 @@
     "id": {
       "type": "string",
       "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "passReference": {
+      "type": "object",
+      "required": ["pass_id", "pass_fingerprint", "path", "sha256"],
+      "additionalProperties": false,
+      "properties": {
+        "pass_id": { "$ref": "#/$defs/id" },
+        "pass_fingerprint": { "$ref": "#/$defs/sha256" },
+        "path": { "$ref": "relative-path-schema.json" },
+        "sha256": { "$ref": "#/$defs/sha256" }
+      }
     }
   }
 }

@@ -496,6 +496,25 @@ export function validateReaderStateForJob(value, job) {
     }
   }
 
+  if (job?.status === "complete" && job?.perspective === "fresh") {
+    if (value?.status !== "complete") {
+      errors.push(reviewError(
+        "/status",
+        "reader-job-chain",
+        "a completed fresh review job requires a completed reader state",
+      ));
+    }
+    const expected = jobChunks.map((chunk) => `${chunk.chunk_id}\0${chunk.sequence}`);
+    const actual = chunks.map((chunk) => `${chunk.chunk_id}\0${chunk.sequence}`);
+    if (JSON.stringify(actual) !== JSON.stringify(expected)) {
+      errors.push(reviewError(
+        "/chunks",
+        "reader-job-chain",
+        "a completed fresh reader state must contain every review-job chunk in the required order",
+      ));
+    }
+  }
+
   return { ...result, valid: errors.length === 0, errors };
 }
 

@@ -4,6 +4,10 @@ Store one active current-draft convergence cycle in additive v3.2 project state,
 
 Evaluate that state through deterministic disk and evidence checks combined with structured host semantic attestations. Schema validity alone cannot prove actual reading or editorial judgment, so only current satisfied evidence passes an entry or completion gate; missing or untrustworthy proof is indeterminate, while a known failed condition is not satisfied. Coordinated per-file verified writes and identity reconciliation replace any claim of a multi-file filesystem transaction.
 
+Preserve each evaluation and its complete evidence graph as immutable history, including the tracker hash and all report, coverage, review, reader-state, no-edit, and attestation hashes. Exclude the active cycle and evaluation from that graph to prevent self-hashing. Completion first records the explicit author decision in the tracker, then recomputes and saves a new evaluation against the changed tracker hash, and only completes the cycle when that new evaluation remains satisfied. The prior evaluation remains unchanged.
+
+The deterministic layer can verify identities, coverage structure, decisions, hashes, and attestation claims, but it cannot prove that a host actually read the text or that its editorial judgment is correct. Satisfied therefore remains bounded by trust in the recorded host and logical-reviewer attestations and by the recorded author decisions.
+
 ## Consequences
 
 First-time creation needs an explicit bootstrap exception with a null starting scope and no claim that an empty manuscript has reached current-draft revision convergence. Ordinary starts remain blocked until a real evaluator can supply a current satisfied starting evaluation. Active updates require a cross-process lock directory and an in-lock expected-revision check so independent CLI processes cannot overwrite one another. Leftover locks block later work for explicit recovery instead of being stolen. Later execution, review, evaluation, and completion operations reference the same cycle rather than creating strategy-owned state trees.

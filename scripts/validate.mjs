@@ -9,6 +9,11 @@ import {
   getCycleStatus,
   projectRootFromManifest,
   validateConvergenceCycle,
+  validateConvergenceEvaluation,
+  validateNoEditSkip,
+  validateRequestedPass,
+  validateReviewGroup,
+  validateSemanticAttestation,
   validateCoverageIndex,
   validateCoverageUnit,
   validateCreationBatch,
@@ -46,6 +51,19 @@ const artifactTypes = [
     option: "--convergence-cycle",
     validate: validateConvergenceCycle,
   },
+  { key: "requestedPasses", option: "--requested-pass", validate: validateRequestedPass },
+  { key: "noEditSkips", option: "--no-edit-skip", validate: validateNoEditSkip },
+  { key: "reviewGroups", option: "--review-group", validate: validateReviewGroup },
+  {
+    key: "semanticAttestations",
+    option: "--semantic-attestation",
+    validate: validateSemanticAttestation,
+  },
+  {
+    key: "convergenceEvaluations",
+    option: "--convergence-evaluation",
+    validate: validateConvergenceEvaluation,
+  },
   { key: "creationBatches", option: "--creation-batch", validate: validateCreationBatch },
   { key: "creationCommits", option: "--creation-commit", validate: validateCreationCommit },
   { key: "coverageUnits", option: "--coverage-unit", validate: validateCoverageUnit },
@@ -70,7 +88,9 @@ function usage() {
   node scripts/validate.mjs
   node scripts/validate.mjs [--manifest FILE] [--report FILE] [--workflow-fixture FILE]...
   node scripts/validate.mjs [--scope-snapshot FILE] [--inventory-snapshot FILE]...
-  node scripts/validate.mjs [--convergence-cycle FILE]...
+  node scripts/validate.mjs [--convergence-cycle FILE] [--requested-pass FILE]...
+  node scripts/validate.mjs [--no-edit-skip FILE] [--review-group FILE]...
+  node scripts/validate.mjs [--semantic-attestation FILE] [--convergence-evaluation FILE]...
   node scripts/validate.mjs --convergence-status MANIFEST
   node scripts/validate.mjs --convergence-gate MANIFEST
   node scripts/validate.mjs [--creation-batch FILE] [--creation-commit FILE]...

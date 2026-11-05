@@ -108,7 +108,7 @@ Return a compact shared state view containing:
 - the active cycle's exact next action, or the next action recorded in the tracker or latest session note when no cycle is active;
 - validation errors, missing paths, and unresolved approval, backup, commit, or restore requirements.
 
-Status does not infer operation completion, select a strategy, advance pending action, or claim current-draft revision convergence from a full-manuscript result alone. A valid convergence status query reports `satisfied`, `not_satisfied`, or `indeterminate` without changing state. When no current satisfied convergence evaluation is available, report `indeterminate`, `current: false`, and the missing-proof blocker. The separate convergence gate succeeds only for `satisfied` with current evidence; both other outcomes and stale evidence fail with structured blockers. Neither query treats an ordinary unfinished lifecycle as a malformed file.
+Status does not infer operation completion, select a strategy, advance pending action, or claim current-draft revision convergence from a full-manuscript result alone. A valid convergence status query reports `satisfied`, `not_satisfied`, or `indeterminate` without changing state. When no evaluation or trustworthy proof is available, report `indeterminate`, `current: false`, and the missing-proof blocker; report a known unmet condition as `not_satisfied` with its concrete blocker. The separate convergence gate succeeds only for `satisfied` with current evidence; both other outcomes and stale evidence fail with structured blockers. Neither query treats an ordinary unfinished lifecycle as a malformed file.
 
 ## Current-draft convergence cycle
 
@@ -148,6 +148,52 @@ node <toolkit-root>/scripts/validate.mjs --convergence-gate <manifest-path>
 ```
 
 Convergence status exits successfully when the query itself is valid, including an `indeterminate` outcome. Convergence gate exits nonzero for `not_satisfied`, `indeterminate`, stale evidence, or malformed state. Usage errors retain the validator's exit status 2. Both commands are read-only. Evaluation and completion require their dedicated evidence operations; `transition-cycle` never substitutes for them.
+
+## No-edit convergence evaluation and completion
+
+Use the deployed `requested-pass-schema.json`, `no-edit-skip-schema.json`, `review-group-schema.json`, `semantic-attestation-schema.json`, and `convergence-evaluation-schema.json` for the first full-manuscript no-edit path. Preserve passes beneath `passes/`, no-edit skips beneath `no-edit-skips/`, review groups beneath `review-groups/`, attestations beneath `attestations/`, and evaluations beneath `evaluations/` in the convergence state root. These artifacts are immutable after publication.
+
+A requested pass records its target scope reference, required operations and paths, BCP 47 language, subchecks, versioned dependencies, inapplicability reasons, narrowing decision and gaps, baseline pass, newly requested subchecks, and creation time. Compute its fingerprint as SHA-256 over UTF-8 `JSON.stringify` of an object with keys in this order: `target_scope` containing only `scope_id` and `scope_fingerprint`, `required_operations`, `paths`, `language`, `dependencies`, `inapplicability`, `narrowing` containing only `reason` and `gaps` or null, `baseline_pass` containing only `pass_id` and `pass_fingerprint` or null, and `requested_subchecks` containing only `operation` and `subcheck`. Preserve the recorded array order. Pass ID, snapshot locations, decision IDs, and timestamps are excluded.
+
+The baseline is the latest satisfied, unrestricted full-manuscript pass preserved in completed history, excluding the cycle being evaluated. Every inherited operation and subcheck remains required. Newly requested checks have explicit author decision IDs and extend that baseline; they cannot remove or relabel an inherited check. A later narrowed requested pass never supplies or reduces this baseline. Eligible local coverage units keep their original scope and pass provenance. Their source reports may belong to an earlier pass only when the source hash, operation, paths and hashes, requested subchecks, and dependencies all match; compose a new full-target index and synthesis for the requested pass.
+
+A no-edit skip binds `revision-plan` and `chapter-revision` to the pass and target fingerprint, covered finding IDs, explicit author decision, and reason. Verify the decision in the shared tracker. Deferred and dismissed findings remain valid when their decisions are current and covered; open findings are `not_satisfied`, and resolved findings need verified revision execution evidence rather than a no-edit claim. An empty manuscript or missing evidence never becomes satisfied.
+
+A review group binds intent, standards, and fresh jobs, their reader states, every chunk and applicable synthesis report, and the fresh logical-reviewer attestation to one pass and target fingerprint. Each job must validate complete full-target coverage against actual source hashes and line counts. A completed fresh job requires a completed reader state containing every job chunk in the declared order, not merely a continuous prefix. Final review can satisfy current-scope review only under the existing same-scope and same-checks equivalence rule.
+
+Semantic attestations identify the attester, pass and scope fingerprints, claim subject, verdict, statement, referenced artifact hashes, and creation time. Require host `coverage-semantics` and `review-semantics` claims plus the fresh logical reviewer's `fresh-reader-continuity` claim. `confirmed` supports a claim; `refuted` records a known failed condition. Missing, conflicting, or mismatched attestations are `indeterminate`. Attestations never replace tracker decisions, and deterministic validation cannot prove actual reading quality or editorial correctness.
+
+Run the public operations with exact cycle ID and expected revision:
+
+```bash
+node <toolkit-root>/scripts/author-project.mjs evaluate-cycle --project-root <project-root> --input <evaluation-request.json>
+node <toolkit-root>/scripts/author-project.mjs complete-cycle --project-root <project-root> --input <completion.json>
+```
+
+The evaluation request supplies `evaluation_id`, the coverage-index reference, intake and draft-baseline report references, review-group reference, and semantic-attestation references. Evaluation and completion acquire the same `active-cycle.lock/` used for transitions and recheck the expected revision inside the lock. Only one writer can win a revision race. The evaluation request does not accept an outcome: the evaluator derives `satisfied`, `not_satisfied`, or `indeterminate` from current evidence and returns concrete blockers.
+
+Before reading target evidence, compare the target reference's `scope_id`, `scope_fingerprint`, `snapshot_path`, and `snapshot_sha256` with manifest `current_scope`. Any difference returns `target-scope-identity-mismatch` as `indeterminate`, fails status currency and the gate, and blocks evaluation or completion even when manuscript line counts are unchanged. This current-target check does not rewrite historical baseline evidence; ordinary starts separately revalidate their current starting snapshot and satisfied evaluation before later manuscript work makes that snapshot historical.
+
+Every evaluation records its complete evidence graph: target and inventory snapshots, requested and baseline passes, manuscript and dependency versions, tracker, reports, coverage index and units, no-edit skips, review group, jobs, reader states, attestations, and baseline evaluation when applicable. Each entry records role, artifact identity, safe project-relative path, and SHA-256. The active cycle, manifest pending fields, and evaluation itself are excluded, preventing a self-hash cycle. Status and gate queries recompute current text, artifact hashes, coverage, decisions, review chains, and claims instead of trusting a stored outcome. A known failed condition is `not_satisfied`; missing, unreadable, changed, or inconsistent proof is `indeterminate`. Both fail the gate.
+
+The completion input supplies a new `evaluation_id`, `decision_id`, and `author_confirmed: true`. Completion uses this exact order:
+
+1. Recompute the current target evaluation and reject completion if it is not current and satisfied. Author confirmation cannot override `not_satisfied`, `indeterminate`, or stale evidence.
+2. Append the explicit decision to the tracker's `## Cycle completions` table with its cycle ID, target fingerprint, approved status, reason, and UTC time. Older trackers without this optional table remain valid; the operation adds it before `## Open questions` when needed.
+3. Recompute and publish a new immutable evaluation using the changed tracker hash. Never exclude the tracker hash, accept the pre-decision evaluation, or add the evaluation's own hash to its graph.
+4. Only when the new evaluation is satisfied, publish the completed cycle with the new evaluation and decision IDs, then remove the active record. Preserve the prior evaluation and every referenced artifact. A non-satisfied post-decision evaluation leaves the cycle active and retains the recorded decision as history.
+
+These coordinated writes do not claim a multi-file filesystem transaction or comprehensive crash reconciliation. A leftover lock, identity mismatch, or partially coordinated state stops dependent work for explicit recovery. Read-only status remains available.
+
+Validate the artifacts through the public CLI:
+
+```bash
+node <toolkit-root>/scripts/validate.mjs --requested-pass <pass.json>
+node <toolkit-root>/scripts/validate.mjs --no-edit-skip <skip.json>
+node <toolkit-root>/scripts/validate.mjs --review-group <review-group.json>
+node <toolkit-root>/scripts/validate.mjs --semantic-attestation <attestation.json>
+node <toolkit-root>/scripts/validate.mjs --convergence-evaluation <evaluation.json>
+```
 
 ## Set pending
 
