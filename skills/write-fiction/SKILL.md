@@ -41,7 +41,7 @@ Unrelated open findings remain visible without blocking creation. A finding that
 | `creation-import` | Reconcile author-added, modified, deleted, or reordered manuscript files |
 | `milestone-review` | Summarize the selected volume or story phase and run requested local checks |
 
-AI, author-written, and mixed batches use the same acceptance and state-synchronization rules. New chapters and necessary small continuity patches may share one approved batch. Send structural rewrites and requested full prose or AI cleanup to the appropriate revision entry. After `creation-commit`, state that the batch is published but the expanded scope is not thereby revision-converged. Offer `revise-increment` to revise added or affected paths while reusing valid unchanged-chapter evidence and completing a new full-scope review.
+AI, author-written, and mixed batches use the same acceptance and state-synchronization rules. New chapters and necessary small continuity patches may share one approved batch. Send structural rewrites and requested full prose or AI cleanup to the appropriate revision entry. After `creation-commit`, state that the batch is published but the expanded scope is not thereby revision-converged. Offer `revise-increment` to revise added or affected paths while reusing valid unchanged-chapter evidence and completing a new full-target current-scope review.
 
 ## Strategy switching
 

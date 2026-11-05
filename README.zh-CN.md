@@ -14,8 +14,8 @@ Author Toolkit 3.1.0 提供增量小说创作, 四个小说修订策略和六个
 | `write-fiction` | 通过可审阅写作批次, staging, 同步 story state 和里程碑复核创作或续写小说. |
 | `revise-fiction` | 面向全书, 通过 Story Bible, 宏观结构, 完整人物弧线和全书终审进行修订. |
 | `revise-draft` | 面向当前稿, 通过稿件基线, 局部叙事诊断和当前范围复核进行修订. |
-| `revise-increment` | 在增量创作后复用未变章节的有效证据, 修订新增或受影响章节并完成整个目标范围复核. |
-| `revise-request` | 在完整当前稿已收敛后处理任意类型的存量内容修订请求, 并恢复全稿当前稿收敛. |
+| `revise-increment` | 在增量创作后复用未变章节的有效证据, 修订新增或受影响章节并完成 full-target current-scope review. |
+| `revise-request` | 在完整当前稿已达到当前草稿修订收敛后处理任意类型的存量内容修订请求, 并恢复全稿的当前草稿修订收敛. |
 
 `write-fiction`, `revise-fiction`, `revise-draft`, `revise-increment` 与 `revise-request` 都必须先运行同一个
 `setup-author-toolkit`. setup 不接受 workflow 名称或 entry stage 参数, 对所有后续策略使用
@@ -85,7 +85,7 @@ npx skills update
    不指定 workflow 或 entry stage.
 3. setup 验证共享 manifest 后, 根据目标选择 `write-fiction`, `revise-fiction`,
    `revise-draft`, `revise-increment` 或 `revise-request`. 增量修订用于复用未变章节的有效证据,
-   处理新增或受影响章节并恢复整个目标范围的当前稿收敛. 请求修订用于在全稿已收敛后处理存量内容
+   处理新增或受影响章节并恢复整个目标范围的当前草稿修订收敛. 请求修订用于在全稿已收敛后处理存量内容
    并重新收敛. 需要时由所选策略建立并确认初始 scope.
 4. 在作者确认节点审阅证据和提案. agent 每次只提出一个待决项, 让你先讨论证据和备选方案
    再作决定. 计划, 正文写入, 批次验收和 restore 分别需要对应授权.
@@ -148,7 +148,7 @@ AI, 作者和混合创作使用相同门禁. 每本书只保留一个 active cre
 
 ### `revise-increment`: 增量创作后的修订
 
-当原有 scope 已在当前稿视角收敛, 创作或导入新增或影响章节时使用此入口. 例如, 前五章收敛后
+当原有 scope 已达到当前草稿修订收敛, 创作或导入新增或影响章节时使用此入口. 例如, 前五章收敛后
 新增第六章, 需要为第六章及受影响的旧文本补齐证据, 不能把创作复核当作修订完成.
 
 增量流程使用相同的九项当前稿操作和共享状态:
@@ -158,25 +158,27 @@ AI, 作者和混合创作使用相同门禁. 每本书只保留一个 active cre
    source report, 路径和 hash, subchecks 及依赖全部匹配的未变 full local units 才能复用.
    缺少可复用单元的旧章节会加入 work set.
 3. 在备份后只执行获批的 work set 修改, 再组合新的目标范围 coverage 和 syntheses.
-4. 以三个独立视角复核完整目标范围. fresh reader 顺序阅读完整目标; 限制修改范围不限制复核阅读范围.
+4. 运行 full-target current-scope review, 以三个独立视角复核完整 target scope. fresh reader 顺序阅读
+   完整 target scope; 限制修改范围不限制复核阅读范围.
 5. 处理复核 findings; 获批修改后重跑受影响操作和复核. 只有证据, findings, 批准, coverage 和
-   复核条件均为当前状态时才声明收敛.
+   复核条件均为当前状态时才声明当前草稿修订收敛.
 
 ### `revise-request`: 已收敛全稿的请求驱动修订
 
-当完整当前稿已经从 `revise-draft` 视角收敛, 作者对存量内容提出任意类型的修订请求时使用此入口.
+当完整当前稿已经从 `revise-draft` 视角达到当前草稿修订收敛, 作者对存量内容提出任意类型的修订请求时使用此入口.
 请求可以涉及情节, 场景, 人物, 连续性, 视角, 句子或 AI cleanup; 宏观结构请求可额外使用
 `story-structure` Audit, 但不会因此改走 `revise-fiction` 的全书终审门禁.
 
-1. 核对完整当前稿的 base scope 和收敛证据. 未收敛时先回到 `revise-draft`; 创作或导入扩大范围时
+1. 核对完整当前稿的 base scope 和当前草稿修订收敛证据. 未收敛时先回到 `revise-draft`; 创作或导入扩大范围时
    先运行 `revise-increment`.
-2. 确认请求结果, 约束, request set, 完整 target 和初始 work set. 请求范围决定改什么, 完整目标范围
-   决定需要重新证明什么.
-3. 在备份后只执行获批批次. 按实际文本和依赖变化扩大 work set, 重跑受影响操作并组合新的全目标
+2. 确认请求结果, 约束, request set, 完整 target scope 和初始 work set. request set 决定改什么,
+   完整 target scope 决定需要重新证明什么.
+3. 在备份后只执行获批批次. 按实际文本和依赖变化扩大 work set, 重跑受影响操作并组合新的 full-target
    coverage 和 syntheses; 匹配的未变 full local units 可以复用.
 4. 保留原收敛 pass 的适用 subchecks, 并加入新请求的检查. 局部请求不会静默缩小收敛所需 coverage.
-5. 任何正文修改后重新完成全目标三视角复核, fresh reader 顺序阅读全稿. 处理复核 findings 和返工,
-   分别报告请求是否完成以及全稿是否重新收敛; 请求批次完成本身不等于收敛.
+5. 任何正文修改后重新运行 full-target current-scope review, fresh reader 顺序阅读完整 target scope.
+   处理复核 findings 和返工, 分别报告请求是否完成以及完整 target scope 是否重新达到当前草稿修订收敛;
+   请求批次完成本身不等于当前草稿修订收敛.
 
 叙事非虚构请直接调用 `narrative-nonfiction`. 多书籍项目和其他宿主不在 3.1 支持范围内.
 

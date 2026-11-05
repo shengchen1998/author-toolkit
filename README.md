@@ -22,8 +22,8 @@ Version 3.1.0 contains 16 skills in three groups.
 | `write-fiction` | Create or continue a novel through reviewed writing batches, staged drafts, synchronized story state, and milestone reviews. |
 | `revise-fiction` | Revise a whole novel through its Story Bible, macro structure, character arcs, and final whole-book review. |
 | `revise-draft` | Revise the current draft through a draft baseline, local narrative diagnostics, and a review of the selected scope. |
-| `revise-increment` | Revise added or affected chapters after incremental creation while reusing valid unchanged-chapter evidence and completing a full target-scope review. |
-| `revise-request` | Apply any author-defined revision to existing content in a converged full current draft and restore full-manuscript current-draft convergence. |
+| `revise-increment` | Revise added or affected chapters after incremental creation while reusing valid unchanged-chapter evidence and completing a full-target current-scope review. |
+| `revise-request` | Apply any author-defined revision to existing content in a converged full current draft and restore full-manuscript current-draft revision convergence. |
 
 `write-fiction`, `revise-fiction`, `revise-draft`, `revise-increment`, and `revise-request` must all run the same
 `setup-author-toolkit` first. Setup does not accept a workflow name or entry
@@ -69,9 +69,10 @@ without a complete outline or ending and can also continue an existing draft.
 `revise-fiction` addresses the whole book. `revise-draft` can work on an
 unfinished draft; its diagnostics address the selected narrative scope rather
 than judging the percentage of a future book or penalizing beats that do not yet
-exist. `revise-increment` applies the same current-draft standard after scope
-growth, reusing only valid unchanged evidence and reviewing the full target.
-`revise-request` starts after full current-draft convergence, applies an
+exist. `revise-increment` applies the same current-draft revision standard after
+scope growth, reusing only valid unchanged evidence and reviewing the full target
+scope.
+`revise-request` starts after full current-draft revision convergence, applies an
 author-defined revision to existing content, and restores that convergence.
 
 Narrative nonfiction remains a direct `narrative-nonfiction` task. Multi-book
@@ -166,7 +167,7 @@ A quick run looks like this:
    or continue a novel, `revise-fiction` for whole-book revision, `revise-draft`
    for the available draft and current-scope review, `revise-increment` to
    converge added or affected chapters, or `revise-request` to revise existing
-   content after full current-draft convergence. The selected strategy
+   content after full current-draft revision convergence. The selected strategy
    establishes and confirms the initial scope when one is needed.
 4. Review evidence and proposals at the author gates. The agent presents one
    active decision at a time so you can discuss evidence and alternatives before
@@ -247,14 +248,15 @@ whole-book gate requires additional subchecks for complete arcs and book-level
 continuity. A draft engagement may enter directly at `prose` or `ai-cleanup`. If
 no manuscript revision is requested, `revision-plan` and `chapter-revision` may
 be skipped with the reason recorded. A direct or limited pass is not by itself a
-claim of full current-draft convergence.
+claim of full current-draft revision convergence.
 
 ### `revise-increment`: revision after incremental creation
 
-Use this entry when a previous scope is current-draft-converged and creation or
-import adds or affects chapters. For example, five converged chapters plus a new
-sixth chapter require new evidence for chapter 6 and any affected earlier text,
-not an assumption that creation review completed revision.
+Use this entry when the previous scope has reached current-draft revision
+convergence and creation or import adds or affects chapters. For example, five
+converged chapters plus a new sixth chapter require new evidence for chapter 6
+and any affected earlier text, not an assumption that creation review completed
+revision.
 
 The incremental pass uses the same nine current-draft operations and shared
 state:
@@ -266,35 +268,37 @@ state:
    match. Missing reusable units add the affected old paths to the work set.
 3. Plan and apply only approved work-set edits with backups, then compose new
    target-scope coverage and syntheses.
-4. Run current-scope review over the full target with all three perspectives.
-   The fresh reader reads the full target sequentially; limiting edits does not
-   limit review reading.
+4. Run a full-target current-scope review with all three perspectives. The fresh
+   reader reads the full target scope sequentially; limiting edits does not limit
+   review reading.
 5. Process review findings and repeat affected operations and review after
-   accepted edits. Claim convergence only when the shared evidence, finding,
-   approval, coverage, and review conditions are all current.
+   accepted edits. Claim current-draft revision convergence only when the shared
+   evidence, finding, approval, coverage, and review conditions are all current.
 
 ### `revise-request`: request-driven revision after convergence
 
-Use this entry when the full current manuscript is converged from the
-`revise-draft` perspective and the author has any type of revision request for
-existing content. Requests may concern plot, scenes, characters, continuity,
-POV, prose, or AI cleanup. Requested macro-structure work can additionally use
-`story-structure` Audit without adopting the `revise-fiction` final-review gate.
+Use this entry when the full current manuscript has reached current-draft
+revision convergence from the `revise-draft` perspective and the author has any
+type of revision request for existing content. Requests may concern plot, scenes,
+characters, continuity, POV, prose, or AI cleanup. Requested macro-structure work
+can additionally use `story-structure` Audit without adopting the
+`revise-fiction` final-review gate.
 
-1. Verify the full-manuscript base scope and its current convergence evidence.
-   Return to `revise-draft` when that base is unfinished, or to
-   `revise-increment` when creation or import has grown the scope.
-2. Confirm the requested outcome, constraints, request set, full target, and
-   initial work set. The request set determines what to change; the full target
-   determines what must be proven current again.
+1. Verify the full-manuscript base scope and its current-draft revision
+   convergence evidence. Return to `revise-draft` when that base is unfinished,
+   or to `revise-increment` when creation or import has grown the scope.
+2. Confirm the requested outcome, constraints, request set, full target scope,
+   and initial work set. The request set determines what to change; the full
+   target scope determines what must be proven current again.
 3. Apply only approved batches with backups. Expand the work set by actual text
    and dependency impact, rerun affected operations, and compose new full-target
    coverage and syntheses while reusing matching unchanged local units.
 4. Preserve the converged pass's applicable subchecks and add newly requested
    checks. A local request does not silently reduce convergence coverage.
-5. After any manuscript change, review the full target again with all three
-   perspectives and a sequential fresh reader. Process findings and rework, then
-   report request completion and full-manuscript convergence separately.
+5. After any manuscript change, run another full-target current-scope review with
+   all three perspectives and a sequential fresh reader. Process findings and
+   rework, then report request completion and current-draft revision convergence
+   for the full manuscript separately.
 
 The skill definitions contain the full gates and audit rules.
 

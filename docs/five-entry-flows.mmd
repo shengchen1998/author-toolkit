@@ -35,7 +35,7 @@ flowchart TD
     RD8 --> RD9["current-scope-review<br/>当前 scope · 三种视角"]
     RD9 --> RDC{"有 accepted edits<br/>或失效证据？"}
     RDC -->|是：回到受影响操作| RD5
-    RDC -->|否| RDDONE["当前草稿收敛"]
+    RDC -->|否| RDDONE["当前草稿修订收敛"]
   end
 
   subgraph RI["revise-increment｜增量修订"]
@@ -46,37 +46,37 @@ flowchart TD
     RISTATE -->|否：新任务或无法确认| RIV["验证 previous<br/>converged scope"]
     RIV --> RIBASE{"上一 scope<br/>已收敛？"}
     RIBASE -->|否| RISTOP["显示 revise-draft 命令<br/>停止跳过基础工作"]
-    RIBASE -->|是| RI1["确定当前 target / change set<br/>work set / reusable evidence"]
-    RI1 --> RI2["intake<br/>确认 target + work set"]
-    RI2 --> RI3["draft-baseline<br/>更新 full target"]
+    RIBASE -->|是| RI1["确定 target scope / change set<br/>work set / reusable evidence"]
+    RI1 --> RI2["intake<br/>确认 target scope + work set"]
+    RI2 --> RI3["draft-baseline<br/>更新 full target scope"]
     RI3 --> RI4["diagnostics<br/>work set → full-target coverage"]
-    RI4 --> RI5["characters<br/>affected → full-target coverage"]
+    RI4 --> RI5["characters<br/>work set 中受影响路径<br/>→ full-target coverage"]
     RI5 --> RI6["revision-plan<br/>exact work-set batches"]
     RI6 --> RI7["chapter-revision<br/>仅修改 approved work set"]
-    RI7 --> RI8["prose<br/>work set + target synthesis"]
-    RI8 --> RI9["ai-cleanup<br/>work set + target coverage"]
-    RI9 --> RI10["current-scope-review<br/>始终覆盖 full target"]
+    RI7 --> RI8["prose<br/>work set + full-target synthesis"]
+    RI8 --> RI9["ai-cleanup<br/>work set + full-target coverage"]
+    RI9 --> RI10["current-scope-review<br/>始终覆盖 full target scope"]
     RI10 --> RIC{"有 accepted edits？"}
     RIC -->|是| RI6
-    RIC -->|否| RIDONE["target 修订收敛"]
+    RIC -->|否| RIDONE["当前草稿修订收敛<br/>(target scope)"]
   end
 
   subgraph RR["revise-request｜请求驱动修订"]
     direction LR
-    RR0([入口]) --> RRV["验证 full-manuscript base<br/>当前稿已收敛"]
+    RR0([入口]) --> RRV["验证 full-manuscript base scope<br/>当前稿已收敛"]
     RRV --> RRBASE{"base 已收敛？"}
     RRBASE -->|否：范围增长| RRISTOP["显示 revise-increment 命令<br/>停止跳过基础工作"]
     RRBASE -->|否：其他缺口| RRDSTOP["显示 revise-draft 命令<br/>停止跳过基础工作"]
-    RRBASE -->|是| RR1["记录 request / constraints<br/>target / request set / work set"]
+    RRBASE -->|是| RR1["记录 request / constraints<br/>target scope / request set / work set"]
     RR1 --> RR2["intake<br/>确认请求计划"]
     RR2 --> RR3["按请求选择 diagnostics / structure<br/>characters / prose / ai-cleanup"]
     RR3 --> RR4["revision-plan<br/>exact approved batches"]
     RR4 --> RR5["chapter-revision 或 no-edit skip<br/>stale propagation → 扩大 work set"]
     RR5 --> RR6["重跑受影响操作<br/>复用 matching local units<br/>新 full-target syntheses"]
-    RR6 --> RR7["current-scope-review<br/>正文修改后重跑 full target 三视角<br/>无变化复用有效 base review"]
+    RR6 --> RR7["current-scope-review<br/>正文修改后重跑三视角<br/>覆盖 full target scope<br/>无变化复用有效 base-scope review"]
     RR7 --> RRC{"accepted edits<br/>或证据仍失效？"}
     RRC -->|是| RR4
-    RRC -->|否| RRDONE["请求完成 + full target 重新收敛"]
+    RRC -->|否| RRDONE["请求完成 + 当前草稿修订收敛<br/>(full target scope)"]
   end
 
   subgraph WF["write-fiction｜增量创作"]
@@ -92,7 +92,7 @@ flowchart TD
     WF6 --> WFA{"作者接受批次？"}
     WFA -->|拒绝| WFR["保留 staging<br/>正文 / story state / scope 不变"]
     WFA -->|接受| WF7["creation-commit<br/>无额外审批门，发布并同步状态"]
-    WF7 --> WF8["发布 ≠ 修订收敛<br/>修订新增或受影响章节时转 revise-increment"]
+    WF7 --> WF8["发布 ≠ 当前草稿修订收敛<br/>修订新增或受影响章节时转 revise-increment"]
     WF8 -.->|下一批次| WF4
   end
 

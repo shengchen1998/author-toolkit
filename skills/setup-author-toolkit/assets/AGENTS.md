@@ -14,8 +14,8 @@ For shared fiction creation or revision, locate the project root and `.author-to
 - To create fiction from scratch or continue shared creation, show the `write-fiction` command.
 - For whole-book Story Bible, macro-structure, complete character-arc, or final-review work, show the `revise-fiction` command.
 - For diagnosis, revision, prose work, AI cleanup, or review of the available draft within a confirmed scope, show the `revise-draft` command. This path does not require an outline, ending, or whole-book structure audit.
-- After incremental creation or import, when unchanged chapters have reusable current-draft evidence, show the `revise-increment` command to revise added or affected paths and complete a full target-scope review.
-- When the full current manuscript is already converged and the author requests any type of revision to existing content, show the `revise-request` command to apply it and restore full-manuscript current-draft convergence.
+- After incremental creation or import, when unchanged chapters have reusable current-draft evidence, show the `revise-increment` command to revise added or affected paths and complete a full-target current-scope review.
+- When the full current manuscript is already converged and the author requests any type of revision to existing content, show the `revise-request` command to apply it and restore full-manuscript current-draft revision convergence.
 - When the appropriate route is unclear, show the `ask-author` command and the relevant choices.
 
 Use the independent skills directly when their standalone scope matches the request:
