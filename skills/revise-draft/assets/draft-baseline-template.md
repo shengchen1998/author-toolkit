@@ -1,4 +1,4 @@
-# Current Draft Baseline: PROJECT_TITLE
+# Draft Baseline: PROJECT_TITLE
 
 - Status: proposed
 - Scope ID:

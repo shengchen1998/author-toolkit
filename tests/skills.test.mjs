@@ -131,9 +131,10 @@ test("revision strategies share one project and keep distinct evidence gates", a
   assert.match(draftGates, /Reports list actual subchecks/);
   assert.match(fiction, /current-scope review does not satisfy final review/);
 
-  for (const text of [fiction, draft, increment, fictionGates, draftGates, reporting]) {
+  for (const text of [fiction, draft, increment, fictionGates, draftGates]) {
     assert.match(text, /\[Author decision loop\]\(/);
   }
+  assert.match(reporting, /author decision loop identified by that state reference/);
   assert.match(state, /## Author decision loop/);
   assert.match(state, /Otherwise, each assistant turn has one active decision/);
   assert.match(state, /discussion alone does not advance the queue or approve work/);
@@ -172,7 +173,7 @@ test("creation and revision strategies share state and stable switching gates", 
   assert.match(state, /Creation evidence does not satisfy `chapter-revision`/);
 });
 
-test("incremental revision reuses unchanged evidence and converges the full target", async () => {
+test("incremental revision restores current-draft revision convergence for the target scope", async () => {
   const [increment, write, state, ask] = await Promise.all([
     readFile(path.join(root, "skills/revise-increment/SKILL.md"), "utf8"),
     readFile(path.join(root, "skills/write-fiction/SKILL.md"), "utf8"),
@@ -183,11 +184,17 @@ test("incremental revision reuses unchanged evidence and converges the full targ
     readFile(path.join(root, "skills/ask-author/SKILL.md"), "utf8"),
   ]);
 
-  assert.match(increment, /On a new increment, establish the previous converged scope/);
-  assert.match(increment, /previous converged scope, the requested target scope, and the change set/);
-  assert.match(increment, /show the `revise-draft` command and stop rather than skipping unfinished base work/);
+  assert.match(
+    increment,
+    /On a new increment, establish the previous scope, the requested target scope, and the change set/,
+  );
+  assert.match(increment, /Verify that the previous scope has reached current-draft revision convergence/);
+  assert.match(
+    increment,
+    /show the `revise-draft` command and stop rather than skipping unfinished work for the previous scope/,
+  );
   assert.match(increment, /On resume, locate the active increment in the latest session and any current plan/);
-  assert.match(increment, /own approved edits may stale that base without reopening the entry gate/);
+  assert.match(increment, /own approved edits may stale that previous scope without reopening the entry gate/);
   assert.match(increment, /Rederive the current change set, work set, and current-draft revision convergence/);
   assert.match(increment, /Reconcile external manuscript changes and any interrupted write or commit/);
   assert.match(increment, /`create` action alone cannot prove that other chapters are unaffected/);
@@ -196,16 +203,25 @@ test("incremental revision reuses unchanged evidence and converges the full targ
   assert.match(increment, /fresh reader must read the full target scope sequentially/);
   assert.match(increment, /accepted edit returns to `revision-plan` and `chapter-revision`/i);
   assert.match(increment, /another full-target current-scope review/);
-  assert.match(increment, /adds no report stage, pending-operation name, manifest field, or separate state tree/);
-  assert.match(write, /published but the expanded scope is not thereby revision-converged/);
+  assert.match(
+    increment,
+    /adds no report v2 `stage` value, pending-action operation name, manifest field, or separate state tree/,
+  );
+  assert.match(
+    write,
+    /creation acceptance and publication do not establish current-draft revision convergence for the publication scope/,
+  );
   assert.match(write, /Offer `revise-increment`/);
-  assert.match(ask, /Revise added or affected chapters after a converged scope grows/);
+  assert.match(
+    ask,
+    /Revise added or affected chapters after the previous scope has reached current-draft revision convergence and the manuscript grows/,
+  );
   assert.match(state, /## Current-draft revision convergence/);
   assert.match(state, /no open finding, stale required evidence, missing synthesis, or approved but unexecuted edit remains/);
   assert.match(state, /Recompute this state from current evidence at each resume/);
 });
 
-test("request-driven revision restores full current-draft revision convergence", async () => {
+test("request-driven revision restores current-draft revision convergence for the full-manuscript target scope", async () => {
   const [request, draft, increment, fiction, write, setup, ask, state, reporting, structure] =
     await Promise.all([
       readFile(path.join(root, "skills/revise-request/SKILL.md"), "utf8"),
@@ -223,25 +239,31 @@ test("request-driven revision restores full current-draft revision convergence",
       readFile(path.join(root, "skills/story-structure/SKILL.md"), "utf8"),
     ]);
 
-  assert.match(request, /confirmed base scope covers that full current manuscript/);
+  assert.match(request, /confirmed base scope is a full-manuscript scope that has reached/);
   assert.match(request, /Show `revise-increment` when creation or import grew the scope/);
   assert.match(request, /otherwise show `revise-draft`/);
-  assert.match(request, /entry's own approved edits are expected to stale that base/);
+  assert.match(request, /entry's own approved edits are expected to stale that base scope/);
   assert.match(request, /request set[\s\S]*work set/);
   assert.match(request, /Requested macro structure[\s\S]*`story-structure` Audit/);
   assert.match(
     request,
-    /Required convergence coverage includes every applicable subcheck from the verified converged pass plus newly requested checks/,
+    /Required coverage for current-draft revision convergence includes every applicable subcheck required by the base scope's current-draft revision convergence evidence plus newly requested checks/,
   );
   assert.match(request, /After any manuscript change, run a new full-target current-scope review/);
   assert.match(request, /fresh reader reads the full target scope sequentially/);
   assert.match(request, /Request completion alone does not establish current-draft revision convergence/);
-  assert.match(request, /adds no report stage, pending-operation name, manifest field, or separate state tree/);
+  assert.match(
+    request,
+    /adds no report v2 `stage` value, pending-action operation name, manifest field, or separate state tree/,
+  );
 
   for (const text of [draft, increment, fiction, write, setup, ask, state, reporting, structure]) {
     assert.match(text, /revise-request/);
   }
-  assert.match(ask, /Revise existing content after full current-draft revision convergence/);
+  assert.match(
+    ask,
+    /Revise existing content after the full-manuscript base scope has reached current-draft revision convergence/,
+  );
   assert.match(state, /## Current-draft revision convergence/);
 });
 

@@ -277,7 +277,7 @@ Choose one morning this week (not your busiest day—start manageable).
 
 ## Finding Format
 
-Standalone diagnostic modes, including content editing, reveal plant/payoff gaps, metaphor consistency, and reader-journey audits, conform to `../../references/finding-schema.json`: `audit` = the mode name, `technique` = the specific craft element, `severity`, `location`, `issue`, `confidence: "judgment"`, and optional `exemplar`. Exercise design and transformation-arc scaffolding remain outside the finding contract.
+Standalone diagnostic modes, including content editing, reveal plant/payoff gaps, metaphor consistency, and reader-journey audits, conform to `references/finding-schema.json`: `audit` = the mode name, `technique` = the specific craft element, `severity`, `location`, `issue`, `confidence: "judgment"`, and optional `exemplar`. Exercise design and transformation-arc scaffolding remain outside the finding contract.
 
 Narrative nonfiction remains standalone in 3.0. It does not consume the `revise-fiction` manifest or workflow report context, and it has no calling orchestrator.
 

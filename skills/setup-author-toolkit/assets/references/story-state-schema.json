@@ -1,0 +1,97 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "story-state-schema.json",
+  "title": "author-toolkit living story state",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "state_id",
+    "level",
+    "scope_id",
+    "updated_at",
+    "sources",
+    "summary",
+    "records",
+    "children"
+  ],
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": { "level": { "enum": ["chapter", "volume"] } },
+        "required": ["level"]
+      },
+      "then": {
+        "properties": {
+          "scope_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+          }
+        }
+      }
+    }
+  ],
+  "properties": {
+    "schema_version": { "const": "1.0.0" },
+    "state_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+    },
+    "level": { "enum": ["chapter", "volume", "current"] },
+    "scope_id": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        { "type": "null" }
+      ]
+    },
+    "updated_at": { "type": "string", "format": "date-time" },
+    "sources": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/versionedPath" }
+    },
+    "summary": { "type": "string", "minLength": 1 },
+    "records": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["record_id", "category", "status", "text", "source_paths"],
+        "additionalProperties": false,
+        "properties": {
+          "record_id": {
+            "type": "string",
+            "pattern": "^[A-Z][A-Z0-9]*-[0-9]{3,}$"
+          },
+          "category": {
+            "enum": ["fact", "character", "timeline", "object", "thread", "constraint"]
+          },
+          "status": { "enum": ["active", "open", "resolved", "superseded"] },
+          "text": { "type": "string", "minLength": 1 },
+          "source_paths": {
+            "type": "array",
+            "minItems": 1,
+            "items": { "$ref": "relative-path-schema.json" }
+          }
+        }
+      }
+    },
+    "children": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/versionedPath" }
+    }
+  },
+  "$defs": {
+    "versionedPath": {
+      "type": "object",
+      "required": ["path", "sha256"],
+      "additionalProperties": false,
+      "properties": {
+        "path": { "$ref": "relative-path-schema.json" },
+        "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+      }
+    }
+  }
+}

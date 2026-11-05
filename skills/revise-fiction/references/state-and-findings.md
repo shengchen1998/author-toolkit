@@ -1,8 +1,10 @@
 # Shared evidence, findings, approvals, and state
 
+Use the controlled workflow terminology in `<project-root>/.author-toolkit/references/terminology.md` for shared names, contract values, and their boundaries.
+
 ## Report envelope
 
-Use the toolkit root's `references/report-schema-v2.json` as the authoritative envelope contract and resolve its reference to `finding-schema-v2.json`. Read both schemas before writing. Do not infer v2 from the legacy `finding-schema.json`.
+Use `<project-root>/.author-toolkit/references/report-schema-v2.json` as the authoritative envelope contract and resolve its reference to `finding-schema-v2.json`. Read both schemas before writing. Do not infer v2 from the legacy `finding-schema.json`.
 
 Write each report beneath the registered shared `reports/` path using an operation directory and a unique UTC-stamped filename. Include human-readable context, a `Language coverage` heading, and exactly one fenced `json` block containing one report v2 object.
 
@@ -96,25 +98,25 @@ Record each stale reason with the changed path and decision or edit batch. Old e
 
 ## Coverage units and synthesis
 
-Store reusable local coverage units and the living coverage index beneath the registered `paths.reports` directory, using the installed artifact contracts. A coverage unit records its source report, operation, original scope, exact paths and hashes, subchecks, dependencies, and actual coverage. Reuse only a full local unit whose source-report identity, operation, paths and hashes, requested subchecks, and dependencies all match. Its original scope remains unchanged for provenance; a composed coverage index and new synthesis use the requested new scope. Partial, skipped, stale, or synthesis units are not reusable local proof.
+Store reusable coverage units and the living coverage index beneath the registered `paths.reports` directory, using the installed artifact contracts. A coverage unit records its source report, operation, original scope, exact paths and hashes, subchecks, dependencies, and actual coverage. Reuse only a full local coverage unit whose source-report identity, operation, paths and hashes, requested subchecks, and dependencies all match. Its original scope remains unchanged for provenance; a composed coverage index and new synthesis use the target scope. Partial, skipped, or stale coverage units and synthesis units are not reusable.
 
 A changed input invalidates only affected local units and their dependents; unrelated unchanged units can remain current. Reevaluate every applicable volume, phase, current-scope, or whole-book synthesis whenever its text, membership, reading order, dependencies, or child coverage changes. Record a new synthesis report for the current inputs. Never extend an old whole-book synthesis to a new scope because its local units still match.
 
-Chunk reports and their syntheses retain report v2 and finding v2. Creation operations remain outside report v2 `stage`; their batches, commit journals, story state, review jobs, and reader state use their own artifact contracts rather than masquerading as revision evidence. Review jobs and fresh-reader continuity also require their own same-scope evidence. Composed local units from another scope never replace actual target-scope reading or an unbroken fresh reviewer chain.
+Chunk reports and their syntheses retain report v2 and finding v2. Creation operations remain outside report v2 `stage`; their batches, commit journals, story state, review jobs, and reader state use their own artifact contracts rather than masquerading as revision evidence. Review jobs and fresh-reader continuity also require their own same-scope evidence. Composed local units from another scope never replace actual reading of the target scope or an unbroken fresh reviewer chain.
 
 ## Current-draft revision convergence
 
-For a confirmed target scope, current-draft revision is converged only when all of these conditions hold after the latest manuscript change:
+For a confirmed target scope, the target scope has reached current-draft revision convergence only when all of these conditions hold after the latest manuscript change:
 
-- Intake and draft-baseline identify the target's current ordered paths, hashes, exclusions, and labeled facts and unknowns.
-- Diagnostics, characters, prose, and AI cleanup have current full local units for every target path and each subcheck applicable to its language and the requested pass, with a composed coverage index and new target synthesis for every affected operation. Unchanged local units may come from a previous scope only under the reuse rules above.
-- Revision-plan and chapter-revision cover every accepted finding through an executed approved batch, an explicit deferral, or the recorded no-edit skip for the current pass.
+- Intake and draft-baseline identify the target scope's current ordered paths, hashes, exclusions, and labeled facts and unknowns.
+- Diagnostics, characters, prose, and AI cleanup have current full local coverage units for every target-scope path and each subcheck applicable to its language and the requested pass, with a composed coverage index and new full-target synthesis for every affected operation. Unchanged local units may come from a previous scope only under the reuse rules above.
+- Revision-plan and chapter-revision cover every accepted finding through an executed approved batch, an explicit deferral, or the recorded no-edit skip for the requested pass.
 - Every current finding has an author decision. Deferred and dismissed findings remain visible; no open finding, stale required evidence, missing synthesis, or approved but unexecuted edit remains.
-- Current-scope review completes intent, standards, and fresh-reader coverage over the same target scope after the latest edits, including every required unit and applicable synthesis. Its findings have entered the same decision and, when accepted, revision loop.
+- The full-target current-scope review completes intent, standards, and fresh-reader coverage over the same target scope after the latest edits, including every required unit and applicable synthesis. Its findings have entered the same decision and, when accepted, revision loop.
 
-Partial, skipped, or degraded requested applicable coverage prevents a claim of full convergence unless the author explicitly narrows the requested pass; identify that limited pass and its gaps instead. Inapplicable whole-book or language-specific checks may remain explicitly `skipped` with their reasons; a skipped unit is not reusable full local proof. A completed creation batch, chapter review, or diagnostic pass alone is not revision convergence. Recompute this state from current evidence at each resume rather than storing a standalone convergence flag.
+Partial, skipped, or degraded requested applicable coverage prevents current-draft revision convergence unless the author explicitly narrows the requested pass; identify that narrowed requested pass and its gaps instead. Inapplicable whole-book or language-specific checks may remain explicitly `skipped` with their reasons; a skipped coverage unit cannot be reused as a full local coverage unit. A completed creation batch, chapter review, or diagnostic pass alone does not establish current-draft revision convergence. Recompute this state from current evidence at each resume rather than storing a standalone flag for this state.
 
-## Pending operations and session writes
+## Pending actions and session writes
 
 The neutral manifest stores only the current scope and an optional shared pending action. A pending action records `operation`, `status`, `scope_id`, `reason`, `artifacts`, and `updated_at`; status is `in_progress`, `awaiting_author`, or `blocked`. It does not record which orchestration skill created it.
 

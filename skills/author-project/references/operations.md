@@ -1,14 +1,16 @@
 # Project operations
 
+Use the controlled workflow terminology in `<project-root>/.author-toolkit/references/terminology.md` for shared names, contract values, and their boundaries.
+
 ## Paths and manifest identity
 
 Resolve the project root before reading or writing. The canonical manifest is `.author-toolkit/project.json` beneath that root. Accept `schema_version: "3.0.0"` and `"3.1.0"`; both store project metadata, `manuscript_root`, shared `paths`, and optional `current_scope` and `pending_action`, with no `workflow`, `current_stage`, or `stages` properties. A v3.1 manifest also registers `paths.creation`, defaulting to `.author-toolkit/creation/`. Preserve a v3.0 project until the author confirms `upgrade-v31`; recognize v2 only for setup migration.
 
-Keep stored paths relative to the project root and use forward slashes. Resolve them against the root when reading. Reject absolute paths, backslashes, URI schemes, home paths, and `..` segments. Resolve `paths.creation` by the same rules and exclude it from manuscript inventory. One manifest represents one book. A separate book needs its own project root and manifest.
+Keep stored paths relative to the project root and use forward slashes. Resolve them against the root when reading. Reject absolute paths, backslashes, URI schemes, home paths, and `..` segments. Resolve `paths.creation` by the same rules and exclude it from manuscript inventory. Setup deploys shared runtime contracts to the fixed `.author-toolkit/references/` directory beneath the project root. This directory has no manifest field and is excluded by the `.author-toolkit` operational root. One manifest represents one book. A separate book needs its own project root and manifest.
 
-`write-fiction`, `revise-fiction`, `revise-draft`, `revise-increment`, and `revise-request` are author-invoked strategies over the same manifest, tracker, reports, sessions, backups, and handoffs. None owns persistent workflow state. Do not create a strategy-specific subdirectory or a second tracker. At any stable operation gate, switching preserves current scope, evidence, decisions, staged drafts, and pending action; it never resumes writing automatically.
+`write-fiction`, `revise-fiction`, `revise-draft`, `revise-increment`, and `revise-request` are author-invoked strategies over the same manifest, tracker, reports, sessions, backups, and handoffs. No strategy owns the shared project state. Do not create a strategy-specific subdirectory or a second tracker. At any stable operation gate, switching preserves current scope, evidence, decisions, staged drafts, and pending action; it never resumes writing automatically.
 
-Valid pending operation names are `intake`, `story-bible`, `draft-baseline`, `structure`, `characters`, `diagnostics`, `revision-plan`, `chapter-revision`, `prose`, `ai-cleanup`, `current-scope-review`, `final-review`, `creation-baseline`, `writing-plan`, `chapter-creation`, `chapter-review`, `creation-commit`, `creation-import`, and `milestone-review`. The legacy `STAGES` remains revision-only; do not add creation operations to it or to report v2 `stage`.
+Valid pending-action operation names are `intake`, `story-bible`, `draft-baseline`, `structure`, `characters`, `diagnostics`, `revision-plan`, `chapter-revision`, `prose`, `ai-cleanup`, `current-scope-review`, `final-review`, `creation-baseline`, `writing-plan`, `chapter-creation`, `chapter-review`, `creation-commit`, `creation-import`, and `milestone-review`. The legacy `STAGES` remains revision-only; do not add creation operations to it or to report v2 `stage`.
 
 ## Shared scope and evidence
 
@@ -37,7 +39,7 @@ A diagnostic proposes changes but does not create an approval. Creation acceptan
 
 ## Initialize
 
-1. For a new project, start with `../assets/project-template.json`. Replace sentinel timestamps with the current UTC timestamp and `und` with the detected or author-supplied BCP 47 language. Register supplied project metadata and paths, retaining template defaults for omitted paths, including `paths.creation`. Do not add a workflow, entry stage, or strategy owner.
+1. For a new project, start with `../assets/project-template.json`. Replace sentinel timestamps with the current UTC timestamp and `und` with the detected or author-supplied BCP 47 language. Register supplied project metadata and paths, retaining template defaults for omitted paths, including `paths.creation`. Do not add a workflow, entry operation, or strategy owner.
 2. For an existing v3.0 or v3.1 manifest, validate and return it without resetting current scope, pending action, paths, artifacts, decisions, or external backup records.
 3. For an existing v2 manifest, preserve it and run `node <toolkit-root>/scripts/migrate-v3.mjs --project-root <project-root>`. Retain the script's snapshot and migrate current scope, pending action, and legacy overrides directly to v3.1. Report the snapshot path and migration diagnostics. Validate the resulting v3.1 manifest. Never silently replace or reset a v2 project.
 4. Resolve `paths.backups` and create `<paths.backups>/index.json` from `../assets/backup-index-template.json` when absent. Keep backup records in this index rather than adding undeclared manifest properties.
@@ -52,7 +54,7 @@ For a valid v3.1 manifest, validate and return it without another write. For v2,
 
 ## Read and validate
 
-For every read, parse JSON and check `schema_version`. Apply the installed v3 schema and operation rules for the declared v3.0 or v3.1 version, including required fields, additional-property restrictions, current scope, pending action, timestamps, safe relative paths, and creation registration. Use [`../../../references/project-schema.json`](../../../references/project-schema.json) only to recognize legacy v2 state before migration. Return v2 as requiring migration through setup; do not reinterpret it as v3.
+For every read, parse JSON and check `schema_version`. Apply the installed v3 schema and operation rules for the declared v3.0 or v3.1 version, including required fields, additional-property restrictions, current scope, pending action, timestamps, safe relative paths, and creation registration. Use `<project-root>/.author-toolkit/references/project-schema.json` only to recognize legacy v2 state before migration. Return v2 as requiring migration through setup; do not reinterpret it as v3.
 
 When the installed toolkit contains `scripts/validate.mjs`, run:
 
@@ -68,7 +70,7 @@ Return a compact shared state view containing:
 
 - project root, manifest schema and creation timestamps, project type, language, and manuscript root;
 - current scope ID, confirmation status, ordered paths and hashes, and exclusions;
-- pending operation, status, scope ID, reason, and artifacts, or its absence;
+- pending action, status, scope ID, reason, and artifacts, or its absence;
 - every stale or blocked evidence item with its operation, scope, dependency reason, and source report or tracker row;
 - the next action recorded in the tracker or latest session note;
 - validation errors, missing paths, and unresolved approval, backup, commit, or restore requirements.
@@ -79,7 +81,7 @@ Status does not infer operation completion, select a strategy, or advance pendin
 
 Read the manifest immediately before each write. Write the requested `pending_action` values: `operation`, `status`, `scope_id`, `reason`, and `artifacts`. Status is `in_progress`, `awaiting_author`, or `blocked`; reason is always nonempty and identifies the decision, interruption, or dependency. Preserve `current_scope` and all historical records. Append unique artifact paths and set both `pending_action.updated_at` and top-level `updated_at` to the current UTC timestamp.
 
-`pending_action` describes requested or interrupted work, not linear stage progress. Do not mark a stage complete, choose a following operation, or resume a write because another skill was invoked. The calling strategy supplies each explicit transition. If a write fails after the manifest was read, reread before retrying.
+`pending_action` describes requested or interrupted work, not linear operation progress. Do not mark an operation complete, choose a following operation, or resume a write because another skill was invoked. The calling strategy supplies each explicit transition. If a write fails after the manifest was read, reread before retrying.
 
 ## Record scope
 

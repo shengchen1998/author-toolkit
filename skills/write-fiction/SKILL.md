@@ -6,7 +6,7 @@ disable-model-invocation: true
 
 # Write Fiction
 
-Coordinate one reviewable creation batch from the shared project evidence. This skill owns sequence, staging, approvals, and recovery; `fiction-workshop` supplies the creative process. One manifest continues to represent one book.
+Coordinate one reviewable creation batch from the shared project evidence. This skill owns sequence, staging, approvals, and recovery; `fiction-workshop` supplies the creative process. One manifest continues to represent one book. Use the controlled workflow terminology in `<project-root>/.author-toolkit/references/terminology.md` for shared terms and exact contract values.
 
 ## Start or resume
 
@@ -41,7 +41,7 @@ Unrelated open findings remain visible without blocking creation. A finding that
 | `creation-import` | Reconcile author-added, modified, deleted, or reordered manuscript files |
 | `milestone-review` | Summarize the selected volume or story phase and run requested local checks |
 
-AI, author-written, and mixed batches use the same acceptance and state-synchronization rules. New chapters and necessary small continuity patches may share one approved batch. Send structural rewrites and requested full prose or AI cleanup to the appropriate revision entry. After `creation-commit`, state that the batch is published but the expanded scope is not thereby revision-converged. Offer `revise-increment` to revise added or affected paths while reusing valid unchanged-chapter evidence and completing a new full-target current-scope review.
+AI, author-written, and mixed batches use the same acceptance and state-synchronization rules. New chapters and necessary small continuity patches may share one approved batch. Send structural rewrites and requested full prose or AI cleanup to the appropriate revision entry. After `creation-commit`, state that creation acceptance and publication do not establish current-draft revision convergence for the publication scope. Offer `revise-increment` to revise added or affected paths while applying the evidence-reuse rules to unchanged chapters and completing a new full-target current-scope review.
 
 ## Strategy switching
 
@@ -59,4 +59,4 @@ Validate newly written artifacts with the installed `scripts/validate.mjs` optio
 
 ## Finish
 
-Finish each invocation with the operation, batch and scope IDs, staged or published paths, approvals and backups used, dependency or evidence changes, unresolved questions, revision-convergence status, and the exact next action. Show the `write-fiction`, `revise-increment`, `revise-draft`, `revise-fiction`, or `revise-request` command that matches the author's next goal. Use `author-handoff` for session transfer after shared state is current.
+Finish each invocation with the operation, batch and scope IDs, staged or published paths, approvals and backups used, dependency or evidence changes, unresolved questions, current-draft revision convergence status, and the exact next action. Show the `write-fiction`, `revise-increment`, `revise-draft`, `revise-fiction`, or `revise-request` command that matches the author's next goal. Use `author-handoff` for session transfer after shared state is current.

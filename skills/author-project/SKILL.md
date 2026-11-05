@@ -5,7 +5,7 @@ description: Use when initializing, reading, validating, or updating a neutral a
 
 # Author Project
 
-Manage persistent state for one book. The manifest is `<project-root>/.author-toolkit/project.json`; accept v3.0 and v3.1 without resetting either. V3.1 registers `paths.creation` for shared creation state, batches, staging, and commit journals.
+Manage persistent state for one book. The manifest is `<project-root>/.author-toolkit/project.json`; accept v3.0 and v3.1 without resetting either. V3.1 registers `paths.creation` for shared creation state, batches, staging, and commit journals. Use the controlled workflow terminology in `<project-root>/.author-toolkit/references/terminology.md` for shared terms and exact contract values.
 
 This skill owns state, paths, validation, backup records, and commit bookkeeping. Manuscript prose and Story Bible creative content belong to the writing skills. `write-fiction`, `revise-fiction`, `revise-draft`, `revise-increment`, and `revise-request` are explicit author-selected strategies over this same state.
 

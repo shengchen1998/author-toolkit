@@ -62,13 +62,13 @@ Run audits **one at a time, in the table order**. Earlier audits change what lat
 | 18 | POV Consistency | semantic | "Run pov-consistency audit on..." | Head-hopping, knowledge violations |
 | 19 | AI-Isms | hybrid | "Run ai-isms audit on..." | AI-associated patterns through the adapter |
 
-Load only the reference file matching the currently invoked audit. Before a workflow or non-English audit, also load `references/language-support.md` and record full, partial, or skipped coverage. For Chinese, load `references/chinese-rules.md`; its procedures replace the language-specific rules in the individual audit references. For AI-Isms, load `../../references/avoid-ai-writing-adapter.md`, which supplies the local Chinese catalog and the standalone Chinese detection path.
+Load only the reference file matching the currently invoked audit. Before a workflow or non-English audit, also load `references/language-support.md` and record full, partial, or skipped coverage. For Chinese, load `references/chinese-rules.md`; its procedures replace the language-specific rules in the individual audit references. For AI-Isms, load `references/avoid-ai-writing-adapter.md`, which supplies the local Chinese catalog and the standalone Chinese detection path.
 
 ## Finding Format
 
-Standalone audits retain finding v1 from `../../references/finding-schema.json`, grouped by severity with optional exemplars resolved against `references/exemplars/<ref>.md`.
+Standalone audits retain finding v1 from `references/finding-schema.json`, grouped by severity with optional exemplars resolved against `references/exemplars/<ref>.md`.
 
-When `revise-fiction`, `revise-draft`, `revise-increment`, or `revise-request` supplies workflow report context, load `../../references/workflow-reporting.md` and use report and finding v2. Every finding includes a recommendation, and the tracker stores stable finding IDs and their review statuses.
+When `revise-fiction`, `revise-draft`, `revise-increment`, or `revise-request` supplies workflow report context, load `<project-root>/.author-toolkit/references/workflow-reporting.md` and use report and finding v2. Every finding includes a recommendation, and the tracker stores stable finding IDs and their review statuses.
 
 ## Engine Hook
 

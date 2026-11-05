@@ -2,7 +2,7 @@
 
 Load the section for the current operation. A gate describes the evidence needed to finish that operation for the active scope. Finish with `awaiting_author`; the author starts the next operation explicitly. At every author gate, also follow the [Author decision loop](state-and-findings.md#author-decision-loop).
 
-For every report, follow `state-and-findings.md`. A clean report contains zero findings and still records engine, `scope_id`, input versions, operation coverage, subchecks when applicable, and language coverage.
+For every report, follow `state-and-findings.md` and the controlled workflow terminology in `<project-root>/.author-toolkit/references/terminology.md`. A clean report contains zero findings and still records engine, `scope_id`, input versions, operation coverage, subchecks when applicable, and language coverage.
 
 At a stable operation gate, the author may switch to `write-fiction`, `revise-draft`, `revise-increment`, or `revise-request` through its exact command; no entry starts automatically. Reuse a local coverage unit only when every path, hash, subcheck, and dependency matches. Reevaluate every applicable whole-book synthesis after relevant changes instead of carrying it forward with unchanged local units. Creation evidence does not satisfy `chapter-revision`.
 
@@ -66,7 +66,7 @@ At a stable operation gate, the author may switch to `write-fiction`, `revise-dr
 
 **Inputs:** Current manuscript scope, tracker, language metadata, and any prose reports.
 
-**Work:** Read the toolkit root's `references/avoid-ai-writing-adapter.md` and follow it exactly. Run English spans through the upstream `avoid-ai-writing` skill and Chinese spans through the adapter's local Chinese catalog. Rewrites require the standard approval and backup gate and a second detection pass.
+**Work:** Read `<project-root>/.author-toolkit/references/avoid-ai-writing-adapter.md` and follow it exactly. Run English spans through the upstream `avoid-ai-writing` skill and Chinese spans through the adapter's local Chinese catalog. Rewrites require the standard approval and backup gate and a second detection pass.
 
 **Gate:** Each in-scope file has a full result for its requested language procedure or an explicit `skipped` or `partial` language result. Reports contain severity mappings, engine and fallback details, coverage, and degradation. Every rewrite has approval, a backup ID, and second-pass detection. Every finding has a tracker decision. A failure in a required upstream or local execution path leaves the affected coverage blocked rather than producing a clean result.
 

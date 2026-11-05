@@ -4,7 +4,8 @@ Incremental fiction creation and four fiction revision strategies sharing one
 project evidence model, plus six independent writing skills for Claude Code and
 Kimi Code.
 
-[Chinese quick start](README.zh-CN.md) | [3.1 migration](docs/MIGRATION-3.1.md) |
+[Chinese quick start](README.zh-CN.md) | [Controlled terminology](references/terminology.md) |
+[3.1 migration](docs/MIGRATION-3.1.md) |
 [3.0 migration history](docs/MIGRATION-3.0.md) |
 [2.0 migration history](docs/MIGRATION-2.0.md) |
 [Validation status](docs/VALIDATION.md)
@@ -17,26 +18,26 @@ Version 3.1.0 contains 16 skills in three groups.
 
 | Skill | Purpose |
 | --- | --- |
-| `ask-author` | Read project state and route the author to the appropriate entry point or independent skill. |
+| `ask-author` | Read project state and route the author to the appropriate user entry or independent skill. |
 | `setup-author-toolkit` | Register an existing writing project and initialize the shared project state required by creation and revision. |
-| `write-fiction` | Create or continue a novel through reviewed writing batches, staged drafts, synchronized story state, and milestone reviews. |
-| `revise-fiction` | Revise a whole novel through its Story Bible, macro structure, character arcs, and final whole-book review. |
-| `revise-draft` | Revise the current draft through a draft baseline, local narrative diagnostics, and a review of the selected scope. |
-| `revise-increment` | Revise added or affected chapters after incremental creation while reusing valid unchanged-chapter evidence and completing a full-target current-scope review. |
-| `revise-request` | Apply any author-defined revision to existing content in a converged full current draft and restore full-manuscript current-draft revision convergence. |
+| `write-fiction` | Create or continue a novel through reviewed creation batches, staged drafts, synchronized story state, and milestone reviews. |
+| `revise-fiction` | Revise a whole novel through its Story Bible, macro structure, character arcs, and final review. |
+| `revise-draft` | Revise the current manuscript through a draft baseline, local narrative diagnostics, and current-scope review of the target scope. |
+| `revise-increment` | Revise added or affected chapters after incremental creation while applying the evidence-reuse rules to unchanged chapters and completing a full-target current-scope review. |
+| `revise-request` | Apply an author-defined revision to existing content from a full-manuscript base scope that has reached current-draft revision convergence and restore that state for the full-manuscript target scope. |
 
 `write-fiction`, `revise-fiction`, `revise-draft`, `revise-increment`, and `revise-request` must all run the same
-`setup-author-toolkit` first. Setup does not accept a workflow name or entry
-stage; registration and intake are identical for every subsequent strategy.
+`setup-author-toolkit` first. Setup does not accept a workflow name or operation
+argument; registration and intake are identical for every subsequent strategy.
 
 ### Shared orchestration skills
 
-These skills support the entry points. They are not separate user workflows.
+These skills support the user entries. They are not separate user workflows.
 
 | Skill | Purpose |
 | --- | --- |
-| `author-project` | Read and update project registration, neutral evidence, current scope, pending operations, artifact paths, backups, and restores. |
-| `author-handoff` | Preserve session context and support resume, rework, and switching between creation and revision entry points. |
+| `author-project` | Read and update project registration, neutral evidence, current scope, pending actions, artifact paths, backups, and restores. |
+| `author-handoff` | Preserve session context and support resume, rework, and switching between creation and revision user entries. |
 | `author-review` | Run independent intent, craft, and fresh-reader reviews without editing the manuscript, including resumable chunked review for large books. |
 
 ### Independent writing skills
@@ -65,15 +66,16 @@ or rewriting, invoke `prose-mechanics` with its AI-Isms audit; shared
 
 The shared 3.1 creation and revision workflows support single-book fiction
 projects with Markdown or plain-text manuscripts. `write-fiction` can start
-without a complete outline or ending and can also continue an existing draft.
+without a complete outline or ending and can also continue an existing manuscript.
 `revise-fiction` addresses the whole book. `revise-draft` can work on an
-unfinished draft; its diagnostics address the selected narrative scope rather
-than judging the percentage of a future book or penalizing beats that do not yet
-exist. `revise-increment` applies the same current-draft revision standard after
-scope growth, reusing only valid unchanged evidence and reviewing the full target
-scope.
-`revise-request` starts after full current-draft revision convergence, applies an
-author-defined revision to existing content, and restores that convergence.
+unfinished manuscript; its diagnostics address the target scope rather than
+judging the percentage of a future book or penalizing beats that do not yet
+exist. `revise-increment` applies the same current-draft operation gates after
+scope growth, reusing only reusable evidence for unchanged text and reviewing the
+full target scope. `revise-request` starts from a full-manuscript base scope that
+has reached current-draft revision convergence, applies an author-defined
+revision to existing content, and restores that state for the full-manuscript
+target scope.
 
 Narrative nonfiction remains a direct `narrative-nonfiction` task. Multi-book
 projects and integrations with other hosts are outside the supported 3.1
@@ -82,17 +84,20 @@ workflows.
 English and Chinese are the core workflow languages. Chinese prose audits use
 `skills/prose-mechanics/references/chinese-rules.md`, with Chinese sentence
 boundaries, character-based measurement, declared segmentation, grammar rules,
-and local word and phrase catalogs. Full Chinese coverage means completion of
-the requested Chinese subchecks; it never means that an English metric or an
-English-only engine was treated as equivalent. Chinese AI-associated findings
-describe textual patterns and do not establish AI authorship.
+and local word and phrase catalogs. Full Chinese language coverage means
+completion of the requested Chinese subchecks; it never means that an English
+metric or an English-only engine was treated as equivalent. Chinese
+AI-associated findings describe textual patterns and do not establish AI
+authorship.
 
 Workflow reports and living trackers retain English headings, columns, and
 status values as their machine-readable Markdown contract. Chinese explanations,
 finding text, quotations, and manuscript paths remain supported as content.
 JSON report fields and machine enums retain their versioned contracts. Other
 languages use the documented fallback rules, and reduced rule coverage is
-recorded as partial or skipped.
+recorded as partial or skipped. Use the
+[controlled workflow terminology](references/terminology.md) for shared natural
+language and exact contract values.
 
 ## Installation
 
@@ -160,18 +165,23 @@ A quick run looks like this:
    or plain-text manuscript, or it may be the destination for a new novel.
 2. Invoke `setup-author-toolkit` with that path. Answer the project registration
    and language questions. Registration records paths; it does not move the
-   manuscript into a new layout. For a new project, setup also installs the
-   project-level `AGENTS.md` template when no such file exists, preserving any
-   existing agent instructions. Do not pass a workflow name or entry stage.
+   manuscript into a new layout. Setup deploys the shared contracts bundled with
+   the skill into `.author-toolkit/references/`, preserving matching files and
+   stopping on version conflicts. An approved conflict replacement first
+   preserves the existing file beneath the registered backups path. For a new
+   project, setup also installs the project-level `AGENTS.md` template when no
+   such file exists, preserving any existing agent instructions. Do not pass a
+   workflow name or operation argument.
 3. After setup validates the shared manifest, choose `write-fiction` to create
    or continue a novel, `revise-fiction` for whole-book revision, `revise-draft`
-   for the available draft and current-scope review, `revise-increment` to
-   converge added or affected chapters, or `revise-request` to revise existing
-   content after full current-draft revision convergence. The selected strategy
-   establishes and confirms the initial scope when one is needed.
+   for the available manuscript and current-scope review, `revise-increment` to
+   bring added or affected chapters to current-draft revision convergence, or
+   `revise-request` to revise existing content from a full-manuscript base scope
+   that has reached that state. The selected strategy establishes and confirms
+   the initial target scope when one is needed.
 4. Review evidence and proposals at the author gates. The agent presents one
    active decision at a time so you can discuss evidence and alternatives before
-   deciding. Planning, manuscript writes, batch acceptance, and restores have
+   deciding. Planning, manuscript writes, creation acceptance, and restores have
    distinct approvals.
 
 ### `write-fiction`: incremental creation
@@ -186,29 +196,30 @@ The creation operations are:
 3. `chapter-creation`: Draft into staging with `fiction-workshop`, or stage
    author-supplied text.
 4. `chapter-review`: Check plan execution, transitions, and continuity, then
-   obtain acceptance or rejection of the complete batch.
-5. `creation-commit`: Publish the accepted batch, update story state and scope,
-   and preserve recovery records.
+   obtain creation acceptance or rejection of the complete batch.
+5. `creation-commit`: Publish the accepted batch, update story state and
+   publication scope, and preserve recovery records.
 6. `creation-import`: Reconcile author-added, modified, deleted, or reordered
    manuscript files created outside the creation loop.
 7. `milestone-review`: Summarize an author-selected volume or story phase and
-   run requested local checks without calling it a whole-book final review.
+   run requested local checks without calling it a final review.
 
 The repeating loop is `writing-plan` -> `chapter-creation` -> `chapter-review`
 -> `creation-commit`. AI-written, author-written, and mixed batches use the same
 gates. Keep only one active creation batch per book.
 
 Before writing, approve both the chapter plan and the exact write batch,
-including paths, actions, and input versions. After staging, one acceptance
-decision covers the exact manuscript content, proposed story-state differences,
-and resulting ordered scope; manuscript and scope approvals are recorded
-separately. Acceptance allows `creation-commit` to proceed without another
-author gate. Publication alone does not make the expanded scope
-revision-converged; continue with `revise-increment` when that is the goal.
+including paths, actions, and input versions. After staging, one creation
+acceptance covers the exact manuscript content, proposed story-state differences,
+and resulting ordered publication scope; manuscript and scope approvals are
+recorded separately. Acceptance allows `creation-commit` to proceed without
+another author gate. Publication alone does not establish current-draft revision
+convergence for the publication scope; continue with `revise-increment` when
+that is the goal.
 
 ### `revise-fiction`: whole-book revision
 
-The nine stages are:
+The nine operations are:
 
 1. `intake`: Clarify scope and use the registered project.
 2. `story-bible`: Establish the story foundation and manuscript baseline.
@@ -223,51 +234,50 @@ The nine stages are:
 
 ### `revise-draft`: current-draft revision
 
-The mirrored nine stages are:
+The mirrored nine operations are:
 
 1. `intake`: Clarify the current scope and use the same registered project.
-2. `draft-baseline`: Establish the available draft, its input versions, and the
-   selected scope without requiring a complete manuscript, outline, or ending.
+2. `draft-baseline`: Establish the available manuscript, its input versions, and
+   the target scope without requiring a complete manuscript, outline, or ending.
 3. `diagnostics`: Review local narrative problems in the available text. Do not
    score completion of an imagined whole book or flag missing future beats.
-4. `characters`: Review current character arcs and continuity in the selected
-   scope.
+4. `characters`: Review current character arcs and continuity in the target scope.
 5. `revision-plan`: Organize findings and author decisions when revision is
    requested.
-6. `chapter-revision`: Apply approved revisions to the selected draft scope
-   with backups.
+6. `chapter-revision`: Apply approved revisions to the target scope with backups.
 7. `prose`: Run sentence-level review and approved fixes.
 8. `ai-cleanup`: Detect or revise AI writing patterns as requested.
-9. `current-scope-review`: Review the selected scope with three independent
+9. `current-scope-review`: Review the target scope with three independent
    perspectives. Mark whole-book checks that do not apply as `skipped` with
    their scope rationale.
 
-All four revision entry points share the character capability. The draft,
+All four revision user entries share the character capability. The draft,
 incremental, and request-driven paths require current arcs and continuity; the
 whole-book gate requires additional subchecks for complete arcs and book-level
 continuity. A draft engagement may enter directly at `prose` or `ai-cleanup`. If
 no manuscript revision is requested, `revision-plan` and `chapter-revision` may
-be skipped with the reason recorded. A direct or limited pass is not by itself a
-claim of full current-draft revision convergence.
+be skipped with the reason recorded. A direct entry or narrowed requested pass
+does not by itself establish current-draft revision convergence.
 
 ### `revise-increment`: revision after incremental creation
 
 Use this entry when the previous scope has reached current-draft revision
 convergence and creation or import adds or affects chapters. For example, five
-converged chapters plus a new sixth chapter require new evidence for chapter 6
-and any affected earlier text, not an assumption that creation review completed
-revision.
+chapters that have reached current-draft revision convergence plus a new sixth
+chapter require new evidence for chapter 6 and any affected earlier text;
+creation review does not establish revision completion.
 
 The incremental pass uses the same nine current-draft operations and shared
 state:
 
-1. Confirm the previous scope, full target scope, change set, and work set.
-2. Update the full-target baseline and run diagnostics, character checks, prose,
-   and AI cleanup on the work set. Reuse unchanged full local units only when
-   their operation, source report, paths and hashes, subchecks, and dependencies
-   match. Missing reusable units add the affected old paths to the work set.
+1. Confirm the previous scope, target scope, change set, and work set.
+2. Update the draft-baseline for the full target scope and run diagnostics,
+   character checks, prose, and AI cleanup on the work set. Reuse unchanged full
+   local coverage units only when their operation, source report, paths and
+   hashes, subchecks, and dependencies match. Missing reusable units add the
+   affected old paths to the work set.
 3. Plan and apply only approved work-set edits with backups, then compose new
-   target-scope coverage and syntheses.
+   operation coverage and full-target syntheses for the target scope.
 4. Run a full-target current-scope review with all three perspectives. The fresh
    reader reads the full target scope sequentially; limiting edits does not limit
    review reading.
@@ -275,9 +285,9 @@ state:
    accepted edits. Claim current-draft revision convergence only when the shared
    evidence, finding, approval, coverage, and review conditions are all current.
 
-### `revise-request`: request-driven revision after convergence
+### `revise-request`: request-driven revision after current-draft revision convergence
 
-Use this entry when the full current manuscript has reached current-draft
+Use this entry when the full-manuscript base scope has reached current-draft
 revision convergence from the `revise-draft` perspective and the author has any
 type of revision request for existing content. Requests may concern plot, scenes,
 characters, continuity, POV, prose, or AI cleanup. Requested macro-structure work
@@ -285,20 +295,24 @@ can additionally use `story-structure` Audit without adopting the
 `revise-fiction` final-review gate.
 
 1. Verify the full-manuscript base scope and its current-draft revision
-   convergence evidence. Return to `revise-draft` when that base is unfinished,
-   or to `revise-increment` when creation or import has grown the scope.
-2. Confirm the requested outcome, constraints, request set, full target scope,
-   and initial work set. The request set determines what to change; the full
-   target scope determines what must be proven current again.
+   convergence evidence. Return to `revise-draft` when that base scope has not
+   reached that state, or to `revise-increment` when creation or import has
+   grown the scope.
+2. Confirm the requested outcome, constraints, request set, full-manuscript
+   target scope, and initial work set. The request set determines what to change;
+   the full-manuscript target scope determines what must be proven current again.
 3. Apply only approved batches with backups. Expand the work set by actual text
-   and dependency impact, rerun affected operations, and compose new full-target
-   coverage and syntheses while reusing matching unchanged local units.
-4. Preserve the converged pass's applicable subchecks and add newly requested
-   checks. A local request does not silently reduce convergence coverage.
+   and dependency impact, rerun affected operations, and compose new operation
+   coverage and full-target syntheses for the target scope while reusing matching
+   unchanged full local coverage units.
+4. Preserve every applicable subcheck required by the base scope's current-draft
+   revision convergence evidence and add newly requested checks. A local request
+   does not silently reduce the coverage required for current-draft revision
+   convergence.
 5. After any manuscript change, run another full-target current-scope review with
    all three perspectives and a sequential fresh reader. Process findings and
    rework, then report request completion and current-draft revision convergence
-   for the full manuscript separately.
+   for the full-manuscript target scope separately.
 
 The skill definitions contain the full gates and audit rules.
 
@@ -311,6 +325,10 @@ manifests remain readable and can receive the additive 3.1 upgrade.
 - `project.json` records project registration, artifact locations, and optional
   `current_scope` and `pending_action`. It has no `workflow.name`,
   `current_stage`, or `stages` state.
+- `.author-toolkit/references/` contains the shared runtime contracts deployed
+  by setup from the setup skill's bundled payload. This fixed operational
+  directory has no manifest field. Setup preserves matching files and requires
+  separate approval plus a backup before replacing a mismatched file.
 - `story-bible.md` records author intent. Accepted manuscript text establishes
   observed story facts; neither source silently overwrites the other when they
   conflict.
@@ -340,13 +358,13 @@ among `write-fiction`, `revise-fiction`, `revise-draft`, `revise-increment`, and
 no second project tree or migration. It does not automatically resume a pending
 write.
 
-### Evidence reuse and pending operations
+### Evidence reuse and pending actions
 
 Evidence is reusable only when its `operation`, `scope_id`, input versions,
 coverage, subchecks, and dependencies match the proposed work. A new scope
 requires author confirmation. When an input or dependency changes, affected
 evidence becomes `stale`; an old report's valid schema alone does not make it
-current.
+current evidence.
 
 A creation batch also records a dependency fingerprint for its plan, selected
 context, and target inputs. On return to a staged draft, recompute that
@@ -383,30 +401,32 @@ instead of silently refreshing hashes or story state.
 A full local coverage unit can be reused only when its source-report identity,
 operation, exact paths and hashes, requested subchecks, and dependencies match.
 Its original scope remains bound to the source report; the composed index and new
-synthesis use the requested scope. Partial, skipped, stale, and synthesis units
-are not reusable local proof. Unchanged local units can survive unrelated edits,
-but every affected volume, phase, current-scope, or whole-book synthesis must be
-reevaluated for current inputs.
+synthesis use the target scope. Partial, skipped, or stale coverage units and
+synthesis units cannot be reused. Unchanged local units can survive unrelated
+edits, but every affected volume, phase, current-scope, or whole-book synthesis
+must be reevaluated for current inputs.
 
 For large manuscripts, `author-review` reads actual manuscript chunks, then
 synthesizes volume or story-phase results, and finally the book. Intent and
 standards reviewers may run in parallel. Fresh-reader review proceeds in reading
 order through one logical reviewer carrying only that reviewer's isolated
 reader-state. Summaries and extracted story state cannot replace reading the
-manuscript. Report `full` coverage only when the requested scope was actually
+manuscript. Report `full` coverage only when the target scope was actually
 covered.
 
 ### Finding, report, and creation artifact schemas
 
-Finding schema v1 remains at `references/finding-schema.json` for existing
-standalone skills and consumers. Shared creation and revision diagnostics retain
-finding v2 and report v2. Creation operations are not added to the closed report
-v2 `stage` enumeration.
+Finding schema v1 remains at `references/finding-schema.json` for repository
+consumers and is mirrored into each independent skill's `references/` directory
+for standalone use. Shared creation and revision diagnostics retain finding v2
+and report v2, resolved at runtime from `.author-toolkit/references/`. Creation
+operations are not added to the closed report v2 `stage` enumeration.
 
 Creation batches, commit journals, story state, coverage units and indexes,
 review jobs, and reader state use their own artifact contracts rather than
-masquerading as revision reports. Project registration uses
-`references/project-schema-v3.1.json`; the v3.0 schema remains available for
+masquerading as revision reports. The canonical project registration schema is
+`references/project-schema-v3.1.json`; setup deploys it with the other shared
+contracts into the writing project. The v3.0 schema remains available for
 reading and upgrading existing projects.
 
 Existing reports are not automatically rewritten. See
@@ -442,8 +462,8 @@ Start `write-fiction`, `revise-fiction`, `revise-draft`, `revise-increment`, or
 resume, review a report, switch strategies, or rework a finding. All five use
 the same manifest, tracker, Story Bible, reports, session notes, backups,
 handoffs, and applicable creation state to recover context. They evaluate the
-current scope, pending operation, evidence, and dependencies instead of
-reconstructing stage status by moving or renaming files.
+current scope, pending action, evidence, and dependencies instead of inferring
+operation completion by moving or renaming files.
 
 A staged draft may remain while another strategy is used. On return, its
 dependency fingerprint and the current project state determine whether it can be

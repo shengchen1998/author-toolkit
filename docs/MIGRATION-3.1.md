@@ -88,6 +88,14 @@ a project. A manuscript restore still needs its own explicit approval and safety
 backup. Keep the snapshots, historical reports, findings, approvals, and backups
 after migration.
 
+## Shared reference deployment
+
+Running `setup-author-toolkit` after installation or migration deploys the shared runtime contracts from the setup skill's bundled `assets/references/` into `.author-toolkit/references/` beneath the writing project. This fixed operational directory is separate from the seven registered manifest paths and requires no schema or manifest change. Shared workflows resolve terminology, reporting rules, schemas, and AI-writing integration from that project-local directory.
+
+Setup creates missing files and preserves files whose SHA-256 hashes match the packaged payload. A mismatch produces `reference-version-conflict` and blocks shared workflows. Replacing a mismatched file requires separate author approval for that exact file and preservation of the existing file beneath `<paths.backups>/reference-updates/<UTC-stamp>/`. Existing manuscripts, reports, findings, approvals, scopes, and pending work are not changed by reference deployment.
+
+The six independent skills do not require setup for standalone use. Their finding v1 schemas and standalone Chinese AI-writing adapter files are deployed within their own skill directories.
+
 ## Evidence and artifact compatibility
 
 Finding v2 and report v2 retain their schema versions and locations. Creation

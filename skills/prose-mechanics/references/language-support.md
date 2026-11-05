@@ -4,7 +4,7 @@ Record language coverage in every workflow report under a `Language coverage` he
 
 The audit reference files were written primarily for English prose. English runs apply their documented rules.
 
-For Chinese, also load [`chinese-rules.md`](chinese-rules.md). Its Chinese procedures replace the English vocabulary lists, morphology, token windows, word-count thresholds, and grade-level formulas in the individual audit references. For AI-Isms, load the toolkit root's `references/avoid-ai-writing-adapter.md` and its Chinese catalog as directed there.
+For Chinese, also load [`chinese-rules.md`](chinese-rules.md). Its Chinese procedures replace the English vocabulary lists, morphology, token windows, word-count thresholds, and grade-level formulas in the individual audit references. For AI-Isms, load [`avoid-ai-writing-adapter.md`](avoid-ai-writing-adapter.md) and its Chinese catalog as directed there.
 
 `full` Chinese coverage means that every requested subcheck in the Chinese procedure was actually applied to every requested Chinese span. It does not mean that an English metric was translated or that an English-only engine produced a result. A deliberate complete conversational run can be full and non-degraded. Record the actual segmentation method and any unavailable input or subcheck; omissions are `partial`, and an unexecuted audit is `skipped`.
 

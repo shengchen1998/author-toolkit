@@ -11,7 +11,7 @@ This skill does not revise prose, update Story Bible creative content, or apply 
 
 ## Prepare
 
-1. Read [`references/checklists.md`](references/checklists.md), including its review-mode applicability rules. Read [`references/chunked-review.md`](references/chunked-review.md) before planning, resuming, or collecting a review. Read the report envelope and finding identity sections of `../revise-fiction/references/state-and-findings.md`; its state-write instructions remain the caller's responsibility.
+1. Read the controlled workflow terminology in `<project-root>/.author-toolkit/references/terminology.md`, [`references/checklists.md`](references/checklists.md) including its review-mode applicability rules, and [`references/chunked-review.md`](references/chunked-review.md) before planning, resuming, or collecting a review. Read the report envelope and finding identity sections of `../revise-fiction/references/state-and-findings.md`; its state-write instructions remain the caller's responsibility.
 2. For project input, resolve `author-project` in the current skill listing and invoke its exact registered name in separate calls with `read` and `status`. Bare and `author-toolkit:` qualified names are supported when listed. These are the only Skill calls this skill may make. Do not call other skills from a reviewer or subagent.
 3. Select the review mode and its output identity:
 

@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "coverage-index-schema.json",
+  "title": "author-toolkit living operation coverage index",
+  "type": "object",
+  "required": ["schema_version", "scope_id", "entries", "updated_at"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": { "const": "1.0.0" },
+    "scope_id": { "$ref": "#/$defs/id" },
+    "entries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["operation", "units", "synthesis_report", "synthesis_coverage"],
+        "additionalProperties": false,
+        "properties": {
+          "operation": { "type": "string", "minLength": 1 },
+          "units": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["unit_id", "path"],
+              "additionalProperties": false,
+              "properties": {
+                "unit_id": { "$ref": "#/$defs/id" },
+                "path": { "$ref": "relative-path-schema.json" }
+              }
+            }
+          },
+          "synthesis_report": {
+            "anyOf": [{ "$ref": "relative-path-schema.json" }, { "type": "null" }]
+          },
+          "synthesis_coverage": {
+            "anyOf": [{ "enum": ["full", "partial", "skipped"] }, { "type": "null" }]
+          }
+        }
+      }
+    },
+    "updated_at": { "type": "string", "format": "date-time" }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+    }
+  }
+}

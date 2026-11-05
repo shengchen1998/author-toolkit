@@ -78,9 +78,9 @@ Each mode has a defined end. Stop at it. Do not auto-advance to the other mode, 
 
 ## Finding Format
 
-Standalone audit-mode output (missing/misplaced landmark beats, signpost gaps) conforms to `../../references/finding-schema.json`: `audit` = "story-structure-audit", `technique` = the specific landmark or signpost involved, `severity`, `location`, `confidence: "judgment"`, and optional `exemplar`. Map-building mode is not diagnostic and remains outside the finding contract.
+Standalone audit-mode output (missing/misplaced landmark beats, signpost gaps) conforms to `references/finding-schema.json`: `audit` = "story-structure-audit", `technique` = the specific landmark or signpost involved, `severity`, `location`, `confidence: "judgment"`, and optional `exemplar`. Map-building mode is not diagnostic and remains outside the finding contract.
 
-When `revise-fiction` or `revise-request` supplies workflow report context, load `../../references/workflow-reporting.md` and use finding v2. Use chapter scope for a missing or chapter-wide beat; do not invent a line number or quotation. Return the Structure Profile and report to the orchestrator, which writes approved profile changes to the applicable baseline or Story Bible.
+When `revise-fiction` or `revise-request` supplies workflow report context, load `<project-root>/.author-toolkit/references/workflow-reporting.md` and use finding v2. Use chapter scope for a missing or chapter-wide beat; do not invent a line number or quotation. Return the Structure Profile and report to the orchestrator, which writes approved profile changes to the applicable baseline or Story Bible.
 
 ## Common Mistakes
 
