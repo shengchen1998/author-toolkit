@@ -405,8 +405,12 @@ export async function reconcileManuscript(projectRoot, request, options = {}) {
           ? "revise-draft"
           : previousEvaluation ? "revise-increment" : "revise-draft";
       const recoveryOperation = target ? "intake" : "creation-import";
-      const cumulativeReference = cycle?.starting_scope ?? previousReference;
-      const cumulative = cumulativeReference ? await readScope(project, cumulativeReference) : previous;
+      const cumulativeReference = bootstrapRecovery
+        ? null
+        : cycle?.starting_scope ?? previousReference;
+      const cumulative = bootstrapRecovery
+        ? { files: [], excluded_files: [] }
+        : cumulativeReference ? await readScope(project, cumulativeReference) : previous;
       const changes = diffManuscriptInventories(cumulative, target ?? observedInventory);
       const workSet = !target
         ? { entries: [] }

@@ -534,6 +534,11 @@ lets the first approved nonempty import supply initial publication evidence
 without a creation commit; it still requires initial full-manuscript
 `revise-draft` evaluation and completion. A rejected empty bootstrap cannot
 complete before such an import or publication establishes that evidence.
+Later bootstrap imports preserve the null cumulative origin and link each
+previous target. Evaluation checks the complete chain and approvals; after a
+verified edit, the reconciliation target must match the execution input and the
+final execution target must be current. Missing links and forged targets remain
+blockers.
 
 ### Coverage units and chunked review
 

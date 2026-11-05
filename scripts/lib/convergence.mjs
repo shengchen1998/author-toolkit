@@ -665,23 +665,51 @@ async function loadReport(computation, reference, { currentPass = true, inputFil
   return { report, reference: { ...reference, report_id: report.report_id }, markdown };
 }
 
-function bootstrapImportCandidate(cycle, reconciliations, scope, roots) {
-  if (!cycle?.bootstrap || !scope) return null;
-  const reconciliation = reconciliations.at(-1) ?? null;
-  if (
-    !reconciliation ||
-    reconciliation.cycle_id !== cycle.cycle_id ||
-    reconciliation.previous_scope !== null ||
-    reconciliation.change_set.from_scope !== null ||
-    reconciliation.recovery_from_empty ||
-    reconciliation.required_strategy !== "revise-draft" ||
-    reconciliation.proof_blockers.length > 0 ||
-    !sameScopeReference(reconciliation.target_scope, roots.target_scope) ||
-    JSON.stringify(reconciliation.change_set.created) !== JSON.stringify(scope.files)
-  ) {
-    return null;
+function reconciliationTargetMatchesExecutionChain(reconciliation, roots, executionChain) {
+  if (executionChain.length === 0) {
+    return sameScopeReference(reconciliation.target_scope, roots.target_scope);
   }
-  return reconciliation;
+  if (!sameScopeReference(reconciliation.target_scope, executionChain[0].input_scope)) {
+    return false;
+  }
+  for (let index = 1; index < executionChain.length; index += 1) {
+    if (!sameScopeReference(executionChain[index - 1].target_scope, executionChain[index].input_scope)) {
+      return false;
+    }
+  }
+  return sameScopeReference(executionChain.at(-1).target_scope, roots.target_scope);
+}
+
+function bootstrapImportChain(cycle, reconciliations, reconciliationScopes, roots, executionChain) {
+  if (!cycle?.bootstrap || reconciliations.length === 0) return null;
+  let previousTarget = null;
+  for (const reconciliation of reconciliations) {
+    const targetScope = reconciliationScopes.get(reconciliation.reconciliation_id);
+    if (
+      reconciliation.cycle_id !== cycle.cycle_id ||
+      reconciliation.recovery_from_empty ||
+      reconciliation.required_strategy !== "revise-draft" ||
+      reconciliation.proof_blockers.length > 0 ||
+      !sameScopeReference(reconciliation.previous_scope, previousTarget) ||
+      reconciliation.change_set.from_scope !== null ||
+      !sameScopeReference(reconciliation.change_set.to_scope, reconciliation.target_scope) ||
+      !targetScope ||
+      targetScope.scope_id !== reconciliation.target_scope.scope_id ||
+      targetScope.scope_fingerprint !== reconciliation.target_scope.scope_fingerprint ||
+      JSON.stringify(reconciliation.change_set.created) !== JSON.stringify(targetScope.files) ||
+      reconciliation.change_set.modified.length > 0 ||
+      reconciliation.change_set.deleted.length > 0 ||
+      reconciliation.change_set.reordered.length > 0
+    ) {
+      return null;
+    }
+    previousTarget = reconciliation.target_scope;
+  }
+  return reconciliationTargetMatchesExecutionChain(
+    { target_scope: previousTarget },
+    roots,
+    executionChain,
+  ) ? reconciliations : null;
 }
 
 async function validateBootstrapImportDecision(project, reconciliation, scope) {
@@ -845,6 +873,7 @@ async function computeEvaluation(project, cycle, roots, evaluationId, createdAt)
     }
   }
   const reconciliations = [];
+  const reconciliationScopes = new Map();
   const reconciliationReferences = relatedArtifacts.reconciliations ?? [];
   for (const [index, reference] of reconciliationReferences.entries()) {
     const isLatest = index === reconciliationReferences.length - 1;
@@ -856,6 +885,28 @@ async function computeEvaluation(project, cycle, roots, evaluationId, createdAt)
     );
     if (!reconciliation) continue;
     reconciliations.push(reconciliation);
+    if (reconciliation.target_scope) {
+      const targetScope = await computation.json(
+        {
+          path: reconciliation.target_scope.snapshot_path,
+          sha256: reconciliation.target_scope.snapshot_sha256,
+        },
+        "reconciliation-target-scope",
+        `${reconciliation.reconciliation_id}:${reconciliation.target_scope.scope_id}`,
+        validateScopeSnapshot,
+      );
+      if (targetScope) reconciliationScopes.set(reconciliation.reconciliation_id, targetScope);
+      if (
+        targetScope &&
+        (targetScope.scope_id !== reconciliation.target_scope.scope_id ||
+          targetScope.scope_fingerprint !== reconciliation.target_scope.scope_fingerprint)
+      ) {
+        block(
+          "reconciliation-target-snapshot-mismatch",
+          `Reconciliation ${reconciliation.reconciliation_id} has a different target snapshot identity.`,
+        );
+      }
+    }
     if (
       reconciliation.reconciliation_id !== reference.reconciliation_id ||
       (reconciliation.cycle_id !== null && reconciliation.cycle_id !== roots.cycle_id)
@@ -863,12 +914,6 @@ async function computeEvaluation(project, cycle, roots, evaluationId, createdAt)
       block(
         "reconciliation-identity-mismatch",
         "Reconciliation identity or cycle ownership differs from the evaluated cycle.",
-      );
-    }
-    if (isLatest && !sameScopeReference(reconciliation.target_scope, roots.target_scope)) {
-      block(
-        "reconciliation-target-mismatch",
-        "Reconciliation target does not match the evaluated full-manuscript target.",
       );
     }
     if (isLatest) {
@@ -938,28 +983,59 @@ async function computeEvaluation(project, cycle, roots, evaluationId, createdAt)
       );
     }
   }
+  const executionChain = [];
+  for (const reference of relatedArtifacts.revision_executions ?? []) {
+    const execution = await computation.json(
+      reference,
+      "revision-execution",
+      reference.execution_id,
+      validateRevisionExecution,
+    );
+    if (execution?.status === "verified" && execution.cycle_id === roots.cycle_id) {
+      executionChain.push(execution);
+    }
+  }
+  const latestReconciliation = reconciliations.at(-1) ?? null;
+  if (
+    latestReconciliation &&
+    !reconciliationTargetMatchesExecutionChain(latestReconciliation, roots, executionChain)
+  ) {
+    block(
+      "reconciliation-target-mismatch",
+      "Reconciliation target does not match the current target or its verified execution input chain.",
+    );
+  }
   if (cycle?.initiating_strategy === "write-fiction") {
     const changedTarget = cycle.bootstrap || !sameScopeReference(roots.target_scope, cycle.starting_scope);
-    const importCandidate = creationCommits.length === 0
-      ? bootstrapImportCandidate(cycle, reconciliations, scope, roots)
+    const importChain = creationCommits.length === 0
+      ? bootstrapImportChain(cycle, reconciliations, reconciliationScopes, roots, executionChain)
       : null;
     let approvedBootstrapImport = false;
-    if (importCandidate) {
-      try {
-        approvedBootstrapImport = await validateBootstrapImportDecision(
-          project,
-          importCandidate,
-          scope,
-        );
-      } catch {
-        approvedBootstrapImport = false;
+    if (importChain) {
+      approvedBootstrapImport = true;
+      for (const reconciliation of importChain) {
+        try {
+          const approved = await validateBootstrapImportDecision(
+            project,
+            reconciliation,
+            reconciliationScopes.get(reconciliation.reconciliation_id),
+          );
+          if (!approved) approvedBootstrapImport = false;
+        } catch {
+          approvedBootstrapImport = false;
+        }
       }
       if (!approvedBootstrapImport) {
         block(
           "creation-import-approval-missing",
-          "The first bootstrap import no longer has its exact approved creation-import decision.",
+          "The bootstrap import chain no longer has every exact approved creation-import decision.",
         );
       }
+    } else if (cycle.bootstrap && reconciliations.length > 0) {
+      block(
+        "reconciliation-chain-mismatch",
+        "The bootstrap reconciliation chain has a missing, inconsistent, or non-current target link.",
+      );
     }
     if (changedTarget && creationCommits.length === 0 && !approvedBootstrapImport) {
       block(
