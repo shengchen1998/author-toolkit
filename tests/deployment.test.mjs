@@ -118,6 +118,7 @@ test("existing v3 projects route missing or changed shared references through se
   const callers = [
     "ask-author",
     "author-handoff",
+    "author-review",
     "write-fiction",
     "revise-fiction",
     "revise-draft",
@@ -142,6 +143,14 @@ test("existing v3 projects route missing or changed shared references through se
     assert.match(text, /valid manifest does not prove reference deployment/, callers[index]);
     assert.match(text, /setup-author-toolkit|setup command/, callers[index]);
   }
+
+  const review = entries[callers.indexOf("author-review")];
+  const referenceCheck = review.indexOf("check the deployed shared references");
+  const contractRead = review.indexOf("Read the controlled workflow terminology");
+  assert.ok(
+    contractRead > referenceCheck,
+    "author-review checks shared references before reading project-local contracts",
+  );
 });
 
 test("standalone entry points name their deployed skill-local contracts", async () => {
