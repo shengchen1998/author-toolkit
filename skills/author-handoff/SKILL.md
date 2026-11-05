@@ -5,7 +5,7 @@ description: Use when creating or restoring a concise author-toolkit session han
 
 # Author Handoff
 
-Create or restore a portable pointer to shared project state. Accept `create` or `restore`, a project root, and optionally a handoff path. Use the controlled workflow terminology in `<project-root>/.author-toolkit/references/terminology.md` for shared terms and exact contract values.
+Create or restore a portable pointer to shared project state. Accept `create` or `restore`, a project root, and optionally a handoff path. Use the controlled workflow terminology in `<project-root>/.author-toolkit/references/terminology.md` for shared terms and exact contract values. The `author-project` calls below also check the deployed shared references. If they report missing or mismatched files, display the user-invoked `setup-author-toolkit` command and stop creation or restoration; a valid manifest does not prove reference deployment.
 
 ## Create
 

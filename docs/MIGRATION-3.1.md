@@ -90,7 +90,7 @@ after migration.
 
 ## Shared reference deployment
 
-Running `setup-author-toolkit` after installation or migration deploys the shared runtime contracts from the setup skill's bundled `assets/references/` into `.author-toolkit/references/` beneath the writing project. This fixed operational directory is separate from the seven registered manifest paths and requires no schema or manifest change. Shared workflows resolve terminology, reporting rules, schemas, and AI-writing integration from that project-local directory.
+Running `setup-author-toolkit` after installation or migration deploys the shared runtime contracts from the setup skill's bundled `assets/references/` into `.author-toolkit/references/` beneath the writing project. This fixed operational directory is separate from the seven registered manifest paths and requires no schema or manifest change. Shared workflows resolve terminology, reporting rules, schemas, and AI-writing integration from that project-local directory. Every shared workflow `read`, `validate`, and `status` through `author-project` first compares all packaged references with this directory. Missing files and hash mismatches route the author back through setup, so an existing v3 manifest cannot bypass reference deployment after a toolkit update.
 
 Setup creates missing files and preserves files whose SHA-256 hashes match the packaged payload. A mismatch produces `reference-version-conflict` and blocks shared workflows. Replacing a mismatched file requires separate author approval for that exact file and preservation of the existing file beneath `<paths.backups>/reference-updates/<UTC-stamp>/`. Existing manuscripts, reports, findings, approvals, scopes, and pending work are not changed by reference deployment.
 

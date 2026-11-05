@@ -84,7 +84,9 @@ npx skills update
    setup 将随技能提供的共享契约部署到 `.author-toolkit/references/`; 匹配文件保持不变,
    版本冲突会阻止共享工作流, 经作者批准的替换会先把原文件保存到登记的备份路径下.
    新项目根目录没有 `AGENTS.md` 时, setup 会安装项目级 agent 指令模板; 已有指令文件保持不变.
-   不指定工作流或操作参数.
+   不指定工作流或操作参数. 工具包更新后, 已有 v3 项目可能需要再次运行 setup 部署新的共享引用.
+   初始 `author-project` 读取, 校验和状态调用会逐个检查随技能提供的文件; 缺失或哈希不匹配时重新引导至 setup,
+   不会仅凭有效 manifest 认定共享引用已部署.
 3. setup 验证共享 manifest 后, 根据目标选择 `write-fiction`, `revise-fiction`,
    `revise-draft`, `revise-increment` 或 `revise-request`. 增量修订用于复用未变章节的可复用证据,
    处理新增或受影响章节并恢复目标范围的当前草稿修订收敛. 请求修订用于从已达到当前草稿修订收敛的

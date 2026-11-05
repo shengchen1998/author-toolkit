@@ -11,6 +11,7 @@ Match the author's language. Resolve every skill in the host's current skill lis
 For shared fiction creation or revision, locate the project root and `.author-toolkit/project.json`:
 
 - If the manifest is missing or v2, show the `setup-author-toolkit` command and stop shared work. Setup registers existing paths, deploys shared contracts to `.author-toolkit/references/`, and migrates v2 without resetting project artifacts.
+- If `author-project` reports missing or mismatched shared references during `read`, `validate`, or `status`, show the `setup-author-toolkit` command and stop shared work. A valid v3 manifest alone does not prove reference deployment.
 - To create fiction from scratch or continue shared creation, show the `write-fiction` command.
 - For whole-book Story Bible, macro-structure, complete character-arc, or final-review work, show the `revise-fiction` command.
 - For diagnosis, revision, prose work, AI cleanup, or review of the available draft within a confirmed scope, show the `revise-draft` command. This path does not require an outline, ending, or whole-book structure audit.

@@ -77,6 +77,7 @@ test("deployable skills do not depend on repository-root references", async () =
     assert.doesNotMatch(text, /\.\.\/\.\.\/\.\.\/references\//, file);
     assert.doesNotMatch(text, /toolkit root's `references\//, file);
     assert.doesNotMatch(text, /installed toolkit's `references\//, file);
+    assert.doesNotMatch(text, /工具包根目录的 `references\//, file);
   }
 });
 
@@ -113,15 +114,47 @@ test("setup deploys references without silently overwriting project state", asyn
   assert.match(instructions, /`<project-root>\/\.author-toolkit\/references\/terminology\.md`/);
 });
 
+test("existing v3 projects route missing or changed shared references through setup", async () => {
+  const callers = [
+    "ask-author",
+    "author-handoff",
+    "write-fiction",
+    "revise-fiction",
+    "revise-draft",
+    "revise-increment",
+    "revise-request",
+  ];
+  const [operations, ...entries] = await Promise.all([
+    readFile(path.join(root, "skills", "author-project", "references", "operations.md"), "utf8"),
+    ...callers.map((skill) => readFile(path.join(root, "skills", skill, "SKILL.md"), "utf8")),
+  ]);
+
+  assert.match(operations, /Before a shared workflow `read`, `validate`, or `status`/);
+  assert.match(operations, /compare every packaged file/);
+  assert.match(operations, /valid v3 manifest alone does not prove/);
+  assert.match(operations, /missing project-relative paths/);
+  assert.match(operations, /reference-version-conflict/);
+  assert.match(operations, /Do not continue shared work or write project state/);
+
+  for (const [index, text] of entries.entries()) {
+    assert.match(text, /check the deployed shared references/, callers[index]);
+    assert.match(text, /missing or mismatched files/, callers[index]);
+    assert.match(text, /valid manifest does not prove reference deployment/, callers[index]);
+    assert.match(text, /setup-author-toolkit|setup command/, callers[index]);
+  }
+});
+
 test("standalone entry points name their deployed skill-local contracts", async () => {
   for (const skill of independentSkills) {
     const text = await readFile(path.join(root, "skills", skill, "SKILL.md"), "utf8");
     assert.match(text, /`references\/finding-schema\.json`/, skill);
   }
-  const [prose, languageSupport] = await Promise.all([
+  const [prose, languageSupport, chineseRules] = await Promise.all([
     readFile(path.join(root, "skills", "prose-mechanics", "SKILL.md"), "utf8"),
     readFile(path.join(root, "skills", "prose-mechanics", "references", "language-support.md"), "utf8"),
+    readFile(path.join(root, "skills", "prose-mechanics", "references", "chinese-rules.md"), "utf8"),
   ]);
   assert.match(prose, /`references\/avoid-ai-writing-adapter\.md`/);
   assert.match(languageSupport, /\(avoid-ai-writing-adapter\.md\)/);
+  assert.match(chineseRules, /\[`avoid-ai-writing-adapter\.md`\]\(avoid-ai-writing-adapter\.md\)/);
 });

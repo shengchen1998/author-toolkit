@@ -171,7 +171,11 @@ A quick run looks like this:
    preserves the existing file beneath the registered backups path. For a new
    project, setup also installs the project-level `AGENTS.md` template when no
    such file exists, preserving any existing agent instructions. Do not pass a
-   workflow name or operation argument.
+   workflow name or operation argument. After a toolkit update, an existing v3
+   project may need setup again to deploy new shared references. Its initial
+   `author-project` read, validation, and status calls check every packaged file
+   and route missing files or hash mismatches back through setup instead of
+   treating a valid manifest as proof of reference deployment.
 3. After setup validates the shared manifest, choose `write-fiction` to create
    or continue a novel, `revise-fiction` for whole-book revision, `revise-draft`
    for the available manuscript and current-scope review, `revise-increment` to

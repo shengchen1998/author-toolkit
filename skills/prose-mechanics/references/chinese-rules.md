@@ -176,6 +176,6 @@ Flesch-Kincaid 及其他英文年级公式标记为 `skipped: inapplicable to Ch
 
 `subchecks=zh-ai-p0,zh-ai-p1,zh-ai-p2`
 
-加载工具包根目录的 `references/avoid-ai-writing-adapter.md` 和其中指定的中文目录。逐类执行 P0、P1、P2 中文候选检查，记录具体文本效果、合理例外和修改方向。
+加载当前技能的 [`avoid-ai-writing-adapter.md`](avoid-ai-writing-adapter.md) 和其中指定的中文目录。逐类执行 P0、P1、P2 中文候选检查，记录具体文本效果、合理例外和修改方向。
 
 中文审计不使用英文替换表、英文词数密度、Title Case 或英文破折号清零规则。中文标点按中文规范判断。所有 AI 关联评价使用 `confidence: judgment`，不得声称文本由 AI 生成。改写后的独立二次检测属于改写流程；单纯检测不虚构第二遍证据。
