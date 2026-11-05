@@ -504,6 +504,40 @@ function creationFileIdentity(file) {
   };
 }
 
+function compareCreationText(left, right) {
+  return left < right ? -1 : left > right ? 1 : 0;
+}
+
+function creationDependencyFingerprint(batch) {
+  const context = batch.plan.context.map(({ path: filePath, version, version_type }) => ({
+    path: filePath,
+    version,
+    version_type,
+  })).sort((left, right) =>
+    compareCreationText(left.path, right.path) ||
+    compareCreationText(left.version_type, right.version_type) ||
+    compareCreationText(left.version, right.version)
+  );
+  const files = batch.files.map(({ path: filePath, action, input_sha256 }) => ({
+    path: filePath,
+    action,
+    input_sha256,
+  })).sort((left, right) => compareCreationText(left.path, right.path));
+  return sha256Bytes(JSON.stringify({ plan: batch.plan.summary, context, files }));
+}
+
+function creationApprovalBindingMatches(approval, batch, scopeFingerprint) {
+  if (batch.plan.dependency_fingerprint !== creationDependencyFingerprint(batch)) return false;
+  const tokens = new Set(approval.reason.split(/\s+/));
+  return tokens.has(`batch_id=${batch.batch_id}`) &&
+    tokens.has(`dependency_fingerprint=${batch.plan.dependency_fingerprint}`) &&
+    tokens.has(`scope_fingerprint=${scopeFingerprint}`);
+}
+
+function sameApprovalPaths(actual, expected) {
+  return JSON.stringify(actual) === JSON.stringify(expected);
+}
+
 async function deriveCreationChangeSet(project, cycle, candidate, request) {
   if (!request.related_artifacts?.creation_commits) return null;
   const batchReferences = candidate.related_artifacts.creation_batches;
@@ -571,20 +605,28 @@ async function deriveCreationChangeSet(project, cycle, candidate, request) {
   const acceptances = batch.approvals.map((approvalId) =>
     tracker.approvals.find((approval) => approval.id === approvalId)
   );
-  const scopeDecision = acceptances.find(
-    (approval) => approval?.id === target.author_confirmation?.decision_id,
+  const manuscriptDecisions = acceptances.filter(
+    (approval) => approval?.type === "creation-manuscript",
   );
+  const scopeDecisions = acceptances.filter((approval) => approval?.type === "creation-scope");
+  const manuscriptDecision = manuscriptDecisions.length === 1 ? manuscriptDecisions[0] : null;
+  const scopeDecision = scopeDecisions.length === 1 &&
+    scopeDecisions[0].id === target.author_confirmation?.decision_id
+    ? scopeDecisions[0]
+    : null;
   if (
     !tracker.valid ||
     acceptances.some((approval) =>
-      !approval ||
-      approval.status !== "approved" ||
-      approval.operation !== "chapter-review" ||
-      approval.scopeId !== candidate.target_scope.scope_id ||
-      !batch.files.every((file) => approval.paths.includes(file.path))
+      !approval || approval.status !== "approved" || approval.operation !== "chapter-review"
     ) ||
+    !manuscriptDecision ||
+    manuscriptDecision.scopeId !== candidate.target_scope.scope_id ||
+    !sameApprovalPaths(manuscriptDecision.paths, batch.files.map((file) => file.path)) ||
+    !creationApprovalBindingMatches(manuscriptDecision, batch, target.scope_fingerprint) ||
     !scopeDecision ||
-    !target.files.every((file) => scopeDecision.paths.includes(file.path))
+    scopeDecision.scopeId !== candidate.target_scope.scope_id ||
+    !sameApprovalPaths(scopeDecision.paths, target.files.map((file) => file.path)) ||
+    !creationApprovalBindingMatches(scopeDecision, batch, target.scope_fingerprint)
   ) {
     const error = new Error(
       `Creation batch ${batch.batch_id} lacks current manuscript acceptance or complete target-scope confirmation.`,
@@ -613,13 +655,7 @@ async function deriveCreationChangeSet(project, cycle, candidate, request) {
   const afterRetained = target.files.filter((file) => startingByPath.has(file.path)).map((file) => file.path);
   const beforeUnmarked = beforeRetained.filter((filePath) => !reorderedPaths.has(filePath));
   const afterUnmarked = afterRetained.filter((filePath) => !reorderedPaths.has(filePath));
-  const unmarkedIndexChange = starting.files.some((file) =>
-    !changedPaths.has(file.path) &&
-    targetByPath.has(file.path) &&
-    startingByPath.get(file.path).index !== targetByPath.get(file.path).index
-  );
   if (
-    unmarkedIndexChange ||
     JSON.stringify(beforeUnmarked) !== JSON.stringify(afterUnmarked) ||
     (reorderTransitions.length === 0 &&
       JSON.stringify(beforeRetained) !== JSON.stringify(afterRetained))
@@ -636,7 +672,7 @@ async function deriveCreationChangeSet(project, cycle, candidate, request) {
       !after ||
       before.sha256 !== file.input_sha256 ||
       after.sha256 !== file.output_sha256 ||
-      before.index === after.index
+      beforeRetained.indexOf(file.path) === afterRetained.indexOf(file.path)
     ) {
       const error = new Error(`Creation reorder transition is inconsistent for ${file.path}`);
       error.cycleBlockerCode = "creation-order-mismatch";
@@ -710,15 +746,16 @@ async function deriveRejectedCreationChangeSet(project, cycle, candidate, reques
     "utf8",
   );
   const tracker = await parseTrackerState(trackerText, project.root);
-  const approved = tracker.valid && batch.approvals.some((approvalId) =>
-    tracker.approvals.some((approval) =>
-      approval.id === approvalId &&
-      approval.status === "approved" &&
-      approval.operation === "chapter-review" &&
-      approval.scopeId === cycle.starting_scope.scope_id &&
-      batch.files.every((file) => approval.paths.includes(file.path))
-    )
-  );
+  const rejectionApprovals = batch.approvals
+    .map((approvalId) => tracker.approvals.find((approval) => approval.id === approvalId))
+    .filter((approval) => approval?.type === "creation-rejection");
+  const approval = rejectionApprovals.length === 1 ? rejectionApprovals[0] : null;
+  const approved = tracker.valid && approval &&
+    approval.status === "approved" &&
+    approval.operation === "chapter-review" &&
+    approval.scopeId === cycle.starting_scope.scope_id &&
+    sameApprovalPaths(approval.paths, batch.files.map((file) => file.path)) &&
+    creationApprovalBindingMatches(approval, batch, cycle.starting_scope.scope_fingerprint);
   if (!approved) {
     const error = new Error(
       `Rejected creation batch ${batch.batch_id} lacks its current explicit chapter-review rejection decision.`,

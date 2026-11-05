@@ -34,7 +34,7 @@ Construct the context package from relevant Story Bible entries, chapter records
 
 **Work:** Check plan execution, chapter transitions, character knowledge, timeline, world rules, and unintended foundation changes. Present manuscript and state differences together. Recheck the dependency fingerprint before acceptance.
 
-**Gate:** The author accepts the exact batch and resulting scope, or rejects it. Record manuscript and scope approvals for acceptance. Rejection records a current chapter-review decision, leaves manuscript, current story state, and scope unchanged, preserves the staging drafts, and creates no commit journal. Revalidate the starting scope before no-change cycle completion; rejected staging itself supplies no current-draft revision convergence evidence.
+**Gate:** The author accepts the exact batch and resulting scope, or rejects it. Record exactly one `creation-manuscript` approval for the batch paths and one `creation-scope` approval for the complete ordered target paths, both as current chapter-review decisions with the batch, dependency-fingerprint, and scope-fingerprint binding specified in `creation-state.md`. Missing or duplicate types cannot authorize publication. Rejection instead requires exactly one current `creation-rejection` decision for the exact batch, with the same batch and unchanged-starting-scope binding; acceptance or another approval type cannot authorize rejection. Rejection leaves manuscript, current story state, and scope unchanged, preserves the staging drafts, and creates no commit journal. Revalidate the starting scope before no-change cycle completion; rejected staging itself supplies no current-draft revision convergence evidence.
 
 ## 5. Creation commit
 

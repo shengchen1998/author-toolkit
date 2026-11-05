@@ -4,7 +4,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import test from "node:test";
 
-import { recordScope } from "../scripts/lib/index.mjs";
+import { computeScopeFingerprint, recordScope } from "../scripts/lib/index.mjs";
 import {
   artifactAt,
   createConvergenceProject,
@@ -17,6 +17,30 @@ import {
 
 function sha256(value) {
   return createHash("sha256").update(value).digest("hex");
+}
+
+function creationDependencyFingerprint(summary, context, files) {
+  return sha256(JSON.stringify({
+    plan: summary,
+    context: context.map(({ path: filePath, version, version_type }) => ({
+      path: filePath,
+      version,
+      version_type,
+    })).sort((left, right) =>
+      left.path.localeCompare(right.path) ||
+      left.version_type.localeCompare(right.version_type) ||
+      left.version.localeCompare(right.version)
+    ),
+    files: files.map(({ path: filePath, action, input_sha256 }) => ({
+      path: filePath,
+      action,
+      input_sha256,
+    })).sort((left, right) => left.path.localeCompare(right.path)),
+  }));
+}
+
+function creationApprovalReason(text, batchId, dependencyFingerprint, scopeFingerprint) {
+  return `${text} batch_id=${batchId} dependency_fingerprint=${dependencyFingerprint} scope_fingerprint=${scopeFingerprint}`;
 }
 
 async function runInput(projectRoot, command, input) {
@@ -58,9 +82,17 @@ async function confirmScope(projectRoot, scopeId, files, decisionId) {
   return currentScopeReference(projectRoot);
 }
 
-async function establishSatisfiedBase(t) {
+async function establishSatisfiedBase(t, { twoChapters = false } = {}) {
   const { projectRoot } = await createConvergenceProject(t);
   const original = "The ferry leaves at dawn.\nMara watches it go.";
+  const secondOriginal = "The harbor master rings once.\nMara keeps her ticket hidden.";
+  const baseFiles = [{
+    path: "manuscript/chapter-001.md",
+    sha256: sha256(original),
+  }];
+  if (twoChapters) {
+    baseFiles.push({ path: "manuscript/chapter-002.md", sha256: sha256(secondOriginal) });
+  }
   const started = await runInput(projectRoot, "start-cycle", {
     cycle_id: "cycle-bootstrap-001",
     initiating_strategy: "write-fiction",
@@ -69,10 +101,10 @@ async function establishSatisfiedBase(t) {
   });
   assert.equal(started.status, 0, `${started.stdout}\n${started.stderr}`);
   await writeFile(path.join(projectRoot, "manuscript", "chapter-001.md"), original, "utf8");
-  const startingScope = await confirmScope(projectRoot, "scope-base-001", [{
-    path: "manuscript/chapter-001.md",
-    sha256: sha256(original),
-  }], "SCOPE-001");
+  if (twoChapters) {
+    await writeFile(path.join(projectRoot, "manuscript", "chapter-002.md"), secondOriginal, "utf8");
+  }
+  const startingScope = await confirmScope(projectRoot, "scope-base-001", baseFiles, "SCOPE-001");
   const evidence = await createNoEditEvidence(projectRoot);
   const transitioned = await runInput(projectRoot, "transition-cycle", {
     cycle_id: "cycle-bootstrap-001",
@@ -105,7 +137,7 @@ async function establishSatisfiedBase(t) {
     author_confirmed: true,
   });
   assert.equal(completed.status, 0, `${completed.stdout}\n${completed.stderr}`);
-  return { projectRoot, startingScope, baseEvidence: evidence, original };
+  return { projectRoot, startingScope, baseEvidence: evidence, original, secondOriginal };
 }
 
 async function startOrdinaryCreation(fixture) {
@@ -121,13 +153,17 @@ async function startOrdinaryCreation(fixture) {
 
 async function publishMultiChapterBatch(fixture) {
   const { projectRoot, startingScope } = fixture;
+  const startingSnapshot = JSON.parse(
+    await readFile(path.join(projectRoot, startingScope.snapshot_path), "utf8"),
+  );
+  const retainedFiles = startingSnapshot.files;
   const chapters = [
     {
-      path: "manuscript/chapter-002.md",
+      path: `manuscript/chapter-${String(retainedFiles.length + 1).padStart(3, "0")}.md`,
       contents: "The next ferry arrives at noon.\nMara finds the missing letter.",
     },
     {
-      path: "manuscript/chapter-003.md",
+      path: `manuscript/chapter-${String(retainedFiles.length + 2).padStart(3, "0")}.md`,
       contents: "At dusk, Mara follows the lantern.\nThe harbor answers with three bells.",
     },
   ];
@@ -144,28 +180,59 @@ async function publishMultiChapterBatch(fixture) {
     await writeFile(staged, chapter.contents, "utf8");
     await writeFile(path.join(projectRoot, chapter.path), chapter.contents, "utf8");
   }
-  const targetFiles = [
-    { path: "manuscript/chapter-001.md", sha256: sha256(fixture.original) },
-    ...chapters.map((chapter) => ({ path: chapter.path, sha256: sha256(chapter.contents) })),
-  ];
-  if (fixture.reorderWithoutJournal) targetFiles.push(targetFiles.shift());
+  const files = chapters.map((chapter) => ({
+    path: chapter.path,
+    action: "create",
+    input_sha256: null,
+    output_sha256: sha256(chapter.contents),
+  }));
+  const createdFiles = files.map(({ path: filePath, output_sha256 }) => ({
+    path: filePath,
+    sha256: output_sha256,
+  }));
+  let targetFiles = [...retainedFiles, ...createdFiles];
+  if (fixture.insertBefore) targetFiles = [...createdFiles, ...retainedFiles];
+  if (fixture.insertMiddle) {
+    assert.ok(retainedFiles.length >= 2, "middle insertion requires two retained chapters");
+    targetFiles = [retainedFiles[0], ...createdFiles, ...retainedFiles.slice(1)];
+  }
+  if (fixture.reorderWithoutJournal) {
+    assert.ok(retainedFiles.length >= 2, "retained reorder requires two retained chapters");
+    targetFiles = [retainedFiles[1], retainedFiles[0], ...createdFiles];
+  }
+  const storyBibleHash = sha256(await readFile(path.join(projectRoot, "story-bible.md")));
+  const planSummary = "Publish two coherent chapters in one explicitly approved batch.";
+  const context = [{ path: "story-bible.md", version: storyBibleHash, version_type: "sha256" }];
+  const dependencyFingerprint = creationDependencyFingerprint(planSummary, context, files);
+  const scopeFingerprint = computeScopeFingerprint({ files: targetFiles, excluded_files: [] });
   const targetScopeId = "scope-creation-002";
   for (const approval of [{
     id: "MANUSCRIPT-002",
-    type: "creation-manuscript",
+    type: fixture.manuscriptApprovalType ?? "creation-manuscript",
     operation: "chapter-review",
-    reason: "Author accepted the exact two-chapter manuscript batch.",
+    paths: files.map((file) => file.path),
+    reason: creationApprovalReason(
+      "Author accepted the exact two-chapter manuscript batch.",
+      "batch-002",
+      fixture.manuscriptDependencyOverride ?? dependencyFingerprint,
+      scopeFingerprint,
+    ),
   }, {
     id: "SCOPE-002",
-    type: "creation-scope",
+    type: fixture.scopeApprovalType ?? "creation-scope",
     operation: "chapter-review",
-    reason: "Author accepted the complete expanded publication scope and reading order.",
+    paths: targetFiles.map((file) => file.path),
+    reason: creationApprovalReason(
+      "Author accepted the complete expanded publication scope and reading order.",
+      "batch-002",
+      dependencyFingerprint,
+      scopeFingerprint,
+    ),
   }]) {
     if (!fixture.skipApprovals) {
       await appendApproval(projectRoot, {
         ...approval,
         scopeId: targetScopeId,
-        paths: targetFiles.map((file) => file.path),
       });
     }
   }
@@ -175,12 +242,6 @@ async function publishMultiChapterBatch(fixture) {
     targetFiles,
     "SCOPE-002",
   );
-  const files = chapters.map((chapter) => ({
-    path: chapter.path,
-    action: "create",
-    input_sha256: null,
-    output_sha256: sha256(chapter.contents),
-  }));
   const commitRelative = ".author-toolkit/creation/batches/commit-002.json";
   await writeJson(path.join(projectRoot, commitRelative), {
     schema_version: "1.0.0",
@@ -193,7 +254,6 @@ async function publishMultiChapterBatch(fixture) {
     created_at: timestamp,
     updated_at: timestamp,
   });
-  const storyBibleHash = sha256(await readFile(path.join(projectRoot, "story-bible.md")));
   const batchRelative = ".author-toolkit/creation/batches/batch-002.json";
   await writeJson(path.join(projectRoot, batchRelative), {
     schema_version: "1.0.0",
@@ -203,9 +263,9 @@ async function publishMultiChapterBatch(fixture) {
     status: "committed",
     scope_id: targetScope.scope_id,
     plan: {
-      summary: "Publish two coherent chapters in one explicitly approved batch.",
-      context: [{ path: "story-bible.md", version: storyBibleHash, version_type: "sha256" }],
-      dependency_fingerprint: storyBibleHash,
+      summary: planSummary,
+      context,
+      dependency_fingerprint: dependencyFingerprint,
     },
     files: files.map((file) => ({ ...file, status: "verified" })),
     story_state: [],
@@ -217,6 +277,7 @@ async function publishMultiChapterBatch(fixture) {
   });
   return {
     chapters,
+    targetFiles,
     targetScope,
     batchReference: { batch_id: "batch-002", ...(await artifactAt(projectRoot, batchRelative)) },
     commitReference: {
@@ -426,6 +487,22 @@ async function createRejectedBatch(fixture) {
   await mkdir(path.dirname(stagedPath), { recursive: true });
   await writeFile(stagedPath, stagedContents, "utf8");
   const storyBibleHash = sha256(await readFile(path.join(projectRoot, "story-bible.md")));
+  const planSummary = "Reject the staged chapter without publishing any manuscript bytes.";
+  const context = [{ path: "story-bible.md", version: storyBibleHash, version_type: "sha256" }];
+  const files = [{
+    path: "manuscript/chapter-002.md",
+    action: "create",
+    input_sha256: null,
+    output_sha256: sha256(stagedContents),
+    status: "staged",
+  }];
+  const dependencyFingerprint = creationDependencyFingerprint(planSummary, context, files);
+  const approvalReason = creationApprovalReason(
+    "Author rejected the exact staged batch and preserved it outside the manuscript.",
+    "batch-rejected-002",
+    dependencyFingerprint,
+    startingScope.scope_fingerprint,
+  );
   const batchRelative = ".author-toolkit/creation/batches/batch-rejected-002.json";
   await writeJson(path.join(projectRoot, batchRelative), {
     schema_version: "1.0.0",
@@ -435,17 +512,11 @@ async function createRejectedBatch(fixture) {
     status: "rejected",
     scope_id: startingScope.scope_id,
     plan: {
-      summary: "Reject the staged chapter without publishing any manuscript bytes.",
-      context: [{ path: "story-bible.md", version: storyBibleHash, version_type: "sha256" }],
-      dependency_fingerprint: storyBibleHash,
+      summary: planSummary,
+      context,
+      dependency_fingerprint: dependencyFingerprint,
     },
-    files: [{
-      path: "manuscript/chapter-002.md",
-      action: "create",
-      input_sha256: null,
-      output_sha256: sha256(stagedContents),
-      status: "staged",
-    }],
+    files,
     story_state: [],
     approvals: ["REJECT-002"],
     commit: null,
@@ -455,6 +526,7 @@ async function createRejectedBatch(fixture) {
   });
   return {
     stagedPath,
+    approvalReason,
     batchReference: {
       batch_id: "batch-rejected-002",
       ...(await artifactAt(projectRoot, batchRelative)),
@@ -501,7 +573,7 @@ test("rejected staging requires its decision and completes only after starting-s
     operation: "chapter-review",
     scopeId: fixture.startingScope.scope_id,
     paths: ["manuscript/chapter-002.md"],
-    reason: "Author rejected the exact staged batch and preserved it outside the manuscript.",
+    reason: rejected.approvalReason,
   });
   const transitioned = await runInput(fixture.projectRoot, "transition-cycle", transitionInput);
   assert.equal(transitioned.status, 0, `${transitioned.stdout}\n${transitioned.stderr}`);
@@ -848,7 +920,7 @@ test("accepted increment review findings reenter verified execution before conve
 
 
 test("creation publication rejects a reading-order change omitted from its journal", async (t) => {
-  const fixture = await establishSatisfiedBase(t);
+  const fixture = await establishSatisfiedBase(t, { twoChapters: true });
   fixture.reorderWithoutJournal = true;
   const cycle = await startOrdinaryCreation(fixture);
   const publication = await publishMultiChapterBatch(fixture);
@@ -909,3 +981,135 @@ test("increment evaluation cannot omit the creation commit execution record", as
   assert.equal(evaluation.outcome, "not_satisfied");
   assert.ok(evaluation.blockers.some((blocker) => blocker.code === "creation-commit-evidence-missing"));
 });
+
+
+for (const approvalType of ["creation-manuscript", "creation-acceptance"]) {
+  test(`rejected staging rejects ${approvalType} as a rejection decision`, async (t) => {
+    const fixture = await establishSatisfiedBase(t);
+    const cycle = await startOrdinaryCreation(fixture);
+    const rejected = await createRejectedBatch(fixture);
+    await appendApproval(fixture.projectRoot, {
+      id: "REJECT-002",
+      type: approvalType,
+      operation: "chapter-review",
+      scopeId: fixture.startingScope.scope_id,
+      paths: ["manuscript/chapter-002.md"],
+      reason: rejected.approvalReason,
+    });
+    const transitioned = await runInput(fixture.projectRoot, "transition-cycle", {
+      cycle_id: cycle.cycle_id,
+      expected_revision: cycle.revision,
+      current_strategy: "revise-increment",
+      recovery_position: {
+        operation: "current-scope-review",
+        reason: "Attempt to use a non-rejection approval for rejected staging.",
+      },
+      target_scope: fixture.startingScope,
+      related_artifacts: {
+        creation_batches: [rejected.batchReference],
+      },
+    });
+    assert.equal(transitioned.status, 1, `${transitioned.stdout}\n${transitioned.stderr}`);
+    const result = JSON.parse(transitioned.stdout);
+    assert.equal(result.blockers[0].code, "creation-rejection-approval-missing");
+    assert.equal(result.state_written, false);
+    const active = JSON.parse(await readFile(
+      path.join(fixture.projectRoot, ".author-toolkit", "convergence", "active-cycle.json"),
+      "utf8",
+    ));
+    assert.equal(active.target_evaluation, null);
+    assert.equal(active.completion, null);
+    assert.equal(active.related_artifacts.creation_commits.length, 0);
+  });
+}
+
+
+async function linkPublication(fixture, cycle, publication) {
+  return runInput(fixture.projectRoot, "transition-cycle", {
+    cycle_id: cycle.cycle_id,
+    expected_revision: cycle.revision,
+    current_strategy: "revise-increment",
+    recovery_position: {
+      operation: "intake",
+      reason: "Validate exact creation acceptance before increment recovery.",
+    },
+    target_scope: publication.targetScope,
+    related_artifacts: {
+      creation_batches: [publication.batchReference],
+      creation_commits: [publication.commitReference],
+    },
+  });
+}
+
+for (const [scenario, manuscriptApprovalType, scopeApprovalType] of [
+  ["duplicate scope approvals", "creation-scope", "creation-scope"],
+  ["duplicate manuscript approvals", "creation-manuscript", "creation-manuscript"],
+]) {
+  test(`ordinary creation rejects ${scenario}`, async (t) => {
+    const fixture = await establishSatisfiedBase(t);
+    fixture.manuscriptApprovalType = manuscriptApprovalType;
+    fixture.scopeApprovalType = scopeApprovalType;
+    const cycle = await startOrdinaryCreation(fixture);
+    const publication = await publishMultiChapterBatch(fixture);
+    const transitioned = await linkPublication(fixture, cycle, publication);
+    assert.equal(transitioned.status, 1, `${transitioned.stdout}\n${transitioned.stderr}`);
+    const result = JSON.parse(transitioned.stdout);
+    assert.equal(result.blockers[0].code, "creation-approval-missing");
+    assert.equal(result.state_written, false);
+    const active = JSON.parse(await readFile(
+      path.join(fixture.projectRoot, ".author-toolkit", "convergence", "active-cycle.json"),
+      "utf8",
+    ));
+    assert.equal(active.related_artifacts.creation_commits.length, 0);
+  });
+}
+
+test("ordinary creation rejects a manuscript approval bound to different action inputs", async (t) => {
+  const fixture = await establishSatisfiedBase(t);
+  fixture.manuscriptDependencyOverride = "0".repeat(64);
+  const cycle = await startOrdinaryCreation(fixture);
+  const publication = await publishMultiChapterBatch(fixture);
+  const transitioned = await linkPublication(fixture, cycle, publication);
+  assert.equal(transitioned.status, 1, `${transitioned.stdout}\n${transitioned.stderr}`);
+  const result = JSON.parse(transitioned.stdout);
+  assert.equal(result.blockers[0].code, "creation-approval-missing");
+  assert.equal(result.state_written, false);
+});
+
+
+for (const [scenario, option, expectedOrder] of [
+  ["before retained chapters", "insertBefore", [
+    "manuscript/chapter-003.md",
+    "manuscript/chapter-004.md",
+    "manuscript/chapter-001.md",
+    "manuscript/chapter-002.md",
+  ]],
+  ["between retained chapters", "insertMiddle", [
+    "manuscript/chapter-001.md",
+    "manuscript/chapter-003.md",
+    "manuscript/chapter-004.md",
+    "manuscript/chapter-002.md",
+  ]],
+]) {
+  test(`creation publication permits pure insertion ${scenario}`, async (t) => {
+    const fixture = await establishSatisfiedBase(t, { twoChapters: true });
+    fixture[option] = true;
+    const cycle = await startOrdinaryCreation(fixture);
+    const publication = await publishMultiChapterBatch(fixture);
+    const transitioned = await linkPublication(fixture, cycle, publication);
+    assert.equal(transitioned.status, 0, `${transitioned.stdout}\n${transitioned.stderr}`);
+    const linked = JSON.parse(transitioned.stdout).cycle;
+    assert.deepEqual(linked.change_set.reordered, []);
+    assert.deepEqual(linked.change_set.created.map((file) => file.path), [
+      "manuscript/chapter-003.md",
+      "manuscript/chapter-004.md",
+    ]);
+    assert.deepEqual(publication.targetFiles.map((file) => file.path), expectedOrder);
+    const manifest = JSON.parse(await readFile(
+      path.join(fixture.projectRoot, ".author-toolkit", "project.json"),
+      "utf8",
+    ));
+    assert.deepEqual(manifest.current_scope.files.map((file) => file.path), expectedOrder);
+    assert.equal(manifest.current_scope.scope_fingerprint, publication.targetScope.scope_fingerprint);
+  });
+}
