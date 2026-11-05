@@ -189,3 +189,17 @@ The repository is installed directly as source; there is no release bundle to bu
 Updates are manual through the host or `npx skills check` and `npx skills update`. No CI/CD or publishing workflow is present.
 
 The generic installer deploys each skill directory, including the setup skill's shared-reference payload and each independent skill's local contracts. The repository-root `references/` directory is the canonical development source, not a runtime dependency of installed skills. Keep it byte-identical to `skills/setup-author-toolkit/assets/references/`; keep standalone finding schemas and the `prose-mechanics` AI-writing adapter mirrors synchronized as well. Setup deploys the shared payload into each writing project. `tests/deployment.test.mjs` checks these mirrors, repository-root reference independence, project-local reference coverage, and safe replacement rules.
+
+## Agent skills
+
+### Issue tracker
+
+Issues and specs are tracked in GitHub Issues for `shengchen1998/author-toolkit` using `gh`. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+The five canonical triage roles use their default label strings. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context layout: `GLOSSARY.md` at the repo root and ADRs in `docs/adr/`. See `docs/agents/domain.md`.
