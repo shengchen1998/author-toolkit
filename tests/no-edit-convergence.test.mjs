@@ -689,3 +689,127 @@ test("artifact contracts are closed and evaluation roots reject unsafe paths", a
   ));
   assert.equal(active.revision, 3);
 });
+
+
+test("current target evaluation rejects a same-ID scope with a new fingerprint after a same-line edit", async (t) => {
+  const { projectRoot, manifestPath, manuscript, evidence, evaluated } =
+    await establishNoEditEvaluation(t);
+  assert.equal(evaluated.status, 0, `${evaluated.stdout}\n${evaluated.stderr}`);
+  const previousFingerprint = evidence.scopeReference.scope_fingerprint;
+  const revisedManuscript = "The ferry leaves at dusk.\nMara watches it go.";
+  assert.equal(
+    revisedManuscript.split(/\r?\n/).length,
+    manuscript.split(/\r?\n/).length,
+  );
+  await writeFile(
+    path.join(projectRoot, "manuscript", "chapter-001.md"),
+    revisedManuscript,
+    "utf8",
+  );
+  await recordScope(projectRoot, {
+    scope_id: evidence.scopeReference.scope_id,
+    description: "The same scope ID reconfirmed after a same-line text edit.",
+    status: "confirmed",
+    files: [{
+      path: "manuscript/chapter-001.md",
+      sha256: createHash("sha256").update(revisedManuscript).digest("hex"),
+    }],
+    excluded_files: [],
+    created_at: timestamp,
+  }, {
+    authorConfirmation: {
+      decision_id: "SCOPE-002",
+      confirmed_at: timestamp,
+      reading_order_confirmed: true,
+    },
+    now: new Date("2026-11-05T01:00:00Z"),
+  });
+  const currentManifest = JSON.parse(await readFile(manifestPath, "utf8"));
+  assert.equal(currentManifest.current_scope.scope_id, evidence.scopeReference.scope_id);
+  assert.notEqual(currentManifest.current_scope.scope_fingerprint, previousFingerprint);
+  assert.notEqual(
+    currentManifest.current_scope.snapshot_path,
+    evidence.scopeReference.snapshot_path,
+  );
+  assert.notEqual(
+    currentManifest.current_scope.snapshot_sha256,
+    evidence.scopeReference.snapshot_sha256,
+  );
+
+  const status = runValidator(["--convergence-status", manifestPath]);
+  assert.equal(status.status, 0, status.stderr);
+  const current = JSON.parse(status.stdout);
+  assert.equal(current.outcome, "indeterminate");
+  assert.equal(current.current, false);
+  assert.ok(current.blockers.some(
+    (blocker) => blocker.code === "target-scope-identity-mismatch",
+  ), JSON.stringify(current.blockers, null, 2));
+  const gate = runValidator(["--convergence-gate", manifestPath]);
+  assert.equal(gate.status, 1, `${gate.stdout}\n${gate.stderr}`);
+  assert.ok(JSON.parse(gate.stdout).blockers.some(
+    (blocker) => blocker.code === "target-scope-identity-mismatch",
+  ));
+
+  const trackerPath = path.join(projectRoot, "audit-tracker.md");
+  const trackerBefore = await readFile(trackerPath, "utf8");
+  const completed = await runInput(projectRoot, "complete-cycle", {
+    cycle_id: "cycle-bootstrap-001",
+    expected_revision: 3,
+    evaluation_id: "evaluation-scope-change-completion",
+    decision_id: "COMPLETE-800",
+    author_confirmed: true,
+  });
+  assert.equal(completed.status, 1, `${completed.stdout}\n${completed.stderr}`);
+  assert.equal(
+    JSON.parse(completed.stdout).blockers[0].code,
+    "completion-evaluation-not-satisfied",
+  );
+  assert.equal(await readFile(trackerPath, "utf8"), trackerBefore);
+
+  const reevaluated = await runInput(
+    projectRoot,
+    "evaluate-cycle",
+    evidence.evaluationInput("evaluation-scope-change", 3),
+  );
+  assert.equal(reevaluated.status, 1, `${reevaluated.stdout}\n${reevaluated.stderr}`);
+  const reevaluation = JSON.parse(reevaluated.stdout);
+  assert.equal(reevaluation.evaluation.outcome, "indeterminate");
+  assert.ok(reevaluation.evaluation.blockers.some(
+    (blocker) => blocker.code === "target-scope-identity-mismatch",
+  ));
+  const finalGate = runValidator(["--convergence-gate", manifestPath]);
+  assert.equal(finalGate.status, 1, `${finalGate.stdout}\n${finalGate.stderr}`);
+});
+
+test("target identity diagnostics include snapshot path and hash mismatches", async (t) => {
+  const { projectRoot, manifestPath, evaluated } = await establishNoEditEvaluation(t);
+  assert.equal(evaluated.status, 0, `${evaluated.stdout}\n${evaluated.stderr}`);
+  const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
+  const snapshot = JSON.parse(await readFile(
+    path.join(projectRoot, manifest.current_scope.snapshot_path),
+    "utf8",
+  ));
+  snapshot.author_confirmation.decision_id = "SCOPE-ALT";
+  const alternateSnapshotRelative =
+    ".author-toolkit/convergence/scopes/alternate-target.json";
+  await writeJson(path.join(projectRoot, alternateSnapshotRelative), snapshot);
+  manifest.current_scope.snapshot_path = alternateSnapshotRelative;
+  manifest.current_scope.snapshot_sha256 = await fileSha256(
+    path.join(projectRoot, alternateSnapshotRelative),
+  );
+  await writeJson(manifestPath, manifest);
+
+  const status = runValidator(["--convergence-status", manifestPath]);
+  assert.equal(status.status, 0, status.stderr);
+  const current = JSON.parse(status.stdout);
+  assert.equal(current.outcome, "indeterminate");
+  assert.equal(current.current, false);
+  const identityBlocker = current.blockers.find(
+    (blocker) => blocker.code === "target-scope-identity-mismatch",
+  );
+  assert.ok(identityBlocker, JSON.stringify(current.blockers, null, 2));
+  assert.match(identityBlocker.message, /snapshot_path/);
+  assert.match(identityBlocker.message, /snapshot_sha256/);
+  const gate = runValidator(["--convergence-gate", manifestPath]);
+  assert.equal(gate.status, 1, `${gate.stdout}\n${gate.stderr}`);
+});

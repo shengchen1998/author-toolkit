@@ -615,6 +615,23 @@ async function computeEvaluation(project, cycle, roots, evaluationId, createdAt)
       code === "empty-manuscript" ? "not_satisfied" : "indeterminate",
     );
   }
+  if (!sameScopeReference(roots.target_scope, project.manifest.current_scope)) {
+    const fields = [
+      "scope_id",
+      "scope_fingerprint",
+      "snapshot_path",
+      "snapshot_sha256",
+    ].filter((field) => roots.target_scope?.[field] !== project.manifest.current_scope?.[field]);
+    block(
+      "target-scope-identity-mismatch",
+      `Target scope reference does not match manifest current_scope: ${fields.join(", ")}.`,
+      "indeterminate",
+      {
+        path: roots.target_scope.snapshot_path,
+        artifact_id: roots.target_scope.scope_id,
+      },
+    );
+  }
 
   const scope = await computation.json(
     {
