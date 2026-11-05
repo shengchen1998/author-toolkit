@@ -2,104 +2,105 @@
 
 ## Project overview
 
-Author Toolkit 3.1.0 is a source-distributed collection of 16 writing skills for Claude Code and Kimi Code, plus Node.js tools for validating and migrating its project contracts. It provides incremental creation and four revision strategies over one shared evidence model:
+Author Toolkit 3.1.0 is a source-distributed collection of 16 writing skills for Claude Code and Kimi Code, plus Node.js tools for validating and migrating writing-project contracts. It provides incremental fiction creation and four revision strategies over one shared evidence model.
 
-- `write-fiction` coordinates author-reviewed creation batches, staging, story-state synchronization, imports, and milestone reviews.
-- `revise-fiction` coordinates whole-book fiction revision.
-- `revise-draft` coordinates revision of the available manuscript without requiring an outline, ending, or whole-book structure audit.
-- `revise-increment` brings added or affected chapters to current-draft revision convergence while applying the evidence-reuse rules to unchanged chapters.
-- `revise-request` applies an author-defined revision to existing content from a full-manuscript base scope that has reached current-draft revision convergence and restores that state for the full-manuscript target scope.
-- Six independent skills (`fiction-workshop`, `character-archetypes`, `story-structure`, `narrative-nonfiction`, `prose-mechanics`, and `avoid-ai-writing`) also work without a shared creation or revision strategy.
+The production runtime is the host coding agent interpreting `skills/*/SKILL.md` files and their references. There is no web application, server, database, compiled frontend, vector store, or long-running local process. Node.js is used for contract tests, JSON Schema and artifact validation, manuscript inventory, and migration from v2 or v3.0 to v3.1.
 
-The production runtime is the host coding agent interpreting `SKILL.md` files and their references. There is no web application, server, database, compiled frontend, vector store, or long-running local process. Node.js is used for contract tests, schema and artifact validation, manuscript inventory, and migration from v2 or v3.0 to v3.1.
+The seven explicit user entries are:
 
-The shared creation and revision workflows support one single-book fiction project per manifest, with Markdown or plain-text manuscripts. English and Chinese are the core workflow languages. Chinese prose uses dedicated sentence, segmentation, grammar, and catalog procedures; Chinese AI-Isms uses a local adapter catalog and never claims to prove AI authorship. Reports record actual language subchecks and partial or skipped coverage truthfully.
+| Skill | Purpose |
+| --- | --- |
+| `ask-author` | Inspect shared state and route the author to an appropriate entry or independent skill. |
+| `setup-author-toolkit` | Register one writing project, deploy shared contracts, and validate or migrate its state. |
+| `write-fiction` | Create or continue a novel through author-reviewed batches, staging, story-state synchronization, imports, and milestone reviews. |
+| `revise-fiction` | Coordinate whole-book revision through Story Bible, structure, character, prose, AI-cleanup, and final-review operations. |
+| `revise-draft` | Revise the available manuscript without requiring an outline, ending, or whole-book structure audit. |
+| `revise-increment` | Bring added or affected chapters to current-draft revision convergence while reusing eligible evidence for unchanged chapters and reviewing the full target scope. |
+| `revise-request` | Apply an author-defined revision of existing content from a full-manuscript base scope that has reached current-draft revision convergence, then restore that state for the full-manuscript target scope. |
 
-## Controlled terminology
+These entries have `disable-model-invocation: true` in their frontmatter. Routers and orchestrators display their exact host commands instead of invoking them through the Skill tool. `author-project`, `author-handoff`, and `author-review` are shared orchestration capabilities, not separate author-selected strategies.
 
-Read [`references/terminology.md`](references/terminology.md) before changing shared workflow wording or contracts, introducing a shared term, or writing report and tracker statuses. Use its approved English terms, fixed Chinese equivalents, operation identifiers, and contract values. Register new shared terms there in the same change; `tests/terminology.test.mjs` checks excluded expressions, operation coverage, schema enum coverage, and terminology pointers.
+The six independent skills are `fiction-workshop`, `character-archetypes`, `story-structure`, `narrative-nonfiction`, `prose-mechanics`, and `avoid-ai-writing`. They work without setup or a shared strategy and retain their standalone output contracts. Every skill directory name must match its frontmatter `name`; `tests/skills.test.mjs` checks the complete inventory and invocation modes.
+
+Shared workflows support one single-book fiction project per manifest with Markdown or plain-text manuscripts. English and Chinese are the core workflow languages. Narrative nonfiction uses the independent `narrative-nonfiction` skill; multi-book manifests and other hosts are outside the supported 3.1 workflows. Chinese prose has dedicated sentence, segmentation, grammar, and catalog procedures. Chinese AI-associated findings describe textual patterns and never establish AI authorship. Reports must record actual language subchecks and partial or skipped coverage truthfully.
 
 ## Technology and configuration
 
-- Development requires Node.js 22 or newer and npm. The generic skills installer documented in the README requires Node.js 22.20 or newer.
-- The package uses native ECMAScript modules (`"type": "module"`) and Node's built-in test runner.
-- `ajv` and `ajv-formats` are the only direct development dependencies. Schemas use JSON Schema draft 2020-12.
-- `package.json` defines the development scripts and Node engine; `package-lock.json` is the npm lockfile.
-- `kimi.plugin.json` exposes `./skills/` to Kimi Code.
-- `.claude-plugin/plugin.json` and `.claude-plugin/marketplace.json` contain Claude Code plugin metadata.
-- Release metadata is not generated from one source. Inspect all four metadata files when changing versions. All four currently say `3.1.0`.
-- There is no build, lint, formatter, coverage-threshold, environment-variable, or secrets configuration in this repository. There are no repository CI workflows or automated deployment scripts.
+- Development requires Node.js 22 or newer and npm. The generic skills installer documented in `README.md` requires Node.js 22.20 or newer.
+- The package uses native ECMAScript modules (`"type": "module"`) and Node's built-in `node:test` runner.
+- `ajv` and `ajv-formats` are the only direct development dependencies. Schemas use JSON Schema draft 2020-12; Ajv runs with `allErrors` and `strict` enabled.
+- `package.json` defines the development scripts and Node engine. `package-lock.json` is the npm lockfile.
+- `kimi.plugin.json` exposes `./skills/` to Kimi Code. `.claude-plugin/plugin.json` and `.claude-plugin/marketplace.json` contain Claude Code plugin metadata.
+- Release metadata is not generated from one source. When changing versions, inspect `package.json`, `kimi.plugin.json`, and both `.claude-plugin` JSON files; all four currently say `3.1.0`.
+- There is no build, lint, formatter, coverage-threshold, environment-variable, or secrets configuration. There are no repository CI workflows or automated deployment scripts.
 
-## Repository layout
+## Repository layout and module boundaries
 
 | Path | Purpose |
 | --- | --- |
 | `skills/*/SKILL.md` | Host-executable skill instructions with YAML frontmatter. |
-| `skills/*/references/` | Detailed craft rules, operation gates, creation recovery, review procedures, and audit instructions loaded by skills as needed. |
+| `skills/*/references/` | Craft rules, operation gates, creation recovery, review procedures, and audit instructions loaded as needed. |
 | `skills/*/assets/` | Project, agent-instruction, report, tracker, handoff, baseline, writing-plan, creation-batch, and story-state templates. |
-| `scripts/validate.mjs` | CLI for schemas, manifests, on-disk project state, Markdown reports and story state, creation and coverage artifacts, review jobs, and workflow fixtures. |
-| `scripts/migrate-v3.mjs` | CLI for migrating a writing project's v2 or v3.0 state to v3.1 and for idempotent v3.1 validation. |
+| `scripts/validate.mjs` | CLI for schemas, manifests, on-disk project state, Markdown reports and story state, creation and coverage artifacts, review jobs, and legacy workflow fixtures. |
+| `scripts/migrate-v3.mjs` | CLI for v2 or v3.0 to v3.1 migration and idempotent v3.1 validation. |
 | `scripts/lib/` | Validation and migration implementation, exported through `index.mjs`. |
-| `references/` | Shared JSON Schemas, controlled workflow terminology, workflow reporting rules, and the vendored-skill adapter. |
-| `examples/` | English and Chinese manuscript/report/tracker fixtures used by tests and default validation. |
+| `references/` | Canonical shared JSON Schemas, controlled terminology, reporting rules, and AI-writing integration documents. |
+| `examples/` | English and Chinese manuscript, report, tracker, and workflow fixtures used by tests and default validation. |
 | `tests/` | Node test files and shared fixture helpers. |
 | `docs/` | Migration guides and the record of repository and host validation. |
 
-The examples under `examples/fiction-revision-en/` and `examples/fiction-revision-zh/` intentionally use legacy v2 manifests and workflow fixtures for compatibility testing. The neutral v3.1 starting point is `skills/author-project/assets/project-template.json`. Do not convert the shipped examples merely to make them look current.
+The main JavaScript boundaries are:
 
-### Skill groups
+- `schemas.mjs` loads the shared schemas and configures Ajv; `manifest.mjs` dispatches v2, v3.0, and v3.1 validation, while `workflow.mjs` retains legacy v2 sequence invariants.
+- `manuscript.mjs` inventories `.md`, `.markdown`, and `.txt` files and excludes registered operational paths, including creation and staging. `project-files.mjs` checks registered files, artifacts, scope hashes, and newly added manuscript files.
+- `markdown.mjs` extracts and validates the single JSON report envelope and language/evidence coverage. `tracker.mjs` validates living finding and approval tables; `approval-paths.mjs` parses paths containing commas, pipes, and backticks.
+- `artifacts.mjs` validates story state, creation batches, commit journals, coverage units and indexes, and coverage-reuse semantics.
+- `review.mjs` validates review-job source ranges, chunk/volume/book completion, fresh-reader sequencing, and reader-state continuity.
+- `migration.mjs` performs preflight checks, preserves snapshots, creates the creation directory skeleton, and writes manifest and tracker changes atomically.
 
-The seven explicit user entry points are `ask-author`, `setup-author-toolkit`, `write-fiction`, `revise-fiction`, `revise-draft`, `revise-increment`, and `revise-request`. Their frontmatter includes `disable-model-invocation: true`; routers and orchestrators show their host commands rather than invoking them through the Skill tool.
+The examples under `examples/fiction-revision-en/` and `examples/fiction-revision-zh/` intentionally retain legacy v2 manifests and workflow fixtures for compatibility testing. Do not migrate them in place. The neutral v3.1 starting point is `skills/author-project/assets/project-template.json`.
 
-`author-project`, `author-handoff`, and `author-review` are shared orchestration capabilities. The six independent writing skills retain standalone behavior. Every skill directory name must match its frontmatter `name`; `tests/skills.test.mjs` checks the complete skill inventory and invocation modes.
+## Runtime architecture and shared state
 
-### JavaScript modules
+All five creation and revision strategies require the same user-invoked `setup-author-toolkit`. Setup registers existing paths without imposing a manuscript layout and deploys every shared contract from `skills/setup-author-toolkit/assets/references/` to `<project-root>/.author-toolkit/references/`. It creates missing files and preserves matching files. A mismatched existing file produces `reference-version-conflict` and blocks shared work; replacement requires separate exact-file author approval and preservation beneath `<paths.backups>/reference-updates/<UTC-stamp>/`.
 
-- `scripts/lib/schemas.mjs` loads the shared schemas and configures Ajv.
-- `scripts/lib/manifest.mjs` dispatches v2, v3.0, and v3.1 manifest validation; `workflow.mjs` retains legacy v2 sequence invariants.
-- `scripts/lib/manuscript.mjs` inventories `.md`, `.markdown`, and `.txt` files and excludes registered operational paths, including the creation root and staging.
-- `scripts/lib/project-files.mjs` checks registered paths, artifacts, scope hashes, and newly added manuscript files.
-- `scripts/lib/markdown.mjs` extracts and validates the single JSON report envelope and language/evidence coverage.
-- `scripts/lib/artifacts.mjs` validates story state, creation batches, commit journals, coverage units and indexes, and coverage-reuse semantics.
-- `scripts/lib/review.mjs` validates review-job source ranges, chunk/volume/book completion, fresh-reader sequence, and reader-state continuity.
-- `scripts/lib/tracker.mjs` validates living finding and approval tables; `approval-paths.mjs` handles paths containing commas, pipes, and backticks.
-- `scripts/lib/migration.mjs` performs preflight checks, preserves migration snapshots, creates the creation directory skeleton, and writes manifest/tracker changes atomically.
+For a new writing project, setup also copies `skills/setup-author-toolkit/assets/AGENTS.md` to the project root only when no `AGENTS.md` exists. That template routes work inside a writing project; this repository-root `AGENTS.md` documents toolkit development. Setup preserves existing agent instructions.
 
-## Runtime architecture and state contracts
+Every shared `read`, `validate`, and `status` operation through `author-project` checks all packaged references before using project state. Missing files or hash mismatches route the author through setup; a valid v3 manifest alone does not prove reference deployment. Each strategy then runs one evidence-gated operation at a time and stops at its author gate. Exact sequences, delegation, and gates live in the strategies' `SKILL.md` and `references/stage-gates.md` files. At a stable operation gate, the author can switch among all five strategies over the same state without another migration or a second project tree.
 
-All five strategies require the same user-invoked `setup-author-toolkit`. Setup registers existing paths without imposing a manuscript layout and deploys the shared contracts from `skills/setup-author-toolkit/assets/references/` to `<project-root>/.author-toolkit/references/`. It creates missing files, preserves matching files, and blocks shared workflows on a `reference-version-conflict`. Replacing a mismatched reference requires separate author approval and preservation of the existing file beneath `<paths.backups>/reference-updates/<UTC-stamp>/`. Every shared workflow `read`, `validate`, and `status` through `author-project` checks all packaged references first. Missing files or hash mismatches stop shared work and route the author through setup; a valid v3 manifest alone does not prove reference deployment. `write-fiction`, `revise-fiction`, `revise-draft`, `revise-increment`, and `revise-request` then execute one evidence-gated operation at a time and stop for author review at operation gates. Their exact sequences, delegation rules, and gates live in their `SKILL.md` and `references/stage-gates.md` files. At any stable operation gate, the author can switch among all five strategies over the same state without completing another strategy's full sequence.
+The canonical manifest is `<project-root>/.author-toolkit/project.json`. A v3.1 manifest stores registration, `manuscript_root`, seven operational paths, and optional `current_scope` and `pending_action`. It has no `workflow.name`, `current_stage`, `stages`, or shared-reference path state. New and migrated manifests use schema 3.1.0. The runtime still reads valid v3.0 manifests; creation requires the separately confirmed additive `upgrade-v31`. Recognize v2 only for setup migration. `author-project` owns state, paths, validation, backups, commits, and restores; creative content belongs to the writing skills.
 
-The canonical manifest is `<project-root>/.author-toolkit/project.json`. A v3.1 manifest stores registration, `manuscript_root`, seven operational paths, and optional `current_scope` and `pending_action`. It has no `workflow.name`, `current_stage`, `stages`, or shared-reference path state. New and migrated manifests use schema 3.1.0. The runtime still reads valid v3.0 manifests; creation work requires the confirmed additive `upgrade-v31`. Recognize v2 only for setup migration. `author-project` owns state and path operations; creative content belongs to the writing skills.
-
-Resolve operational files through the manifest's registered `paths`, including custom backup, handoff, report, and creation locations. Resolve shared runtime contracts from the fixed `.author-toolkit/references/` directory beneath the project root; the `.author-toolkit` operational root already excludes them from manuscript inventory. The shared artifacts are the Story Bible, audit tracker, reports, sessions, backups, handoffs, and creation state. New v3.1 manifests default to `.author-toolkit/backups/`, `.author-toolkit/handoffs/`, and `.author-toolkit/creation/`; existing projects may use other registered locations. Switching strategies reuses this state and does not create a second project tree or run a migration. The six independent skills keep their standalone finding and AI-writing contracts in their own deployed skill directories and do not require setup.
+Resolve operational files through the manifest's registered `paths`, including custom report, backup, handoff, and creation locations. Shared runtime contracts always resolve from the fixed `.author-toolkit/references/` directory. Shared artifacts include the Story Bible, audit tracker, reports, sessions, backups, handoffs, and creation state. New v3.1 manifests default backups, handoffs, and creation to locations beneath `.author-toolkit/`; existing projects may retain other registered locations.
 
 The default creation root contains:
 
-- `state/current.md`, `state/chapters/`, and `state/volumes/` for living story state;
+- `state/current.md`, `state/chapters/`, and `state/volumes/` for living story state keyed to source hashes;
 - `batches/` for immutable accepted creation batches and resumable commit journals;
 - `staging/<batch-id>/` for proposed, rejected, and superseded text outside manuscript inventory.
 
-The Story Bible records author intent; accepted manuscript text establishes observed facts; chapter, volume, and current story state are derived artifacts keyed to source hashes. Keep intent and observed facts visible when they conflict and request an author decision. Rejected staging never enters current story state or manuscript scope. Structural validation of derived state does not prove semantic extraction completeness.
+The Story Bible records author intent; accepted manuscript text establishes observed facts. Keep both visible when they conflict. Rejected staging never enters story state or manuscript scope. Structural validation of derived story state does not prove semantic extraction completeness.
 
-The creation operations are `creation-baseline`, `writing-plan`, `chapter-creation`, `chapter-review`, `creation-commit`, `creation-import`, and `milestone-review`. The repeating creation loop is `writing-plan`, `chapter-creation`, `chapter-review`, and `creation-commit`. AI, author-written, and mixed batches share the same gates and default to one chapter per plan. Keep one active creation batch per book and one shared pending action. Creation operations remain outside report v2 `stage` and the legacy revision-only stage sequence.
+The creation operations are `creation-baseline`, `writing-plan`, `chapter-creation`, `chapter-review`, `creation-commit`, `creation-import`, and `milestone-review`. The repeating loop is `writing-plan`, `chapter-creation`, `chapter-review`, and `creation-commit`. AI, author-written, and mixed batches share the same gates and default to one chapter per plan. Keep one active creation batch per book and one shared pending action. Creation operations remain outside report v2 `stage` and the legacy revision-only stage sequence. Load `skills/write-fiction/references/creation-state.md` before changing creation artifacts, fingerprints, commits, restores, imports, or recovery behavior.
 
-Before creation, the author approves the plan and exact write batch, including paths, actions, context versions, and input hashes. After staging, one creation acceptance covers the exact manuscript content, story-state differences, and resulting ordered publication scope, with manuscript and scope approvals recorded separately. `creation-commit` follows acceptance without another gate. A dependency fingerprint determines whether staged content remains current; unrelated scope growth requires a refreshed publication scope but does not alone stale the staged text. `creation-import` reconciles external additions, modifications, deletions, and reordering with author confirmation.
+Before creation, the author approves the plan and exact write batch, including paths, actions, context versions, and input hashes. After staging, creation acceptance covers the exact manuscript content, story-state differences, and resulting ordered publication scope, with manuscript and scope approvals recorded separately. `creation-commit` follows acceptance without another gate. A dependency fingerprint determines whether staged content remains current; unrelated scope growth requires a refreshed publication scope but does not alone stale staged text. `creation-import` reconciles external additions, modifications, deletions, and reordering with author confirmation.
 
-Whole-report evidence reuse requires matching operation, `scope_id`, input versions, requested coverage and subchecks, and dependency state. Changed inputs or dependencies make affected evidence stale; a schema-valid old report is not necessarily current evidence. Scope membership, order, or exclusion changes require a new author-confirmed scope. Pending actions describe interrupted or awaiting work, not permission to resume a manuscript write.
+### Evidence, reports, and review
 
-Workflow reports are immutable Markdown files with human-readable coverage and exactly one report v2 JSON envelope. Reruns create new files. The author decision loop, stable finding identity, tracker statuses, stale propagation, coverage reuse, current-draft revision convergence, and approval history are defined in `skills/revise-fiction/references/state-and-findings.md`; that file is the single source for these rules. Shared revision and diagnostic work uses finding v2 and report v2. Creation batches, commit journals, story state, coverage artifacts, review jobs, and reader state use separate artifact contracts. Standalone skills retain finding v1 and do not modify shared project state unless the author explicitly incorporates their output.
+Read `references/terminology.md` before changing shared workflow wording or contracts, introducing a shared term, or writing report and tracker statuses. Use its approved English terms, fixed Chinese equivalents, operation identifiers, and exact contract values. Register new shared terms there in the same change; `tests/terminology.test.mjs` checks terminology usage and coverage.
 
-Coverage units and the living coverage index live beneath the registered reports path. Reuse only full local coverage units whose source-report identity, operation, paths and hashes, requested subchecks, and dependencies match. Keep the unit's original scope for provenance and use the target scope for the composed index and synthesis. Reevaluate affected volume, phase, current-scope, and whole-book synthesis whenever text, membership, order, dependencies, or child coverage changes. Local summaries never extend an old whole-book synthesis into a new scope.
+Whole-report evidence reuse requires matching operation, `scope_id`, input versions, requested coverage and subchecks, and dependency state. Changed inputs or dependencies make affected evidence stale; a schema-valid old report is not necessarily current evidence. Scope membership, order, or exclusion changes require a new author-confirmed scope. `pending_action` describes interrupted or awaiting work, not permission to resume a manuscript write.
 
-`revise-increment` uses creation batches to locate changes, then derives a work set from added, affected, stale, or non-reusable paths. It reuses the current-draft operations and report v2 `stage` values without adding manifest or schema state. Edits stay within approved work-set batches, while full-target syntheses and the full-target current-scope review cover the full expanded target scope. Accepted review findings trigger another affected revision and full-target current-scope review before current-draft revision convergence can be claimed.
+Workflow reports are immutable Markdown files with human-readable coverage and exactly one report v2 JSON envelope. Reruns create new files. Shared revision and diagnostic work uses finding v2 and report v2. Creation batches, commit journals, story state, coverage artifacts, review jobs, and reader state use separate artifact contracts. Standalone skills retain finding v1 and leave shared state unchanged unless the author explicitly incorporates their output.
 
-`revise-request` starts from a full-manuscript base scope that has reached current-draft revision convergence and an author-defined revision of existing content. Its request set guides the craft work, while its work set grows with actual stale evidence and missing reusable full local coverage units. It preserves the applicable coverage required by the base scope's current-draft revision convergence evidence, recomposes affected full-target syntheses, and requires a new full-target current-scope review after manuscript changes. Request completion and current-draft revision convergence for the full-manuscript target scope are separate completion states. On resume, an active request continues from session and plan records even though its own edits staled the historical base scope. The entry adds no manifest or schema state.
+The author decision loop, stable finding identity, tracker statuses, stale propagation, evidence reuse, current-draft revision convergence, and approval history are defined in `skills/revise-fiction/references/state-and-findings.md`; that file is the single source for these rules. Read it before writing a shared report or changing finding or approval status. `references/workflow-reporting.md` points to that file, not the reverse.
 
-`author-review` reads actual manuscript chunks, then volume or story-phase syntheses, then a book synthesis for final review. Intent and standards may run in parallel. Fresh-reader review is sequential within one logical reviewer and carries only that reviewer's isolated reader-state. Summaries and story state cannot replace manuscript reading. Claim `full` only for actual target-scope coverage.
+Coverage units and the living coverage index live beneath the registered reports path. Reuse only full local coverage units whose source-report identity, operation, paths and hashes, requested subchecks, and dependencies match. Keep the unit's original scope for provenance and use the target scope for the composed index and synthesis. Reevaluate affected volume, phase, current-scope, and whole-book syntheses whenever text, membership, order, dependencies, or child coverage changes. Local summaries never extend an old synthesis into a new scope.
+
+`author-review` reads actual manuscript chunks, then volume or story-phase syntheses, then a book synthesis for final review. Intent and standards may run in parallel. Fresh-reader review is sequential within one logical reviewer and carries only that reviewer's isolated reader state. Summaries and story state cannot replace manuscript reading. Claim `full` only for actual target-scope coverage.
 
 ## Setup, build, and test commands
 
-Install the locked development dependencies from the repository root:
+Install locked development dependencies from the repository root:
 
 ```bash
 npm ci
@@ -112,7 +113,7 @@ npm test
 npm run validate
 ```
 
-`npm test` runs every `tests/*.test.mjs` file using `node:test`. `npm run validate` checks all schema definitions, both localized legacy examples, their reports and on-disk state, and workflow sequences.
+`npm test` runs every `tests/*.test.mjs` file using `node:test`. `npm run validate` checks all schema definitions, both localized legacy examples, their reports and on-disk state, and workflow fixtures. Run both commands before finishing changes to scripts, schemas, skills, templates, or fixtures.
 
 During development, run a focused test file or test-name pattern:
 
@@ -121,31 +122,7 @@ node --test tests/v31.test.mjs
 node --test --test-name-pattern="migration" tests/migration.test.mjs
 ```
 
-Run the full test and validation commands before finishing changes to scripts, schemas, skills, templates, or fixtures.
-
-### Test organization and conventions
-
-- `contracts.test.mjs` covers finding v1/v2, legacy project and report contracts, paths, and Markdown envelopes.
-- `v3.test.mjs` covers neutral v3.0 state, scopes, pending actions, approvals, and evidence semantics.
-- `v31.test.mjs` covers v3.1 creation operations and paths, v3.0 compatibility, scope currency, and additive upgrades.
-- `creation.test.mjs` covers story state, creation batches, interrupted commits, coverage-unit reuse, and coverage indexes.
-- `review-job.test.mjs` covers chunk-to-volume/phase-to-book completion and resumable fresh-reader sequencing.
-- `scale.test.mjs` checks structural handling of a million-Chinese-character inventory without importing creation state as manuscript; it is not creative-quality evidence.
-- `workflow.test.mjs` covers legacy v2 sequencing, stale work, resume, and overrides.
-- `project-files.test.mjs` covers on-disk paths, trackers, and project-root resolution.
-- `migration.test.mjs` exercises the real migration CLI against copied projects, including direct v2-to-v3.1 migration, idempotence, and protected-file preservation.
-- `cli.test.mjs` exercises core validator exit statuses and diagnostics; `cli-artifacts.test.mjs` covers repeated new-artifact options and their exit statuses.
-- `skills.test.mjs` checks skill metadata and cross-file orchestration contracts.
-- `deployment.test.mjs` checks setup reference-payload mirrors, standalone skill-local contracts, repository-root reference independence, project-local reference coverage, and safe setup replacement rules.
-- `terminology.test.mjs` checks controlled bilingual terms, excluded expressions, operation definitions, current shared schema enums, and terminology pointers.
-- `chinese-prose.test.mjs` checks all 19 Chinese audit procedures and their engine-coverage boundaries.
-- `chinese-ai-writing.test.mjs` checks the local Chinese AI-writing catalog, language routing, provenance limits, and vendored-skill isolation.
-- `chinese-writing-skills.test.mjs` checks Chinese line-editing, review, nonfiction, and length-configuration pointers.
-- `approval-paths.test.mjs` covers special-character parsing in approval paths.
-
-Tests use `node:assert/strict`, shared readers in `tests/helpers.mjs`, and copied fixtures for writes. Filesystem and CLI tests create temporary directories beneath `.test-output/` and register cleanup with `t.after`. `.test-output/` and `tests/.tmp/` are ignored; keep temporary projects and generated output out of commits. There is no configured coverage threshold.
-
-### Validate individual artifacts
+Validate individual artifacts with the installed CLI:
 
 ```bash
 node scripts/validate.mjs --help
@@ -154,7 +131,7 @@ node scripts/validate.mjs --report /path/to/report.md
 node scripts/validate.mjs --workflow-fixture /path/to/fixture.json
 ```
 
-Use the installed `--help` output for the creation-batch, commit-journal, story-state, coverage, and review-job option names. Options may be repeated or combined where documented. For a v3 manifest with `current_scope`, manifest validation also checks registered files, the tracker, and current manuscript hashes. Validation failures exit nonzero; argument or usage errors exit with status 2.
+The help output is the source for creation-batch, commit-journal, story-state, coverage, review-job, and reader-state option names. Options may be repeated or combined where documented. Manifest validation also checks registered files and the tracker; for v3 with `current_scope`, it checks current manuscript hashes. Validation failures exit nonzero, and argument or usage errors exit with status 2.
 
 Migrate an actual writing project only when migration is intended:
 
@@ -162,28 +139,42 @@ Migrate an actual writing project only when migration is intended:
 node /path/to/author-toolkit/scripts/migrate-v3.mjs --project-root /path/to/writing-project
 ```
 
-For development, run migration against a disposable copy as the tests do. Migration converts v2 or v3.0 to v3.1 and creates `.author-toolkit/migrations/<stamp>-v2-v3/` or `.author-toolkit/migrations/<stamp>-v3_0-v3_1/`. It preserves manuscript, report, creative evidence, and backup contents. Repeating it against valid v3.1 state is idempotent and creates no snapshot.
+For development, run migration against a disposable copy. Migration converts v2 or v3.0 directly to v3.1 and creates `.author-toolkit/migrations/<stamp>-v2-v3/` or `.author-toolkit/migrations/<stamp>-v3_0-v3_1/`. It preserves manuscripts, reports, creative evidence, and backups. Repeating it against valid v3.1 state is idempotent and creates no snapshot. See `docs/MIGRATION-3.1.md` for conversion details and compatibility limits.
+
+## Testing strategy and conventions
+
+Tests use `node:assert/strict`, shared readers in `tests/helpers.mjs`, and copied fixtures for writes. Filesystem and CLI tests create temporary directories beneath `.test-output/` and register cleanup with `t.after`. `.test-output/` and `tests/.tmp/` are ignored; keep temporary projects and generated output out of commits. There is no configured coverage threshold.
+
+The suite divides into these contract areas:
+
+- Finding, report, manifest, path, tracker, and Markdown contracts, including v2 compatibility and v3.0/v3.1 scopes, approvals, evidence semantics, creation operations, and additive upgrades.
+- Creation state, interrupted commits, coverage reuse, review jobs, fresh-reader ordering, on-disk files, scope currency, migration, and validator CLI behavior.
+- Skill metadata, cross-file orchestration, setup and standalone deployment mirrors, controlled terminology, and special-character approval paths.
+- Chinese prose, AI-writing, line-editing, review, nonfiction, and length-configuration instructions. These are static language-support contracts, not model-run accuracy evidence.
+- `scale.test.mjs` inventories a synthetic million-Chinese-character manuscript and verifies creation-state exclusion and new-file detection. It is not creative-quality evidence.
+
+`npm test` and `npm run validate` verify repository contracts only. They do not prove host skill discovery, installation, a complete creative run in Claude Code or Kimi Code, or creative quality. `docs/VALIDATION.md` separates current 3.1 checks and limited host evidence from historical 3.0 and 2.0 records and unverified paths. Update that record when performing real host validation, and never present fixture reports or scale fixtures as model-run evidence.
 
 ## Code and documentation style
 
-- JavaScript uses two-space indentation, double quotes, semicolons, named ESM imports/exports, and `node:` prefixes for built-ins. Match the surrounding use of `node:fs/promises`, `node:path`, and URL-based repository path resolution.
+- JavaScript uses two-space indentation, double quotes, semicolons, named ESM imports/exports, and `node:` prefixes for built-ins. Match surrounding use of `node:fs/promises`, `node:path`, and URL-based repository path resolution.
 - JSON uses two-space indentation and a trailing newline. Keep schema `additionalProperties` and legacy compatibility behavior deliberate; validators are closed contracts, not permissive examples.
-- Skill documentation and code are primarily English. Keep user-facing workflow changes synchronized across the relevant skill references, `README.md`, `README.zh-CN.md`, schemas, examples, and tests. Use `references/terminology.md` for shared terms and exact contract values.
-- Preserve exact relative Markdown links from each skill's location. Avoid introducing reference cycles; `references/workflow-reporting.md` points to `state-and-findings.md`, not the reverse.
-- `skills/avoid-ai-writing/` is vendored upstream content with its own license and recorded commit in `ATTRIBUTION.md`. Keep Author Toolkit integration and the Chinese candidate catalog in `references/avoid-ai-writing-adapter.md` and `references/avoid-ai-writing-zh-CN.md`; the test suite checks that local integration text is not added to the upstream skill. Chinese standalone AI-Isms routes through `prose-mechanics`, leaving the upstream standalone skill English-specific.
-- Workflow report headings, tracker columns, and Markdown status values remain English machine contracts for every project language. Chinese explanations, finding text, quotations, and manuscript paths are supported as content. Do not add localized aliases for these contract labels or statuses; keep parsers, templates, and tests aligned on the English forms.
-- No automated formatter or linter is configured, so follow the existing file's conventions rather than introducing a new style tool incidentally.
+- Skill documentation and code are primarily English. Keep user-facing workflow changes synchronized across relevant skill references, `README.md`, `README.zh-CN.md`, schemas, examples, and tests.
+- Workflow report headings, tracker columns, and Markdown status values remain English machine contracts for every project language. Chinese explanations, finding text, quotations, and manuscript paths are supported as content. Keep parsers, templates, and tests aligned on the English forms rather than adding localized aliases.
+- Preserve exact relative Markdown links from each skill's location. Installed skills must not depend on the repository-root `references/` directory.
+- `skills/avoid-ai-writing/` is vendored upstream content with its own license and recorded commit in `ATTRIBUTION.md`. Keep local integration and the Chinese candidate catalog in `references/avoid-ai-writing-adapter.md` and `references/avoid-ai-writing-zh-CN.md`; tests prevent local integration text from entering the upstream skill. Standalone Chinese AI-Isms routes through `prose-mechanics`, while the upstream standalone skill remains English-specific.
+- No automated formatter or linter is configured, so follow the existing file's conventions instead of introducing a style tool incidentally.
 
 ## Safety and data integrity
 
 - Stored project paths must be portable project-relative paths with forward slashes. Reject absolute paths, home expansion, URI schemes, backslashes, and `..` segments. Resolve registered paths against the selected project root. Apply the same rules to `paths.creation` and exclude the creation root, including staging, from manuscript inventory.
-- Before a manuscript edit, require explicit current author approval for the exact operation, scope, paths, actions, and input versions. Recompute SHA-256 hashes immediately before writing. A mismatch stops the write.
+- Before a manuscript edit, require explicit current author approval for the exact operation, scope, paths, actions, and input versions. Back up every existing affected file, recompute SHA-256 hashes immediately before writing, and stop on any mismatch.
 - Before creation publication, require every create target to be absent and back up every existing modify, delete, or reorder target. Record expected absence with a null input hash rather than inventing an original backup.
-- Write the creation commit journal before touching manuscript content. Publish each file through a verified temporary sibling and atomic rename, and update the journal after every transition. A journal coordinates files; it does not make a multi-file batch one filesystem transaction. Interrupted publication stops pending an explicit author decision.
+- Write the creation commit journal before touching manuscript content. Publish each file through a verified temporary sibling and atomic rename, updating the journal after every transition. The journal coordinates files; it does not make a multi-file batch one filesystem transaction. Interrupted publication stops pending an explicit author decision.
 - Restores require separate explicit approval naming the backup or creation commit and exact files, plus a safety backup of current content. Move files created by the restored batch into the safety backup before removing them from the manuscript. Edit or creation approval is not restore approval.
-- Use `creation-import` to reconcile author-added, modified, deleted, or reordered manuscript files. Do not silently refresh scope hashes, derived story state, or stale evidence. Report changed input and reconcile it with the author.
+- Use `creation-import` to reconcile author-added, modified, deleted, or reordered manuscript files. Report changed input and reconcile it with the author instead of silently refreshing scope hashes, story state, or stale evidence.
 - Preserve historical reports, findings, approvals, creation batches, commit journals, backups, and migration snapshots. Record later decisions in living state, the tracker, and new reports rather than rewriting history.
-- Handoffs contain paths, IDs, approved decision summaries, and next actions, not manuscript excerpts, Story Bible content, draft baselines, reader state, or full findings.
+- Handoffs contain paths, IDs, approved decision summaries, and next actions, not manuscript excerpts, Story Bible content, draft baselines, reader-state content, or full findings.
 - Git is optional for writing projects and is not a substitute for toolkit backups or commit journals. Setup and migration do not alter Git configuration or `.gitignore`.
 - The repository has no authentication or secret-management flow. Host credentials and plugin permissions are external to these scripts.
 
@@ -197,6 +188,4 @@ The repository is installed directly as source; there is no release bundle to bu
 
 Updates are manual through the host or `npx skills check` and `npx skills update`. No CI/CD or publishing workflow is present.
 
-The generic installer deploys each skill directory, including the setup skill's shared-reference payload and each independent skill's local contracts. The repository-root `references/` directory is the canonical development source, not a runtime dependency of installed skills. Setup deploys a matching project-local copy into `.author-toolkit/references/`; `tests/deployment.test.mjs` checks payload and standalone mirrors, reference independence, project-local coverage, and replacement safety.
-
-`npm test` and `npm run validate` verify repository contracts only; they do not prove skill discovery, installation, a complete creative run in Claude Code or Kimi Code, or creative quality on a million-character manuscript. `docs/VALIDATION.md` distinguishes current 3.1 repository checks from historical 3.0 and 2.0 evidence and unverified host paths. Update that record when performing real host validation, and do not present fixture reports or scale fixtures as model-run evidence.
+The generic installer deploys each skill directory, including the setup skill's shared-reference payload and each independent skill's local contracts. The repository-root `references/` directory is the canonical development source, not a runtime dependency of installed skills. Keep it byte-identical to `skills/setup-author-toolkit/assets/references/`; keep standalone finding schemas and the `prose-mechanics` AI-writing adapter mirrors synchronized as well. Setup deploys the shared payload into each writing project. `tests/deployment.test.mjs` checks these mirrors, repository-root reference independence, project-local reference coverage, and safe replacement rules.
