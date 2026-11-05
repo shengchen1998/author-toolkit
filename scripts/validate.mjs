@@ -13,6 +13,7 @@ import {
   validateNoEditSkip,
   validateRequestedPass,
   validateReviewGroup,
+  validateRevisionExecution,
   validateSemanticAttestation,
   validateCoverageIndex,
   validateCoverageUnit,
@@ -52,6 +53,7 @@ const artifactTypes = [
     validate: validateConvergenceCycle,
   },
   { key: "requestedPasses", option: "--requested-pass", validate: validateRequestedPass },
+  { key: "revisionExecutions", option: "--revision-execution", validate: validateRevisionExecution },
   { key: "noEditSkips", option: "--no-edit-skip", validate: validateNoEditSkip },
   { key: "reviewGroups", option: "--review-group", validate: validateReviewGroup },
   {
@@ -89,7 +91,7 @@ function usage() {
   node scripts/validate.mjs [--manifest FILE] [--report FILE] [--workflow-fixture FILE]...
   node scripts/validate.mjs [--scope-snapshot FILE] [--inventory-snapshot FILE]...
   node scripts/validate.mjs [--convergence-cycle FILE] [--requested-pass FILE]...
-  node scripts/validate.mjs [--no-edit-skip FILE] [--review-group FILE]...
+  node scripts/validate.mjs [--revision-execution FILE] [--no-edit-skip FILE] [--review-group FILE]...
   node scripts/validate.mjs [--semantic-attestation FILE] [--convergence-evaluation FILE]...
   node scripts/validate.mjs --convergence-status MANIFEST
   node scripts/validate.mjs --convergence-gate MANIFEST

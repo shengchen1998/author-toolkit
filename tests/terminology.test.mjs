@@ -183,6 +183,7 @@ test("controlled terminology covers every current shared schema enum", async () 
     "review-group-schema.json",
     "semantic-attestation-schema.json",
     "convergence-evaluation-schema.json",
+    "revision-execution-schema.json",
     "report-schema-v2.json",
     "finding-schema-v2.json",
     "coverage-unit-schema.json",

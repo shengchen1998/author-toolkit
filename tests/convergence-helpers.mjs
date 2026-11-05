@@ -589,21 +589,23 @@ export async function createNoEditEvidence(projectRoot, options = {}) {
   };
   if ((options.findings ?? []).length > 0) {
     const trackerPath = path.join(projectRoot, "audit-tracker.md");
-    const tracker = await readFile(trackerPath, "utf8");
+    let tracker = await readFile(trackerPath, "utf8");
     const separator = "|---|---|---|---|---|---|---|---|\n";
-    const index = tracker.indexOf(separator, tracker.indexOf("## Findings"));
-    const rows = options.findings.map((finding) => {
+    for (const finding of options.findings) {
       const decision = options.findingStatuses?.[finding.id] ?? {
         status: "deferred",
         reason: "Author deferred the finding with its consequence recorded.",
       };
-      return `| ${finding.id} | diagnostics | narrative | manuscript/chapter-001.md | ${decision.status} | reports/diagnostics/${passId}-local.md | ${timestamp} | ${decision.reason} |\n`;
-    }).join("");
-    await writeFile(
-      trackerPath,
-      tracker.slice(0, index + separator.length) + rows + tracker.slice(index + separator.length),
-      "utf8",
-    );
+      const row = `| ${finding.id} | diagnostics | narrative | manuscript/chapter-001.md | ${decision.status} | reports/diagnostics/${passId}-local.md | ${timestamp} | ${decision.reason} |\n`;
+      const existing = new RegExp(`^\\| ${finding.id} \\|.*\\|$`, "m");
+      if (existing.test(tracker)) {
+        tracker = tracker.replace(existing, row.trimEnd());
+      } else {
+        const index = tracker.indexOf(separator, tracker.indexOf("## Findings"));
+        tracker = tracker.slice(0, index + separator.length) + row + tracker.slice(index + separator.length);
+      }
+    }
+    await writeFile(trackerPath, tracker, "utf8");
   }
 
   return {

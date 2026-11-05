@@ -8,6 +8,7 @@
 - Relevant Story Bible or draft-baseline versions:
 - Manuscript scope and exclusions:
 - Author approval ID and scope:
+- Revision execution record references (execution ID, path, SHA-256, and `prepared` or `verified` status):
 
 ## Finding actions
 

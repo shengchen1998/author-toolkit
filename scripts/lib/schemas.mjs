@@ -22,6 +22,7 @@ const noEditSkipSchema = readSchema("no-edit-skip-schema.json");
 const reviewGroupSchema = readSchema("review-group-schema.json");
 const semanticAttestationSchema = readSchema("semantic-attestation-schema.json");
 const convergenceEvaluationSchema = readSchema("convergence-evaluation-schema.json");
+const revisionExecutionSchema = readSchema("revision-execution-schema.json");
 const reportSchema = readSchema("report-schema-v2.json");
 const storyStateSchema = readSchema("story-state-schema.json");
 const creationBatchSchema = readSchema("creation-batch-schema.json");
@@ -48,6 +49,7 @@ ajv.addSchema(noEditSkipSchema);
 ajv.addSchema(reviewGroupSchema);
 ajv.addSchema(semanticAttestationSchema);
 ajv.addSchema(convergenceEvaluationSchema);
+ajv.addSchema(revisionExecutionSchema);
 ajv.addSchema(reportSchema);
 ajv.addSchema(storyStateSchema);
 ajv.addSchema(creationBatchSchema);
@@ -72,6 +74,7 @@ const noEditSkipValidator = ajv.getSchema("no-edit-skip-schema.json");
 const reviewGroupValidator = ajv.getSchema("review-group-schema.json");
 const semanticAttestationValidator = ajv.getSchema("semantic-attestation-schema.json");
 const convergenceEvaluationValidator = ajv.getSchema("convergence-evaluation-schema.json");
+const revisionExecutionValidator = ajv.getSchema("revision-execution-schema.json");
 const reportValidator = ajv.getSchema("report-schema-v2.json");
 const storyStateValidator = ajv.getSchema("story-state-schema.json");
 const creationBatchValidator = ajv.getSchema("creation-batch-schema.json");
@@ -145,6 +148,10 @@ export function validateConvergenceEvaluationSchema(value) {
   return evaluate(convergenceEvaluationValidator, value);
 }
 
+export function validateRevisionExecutionSchema(value) {
+  return evaluate(revisionExecutionValidator, value);
+}
+
 export function validateReportEnvelope(value) {
   return evaluate(reportValidator, value);
 }
@@ -199,6 +206,7 @@ export function validateSchemaDefinitions() {
     ["review-group-schema.json", reviewGroupSchema],
     ["semantic-attestation-schema.json", semanticAttestationSchema],
     ["convergence-evaluation-schema.json", convergenceEvaluationSchema],
+    ["revision-execution-schema.json", revisionExecutionSchema],
     ["report-schema-v2.json", reportSchema],
     ["story-state-schema.json", storyStateSchema],
     ["creation-batch-schema.json", creationBatchSchema],
