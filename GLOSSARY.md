@@ -13,7 +13,7 @@ The authoritative cross-entry lifecycle connecting an initial full-manuscript co
 _Avoid_: Strategy, operation, requested pass, pending action
 
 **Bootstrap**:
-The explicitly marked first-time creation exception for an empty manuscript with no starting scope. It establishes the first nonempty manuscript and initial evaluation rather than assuming an empty starting point has reached current-draft revision convergence.
+The explicitly marked first-time creation exception for an empty manuscript with no starting scope. Its first nonempty publication resumes the same cycle through `revise-draft` and establishes the initial full-manuscript evaluation rather than assuming an empty starting point has reached current-draft revision convergence or routing to `revise-increment`.
 
 **Starting scope**:
 The immutable full-manuscript scope verified as having reached current-draft revision convergence before a cycle changes the manuscript. Request base scope and increment previous scope are strategy-specific names for this role.

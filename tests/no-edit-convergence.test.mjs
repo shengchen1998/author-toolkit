@@ -7,6 +7,7 @@ import test from "node:test";
 import { recordScope } from "../scripts/lib/index.mjs";
 import {
   createConvergenceProject,
+  createFirstPublicationArtifacts,
   createNoEditEvidence,
   currentScopeReference,
   fileSha256,
@@ -54,6 +55,7 @@ async function establishNoEditEvaluation(t, { evidenceOptions = {}, complete = f
     },
     now: new Date(timestamp),
   });
+  const firstPublication = await createFirstPublicationArtifacts(projectRoot);
   const evidence = await createNoEditEvidence(projectRoot, evidenceOptions);
   const transitioned = await runInput(projectRoot, "transition-cycle", {
     cycle_id: "cycle-bootstrap-001",
@@ -66,6 +68,7 @@ async function establishNoEditEvaluation(t, { evidenceOptions = {}, complete = f
     target_scope: evidence.scopeReference,
     requested_pass: evidence.passReference,
     related_artifacts: {
+      ...firstPublication.relatedArtifacts,
       review_groups: [evidence.reviewGroupReference],
       reviews: evidence.reviewJobs.map(({ reference }) => reference),
       no_edit_skips: [evidence.noEditReference],
@@ -132,6 +135,7 @@ test("a no-edit full-manuscript pass reaches satisfied and completes after a fre
     },
     now: new Date(timestamp),
   });
+  const firstPublication = await createFirstPublicationArtifacts(projectRoot);
   const evidence = await createNoEditEvidence(projectRoot);
   const transition = await runInput(projectRoot, "transition-cycle", {
     cycle_id: "cycle-bootstrap-001",
@@ -144,6 +148,7 @@ test("a no-edit full-manuscript pass reaches satisfied and completes after a fre
     target_scope: evidence.scopeReference,
     requested_pass: evidence.passReference,
     related_artifacts: {
+      ...firstPublication.relatedArtifacts,
       review_groups: [evidence.reviewGroupReference],
       reviews: evidence.reviewJobs.map(({ reference }) => reference),
       no_edit_skips: [evidence.noEditReference],

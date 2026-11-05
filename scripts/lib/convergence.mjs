@@ -7,6 +7,7 @@ import {
   validateCreationBatch,
   validateCreationCommit,
 } from "./artifacts.mjs";
+import { collectManuscriptInventory } from "./manuscript.mjs";
 import { validateManifest } from "./manifest.mjs";
 import { validateEvidenceReport } from "./markdown.mjs";
 import {
@@ -670,14 +671,18 @@ async function computeEvaluation(project, cycle, roots, evaluationId, createdAt)
     review_groups: roots.review_group ? [roots.review_group] : [],
   };
   const fullScope = await validateFullManuscriptScope(project.manifest, project.manifestPath);
-  if (!fullScope.valid) {
-    const code = project.manifest.current_scope?.files?.length === 0
-      ? "empty-manuscript"
-      : "target-scope-not-current";
+  const inventory = await collectManuscriptInventory(
+    project.root,
+    project.manifest.manuscript_root,
+    project.manifest.paths,
+  );
+  const emptyManuscript = inventory.files.length === 0;
+  if (!fullScope.valid || emptyManuscript) {
+    const code = emptyManuscript ? "empty-manuscript" : "target-scope-not-current";
     block(
       code,
       `The target is not a current nonempty full-manuscript scope: ${formatErrors(fullScope.errors)}`,
-      code === "empty-manuscript" ? "not_satisfied" : "indeterminate",
+      emptyManuscript ? "not_satisfied" : "indeterminate",
     );
   }
   if (!sameScopeReference(roots.target_scope, project.manifest.current_scope)) {
@@ -798,7 +803,7 @@ async function computeEvaluation(project, cycle, roots, evaluationId, createdAt)
       !batch ||
       batch.status !== "committed" ||
       batch.commit !== reference.path ||
-      commit.scope_before_id !== cycle?.starting_scope?.scope_id
+      commit.scope_before_id !== (cycle?.starting_scope?.scope_id ?? null)
     ) {
       block(
         "creation-commit-identity-mismatch",
@@ -806,12 +811,12 @@ async function computeEvaluation(project, cycle, roots, evaluationId, createdAt)
       );
     }
   }
-  if (cycle?.initiating_strategy === "write-fiction" && !cycle.bootstrap) {
-    const changedTarget = !sameScopeReference(roots.target_scope, cycle?.starting_scope);
+  if (cycle?.initiating_strategy === "write-fiction") {
+    const changedTarget = cycle.bootstrap || !sameScopeReference(roots.target_scope, cycle.starting_scope);
     if (changedTarget && creationCommits.length === 0) {
       block(
         "creation-commit-evidence-missing",
-        "The expanded creation target has no linked creation commit execution record.",
+        "The creation target has no linked creation commit execution record.",
         "not_satisfied",
       );
     }

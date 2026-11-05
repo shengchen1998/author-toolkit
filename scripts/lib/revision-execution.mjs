@@ -828,8 +828,12 @@ export async function verifyRevisionExecution(projectRoot, request, options = {}
     const text = `${JSON.stringify(execution, null, 2)}\n`;
     await writeAtomicVerified(absolute, text);
     const reference = executionReference(execution, relative, text);
-    const changeFromReference = cycle.starting_scope ?? execution.input_scope;
-    const changeFromScope = await readCurrentScope(project, changeFromReference);
+    const changeFromReference = cycle.bootstrap
+      ? null
+      : cycle.starting_scope ?? execution.input_scope;
+    const changeFromScope = cycle.bootstrap
+      ? { files: [] }
+      : await readCurrentScope(project, changeFromReference);
     const targetScope = await readCurrentScope(project, execution.target_scope);
     const changes = buildChangeSet(changeFromScope, targetScope);
     const updated = {

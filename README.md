@@ -218,8 +218,10 @@ acceptance covers the exact manuscript content, proposed story-state differences
 and resulting ordered publication scope; manuscript and scope approvals are
 recorded separately. Acceptance allows `creation-commit` to proceed without
 another author gate. Publication alone does not establish current-draft revision
-convergence for the publication scope; continue with `revise-increment` when
-that is the goal.
+convergence for the publication scope. After first-time bootstrap publication,
+continue the same cycle with `revise-draft` for the initial full-manuscript
+evaluation. After ordinary creation, continue with `revise-increment` when that
+is the goal.
 
 ### `revise-fiction`: whole-book revision
 
@@ -318,8 +320,8 @@ can additionally use `story-structure` Audit without adopting the
 
 1. Verify the full-manuscript base scope and its current-draft revision
    convergence evidence. Return to `revise-draft` when that base scope has not
-   reached that state, or to `revise-increment` when creation or import has
-   grown the scope.
+   reached that state, to `revise-draft` after first-time bootstrap publication,
+   or to `revise-increment` when ordinary creation or import has grown the scope.
 2. Confirm the requested outcome, constraints, request set, full-manuscript
    target scope, and initial work set. The request set determines what to change;
    the full-manuscript target scope determines what must be proven current again.
@@ -400,8 +402,16 @@ current-draft revision convergence.
 
 First-time bootstrap is available only for `write-fiction` with an actually empty
 manuscript and no existing scope. It uses a null starting scope without treating
-the empty manuscript as having reached current-draft revision convergence. Every
-ordinary start requires a current satisfied starting convergence evaluation. A
+the empty manuscript as having reached current-draft revision convergence. Its
+first committed publication keeps the exact staging, approval, backup, journal,
+and story-state requirements, records a null `scope_before_id`, and resumes the
+same cycle through `revise-draft`. The initial full-manuscript pass links that
+publication, its requested pass and review evidence, a satisfied evaluation, and
+the explicit completion decision. Empty manuscript state cannot satisfy or
+complete the cycle. Later creation uses the ordinary satisfied-start and
+one-commit rules; bootstrap is not available again.
+
+Every ordinary start requires a current satisfied starting convergence evaluation. A
 valid full-manuscript scope, pending action, or caller-supplied claim cannot
 manufacture that result; unavailable proof blocks the start with
 `starting-evaluation-indeterminate`.

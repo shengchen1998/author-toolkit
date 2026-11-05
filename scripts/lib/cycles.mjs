@@ -590,8 +590,8 @@ async function deriveCreationChangeSet(project, cycle, candidate, request) {
   if (batchReferences.length !== 1 || commitReferences.length !== 1) {
     throw new Error("A creation cycle requires exactly one accepted batch and one commit journal");
   }
-  if (!cycle.starting_scope || !candidate.target_scope) {
-    throw new Error("Creation publication requires preserved starting and current target scopes");
+  if ((!cycle.bootstrap && !cycle.starting_scope) || !candidate.target_scope) {
+    throw new Error("Creation publication requires its applicable starting state and current target scope");
   }
   const [batchReference] = batchReferences;
   const [commitReference] = commitReferences;
@@ -618,7 +618,7 @@ async function deriveCreationChangeSet(project, cycle, candidate, request) {
     throw new Error("Creation batch and commit journal identities do not agree");
   }
   if (
-    commit.scope_before_id !== cycle.starting_scope.scope_id ||
+    commit.scope_before_id !== (cycle.starting_scope?.scope_id ?? null) ||
     commit.scope_after_id !== candidate.target_scope.scope_id ||
     batch.scope_id !== candidate.target_scope.scope_id
   ) {
@@ -631,10 +631,12 @@ async function deriveCreationChangeSet(project, cycle, candidate, request) {
     throw new Error("Creation batch and commit journal file transitions do not agree");
   }
 
-  const starting = await readReferencedJson(project.root, {
-    path: cycle.starting_scope.snapshot_path,
-    sha256: cycle.starting_scope.snapshot_sha256,
-  });
+  const starting = cycle.bootstrap
+    ? { files: [] }
+    : await readReferencedJson(project.root, {
+        path: cycle.starting_scope.snapshot_path,
+        sha256: cycle.starting_scope.snapshot_sha256,
+      });
   const target = await readReferencedJson(project.root, {
     path: candidate.target_scope.snapshot_path,
     sha256: candidate.target_scope.snapshot_sha256,
@@ -854,11 +856,11 @@ async function transitionCycleLocked(project, request, options) {
   }
 
   const currentStrategy = request.current_strategy ?? cycle.current_strategy;
+  const requiredCreationRecovery = cycle.bootstrap ? "revise-draft" : "revise-increment";
   if (
-    !cycle.bootstrap &&
     cycle.initiating_strategy === "write-fiction" &&
     cycle.related_artifacts.creation_commits.length > 0 &&
-    (currentStrategy !== "revise-increment" ||
+    (currentStrategy !== requiredCreationRecovery ||
       request.recovery_position?.operation === "writing-plan" ||
       (request.related_artifacts?.creation_commits?.length ?? 0) > 0)
   ) {
@@ -866,7 +868,17 @@ async function transitionCycleLocked(project, request, options) {
       stateWritten: false,
       result: blocked(
         "creation-commit-limit",
-        "This creation cycle already has its one accepted commit; resume revise-increment intake until the cycle completes.",
+        `This creation cycle already has its one accepted commit; resume ${requiredCreationRecovery} until the cycle completes.`,
+        cycle,
+      ),
+    };
+  }
+  if (cycle.bootstrap && currentStrategy === "revise-increment") {
+    return {
+      stateWritten: false,
+      result: blocked(
+        "cycle-operation-mismatch",
+        "Bootstrap cannot use revise-increment without a satisfied previous scope; complete first publication and resume revise-draft.",
         cycle,
       ),
     };
