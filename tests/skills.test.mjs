@@ -290,13 +290,17 @@ test("project operations register creation state and resumable publication", asy
   }
   assert.match(operations, /3\.0\.0/);
   assert.match(operations, /3\.1\.0/);
+  assert.match(operations, /3\.2\.0/);
   assert.match(operations, /paths\.creation/);
   assert.match(operations, /expected absent/i);
   assert.match(operations, /<paths\.creation>\/batches\/<commit-id>\.json/);
   assert.match(operations, /legacy `STAGES` remains revision-only/);
   assert.match(operations, /move created files into the safety backup/i);
-  assert.equal(template.schema_version, "3.1.0");
+  assert.match(operations, /scope_fingerprint/);
+  assert.match(operations, /validateFullManuscriptScope/);
+  assert.equal(template.schema_version, "3.2.0");
   assert.equal(template.paths.creation, ".author-toolkit/creation/");
+  assert.equal(template.paths.convergence, ".author-toolkit/convergence/");
 });
 
 test("local coverage reuse never preserves stale whole-book synthesis", async () => {

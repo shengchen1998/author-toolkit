@@ -189,8 +189,8 @@ AI, 作者和混合创作使用相同门禁. 每本书只保留一个活动创�
 
 ## 共享项目产物与证据
 
-五个策略共用中性的 `.author-toolkit/project.json` 和同一组登记路径. 新项目和迁移终态使用
-schema 3.1.0; v3.0 manifest 仍可读取, 并可进行增量 3.1 升级.
+五个策略共用中性的 `.author-toolkit/project.json` 和同一组登记路径. 新项目使用
+schema 3.2.0; v3.0 和 v3.1 manifest 仍可读取. 现有迁移命令仍以其文档记载的 3.1 为目标.
 
 - `project.json`: 项目登记, 产物路径, 以及可选的 `current_scope` 和 `pending_action`.
   不包含 `workflow.name`, `current_stage` 或 `stages`.
@@ -205,6 +205,8 @@ schema 3.1.0; v3.0 manifest 仍可读取, 并可进行增量 3.1 升级.
 - `handoffs/`: 当前证据和下一操作的交接指针.
 - `paths.creation`: 创作产物路径, 默认 `.author-toolkit/creation/`, 包含
   `state/current.md`, `state/chapters/`, `state/volumes/`, `batches/` 和 `staging/`.
+- v3.2 的收敛状态根目录默认为 `.author-toolkit/convergence/`. 确认范围后在此保存不可变
+  范围快照和正文清单快照. 范围指纹覆盖有序路径/哈希对和排序后的排除项, 不覆盖记录元数据和时间戳.
 
 章节和卷故事状态从已验收正文和有版本的来源派生, 用于续写; 它不能替代故事圣经的意图或正文事实.
 被拒绝的暂存稿不会进入故事状态或正文范围.
@@ -327,12 +329,14 @@ npm test
 npm run validate
 ```
 
-可用对应 CLI 参数直接校验 manifest, report 和新产物. 新参数包括创作批次, 提交日志,
-故事状态, 覆盖产物和复核任务; 准确参数名以当前安装的 `--help` 为准:
+可用对应 CLI 参数直接校验 manifest, report 和新产物. 新参数包括范围快照, 正文清单快照,
+创作批次, 提交日志, 故事状态, 覆盖产物和复核任务; 准确参数名以当前安装的 `--help` 为准:
 
 ```bash
 node scripts/validate.mjs --help
 node scripts/validate.mjs --manifest /path/to/.author-toolkit/project.json
+node scripts/validate.mjs --scope-snapshot /path/to/scope.json
+node scripts/validate.mjs --inventory-snapshot /path/to/inventory.json
 node scripts/validate.mjs --report /path/to/report.md
 ```
 

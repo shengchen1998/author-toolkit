@@ -45,6 +45,9 @@ export {
   validateProjectSchema,
   validateProjectV3Schema,
   validateProjectV31Schema,
+  validateProjectV32Schema,
+  validateInventorySnapshotSchema,
+  validateScopeSnapshotSchema,
   validateReaderStateSchema,
   validateRelativePath,
   validateReportEnvelope,
@@ -53,3 +56,11 @@ export {
   validateStoryState,
 } from "./schemas.mjs";
 export { validateWorkflow, validateWorkflowSequence } from "./workflow.mjs";
+export {
+  computeInventoryFingerprint,
+  computeScopeFingerprint,
+  recordScope,
+  validateFullManuscriptScope,
+  validateInventorySnapshot,
+  validateScopeSnapshot,
+} from "./scope.mjs";

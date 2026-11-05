@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "scope-snapshot-schema.json",
+  "title": "author-toolkit immutable author-confirmed scope snapshot",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "scope_id",
+    "scope_fingerprint",
+    "description",
+    "status",
+    "files",
+    "excluded_files",
+    "created_at",
+    "inventory",
+    "author_confirmation"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": { "const": "1.0.0" },
+    "scope_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+    },
+    "scope_fingerprint": { "$ref": "#/$defs/sha256" },
+    "description": { "type": "string", "minLength": 1 },
+    "status": { "const": "confirmed" },
+    "files": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/file" }
+    },
+    "excluded_files": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "$ref": "relative-path-schema.json" }
+    },
+    "created_at": { "type": "string", "format": "date-time" },
+    "inventory": {
+      "type": "object",
+      "required": ["path", "sha256", "inventory_fingerprint"],
+      "additionalProperties": false,
+      "properties": {
+        "path": { "$ref": "relative-path-schema.json" },
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "inventory_fingerprint": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "author_confirmation": {
+      "type": "object",
+      "required": ["decision_id", "confirmed_at", "reading_order_confirmed"],
+      "additionalProperties": false,
+      "properties": {
+        "decision_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "confirmed_at": { "type": "string", "format": "date-time" },
+        "reading_order_confirmed": { "type": "boolean" }
+      }
+    }
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "file": {
+      "type": "object",
+      "required": ["path", "sha256"],
+      "additionalProperties": false,
+      "properties": {
+        "path": { "$ref": "relative-path-schema.json" },
+        "sha256": { "$ref": "#/$defs/sha256" }
+      }
+    }
+  }
+}
