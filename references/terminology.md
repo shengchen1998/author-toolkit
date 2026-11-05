@@ -140,3 +140,4 @@ Machine values remain English and case-sensitive. Qualify a value by its artifac
 | Finding `location.scope` | `file`: whole file; `chapter`: identified chapter; `line`: identified line; `passage`: quoted passage. Use the narrowest truthful location. |
 | Finding `confidence` | `deterministic`: direct code-detected evidence; `judgment`: editorial interpretation. |
 | Report `engine.name` | `conversational`: model-led execution; `scriptorium`: scriptorium execution path. Record the actual path and degradation. |
+| Shared reference deployment diagnostic | `reference-version-conflict`: an existing file beneath `.author-toolkit/references/` differs from the packaged setup payload. Block shared workflows until setup resolves the conflict through the exact-file approval and backup procedure. |
