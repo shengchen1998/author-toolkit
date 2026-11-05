@@ -22,7 +22,12 @@
   "properties": {
     "schema_version": { "const": "1.0.0" },
     "evaluation_id": { "$ref": "#/$defs/id" },
-    "cycle_id": { "$ref": "#/$defs/id" },
+    "cycle_id": {
+      "anyOf": [
+        { "$ref": "#/$defs/id" },
+        { "type": "null" }
+      ]
+    },
     "requested_pass": { "$ref": "#/$defs/passReference" },
     "target_scope": { "$ref": "#/$defs/scopeReference" },
     "coverage_index": { "$ref": "#/$defs/artifactReference" },

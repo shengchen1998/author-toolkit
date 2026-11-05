@@ -360,12 +360,54 @@ export async function assertCycleAllowsOperation(projectRoot, request) {
   }
   const { root, manifest } = await readProject(projectRoot);
   const active = await readActiveCycle(root, manifest);
-  if (!active || !request.manuscript_change) {
+  if (!request.manuscript_change) {
     return {
       valid: true,
-      read_only: !request.manuscript_change,
+      read_only: true,
       cycle: active?.value ?? null,
       required_action: recoveryActionOrDefault(active?.value),
+      blockers: [],
+    };
+  }
+  if (!active) {
+    if (request.strategy !== "revise-draft") {
+      const gate = await checkConvergenceGate(projectRoot);
+      if (!gate.valid) {
+        const action = recoveryActionOrDefault(null);
+        return {
+          valid: false,
+          read_only: false,
+          cycle: null,
+          required_action: action,
+          blockers: [{
+            code: "starting-evaluation-indeterminate",
+            message: "A current satisfied full-manuscript evaluation is required before this manuscript-changing entry; run full-manuscript revise-draft recovery.",
+            required_action: action,
+          }],
+        };
+      }
+      const action = {
+        strategy: request.strategy,
+        operation: INITIAL_OPERATIONS[request.strategy],
+        command: request.strategy,
+      };
+      return {
+        valid: false,
+        read_only: false,
+        cycle: null,
+        required_action: action,
+        blockers: [{
+          code: "active-cycle-required",
+          message: `Start a ${request.strategy} cycle from the satisfied full-manuscript evaluation before manuscript-changing work.`,
+          required_action: action,
+        }],
+      };
+    }
+    return {
+      valid: true,
+      read_only: false,
+      cycle: null,
+      required_action: recoveryActionOrDefault(null),
       blockers: [],
     };
   }

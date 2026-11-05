@@ -25,7 +25,12 @@
   "properties": {
     "schema_version": { "const": "1.0.0" },
     "execution_id": { "$ref": "#/$defs/id" },
-    "cycle_id": { "$ref": "#/$defs/id" },
+    "cycle_id": {
+      "anyOf": [
+        { "$ref": "#/$defs/id" },
+        { "type": "null" }
+      ]
+    },
     "plan": { "$ref": "#/$defs/planReference" },
     "batch": { "$ref": "#/$defs/batchReference" },
     "requested_pass": { "$ref": "#/$defs/passReference" },

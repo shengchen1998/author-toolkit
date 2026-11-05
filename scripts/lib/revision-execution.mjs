@@ -537,10 +537,9 @@ async function withCycleLock(project, options, operation) {
   return value;
 }
 
-function validatePrepareRequest(request) {
+function validatePrepareRequest(request, { independent = false } = {}) {
+  const operation = independent ? "prepare-draft-revision-execution" : "prepare-revision-execution";
   const allowed = new Set([
-    "cycle_id",
-    "expected_revision",
     "execution_id",
     "plan",
     "batch",
@@ -551,17 +550,100 @@ function validatePrepareRequest(request) {
     "approval_ids",
     "backups",
     "files",
+    ...(independent ? [] : ["cycle_id", "expected_revision"]),
   ]);
   for (const key of Object.keys(request)) {
-    if (!allowed.has(key)) throw new Error(`Unknown prepare-revision-execution input field: ${key}`);
+    if (!allowed.has(key)) throw new Error(`Unknown ${operation} input field: ${key}`);
   }
   if (
     !/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(request.execution_id ?? "") ||
-    !Number.isInteger(request.expected_revision) ||
+    (!independent && !Number.isInteger(request.expected_revision)) ||
     !Array.isArray(request.files)
   ) {
-    throw new Error("prepare-revision-execution requires exact cycle, execution, and file batch identities");
+    throw new Error(`${operation} requires exact ${independent ? "independent" : "cycle"}, execution, and file batch identities`);
   }
+}
+
+async function readOptionalActiveCycle(project) {
+  try {
+    return await readActiveCycle(project);
+  } catch (error) {
+    if (error.code === "ENOENT") return null;
+    throw error;
+  }
+}
+
+function independentCycleFailure(active) {
+  return active
+    ? failure(
+        "active-cycle-exists",
+        `Cycle ${active.value.cycle_id} is active; use its cycle-bound revision execution operations instead of the independent draft path.`,
+        active.value,
+      )
+    : null;
+}
+
+export async function prepareDraftRevisionExecution(projectRoot, request, options = {}) {
+  validatePrepareRequest(request, { independent: true });
+  const project = await readProject(projectRoot);
+  return withCycleLock(project, options, async () => {
+    const initial = await readOptionalActiveCycle(project);
+    const activeFailure = independentCycleFailure(initial);
+    if (activeFailure) return activeFailure;
+    const createdAt = operationTime(options);
+    const execution = {
+      schema_version: "1.0.0",
+      execution_id: request.execution_id,
+      cycle_id: null,
+      plan: request.plan,
+      batch: request.batch,
+      requested_pass: request.requested_pass,
+      input_scope: request.input_scope,
+      target_scope: request.input_scope,
+      finding_dispositions: request.finding_dispositions,
+      author_decision_ids: request.author_decision_ids,
+      approval_ids: request.approval_ids,
+      backups: request.backups,
+      files: request.files,
+      status: "prepared",
+      created_at: createdAt,
+      verified_at: null,
+    };
+    const validation = await validateExecutionContext(project, execution, {
+      requireInputs: true,
+      requireCurrentTarget: true,
+      expectedPass: request.requested_pass,
+      expectedScope: request.input_scope,
+    });
+    if (!validation.valid) {
+      return failure("revision-execution-preparation-invalid", "The approved independent batch, backups, decisions, or current inputs do not validate.", null, validation.errors);
+    }
+    const concurrent = await readOptionalActiveCycle(project);
+    const concurrentFailure = independentCycleFailure(concurrent);
+    if (concurrentFailure) return concurrentFailure;
+    const relative = path.posix.join(
+      project.manifest.paths.convergence,
+      "executions",
+      `${execution.execution_id}.json`,
+    );
+    const absolute = path.resolve(project.root, relative);
+    const text = `${JSON.stringify(execution, null, 2)}\n`;
+    try {
+      await createNoClobberVerified(absolute, text);
+    } catch (error) {
+      if (error.code !== "EEXIST") throw error;
+      return failure("revision-execution-already-exists", `Independent revision execution ${execution.execution_id} already exists; prepare a new execution ID instead of replacing it.`, null);
+    }
+    return {
+      valid: true,
+      cycle: null,
+      execution,
+      execution_path: absolute,
+      execution_reference: executionReference(execution, relative, text),
+      state_written: true,
+      blockers: [],
+    };
+  });
 }
 
 export async function prepareRevisionExecution(projectRoot, request, options = {}) {
@@ -648,19 +730,19 @@ export async function prepareRevisionExecution(projectRoot, request, options = {
   });
 }
 
-function validateVerifyRequest(request) {
+function validateVerifyRequest(request, { independent = false } = {}) {
+  const operation = independent ? "verify-draft-revision-execution" : "verify-revision-execution";
   const allowed = new Set([
-    "cycle_id",
-    "expected_revision",
     "execution_id",
     "requested_pass",
     "target_scope",
+    ...(independent ? [] : ["cycle_id", "expected_revision"]),
   ]);
   for (const key of Object.keys(request)) {
-    if (!allowed.has(key)) throw new Error(`Unknown verify-revision-execution input field: ${key}`);
+    if (!allowed.has(key)) throw new Error(`Unknown ${operation} input field: ${key}`);
   }
-  if (!Number.isInteger(request.expected_revision) || !request.requested_pass || !request.target_scope) {
-    throw new Error("verify-revision-execution requires exact cycle, execution, pass, and target identities");
+  if ((!independent && !Number.isInteger(request.expected_revision)) || !request.requested_pass || !request.target_scope) {
+    throw new Error(`${operation} requires exact ${independent ? "independent" : "cycle"}, execution, pass, and target identities`);
   }
 }
 
@@ -782,6 +864,69 @@ export async function verifyRevisionExecution(projectRoot, request, options = {}
       execution,
       execution_path: absolute,
       execution_reference: reference,
+      state_written: true,
+      blockers: [],
+    };
+  });
+}
+
+export async function verifyDraftRevisionExecution(projectRoot, request, options = {}) {
+  validateVerifyRequest(request, { independent: true });
+  const project = await readProject(projectRoot);
+  return withCycleLock(project, options, async () => {
+    const initial = await readOptionalActiveCycle(project);
+    const activeFailure = independentCycleFailure(initial);
+    if (activeFailure) return activeFailure;
+    const relative = path.posix.join(
+      project.manifest.paths.convergence,
+      "executions",
+      `${request.execution_id}.json`,
+    );
+    const absolute = path.resolve(project.root, relative);
+    let prepared;
+    try {
+      prepared = JSON.parse(await readFile(absolute, "utf8"));
+    } catch (error) {
+      return failure("revision-execution-unavailable", `Cannot read independent prepared execution ${request.execution_id}: ${error.message}`, null);
+    }
+    if (
+      prepared.execution_id !== request.execution_id ||
+      prepared.cycle_id !== null ||
+      prepared.status !== "prepared"
+    ) {
+      return failure("revision-execution-identity-mismatch", "The independent execution is missing, already verified, or bound to a cycle.", null);
+    }
+    const verifiedAt = operationTime(options);
+    const execution = {
+      ...prepared,
+      requested_pass: request.requested_pass,
+      target_scope: request.target_scope,
+      status: "verified",
+      verified_at: verifiedAt,
+    };
+    const validation = await validateExecutionContext(project, execution, {
+      requireOutputs: true,
+      requireCurrentTarget: true,
+      expectedPass: request.requested_pass,
+      expectedScope: request.target_scope,
+    });
+    if (!validation.valid) {
+      const code = validation.errors.some((error) => error.code === "revision-output-mismatch")
+        ? "revision-output-mismatch"
+        : "revision-execution-verification-invalid";
+      return failure(code, "The independent prepared batch cannot be verified against current manuscript and target evidence.", null, validation.errors);
+    }
+    const concurrent = await readOptionalActiveCycle(project);
+    const concurrentFailure = independentCycleFailure(concurrent);
+    if (concurrentFailure) return concurrentFailure;
+    const text = `${JSON.stringify(execution, null, 2)}\n`;
+    await writeAtomicVerified(absolute, text);
+    return {
+      valid: true,
+      cycle: null,
+      execution,
+      execution_path: absolute,
+      execution_reference: executionReference(execution, relative, text),
       state_written: true,
       blockers: [],
     };
