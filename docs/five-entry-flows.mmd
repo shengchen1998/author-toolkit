@@ -40,10 +40,13 @@ flowchart TD
 
   subgraph RI["revise-increment｜增量修订"]
     direction LR
-    RI0([入口]) --> RIV["验证 previous<br/>converged scope"]
+    RI0([入口]) --> RISTATE{"活动 increment<br/>且有已验证基线？"}
+    RISTATE -->|是：恢复| RIRESUME["旧基线作为历史证据<br/>自身 edits 不重新打开准入门"]
+    RIRESUME --> RI1
+    RISTATE -->|否：新任务或无法确认| RIV["验证 previous<br/>converged scope"]
     RIV --> RIBASE{"上一 scope<br/>已收敛？"}
     RIBASE -->|否| RISTOP["显示 revise-draft 命令<br/>停止跳过基础工作"]
-    RIBASE -->|是| RI1["确定 target / change set<br/>work set / reusable evidence"]
+    RIBASE -->|是| RI1["确定当前 target / change set<br/>work set / reusable evidence"]
     RI1 --> RI2["intake<br/>确认 target + work set"]
     RI2 --> RI3["draft-baseline<br/>更新 full target"]
     RI3 --> RI4["diagnostics<br/>work set → full-target coverage"]
@@ -107,7 +110,7 @@ flowchart TD
   classDef note fill:#FAFAFA,stroke:#90A4AE,color:#37474F,stroke-dasharray:4 3;
 
   class START,RF0,RD0,RI0,RR0,WF0 startEnd;
-  class SETUP,READ,STATE,GATES,WAIT,RDN,RIV,RIBASE,RISTOP,RDC,RIC,RRV,RRBASE,RRISTOP,RRDSTOP,RRC,WFV,WFTYPE,WFA,WFR,WF8 control;
+  class SETUP,READ,STATE,GATES,WAIT,RDN,RISTATE,RIRESUME,RIV,RIBASE,RISTOP,RDC,RIC,RRV,RRBASE,RRISTOP,RRDSTOP,RRC,WFV,WFTYPE,WFA,WFR,WF8 control;
   class RF1,RF4,RF5,RF6,RF7,RF8,RD1,RD4,RD5,RD6,RD7,RD8,RI2,RI5,RI6,RI7,RI8,RI9,RR2,RR4,RR5,RR6 shared;
   class RD2,RD3,RD9,RI3,RI4,RI10,RR3,RR7 draftShared;
   class RF2,RF3,RF9,RI1,RR1,WF1,WF2,WF3,WF4,WF5,WF6,WF7 unique;
