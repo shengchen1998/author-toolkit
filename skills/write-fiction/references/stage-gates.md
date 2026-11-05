@@ -12,13 +12,13 @@ Load the section for the current operation. Preserve the shared [Author decision
 
 ## 2. Writing plan
 
-**Inputs:** Current foundation, story state, tracker, active scope, and author goal.
+**Inputs:** Current foundation, story state, tracker, active scope, author goal, and the active ordinary creation cycle with its current satisfied starting evaluation. A cycle that already has an accepted creation commit cannot enter this operation until it completes.
 
-**Work:** Plan one chapter unless the author selects a scene or small chapter batch. Record purpose, POV, goal and conflict, entering and leaving character states, information release, setups and payoffs, continuity constraints, source mode, and exact target paths and actions. Preserve the existing manuscript layout; confirm a naming rule only for a new project.
+**Work:** Plan one chapter unless the author selects a scene or multi-chapter batch for one explicit write approval. Record purpose, POV, goal and conflict, entering and leaving character states, information release, setups and payoffs, continuity constraints, source mode, and exact target paths and actions. Preserve the existing manuscript layout; confirm a naming rule only for a new project.
 
 Construct the context package from relevant Story Bible entries, chapter records, open threads, the preceding chapter ending, and searched older passages. Record every selected input and version. List related open findings and their accepted risk. Compute the dependency fingerprint as specified in `creation-state.md`.
 
-**Gate:** The author approves the plan and exact write batch. Record the approval with input versions. No manuscript file has changed.
+**Gate:** `check-operation` permits `writing-plan` for the active cycle, and the author approves the plan and exact write batch. Record the approval with input versions. No manuscript file has changed. After a creation commit, return `creation-commit-limit` or the active-cycle operation blocker and display the exact `revise-increment` recovery command instead of approving another plan.
 
 ## 3. Chapter creation
 
@@ -34,15 +34,15 @@ Construct the context package from relevant Story Bible entries, chapter records
 
 **Work:** Check plan execution, chapter transitions, character knowledge, timeline, world rules, and unintended foundation changes. Present manuscript and state differences together. Recheck the dependency fingerprint before acceptance.
 
-**Gate:** The author accepts the exact batch and resulting scope, or rejects it. Record manuscript and scope approvals for acceptance. Rejection leaves manuscript, current story state, and scope unchanged and preserves the staging drafts.
+**Gate:** The author accepts the exact batch and resulting scope, or rejects it. Record manuscript and scope approvals for acceptance. Rejection records a current chapter-review decision, leaves manuscript, current story state, and scope unchanged, preserves the staging drafts, and creates no commit journal. Revalidate the starting scope before no-change cycle completion; rejected staging itself supplies no current-draft revision convergence evidence.
 
 ## 5. Creation commit
 
-**Inputs:** Accepted batch, approvals, staged files, and current project state.
+**Inputs:** Accepted batch, approvals, staged files, current project state, and an active creation cycle with no existing creation commit.
 
-**Work:** Follow the commit procedure in `creation-state.md`. Reread the manifest and scope, compare dependencies, verify old-file hashes and new-file absence, back up every existing target, and write a recovery journal before publication. Publish each file atomically, update story state, record the accepted scope, propagate evidence changes, and validate the result. There is no additional author gate.
+**Work:** Follow the commit procedure in `creation-state.md`. Reread the manifest and scope, compare dependencies, verify old-file hashes and new-file absence, back up every existing target, and write a recovery journal before publication. Publish each file atomically, update story state, record the accepted scope, propagate evidence changes, and validate the result. Link the committed batch and journal to the same cycle, derive its change set from the starting and complete expanded target snapshots, and transition its recovery position to `revise-increment`. There is no additional author gate.
 
-**Gate:** Every file and state artifact verifies against its accepted output hash, the new scope is current, and the immutable batch and committed journal agree. An interruption records exact completed and pending actions and stops automatic publication. This is a creation gate, not current-draft revision convergence; offer `revise-increment` for the added and affected paths when revision is the next goal.
+**Gate:** Every file and state artifact verifies against its accepted output hash, the new scope is current, and the immutable batch and committed journal agree. The cycle references those artifacts without duplicating their transitions. An interruption records exact completed and pending actions and stops automatic publication. This is a creation gate, not current-draft revision convergence; display the exact `revise-increment` command and block another writing plan until explicit cycle completion.
 
 A creation restore requires separate explicit approval naming the batch, commit, and files. Safety-back up current content, restore old text, move newly created files into the safety backup before removing them from the manuscript, and confirm the resulting scope.
 

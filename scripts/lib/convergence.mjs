@@ -1,7 +1,12 @@
 import { readdir, readFile, unlink } from "node:fs/promises";
 import path from "node:path";
 
-import { canReuseCoverageUnit, validateCoverageIndex } from "./artifacts.mjs";
+import {
+  canReuseCoverageUnit,
+  validateCoverageIndex,
+  validateCreationBatch,
+  validateCreationCommit,
+} from "./artifacts.mjs";
 import { validateManifest } from "./manifest.mjs";
 import { validateEvidenceReport } from "./markdown.mjs";
 import {
@@ -660,6 +665,116 @@ async function computeEvaluation(project, cycle, roots, evaluationId, createdAt)
     for (const file of scope.files) record("manuscript", file.path, file);
   }
 
+  if (cycle.starting_scope) {
+    const startingScope = await computation.json(
+      {
+        path: cycle.starting_scope.snapshot_path,
+        sha256: cycle.starting_scope.snapshot_sha256,
+      },
+      "starting-scope",
+      cycle.starting_scope.scope_id,
+      validateScopeSnapshot,
+    );
+    if (startingScope) {
+      if (
+        startingScope.scope_id !== cycle.starting_scope.scope_id ||
+        startingScope.scope_fingerprint !== cycle.starting_scope.scope_fingerprint
+      ) {
+        block("starting-scope-identity-mismatch", "Starting scope identity differs from its preserved reference.");
+      }
+      if (startingScope.inventory) {
+        await computation.json(
+          startingScope.inventory,
+          "starting-inventory",
+          startingScope.inventory.inventory_fingerprint,
+          validateInventorySnapshot,
+        );
+      }
+    }
+  }
+  if (cycle.starting_evaluation) {
+    const startingEvaluation = await computation.json(
+      cycle.starting_evaluation,
+      "starting-evaluation",
+      cycle.starting_evaluation.evaluation_id,
+      validateConvergenceEvaluation,
+    );
+    if (
+      startingEvaluation &&
+      (startingEvaluation.evaluation_id !== cycle.starting_evaluation.evaluation_id ||
+        startingEvaluation.outcome !== "satisfied" ||
+        !sameScopeReference(startingEvaluation.target_scope, cycle.starting_scope))
+    ) {
+      block(
+        "starting-evaluation-identity-mismatch",
+        "The preserved starting evaluation is not satisfied for the cycle starting scope.",
+      );
+    }
+  }
+  const creationBatches = [];
+  for (const reference of cycle.related_artifacts?.creation_batches ?? []) {
+    const batch = await computation.json(
+      reference,
+      "creation-batch",
+      reference.batch_id,
+      validateCreationBatch,
+    );
+    if (!batch) continue;
+    creationBatches.push(batch);
+    if (batch.batch_id !== reference.batch_id) {
+      block("creation-batch-identity-mismatch", `Creation batch identity differs from ${reference.path}.`);
+    }
+  }
+  const creationCommits = [];
+  for (const reference of cycle.related_artifacts?.creation_commits ?? []) {
+    const commit = await computation.json(
+      reference,
+      "creation-commit",
+      reference.commit_id,
+      validateCreationCommit,
+    );
+    if (!commit) continue;
+    creationCommits.push(commit);
+    const batch = creationBatches.find((candidate) => candidate.batch_id === commit.batch_id);
+    if (
+      commit.commit_id !== reference.commit_id ||
+      commit.batch_id !== reference.batch_id ||
+      commit.status !== "committed" ||
+      !batch ||
+      batch.status !== "committed" ||
+      batch.commit !== reference.path ||
+      commit.scope_before_id !== cycle.starting_scope?.scope_id
+    ) {
+      block(
+        "creation-commit-identity-mismatch",
+        `Creation commit ${reference.commit_id} is not a committed journal for the linked batch and starting scope.`,
+      );
+    }
+  }
+  if (cycle.initiating_strategy === "write-fiction" && !cycle.bootstrap) {
+    const changedTarget = !sameScopeReference(roots.target_scope, cycle.starting_scope);
+    if (changedTarget && creationCommits.length === 0) {
+      block(
+        "creation-commit-evidence-missing",
+        "The expanded creation target has no linked creation commit execution record.",
+        "not_satisfied",
+      );
+    }
+    for (const batch of creationBatches.filter((candidate) => candidate.status !== "rejected")) {
+      if (
+        batch.status !== "committed" ||
+        !creationCommits.some((commit) => commit.batch_id === batch.batch_id && commit.status === "committed")
+      ) {
+        block(
+          "creation-commit-evidence-missing",
+          `Creation batch ${batch.batch_id} has no verified committed journal; acceptance is not publication.`,
+          "not_satisfied",
+          { artifact_id: batch.batch_id },
+        );
+      }
+    }
+  }
+
   const pass = await computation.json(
     roots.requested_pass,
     "requested-pass",
@@ -1023,13 +1138,15 @@ async function computeEvaluation(project, cycle, roots, evaluationId, createdAt)
   for (const reference of cycle.related_artifacts?.no_edit_skips ?? []) {
     const skip = await computation.json(reference, "no-edit-skip", reference.skip_id, validateNoEditSkip);
     if (!skip) continue;
-    skips.push(skip);
+    if (skip.skip_id !== reference.skip_id) {
+      block("no-edit-identity-mismatch", `No-edit skip ${reference.skip_id} has a different artifact identity.`);
+      continue;
+    }
     if (
-      skip.skip_id !== reference.skip_id ||
-      !samePassReference(skip.requested_pass, roots.requested_pass) ||
-      skip.scope_fingerprint !== roots.target_scope.scope_fingerprint
+      samePassReference(skip.requested_pass, roots.requested_pass) &&
+      skip.scope_fingerprint === roots.target_scope.scope_fingerprint
     ) {
-      block("no-edit-identity-mismatch", `No-edit skip ${reference.skip_id} is not bound to the evaluated pass and target.`);
+      skips.push(skip);
     }
   }
   for (const operation of ["revision-plan", "chapter-revision"]) {

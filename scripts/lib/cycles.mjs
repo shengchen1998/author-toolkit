@@ -1,6 +1,7 @@
 import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 
+import { validateCreationBatch, validateCreationCommit } from "./artifacts.mjs";
 import { collectManuscriptInventory } from "./manuscript.mjs";
 import { validateManifest } from "./manifest.mjs";
 import { validateConvergenceCycleSchema } from "./schemas.mjs";
@@ -15,6 +16,7 @@ import {
   sha256Bytes,
   writeAtomicVerified,
 } from "./state-io.mjs";
+import { parseTrackerState } from "./tracker.mjs";
 
 const STRATEGIES = new Set([
   "write-fiction",
@@ -487,6 +489,255 @@ async function verifyScopeReference(project, reference, { requireCurrent = true 
   }
 }
 
+async function readReferencedJson(root, reference) {
+  await verifyArtifactReference(root, reference);
+  return JSON.parse(await readFile(path.resolve(root, reference.path), "utf8"));
+}
+
+function creationFileIdentity(file) {
+  return {
+    path: file.path,
+    action: file.action,
+    input_sha256: file.input_sha256,
+    output_sha256: file.output_sha256,
+    status: file.status,
+  };
+}
+
+async function deriveCreationChangeSet(project, cycle, candidate, request) {
+  if (!request.related_artifacts?.creation_commits) return null;
+  const batchReferences = candidate.related_artifacts.creation_batches;
+  const commitReferences = candidate.related_artifacts.creation_commits;
+  if (cycle.initiating_strategy !== "write-fiction") {
+    throw new Error("Only a write-fiction cycle can link a creation commit");
+  }
+  if (batchReferences.length !== 1 || commitReferences.length !== 1) {
+    throw new Error("A creation cycle requires exactly one accepted batch and one commit journal");
+  }
+  if (!cycle.starting_scope || !candidate.target_scope) {
+    throw new Error("Creation publication requires preserved starting and current target scopes");
+  }
+  const [batchReference] = batchReferences;
+  const [commitReference] = commitReferences;
+  const batch = await readReferencedJson(project.root, batchReference);
+  const commit = await readReferencedJson(project.root, commitReference);
+  const batchValidation = validateCreationBatch(batch);
+  const commitValidation = validateCreationCommit(commit);
+  if (!batchValidation.valid || !commitValidation.valid) {
+    throw new Error(
+      `Creation artifacts are invalid: ${[...batchValidation.errors, ...commitValidation.errors]
+        .map((error) => error.message)
+        .join("; ")}`,
+    );
+  }
+  if (
+    batch.status !== "committed" ||
+    commit.status !== "committed" ||
+    batch.batch_id !== batchReference.batch_id ||
+    commit.commit_id !== commitReference.commit_id ||
+    commit.batch_id !== batch.batch_id ||
+    commitReference.batch_id !== batch.batch_id ||
+    batch.commit !== commitReference.path
+  ) {
+    throw new Error("Creation batch and commit journal identities do not agree");
+  }
+  if (
+    commit.scope_before_id !== cycle.starting_scope.scope_id ||
+    commit.scope_after_id !== candidate.target_scope.scope_id ||
+    batch.scope_id !== candidate.target_scope.scope_id
+  ) {
+    throw new Error("Creation publication scope identities do not match the cycle");
+  }
+  if (
+    JSON.stringify(batch.files.map(creationFileIdentity)) !==
+    JSON.stringify(commit.files.map(creationFileIdentity))
+  ) {
+    throw new Error("Creation batch and commit journal file transitions do not agree");
+  }
+
+  const starting = await readReferencedJson(project.root, {
+    path: cycle.starting_scope.snapshot_path,
+    sha256: cycle.starting_scope.snapshot_sha256,
+  });
+  const target = await readReferencedJson(project.root, {
+    path: candidate.target_scope.snapshot_path,
+    sha256: candidate.target_scope.snapshot_sha256,
+  });
+  const trackerText = await readFile(
+    path.resolve(project.root, project.manifest.paths.audit_tracker),
+    "utf8",
+  );
+  const tracker = await parseTrackerState(trackerText, project.root);
+  const acceptances = batch.approvals.map((approvalId) =>
+    tracker.approvals.find((approval) => approval.id === approvalId)
+  );
+  const scopeDecision = acceptances.find(
+    (approval) => approval?.id === target.author_confirmation?.decision_id,
+  );
+  if (
+    !tracker.valid ||
+    acceptances.some((approval) =>
+      !approval ||
+      approval.status !== "approved" ||
+      approval.operation !== "chapter-review" ||
+      approval.scopeId !== candidate.target_scope.scope_id ||
+      !batch.files.every((file) => approval.paths.includes(file.path))
+    ) ||
+    !scopeDecision ||
+    !target.files.every((file) => scopeDecision.paths.includes(file.path))
+  ) {
+    const error = new Error(
+      `Creation batch ${batch.batch_id} lacks current manuscript acceptance or complete target-scope confirmation.`,
+    );
+    error.cycleBlockerCode = "creation-approval-missing";
+    throw error;
+  }
+  const startingByPath = new Map(starting.files.map((file, index) => [file.path, { ...file, index }]));
+  const targetByPath = new Map(target.files.map((file, index) => [file.path, { ...file, index }]));
+  const created = target.files.filter((file) => !startingByPath.has(file.path));
+  const modified = target.files.filter((file) =>
+    startingByPath.has(file.path) && startingByPath.get(file.path).sha256 !== file.sha256
+  ).map((file) => ({
+    path: file.path,
+    input_sha256: startingByPath.get(file.path).sha256,
+    output_sha256: file.sha256,
+  }));
+  const deleted = starting.files.filter((file) => !targetByPath.has(file.path)).map((file) => ({
+    path: file.path,
+    input_sha256: file.sha256,
+  }));
+  const changedPaths = new Set(commit.files.map((file) => file.path));
+  const reorderTransitions = commit.files.filter((file) => file.action === "reorder");
+  const reorderedPaths = new Set(reorderTransitions.map((file) => file.path));
+  const beforeRetained = starting.files.filter((file) => targetByPath.has(file.path)).map((file) => file.path);
+  const afterRetained = target.files.filter((file) => startingByPath.has(file.path)).map((file) => file.path);
+  const beforeUnmarked = beforeRetained.filter((filePath) => !reorderedPaths.has(filePath));
+  const afterUnmarked = afterRetained.filter((filePath) => !reorderedPaths.has(filePath));
+  const unmarkedIndexChange = starting.files.some((file) =>
+    !changedPaths.has(file.path) &&
+    targetByPath.has(file.path) &&
+    startingByPath.get(file.path).index !== targetByPath.get(file.path).index
+  );
+  if (
+    unmarkedIndexChange ||
+    JSON.stringify(beforeUnmarked) !== JSON.stringify(afterUnmarked) ||
+    (reorderTransitions.length === 0 &&
+      JSON.stringify(beforeRetained) !== JSON.stringify(afterRetained))
+  ) {
+    const error = new Error("Creation journal does not explain the confirmed reading-order change");
+    error.cycleBlockerCode = "creation-order-mismatch";
+    throw error;
+  }
+  const reordered = reorderTransitions.map((file) => {
+    const before = startingByPath.get(file.path);
+    const after = targetByPath.get(file.path);
+    if (
+      !before ||
+      !after ||
+      before.sha256 !== file.input_sha256 ||
+      after.sha256 !== file.output_sha256 ||
+      before.index === after.index
+    ) {
+      const error = new Error(`Creation reorder transition is inconsistent for ${file.path}`);
+      error.cycleBlockerCode = "creation-order-mismatch";
+      throw error;
+    }
+    return { path: file.path, before_index: before.index, after_index: after.index };
+  });
+  const expected = {
+    create: created.map(({ path: filePath, sha256 }) => ({ path: filePath, sha256 })),
+    modify: modified,
+    delete: deleted,
+  };
+  for (const action of ["create", "modify", "delete"]) {
+    const actual = commit.files.filter((file) => file.action === action).map((file) => {
+      if (action === "create") return { path: file.path, sha256: file.output_sha256 };
+      if (action === "modify") {
+        return {
+          path: file.path,
+          input_sha256: file.input_sha256,
+          output_sha256: file.output_sha256,
+        };
+      }
+      return { path: file.path, input_sha256: file.input_sha256 };
+    });
+    if (JSON.stringify(actual) !== JSON.stringify(expected[action])) {
+      throw new Error(`Creation ${action} transitions do not explain the target scope`);
+    }
+  }
+  for (const file of starting.files) {
+    if (changedPaths.has(file.path) || !targetByPath.has(file.path)) continue;
+    if (targetByPath.get(file.path).sha256 !== file.sha256) {
+      throw new Error(`Creation journal omits a changed retained path: ${file.path}`);
+    }
+  }
+  return {
+    from_scope: cycle.starting_scope,
+    to_scope: candidate.target_scope,
+    created,
+    modified,
+    deleted,
+    reordered,
+    evidence_affected: [...changedPaths],
+    dependency_affected: [],
+  };
+}
+
+async function deriveRejectedCreationChangeSet(project, cycle, candidate, request) {
+  if (
+    !request.related_artifacts?.creation_batches ||
+    candidate.related_artifacts.creation_commits.length > 0
+  ) return null;
+  const references = candidate.related_artifacts.creation_batches;
+  if (references.length !== 1) return null;
+  const batch = await readReferencedJson(project.root, references[0]);
+  const validation = validateCreationBatch(batch);
+  if (!validation.valid) throw validationError(validation);
+  if (batch.status !== "rejected") return null;
+  if (cycle.initiating_strategy !== "write-fiction" || !cycle.starting_scope) {
+    throw new Error("Rejected creation recovery requires an ordinary write-fiction starting scope");
+  }
+  if (
+    batch.batch_id !== references[0].batch_id ||
+    batch.commit !== null ||
+    batch.scope_id !== cycle.starting_scope.scope_id ||
+    JSON.stringify(candidate.target_scope) !== JSON.stringify(cycle.starting_scope)
+  ) {
+    throw new Error("Rejected staging must preserve the exact starting scope and have no commit journal");
+  }
+  const trackerText = await readFile(
+    path.resolve(project.root, project.manifest.paths.audit_tracker),
+    "utf8",
+  );
+  const tracker = await parseTrackerState(trackerText, project.root);
+  const approved = tracker.valid && batch.approvals.some((approvalId) =>
+    tracker.approvals.some((approval) =>
+      approval.id === approvalId &&
+      approval.status === "approved" &&
+      approval.operation === "chapter-review" &&
+      approval.scopeId === cycle.starting_scope.scope_id &&
+      batch.files.every((file) => approval.paths.includes(file.path))
+    )
+  );
+  if (!approved) {
+    const error = new Error(
+      `Rejected creation batch ${batch.batch_id} lacks its current explicit chapter-review rejection decision.`,
+    );
+    error.cycleBlockerCode = "creation-rejection-approval-missing";
+    throw error;
+  }
+  return {
+    from_scope: cycle.starting_scope,
+    to_scope: candidate.target_scope,
+    created: [],
+    modified: [],
+    deleted: [],
+    reordered: [],
+    evidence_affected: [],
+    dependency_affected: [],
+  };
+}
+
 async function transitionCycleLocked(project, request, options) {
   const active = await readActiveCycle(project.root, project.manifest);
   if (!active) {
@@ -524,6 +775,23 @@ async function transitionCycleLocked(project, request, options) {
   }
 
   const currentStrategy = request.current_strategy ?? cycle.current_strategy;
+  if (
+    !cycle.bootstrap &&
+    cycle.initiating_strategy === "write-fiction" &&
+    cycle.related_artifacts.creation_commits.length > 0 &&
+    (currentStrategy !== "revise-increment" ||
+      request.recovery_position?.operation === "writing-plan" ||
+      (request.related_artifacts?.creation_commits?.length ?? 0) > 0)
+  ) {
+    return {
+      stateWritten: false,
+      result: blocked(
+        "creation-commit-limit",
+        "This creation cycle already has its one accepted commit; resume revise-increment intake until the cycle completes.",
+        cycle,
+      ),
+    };
+  }
   const candidate = {
     ...cycle,
     revision: cycle.revision + 1,
@@ -568,10 +836,16 @@ async function transitionCycleLocked(project, request, options) {
         await verifyArtifactReference(project.root, reference);
       }
     }
+    const creationChangeSet = await deriveCreationChangeSet(project, cycle, candidate, request);
+    if (creationChangeSet) candidate.change_set = creationChangeSet;
+    const rejectedChangeSet = await deriveRejectedCreationChangeSet(project, cycle, candidate, request);
+    if (rejectedChangeSet) candidate.change_set = rejectedChangeSet;
+    const validated = validateConvergenceCycle(candidate);
+    if (!validated.valid) throw validationError(validated);
   } catch (error) {
     return {
       stateWritten: false,
-      result: blocked("artifact-reference-mismatch", error.message, cycle),
+      result: blocked(error.cycleBlockerCode ?? "artifact-reference-mismatch", error.message, cycle),
     };
   }
 
