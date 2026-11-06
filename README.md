@@ -430,7 +430,10 @@ one-commit rules; bootstrap is not available again.
 Every ordinary start requires a current satisfied starting convergence evaluation. A
 valid full-manuscript scope, pending action, or caller-supplied claim cannot
 manufacture that result; unavailable proof blocks the start with
-`starting-evaluation-indeterminate`.
+`starting-evaluation-indeterminate`. Only the latest completed-cycle or independent
+evaluation is eligible: a newer narrowed, `not_satisfied`, or `indeterminate`
+independent result blocks the start instead of reopening it through an older
+satisfied record. A later current satisfied evaluation restores the ordinary start.
 
 Use the executable `author-project` facade for lifecycle operations:
 
@@ -474,12 +477,18 @@ not a multi-file filesystem transaction.
 Request-driven edits use revision execution records under `executions/`. Preparation
 verifies existing author decisions, exact edit approvals, backup manifests and
 bytes, and current input hashes without creating approval or writing manuscript.
-Verification rereads actual output bytes against the prepared hashes and binds
-the final requested pass and full-manuscript target scope. `prepared` never
-satisfies current-draft revision convergence. Resolved findings require a current verified execution;
-deferred and dismissed findings retain their decisions, and accepted review fixes
-require new affected coverage and another full-target current-scope review. Earlier verified
-executions remain historical after later approved batches.
+Plan decisions and edit approvals bind the plan and batch identities and hashes,
+operation, input scope fingerprint, complete ordered paths, actions, input hashes,
+and approved outputs; the same scope ID cannot make an old approval valid for new
+content. Verification rereads actual output bytes against the prepared hashes and
+binds the final requested pass and full-manuscript target scope. The final pass
+preserves every prepared operation and subcheck and may only add requirements.
+Pure insertion and deletion do not invent retained-path reorders; real retained
+reordering still requires exact approved actions. `prepared` never satisfies
+current-draft revision convergence. Resolved findings require a current verified
+execution; deferred and dismissed findings retain their decisions, and accepted
+review fixes require new affected coverage and another full-target current-scope
+review. Earlier verified executions remain historical after later approved batches.
 
 A full-manuscript no-edit pass records its requested-pass fingerprint, inherited
 and newly requested subchecks, hashed coverage evidence, no-edit decisions,
@@ -487,7 +496,14 @@ three-perspective review group, complete fresh reader chain, and semantic
 attestations. `evaluate-cycle` derives the outcome and an immutable evidence
 graph; callers cannot supply an outcome. The evaluator accepts eligible local
 units from an earlier pass while requiring a new full-target index, synthesis,
-and review group for the requested pass.
+and review group for the requested pass. Changing the cycle's requested pass
+after satisfaction makes its old target evaluation stale for status, gate, and
+completion. Whenever a cycle's initiating or current strategy is `revise-fiction`,
+including request→fiction and draft→fiction work, it requires current full-target
+Story Bible, structure, and final-review evidence bound to that pass and scope;
+current-scope review alone cannot satisfy the whole-book gates. Once revision
+execution is linked, the active cycle cannot switch away from `revise-fiction`
+before that evidence and explicit cycle completion.
 
 Completion requires a separate explicit author decision. The operation appends
 that decision to the tracker, recomputes and saves a new evaluation with the

@@ -6,12 +6,14 @@ import test from "node:test";
 
 import { computeScopeFingerprint, recordScope } from "../scripts/lib/index.mjs";
 import {
+  appendRevisionExecutionApprovals,
+  appendTrackerApproval as appendApproval,
   artifactAt,
   createConvergenceProject,
   createFirstPublicationArtifacts,
   createNoEditEvidence,
   currentScopeReference,
-  runAuthorProject,
+  runInput,
   timestamp,
   writeJson,
 } from "./convergence-helpers.mjs";
@@ -42,26 +44,6 @@ function creationDependencyFingerprint(summary, context, files) {
 
 function creationApprovalReason(text, batchId, dependencyFingerprint, scopeFingerprint) {
   return `${text} batch_id=${batchId} dependency_fingerprint=${dependencyFingerprint} scope_fingerprint=${scopeFingerprint}`;
-}
-
-async function runInput(projectRoot, command, input) {
-  const inputPath = await writeJson(
-    path.join(projectRoot, `${command}-${input.evaluation_id ?? input.execution_id ?? input.cycle_id}.json`),
-    input,
-  );
-  return runAuthorProject([command, "--project-root", projectRoot, "--input", inputPath]);
-}
-
-async function appendApproval(projectRoot, approval) {
-  const trackerPath = path.join(projectRoot, "audit-tracker.md");
-  const tracker = await readFile(trackerPath, "utf8");
-  const separator = "|---|---|---|---|---|---|---|---|\n";
-  const index = tracker.indexOf(separator, tracker.indexOf("## Approvals"));
-  assert.ok(index >= 0);
-  const insertAt = index + separator.length;
-  const paths = approval.paths.map((value) => `\`${value}\``).join(", ");
-  const row = `| ${approval.id} | ${approval.type} | ${approval.operation} | ${approval.scopeId} | ${paths} | approved | ${approval.reason} | ${timestamp} |\n`;
-  await writeFile(trackerPath, tracker.slice(0, insertAt) + row + tracker.slice(insertAt), "utf8");
 }
 
 async function confirmScope(projectRoot, scopeId, files, decisionId) {
@@ -746,28 +728,14 @@ test("accepted increment review findings reenter verified execution before conve
     (blocker) => blocker.code === "open-findings"
   ));
 
-  for (const approval of [{
-    id: "PLAN-102",
-    type: "revision-plan",
-    operation: "revision-plan",
-    reason: "Author accepted the continuity finding and its exact rework plan.",
-  }, {
-    id: "EDIT-102",
-    type: "edit",
-    operation: "chapter-revision",
-    reason: "Author approved the exact continuity-fix input and output versions.",
-  }, {
+  await appendApproval(fixture.projectRoot, {
     id: "RESOLVE-102",
     type: "finding-decision",
     operation: "current-scope-review",
+    scopeId: publication.targetScope.scope_id,
+    paths: ["manuscript/chapter-002.md"],
     reason: "Author accepted the review finding for verified revision execution.",
-  }]) {
-    await appendApproval(fixture.projectRoot, {
-      ...approval,
-      scopeId: publication.targetScope.scope_id,
-      paths: ["manuscript/chapter-002.md"],
-    });
-  }
+  });
   const planRelative = "sessions/increment-plan-102.md";
   const batchRelative = "sessions/increment-batch-102.json";
   await writeFile(
@@ -800,7 +768,7 @@ test("accepted increment review findings reenter verified execution before conve
     },
   });
   assert.equal(reworkPlanned.status, 0, `${reworkPlanned.stdout}\n${reworkPlanned.stderr}`);
-  const prepared = await runInput(fixture.projectRoot, "prepare-revision-execution", {
+  const execution = {
     cycle_id: cycle.cycle_id,
     expected_revision: 5,
     execution_id: "execution-102",
@@ -831,7 +799,12 @@ test("accepted increment review findings reenter verified execution before conve
       input_sha256: sha256(originalChapter),
       output_sha256: sha256(reworkedChapter),
     }],
+  };
+  await appendRevisionExecutionApprovals(fixture.projectRoot, execution, {
+    planReason: "Author accepted the continuity finding and its exact rework plan.",
+    editReason: "Author approved the exact continuity-fix input and output versions.",
   });
+  const prepared = await runInput(fixture.projectRoot, "prepare-revision-execution", execution);
   assert.equal(prepared.status, 0, `${prepared.stdout}\n${prepared.stderr}`);
   assert.equal(JSON.parse(prepared.stdout).execution.status, "prepared");
 

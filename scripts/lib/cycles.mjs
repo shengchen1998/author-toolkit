@@ -1045,6 +1045,20 @@ async function transitionCycleLocked(project, request, options) {
   }
 
   const currentStrategy = request.current_strategy ?? cycle.current_strategy;
+  if (
+    cycle.current_strategy === "revise-fiction" &&
+    currentStrategy !== "revise-fiction" &&
+    cycle.related_artifacts.revision_executions.length > 0
+  ) {
+    return {
+      stateWritten: false,
+      result: blocked(
+        "revise-fiction-strategy-change-blocked",
+        "A revise-fiction cycle with linked revision executions cannot change strategy before whole-book evidence and explicit cycle completion; the execution history cannot clear that responsibility.",
+        cycle,
+      ),
+    };
+  }
   const requiredCreationRecovery = cycle.bootstrap ? "revise-draft" : "revise-increment";
   if (
     cycle.initiating_strategy === "write-fiction" &&

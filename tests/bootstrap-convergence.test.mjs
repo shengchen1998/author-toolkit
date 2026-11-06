@@ -10,37 +10,19 @@ import {
   validateStoryStateMarkdown,
 } from "../scripts/lib/index.mjs";
 import {
+  appendRevisionExecutionApprovals,
+  appendTrackerApproval as appendApproval,
   artifactAt,
   createConvergenceProject,
   createNoEditEvidence,
   currentScopeReference,
-  runAuthorProject,
+  runInput,
   timestamp,
   writeJson,
 } from "./convergence-helpers.mjs";
 
 function sha256(value) {
   return createHash("sha256").update(value).digest("hex");
-}
-
-async function runInput(projectRoot, command, input) {
-  const inputPath = await writeJson(
-    path.join(projectRoot, `${command}-${input.evaluation_id ?? input.execution_id ?? input.cycle_id}.json`),
-    input,
-  );
-  return runAuthorProject([command, "--project-root", projectRoot, "--input", inputPath]);
-}
-
-async function appendApproval(projectRoot, approval) {
-  const trackerPath = path.join(projectRoot, "audit-tracker.md");
-  const tracker = await readFile(trackerPath, "utf8");
-  const separator = "|---|---|---|---|---|---|---|---|\n";
-  const index = tracker.indexOf(separator, tracker.indexOf("## Approvals"));
-  assert.ok(index >= 0);
-  const insertAt = index + separator.length;
-  const paths = approval.paths.map((value) => `\`${value}\``).join(", ");
-  const row = `| ${approval.id} | ${approval.type} | ${approval.operation} | ${approval.scopeId} | ${paths} | approved | ${approval.reason} | ${timestamp} |\n`;
-  await writeFile(trackerPath, tracker.slice(0, insertAt) + row + tracker.slice(insertAt), "utf8");
 }
 
 function creationDependencyFingerprint(summary, context, files) {
@@ -611,23 +593,6 @@ test("bootstrap revise-draft preserves first creation in the cumulative change s
   });
   assert.equal(planned.status, 0, `${planned.stdout}\n${planned.stderr}`);
 
-  for (const approval of [{
-    id: "PLAN-101",
-    type: "revision-plan",
-    operation: "revision-plan",
-    reason: "Author approved the exact initial revision plan.",
-  }, {
-    id: "EDIT-101",
-    type: "edit",
-    operation: "chapter-revision",
-    reason: "Author approved the exact initial edit input and output versions.",
-  }]) {
-    await appendApproval(projectRoot, {
-      ...approval,
-      scopeId: publication.targetScope.scope_id,
-      paths: ["manuscript/chapter-001.md"],
-    });
-  }
   const revisedContents = "The ferry leaves at dusk.\nMara watches it go.";
   const planRelative = "sessions/bootstrap-plan-101.md";
   await writeFile(path.join(projectRoot, planRelative), "# Initial revision plan\n", "utf8");
@@ -645,7 +610,7 @@ test("bootstrap revise-draft preserves first creation in the cumulative change s
     approval_id: "EDIT-101",
     scope_id: publication.targetScope.scope_id,
   });
-  const prepared = await runInput(projectRoot, "prepare-revision-execution", {
+  const execution = {
     cycle_id: cycle.cycle_id,
     expected_revision: 3,
     execution_id: "execution-bootstrap-101",
@@ -672,7 +637,12 @@ test("bootstrap revise-draft preserves first creation in the cumulative change s
       input_sha256: sha256(publication.contents),
       output_sha256: sha256(revisedContents),
     }],
+  };
+  await appendRevisionExecutionApprovals(projectRoot, execution, {
+    planReason: "Author approved the exact initial revision plan.",
+    editReason: "Author approved the exact initial edit input and output versions.",
   });
+  const prepared = await runInput(projectRoot, "prepare-revision-execution", execution);
   assert.equal(prepared.status, 0, `${prepared.stdout}\n${prepared.stderr}`);
 
   await writeFile(path.join(projectRoot, "manuscript/chapter-001.md"), revisedContents, "utf8");

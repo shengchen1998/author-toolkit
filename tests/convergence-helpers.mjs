@@ -75,6 +75,16 @@ export function runAuthorProject(args) {
   });
 }
 
+export async function runInput(projectRoot, command, input) {
+  const identity = input.reconciliation_id ?? input.evaluation_id ?? input.cycle_id ??
+    input.execution_id ?? input.strategy ?? input.operation ?? "input";
+  const inputPath = await writeJson(
+    path.join(projectRoot, `${command}-${identity}.json`),
+    input,
+  );
+  return runAuthorProject([command, "--project-root", projectRoot, "--input", inputPath]);
+}
+
 
 export function runValidator(args) {
   return spawnSync(process.execPath, [path.join(root, "scripts", "validate.mjs"), ...args], {
@@ -156,7 +166,7 @@ function requestedPassFingerprint(pass) {
   })).digest("hex");
 }
 
-async function appendTrackerApproval(projectRoot, approval) {
+export async function appendTrackerApproval(projectRoot, approval) {
   const trackerPath = path.join(projectRoot, "audit-tracker.md");
   const tracker = await readFile(trackerPath, "utf8");
   const separator = "|---|---|---|---|---|---|---|---|\n";
@@ -166,6 +176,124 @@ async function appendTrackerApproval(projectRoot, approval) {
   const paths = approval.paths.map((value) => `\`${value}\``).join(", ");
   const row = `| ${approval.id} | ${approval.type} | ${approval.operation} | ${approval.scopeId} | ${paths} | approved | ${approval.reason} | ${timestamp} |\n`;
   await writeFile(trackerPath, tracker.slice(0, insertAt) + row + tracker.slice(insertAt), "utf8");
+}
+
+export function revisionApprovalReason(execution, operation) {
+  const binding = {
+    operation,
+    plan: {
+      plan_id: execution.plan.plan_id,
+      path: execution.plan.path,
+      sha256: execution.plan.sha256,
+    },
+    batch: {
+      batch_id: execution.batch.batch_id,
+      path: execution.batch.path,
+      sha256: execution.batch.sha256,
+    },
+    input_scope: {
+      scope_id: execution.input_scope.scope_id,
+      scope_fingerprint: execution.input_scope.scope_fingerprint,
+    },
+    files: execution.files.map(({ path: filePath, action, input_sha256, output_sha256 }) => ({
+      path: filePath,
+      action,
+      input_sha256,
+      output_sha256,
+    })),
+  };
+  const fingerprint = createHash("sha256").update(JSON.stringify(binding)).digest("hex");
+  return [
+    `plan_id=${execution.plan.plan_id}`,
+    `plan_sha256=${execution.plan.sha256}`,
+    `batch_id=${execution.batch.batch_id}`,
+    `batch_sha256=${execution.batch.sha256}`,
+    `scope_fingerprint=${execution.input_scope.scope_fingerprint}`,
+    `revision_approval=${fingerprint}`,
+  ].join(" ");
+}
+
+export async function appendRevisionExecutionApprovals(projectRoot, execution, options = {}) {
+  const paths = execution.files.map((file) => file.path);
+  const scopeId = execution.input_scope.scope_id;
+  await appendTrackerApproval(projectRoot, {
+    id: options.planDecisionId ?? execution.author_decision_ids[0],
+    type: "revision-plan",
+    operation: "revision-plan",
+    scopeId,
+    paths,
+    reason: `${options.planReason ?? "Author approved the exact revision plan and batch."} ${revisionApprovalReason(execution, "revision-plan")}`,
+  });
+  for (const approvalId of options.approvalIds ?? execution.approval_ids) {
+    await appendTrackerApproval(projectRoot, {
+      id: approvalId,
+      type: "edit",
+      operation: "chapter-revision",
+      scopeId,
+      paths,
+      reason: `${options.editReason ?? "Author approved the exact revision input and output versions."} ${revisionApprovalReason(execution, "chapter-revision")}`,
+    });
+  }
+}
+
+export async function createRevisionExecutionFixture(projectRoot, options = {}) {
+  const original = options.original ?? "The ferry leaves at dawn.\nMara watches it go.";
+  const output = options.output ?? "The ferry leaves at dusk.\nMara watches it go.";
+  const manuscriptPath = options.manuscriptPath ?? "manuscript/chapter-001.md";
+  const planId = options.planId ?? "cross-plan-001";
+  const batchId = options.batchId ?? "cross-batch-001";
+  const backupId = options.backupId ?? "backup-cross-001";
+  const planRelative = `sessions/${planId}.md`;
+  const batchRelative = `sessions/${batchId}.json`;
+  await writeFile(path.join(projectRoot, planRelative), `# Revision plan\n\n${options.action ?? "Change dawn to dusk."}\n`, "utf8");
+  await writeJson(path.join(projectRoot, batchRelative), {
+    batch_id: batchId,
+    action: options.action ?? "Change dawn to dusk.",
+  });
+  const backupRelative = `.author-toolkit/backups/${backupId}/${manuscriptPath}`;
+  await mkdir(path.dirname(path.join(projectRoot, backupRelative)), { recursive: true });
+  await writeFile(path.join(projectRoot, backupRelative), original, "utf8");
+  const backupManifestRelative = `.author-toolkit/backups/${backupId}/manifest.json`;
+  await writeJson(path.join(projectRoot, backupManifestRelative), {
+    backup_id: backupId,
+    approval_id: options.editApprovalId ?? "EDIT-001",
+    scope_id: options.inputScope.scope_id,
+  });
+  const execution = {
+    ...(options.cycleId === undefined ? {} : { cycle_id: options.cycleId }),
+    ...(options.expectedRevision === undefined ? {} : { expected_revision: options.expectedRevision }),
+    execution_id: options.executionId ?? "execution-cross-001",
+    plan: { plan_id: planId, ...(await artifactAt(projectRoot, planRelative)) },
+    batch: { batch_id: batchId, ...(await artifactAt(projectRoot, batchRelative)) },
+    requested_pass: options.requestedPass,
+    input_scope: options.inputScope,
+    finding_dispositions: [],
+    author_decision_ids: [options.planDecisionId ?? "PLAN-001"],
+    approval_ids: [options.editApprovalId ?? "EDIT-001"],
+    backups: [{
+      backup_id: backupId,
+      approval_id: options.editApprovalId ?? "EDIT-001",
+      manifest: await artifactAt(projectRoot, backupManifestRelative),
+      files: [{
+        path: manuscriptPath,
+        backup_path: backupRelative,
+        sha256: createHash("sha256").update(original).digest("hex"),
+      }],
+    }],
+    files: [{
+      path: manuscriptPath,
+      action: "modify",
+      input_sha256: createHash("sha256").update(original).digest("hex"),
+      output_sha256: createHash("sha256").update(output).digest("hex"),
+    }],
+  };
+  await appendRevisionExecutionApprovals(projectRoot, execution, {
+    planDecisionId: options.planDecisionId,
+    approvalIds: options.editApprovalId ? [options.editApprovalId] : undefined,
+    planReason: options.planReason,
+    editReason: options.editReason,
+  });
+  return { execution, original, output, manuscriptPath };
 }
 
 const coverageOperations = ["diagnostics", "characters", "prose", "ai-cleanup"];
@@ -196,26 +324,39 @@ export async function createNoEditEvidence(projectRoot, options = {}) {
 
   const defaultSubchecks = {
     intake: ["manuscript-inventory"],
+    "story-bible": ["whole-book-foundation"],
     "draft-baseline": ["observed-facts"],
-    diagnostics: ["causality"],
+    structure: ["full-book-landmarks"],
     characters: ["continuity"],
+    diagnostics: ["causality"],
     "revision-plan": ["accepted-findings"],
     "chapter-revision": ["approved-batches"],
     prose: ["sentence-mechanics"],
     "ai-cleanup": ["ai-associated-patterns"],
     "current-scope-review": ["intent", "standards", "fresh"],
+    "final-review": ["intent", "standards", "fresh"],
   };
+  const wholeBookOperations = ["story-bible", "structure", "final-review"];
   const operationOrder = Object.keys(defaultSubchecks);
   const requiredByOperation = new Map();
   const sourceOperations = baselinePassRecord
     ? baselinePassRecord.required_operations
-    : operationOrder.map((operation) => ({
+    : operationOrder.filter((operation) =>
+        options.wholeBook || !wholeBookOperations.includes(operation)
+      ).map((operation) => ({
         operation,
         paths,
         subchecks: defaultSubchecks[operation],
       }));
   for (const requirement of sourceOperations) {
     requiredByOperation.set(requirement.operation, new Set(requirement.subchecks));
+  }
+  if (options.wholeBook) {
+    for (const operation of wholeBookOperations) {
+      if (!requiredByOperation.has(operation)) {
+        requiredByOperation.set(operation, new Set(defaultSubchecks[operation]));
+      }
+    }
   }
   for (const request of requestedSubchecks) {
     if (!requiredByOperation.has(request.operation)) {
@@ -288,6 +429,16 @@ export async function createNoEditEvidence(projectRoot, options = {}) {
     paths,
     reason: "Author confirmed that no accepted finding requires a manuscript edit.",
   });
+  if (options.wholeBook) {
+    await appendTrackerApproval(projectRoot, {
+      id: options.storyBibleDecisionId ?? `STORY-${numericSuffix}`,
+      type: "story-bible",
+      operation: "story-bible",
+      scopeId: scopeReference.scope_id,
+      paths,
+      reason: `Author confirmed the whole-book Story Bible. pass_fingerprint=${pass.pass_fingerprint} scope_fingerprint=${scopeReference.scope_fingerprint} story_bible_sha256=${dependency.sha256}`,
+    });
+  }
 
   async function writeReport(
     reportId,
@@ -303,7 +454,7 @@ export async function createNoEditEvidence(projectRoot, options = {}) {
       stage,
       created_at: timestamp,
       language: manifest.language,
-      skill: { name: "revise-draft", version: "3.2.0" },
+      skill: { name: options.wholeBook ? "revise-fiction" : "revise-draft", version: "3.2.0" },
       inputs: reportFiles.map((file) => ({
         path: file.path,
         version: file.sha256,
@@ -339,10 +490,27 @@ export async function createNoEditEvidence(projectRoot, options = {}) {
     `reports/draft-baseline/${passId}.md`,
     ["observed-facts"],
   ));
+  const wholeBookReports = [];
+  if (options.wholeBook) {
+    wholeBookReports.push(await writeReport(
+      `${passId}-story-bible`,
+      "story-bible",
+      `reports/story-bible/${passId}.md`,
+      ["whole-book-foundation"],
+      [...versionedPaths, dependency],
+    ));
+    wholeBookReports.push(await writeReport(
+      `${passId}-structure`,
+      "structure",
+      `reports/structure/${passId}.md`,
+      ["full-book-landmarks"],
+    ));
+    reports.push(...wholeBookReports);
+  }
 
   const coverageUnits = [];
   const coverageEntries = [];
-  const coverageArtifacts = [];
+  const coverageArtifacts = [...wholeBookReports];
   for (const operation of coverageOperations) {
     const requirement = requiredOperations.find((entry) => entry.operation === operation);
     const reused = (options.reusedCoverageUnits ?? []).filter(
@@ -427,24 +595,26 @@ export async function createNoEditEvidence(projectRoot, options = {}) {
   const reviewStates = [];
   const reviewReports = [];
   const reviewJobInputs = [];
+  const reviewStage = options.wholeBook ? "final-review" : "current-scope-review";
+  const reviewMode = options.wholeBook ? "final" : "current-scope";
   for (const perspective of reviewPerspectives) {
     const jobId = `${passId}-${perspective}-review`;
     const chunkReport = await writeReport(
       `${jobId}-chunk-report`,
-      "current-scope-review",
-      `reports/current-scope-review/${passId}/${perspective}/chunk.md`,
+      reviewStage,
+      `reports/${reviewStage}/${passId}/${perspective}/chunk.md`,
       [perspective],
     );
     const volumeReport = await writeReport(
       `${jobId}-volume-report`,
-      "current-scope-review",
-      `reports/current-scope-review/${passId}/${perspective}/volume.md`,
+      reviewStage,
+      `reports/${reviewStage}/${passId}/${perspective}/volume.md`,
       [perspective],
     );
     const bookReport = await writeReport(
       `${jobId}-book-report`,
-      "current-scope-review",
-      `reports/current-scope-review/${passId}/${perspective}/book.md`,
+      reviewStage,
+      `reports/${reviewStage}/${passId}/${perspective}/book.md`,
       [perspective],
     );
     reviewReports.push(chunkReport, volumeReport, bookReport);
@@ -465,7 +635,7 @@ export async function createNoEditEvidence(projectRoot, options = {}) {
     const job = {
       schema_version: "1.0.0",
       job_id: jobId,
-      mode: "current-scope",
+      mode: reviewMode,
       perspective,
       scope_id: scopeReference.scope_id,
       status: "complete",

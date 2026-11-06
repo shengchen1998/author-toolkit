@@ -6,35 +6,19 @@ import test from "node:test";
 
 import { computeInventoryFingerprint, recordScope } from "../scripts/lib/index.mjs";
 import {
+  appendRevisionExecutionApprovals,
+  appendTrackerApproval as appendApproval,
   createConvergenceProject,
   createFirstPublicationArtifacts,
   createNoEditEvidence,
   currentScopeReference,
-  runAuthorProject,
+  runInput,
   timestamp,
   writeJson,
 } from "./convergence-helpers.mjs";
 
 function sha256(value) {
   return createHash("sha256").update(value).digest("hex");
-}
-
-async function runInput(projectRoot, command, input) {
-  const identity = input.reconciliation_id ?? input.evaluation_id ?? input.cycle_id ?? "request";
-  const inputPath = await writeJson(path.join(projectRoot, `${command}-${identity}.json`), input);
-  return runAuthorProject([command, "--project-root", projectRoot, "--input", inputPath]);
-}
-
-async function appendApproval(projectRoot, approval) {
-  const trackerPath = path.join(projectRoot, "audit-tracker.md");
-  const tracker = await readFile(trackerPath, "utf8");
-  const separator = "|---|---|---|---|---|---|---|---|\n";
-  const index = tracker.indexOf(separator, tracker.indexOf("## Approvals"));
-  assert.ok(index >= 0);
-  const insertAt = index + separator.length;
-  const paths = approval.paths.map((value) => `\`${value}\``).join(", ");
-  const row = `| ${approval.id} | ${approval.type} | ${approval.operation} | ${approval.scopeId} | ${paths} | approved | ${approval.reason} | ${timestamp} |\n`;
-  await writeFile(trackerPath, tracker.slice(0, insertAt) + row + tracker.slice(insertAt), "utf8");
 }
 
 async function confirmScope(projectRoot, decisionId, scopeId, files, description = "Approved external manuscript.") {
@@ -282,23 +266,6 @@ async function prepareVerifiedPostImportEdit(t) {
     requested_pass: beforeEvidence.passReference,
   });
   assert.equal(planned.status, 0, `${planned.stdout}\n${planned.stderr}`);
-  for (const approval of [{
-    id: "PLAN-806",
-    type: "revision-plan",
-    operation: "revision-plan",
-    reason: "Author approved the exact revision plan.",
-  }, {
-    id: "EDIT-806",
-    type: "edit",
-    operation: "chapter-revision",
-    reason: "Author approved the exact input and output versions.",
-  }]) {
-    await appendApproval(projectRoot, {
-      ...approval,
-      scopeId: imported.targetScope.scope_id,
-      paths: ["manuscript/chapter-001.md"],
-    });
-  }
   const planRelative = "sessions/post-import-plan.json";
   const batchRelative = "sessions/post-import-batch.json";
   await writeJson(path.join(projectRoot, planRelative), { plan_id: "post-import-plan" });
@@ -316,7 +283,7 @@ async function prepareVerifiedPostImportEdit(t) {
     path: relative,
     sha256: sha256(await readFile(path.join(projectRoot, relative))),
   });
-  const prepared = await runInput(projectRoot, "prepare-revision-execution", {
+  const execution = {
     cycle_id: cycleId,
     expected_revision: 3,
     execution_id: "execution-post-import-806",
@@ -343,7 +310,9 @@ async function prepareVerifiedPostImportEdit(t) {
       input_sha256: sha256(original),
       output_sha256: sha256(output),
     }],
-  });
+  };
+  await appendRevisionExecutionApprovals(projectRoot, execution);
+  const prepared = await runInput(projectRoot, "prepare-revision-execution", execution);
   assert.equal(prepared.status, 0, `${prepared.stdout}\n${prepared.stderr}`);
   await writeFile(path.join(projectRoot, "manuscript", "chapter-001.md"), output, "utf8");
   const targetScope = await confirmScope(projectRoot, "SCOPE-807", "scope-post-import-output", [
@@ -663,23 +632,6 @@ async function verifyBootstrapEdit(projectRoot, cycleId, expectedRevision, input
     requested_pass: beforeEvidence.passReference,
   });
   assert.equal(planned.status, 0, `${planned.stdout}\n${planned.stderr}`);
-  for (const approval of [{
-    id: `PLAN-${id}`,
-    type: "revision-plan",
-    operation: "revision-plan",
-    reason: "Author approved the exact revision plan.",
-  }, {
-    id: `EDIT-${id}`,
-    type: "edit",
-    operation: "chapter-revision",
-    reason: "Author approved the exact input and output versions.",
-  }]) {
-    await appendApproval(projectRoot, {
-      ...approval,
-      scopeId: inputScope.scope_id,
-      paths: ["manuscript/chapter-001.md"],
-    });
-  }
   const planRelative = `sessions/execution-chain-plan-${id}.json`;
   const batchRelative = `sessions/execution-chain-batch-${id}.json`;
   await writeJson(path.join(projectRoot, planRelative), { plan_id: `execution-chain-plan-${id}` });
@@ -697,7 +649,7 @@ async function verifyBootstrapEdit(projectRoot, cycleId, expectedRevision, input
     path: relative,
     sha256: sha256(await readFile(path.join(projectRoot, relative))),
   });
-  const prepared = await runInput(projectRoot, "prepare-revision-execution", {
+  const execution = {
     cycle_id: cycleId,
     expected_revision: expectedRevision + 1,
     execution_id: `execution-chain-${id}`,
@@ -724,7 +676,9 @@ async function verifyBootstrapEdit(projectRoot, cycleId, expectedRevision, input
       input_sha256: sha256(original),
       output_sha256: sha256(output),
     }],
-  });
+  };
+  await appendRevisionExecutionApprovals(projectRoot, execution);
+  const prepared = await runInput(projectRoot, "prepare-revision-execution", execution);
   assert.equal(prepared.status, 0, `${prepared.stdout}\n${prepared.stderr}`);
   await writeFile(path.join(projectRoot, "manuscript", "chapter-001.md"), output, "utf8");
   const targetScope = await confirmScope(projectRoot, `SCOPE-${finalId}`, `scope-execution-chain-${id}`, [
