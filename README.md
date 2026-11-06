@@ -152,10 +152,14 @@ node <setup-skill>/assets/runtime/author-project.mjs init --project-root <projec
 node <setup-skill>/assets/runtime/author-project.mjs read --project-root <project-root>
 node <setup-skill>/assets/runtime/author-project.mjs status --project-root <project-root>
 node <setup-skill>/assets/runtime/author-project.mjs status --project-root <project-root> --full
+node <setup-skill>/assets/runtime/author-project.mjs set-pending --project-root <project-root> --input <pending-action.json>
+node <setup-skill>/assets/runtime/author-project.mjs record-scope --project-root <project-root> --input <scope.json>
 node <setup-skill>/assets/runtime/author-project.mjs timestamp
 ```
 
 `init` deploys matching shared references and creates a neutral manifest, empty tracker and backup index, and operational directories without importing findings, approvals, evaluations, or current-draft revision convergence claims. Reentry validates an existing project without resetting its state. Use `--input <initialization.json>` for custom operational paths, or `--manuscript-root <path>` for a different manuscript location. The `timestamp` response returns `result.json` for JSON timestamps and timestamp-based IDs and `result.filename` for unique filenames, both from one UTC clock reading. Current artifact validation rejects timestamps more than 60 seconds in the future with concrete field diagnostics and never infers time from filenames.
+
+`set-pending` records operation-scoped work and artifact references while preserving current scope and active-cycle coordination; it never creates approval. `record-scope` accepts ordered paths or path/hash entries, recomputes current manuscript hashes and exclusions under the shared lock, and supports proposed and confirmed records. Confirmation requires explicit reading-order evidence. Confirmed results include deterministic scope and inventory fingerprints, immutable snapshot references, full-manuscript validation, and concrete blockers. Both commands recheck optional expected manifest hashes and cycle revisions and publish through verified atomic writes. See the author-project operation reference for input fields and interruption recovery.
 
 Every public project command, including cycle, reconciliation, execution, evaluation, and completion operations, returns one JSON envelope with `response_contract_version: "1.0"`, `command`, boolean `valid`, command-specific `result`, and structured `errors`. The previous operation result lives under `result`; errors are JSON on stdout rather than parallel human text. Successful commands and valid read-only status queries exit 0, including `not_satisfied` and `indeterminate` lifecycle states. Project, operation, evidence, or gate validation failures exit 1. Argument, input-file, and input-shape usage errors exit 2.
 

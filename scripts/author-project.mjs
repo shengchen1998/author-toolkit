@@ -4,6 +4,8 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 
 const commands = new Set([
+  "set-pending",
+  "record-scope",
   "start-cycle",
   "transition-cycle",
   "evaluate-cycle",
@@ -29,6 +31,8 @@ function usage() {
   node ${process.argv[1] ?? "author-project.mjs"} init --project-root ROOT [--language TAG] [--manuscript-root PATH]
   node ${process.argv[1] ?? "author-project.mjs"} read --project-root ROOT [--full]
   node ${process.argv[1] ?? "author-project.mjs"} status --project-root ROOT [--full]
+  node ${process.argv[1] ?? "author-project.mjs"} set-pending --project-root ROOT --input FILE
+  node ${process.argv[1] ?? "author-project.mjs"} record-scope --project-root ROOT --input FILE
   node ${process.argv[1] ?? "author-project.mjs"} start-cycle --project-root ROOT --input FILE
   node ${process.argv[1] ?? "author-project.mjs"} transition-cycle --project-root ROOT --input FILE
   node ${process.argv[1] ?? "author-project.mjs"} reconcile-cycle --project-root ROOT [--input FILE]
@@ -52,7 +56,9 @@ Every command response is JSON with response_contract_version=1.0, command, vali
 Success exits 0; project or operation validation failure exits 1; argument, input-file, or input-shape usage error exits 2.
 A valid status query exits 0 for satisfied, not_satisfied, and indeterminate outcomes. Gates exit 1 unless evidence is current and satisfied.
 Default read and status responses are compact. Explicit --full and dedicated cycle queries retain complete manifests, ordered hashes, evaluations, evidence graphs, and history.
-Transitions, reconciliation, revision execution, evaluations, and completions serialize independent processes with active-cycle.lock and recheck expected_revision in the lock.
+set-pending preserves current scope and active-cycle coordination and never infers approval; optional expected_manifest_sha256 and cycle revision inputs are rechecked under the shared lock.
+record-scope recomputes current manuscript hashes and exclusions for proposed or confirmed input; confirmation requires reading-order evidence and publishes immutable snapshots before coordinated manifest state.
+Pending-action, scope, transitions, reconciliation, revision execution, evaluations, and completions serialize independent processes with active-cycle.lock and recheck expected_revision in the lock.
 reconcile-cycle without --input only diagnoses; a direction requires exact cycle and operation identities and never rewrites historical artifacts or infers approval from pending action.
 Manuscript reconciliation verifies an existing creation-import decision, current inventory, scope, and story state; it never writes manuscript or accepts a confirmation boolean as replacement evidence.
 Independent evaluate-draft uses the same evaluator without creating an active cycle; an active cycle requires evaluate-cycle instead.
@@ -85,7 +91,7 @@ function parseArguments(args) {
   if (Boolean(selection.projectRoot) === Boolean(selection.manifest)) {
     throw new Error("Select exactly one of --project-root or --manifest");
   }
-  if (["start-cycle", "transition-cycle", "evaluate-cycle", "evaluate-draft", "complete-cycle", "check-operation", "prepare-draft-revision-execution", "prepare-revision-execution", "verify-draft-revision-execution", "verify-revision-execution", "reconcile-manuscript"].includes(command) && !selection.input) {
+  if (["set-pending", "record-scope", "start-cycle", "transition-cycle", "evaluate-cycle", "evaluate-draft", "complete-cycle", "check-operation", "prepare-draft-revision-execution", "prepare-revision-execution", "verify-draft-revision-execution", "verify-revision-execution", "reconcile-manuscript"].includes(command) && !selection.input) {
     throw new Error(`${command} requires --input`);
   }
   if (["cycle-status", "cycle-gate", "convergence-status", "convergence-gate"].includes(command) && selection.input) {
@@ -225,8 +231,10 @@ async function main() {
     prepareDraftRevisionExecution,
     prepareRevisionExecution,
     projectRootFromManifest,
+    recordProjectScope,
     reconcileCycle,
     reconcileManuscript,
+    setPendingAction,
     startCycle,
     transitionCycle,
     validateManifest,
@@ -278,6 +286,8 @@ async function main() {
     result = await reconcileCycle(projectRoot);
   } else {
     const input = JSON.parse(await readFile(selection.input, "utf8"));
+    if (selection.command === "set-pending") result = await setPendingAction(projectRoot, input);
+    if (selection.command === "record-scope") result = await recordProjectScope(projectRoot, input);
     if (selection.command === "start-cycle") result = await startCycle(projectRoot, input);
     if (selection.command === "transition-cycle") {
       result = await transitionCycle(projectRoot, input);

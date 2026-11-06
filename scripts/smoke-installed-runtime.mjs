@@ -134,6 +134,76 @@ try {
   assert.equal(fullResponse.result.manifest.schema_version, "3.2.0");
   assert.equal(fullResponse.result.status.query_valid, true);
 
+  const proposedPath = path.join(freshProject, "proposed-scope.json");
+  await writeFile(proposedPath, `${JSON.stringify({
+    scope_id: "scope-installed-001",
+    description: "The complete installed-smoke manuscript in reading order.",
+    status: "proposed",
+    files: ["manuscript/chapter-001.md"],
+  }, null, 2)}\n`, "utf8");
+  const proposed = runInstalled("author-project.mjs", [
+    "record-scope",
+    "--project-root",
+    freshProject,
+    "--input",
+    proposedPath,
+  ]);
+  assert.equal(proposed.status, 0, `${proposed.stdout}\n${proposed.stderr}`);
+  const proposedResponse = projectResponse(proposed, "record-scope");
+  assert.equal(proposedResponse.valid, true);
+  assert.equal(proposedResponse.result.validation.full_manuscript, false);
+
+  const freshManifestPath = path.join(freshProject, ".author-toolkit", "project.json");
+  const proposedScope = JSON.parse(await readFile(freshManifestPath, "utf8")).current_scope;
+  const confirmedPath = path.join(freshProject, "confirmed-scope.json");
+  await writeFile(confirmedPath, `${JSON.stringify({
+    ...proposedScope,
+    status: "confirmed",
+    author_confirmation: {
+      decision_id: "SCOPE-INSTALLED-001",
+      confirmed_at: new Date().toISOString(),
+      reading_order_confirmed: true,
+    },
+  }, null, 2)}\n`, "utf8");
+  const confirmed = runInstalled("author-project.mjs", [
+    "record-scope",
+    "--project-root",
+    freshProject,
+    "--input",
+    confirmedPath,
+  ]);
+  assert.equal(confirmed.status, 0, `${confirmed.stdout}\n${confirmed.stderr}`);
+  const confirmedResponse = projectResponse(confirmed, "record-scope");
+  assert.equal(confirmedResponse.valid, true);
+  assert.equal(confirmedResponse.result.validation.full_manuscript, true);
+  assert.equal(confirmedResponse.result.scope_fingerprint, proposedScope.scope_fingerprint);
+  await readFile(path.join(freshProject, confirmedResponse.result.snapshot.path), "utf8");
+  await readFile(path.join(freshProject, confirmedResponse.result.inventory.path), "utf8");
+
+  await writeFile(path.join(freshProject, "sessions", "intake.md"), "# Intake\n", "utf8");
+  const pendingPath = path.join(freshProject, "pending-action.json");
+  await writeFile(pendingPath, `${JSON.stringify({
+    operation: "intake",
+    status: "awaiting_author",
+    reason: "The installed smoke scope awaits an author decision.",
+    artifacts: ["sessions/intake.md"],
+  }, null, 2)}\n`, "utf8");
+  const pending = runInstalled("author-project.mjs", [
+    "set-pending",
+    "--project-root",
+    freshProject,
+    "--input",
+    pendingPath,
+  ]);
+  assert.equal(pending.status, 0, `${pending.stdout}\n${pending.stderr}`);
+  const pendingResponse = projectResponse(pending, "set-pending");
+  assert.equal(pendingResponse.valid, true);
+  assert.equal(pendingResponse.result.pending_action.scope_id, proposedScope.scope_id);
+  assert.equal(
+    pendingResponse.result.pending_action.scope_fingerprint,
+    proposedScope.scope_fingerprint,
+  );
+
   const projectUsage = runInstalled("author-project.mjs", ["unknown-command"]);
   assert.equal(projectUsage.status, 2);
   assert.equal(projectUsage.stderr, "");
@@ -177,7 +247,7 @@ try {
   assert.match(missing.stderr, /terminology\.md/);
 
   console.log(
-    "Installed runtime smoke passed: generic installer, isolated help, manuscript-only init, compact and full project views, unified responses, real schema validation, exit codes, and shared-reference diagnostics.",
+    "Installed runtime smoke passed: generic installer, isolated help, manuscript-only init, pending-action and proposed/confirmed scope commands, compact and full project views, unified responses, real schema validation, exit codes, and shared-reference diagnostics.",
   );
 } finally {
   await rm(temporary, { recursive: true, force: true });

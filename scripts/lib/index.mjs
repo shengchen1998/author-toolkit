@@ -120,5 +120,6 @@ export {
   recordInventorySnapshot,
 } from "./scope.mjs";
 export { reconcileManuscript } from "./reconciliation.mjs";
+export { recordProjectScope, setPendingAction } from "./project-commands.mjs";
 export { reconcileCycle } from "./cycle-recovery.mjs";
 export { migrateProjectToV3, migrateProjectToV32 } from "./migration.mjs";

@@ -369,26 +369,65 @@ Every resolved finding maps to a current verified execution whose finding dispos
 
 ## Set pending
 
-Read the manifest immediately before each write. Write the requested `pending_action` values: `operation`, `status`, `scope_id`, `reason`, and `artifacts`. When the work is already linked to an active cycle, also record its `cycle_id`, `cycle_revision`, `operation_id`, and `scope_fingerprint` as coordination references. Status is `in_progress`, `awaiting_author`, or `blocked`; reason is always nonempty and identifies the decision, interruption, or dependency. Preserve `current_scope` and all historical records. Append unique artifact paths and set both `pending_action.updated_at` and top-level `updated_at` to the current UTC timestamp. These references never authorize a write or completion.
+Run the installed public command instead of editing the manifest:
 
-`pending_action` describes requested or interrupted work, not linear operation progress. Do not mark an operation complete, choose a following operation, or resume a write because another skill was invoked. The calling strategy supplies each explicit transition. If a write fails after the manifest was read, reread before retrying.
+```bash
+node <setup-skill>/assets/runtime/author-project.mjs set-pending --project-root <project-root> --input <pending-action.json>
+```
+
+The input contains `operation`, `status`, a nonempty `reason`, and optional `artifacts`. Status is `in_progress`, `awaiting_author`, or `blocked`. Artifact entries are existing safe project-relative paths; the command validates them and appends unique references rather than writing their creative content. Optional `scope_id` and `scope_fingerprint` values are expectations, not replacements for the current scope. `expected_manifest_sha256` optionally binds the write to the exact manifest bytes read by the caller.
+
+When an active cycle exists, the command records its `cycle_id`, `cycle_revision`, recovery `operation_id`, and applicable target or current-scope identity. Supplying `cycle_id` and `expected_revision` together adds an optimistic revision check; a mismatch returns `cycle-revision-conflict`. The requested operation must match the cycle recovery position. Existing interrupted coordination is diagnosed rather than overwritten.
+
+The command acquires the registered convergence state root's `active-cycle.lock`, rereads the manifest and active cycle inside that lock, validates the complete updated manifest and artifact paths, and publishes through a verified temporary sibling and atomic rename. It preserves `current_scope`, cycle state, the tracker, and all historical records. Both timestamps use the current UTC time. A failure response includes actual recovery state and the current manifest hash. Pending action remains operation-scoped and never supplies write, publication, restore, evaluation, or completion approval.
+
+`pending_action` does not describe linear operation progress. Do not mark an operation complete, choose a following operation, or resume a write because another skill was invoked. The calling strategy supplies each explicit transition.
 
 ## Record scope
 
-Read the manifest and hash every complete manuscript file immediately before writing. Record the scope ID, description, ordered paths, SHA-256 hashes, `excluded_files`, `proposed` or `confirmed` status, and creation timestamp. A confirmed write requires the author's explicit confirmation of that exact record and reading order. Preserve the prior scope in reports, immutable snapshots, and session history. V3.0 and v3.1 retain their existing scope record behavior.
+Run the installed public command for both proposed and confirmed records:
 
-On v3.2, use the public `recordScope` operation exported by `scripts/lib/index.mjs`. A proposed write records the scope fingerprint without creating a snapshot. A confirmed write additionally requires `authorConfirmation.decision_id`, `authorConfirmation.confirmed_at`, and `authorConfirmation.reading_order_confirmed: true`; the decision reference is evidence of confirmation, not manuscript-edit approval.
+```bash
+node <setup-skill>/assets/runtime/author-project.mjs record-scope --project-root <project-root> --input <scope.json>
+```
+
+A minimal proposed input names the exact reading order and lets the command compute current evidence:
+
+```json
+{
+  "scope_id": "scope-draft-001",
+  "description": "The complete manuscript in reading order, pending author confirmation.",
+  "status": "proposed",
+  "files": ["manuscript/chapter-001.md", "manuscript/chapter-002.md"]
+}
+```
+
+Each `files` entry may be a project-relative path or an object with `path` and optional `sha256`. The command recomputes every hash under the lock and rejects a supplied stale hash. Omitted `excluded_files` use the current manuscript inventory exclusions; supplied exclusions must match exactly. Omitted `created_at` uses the operation's UTC time. An optional `scope_fingerprint` is an expectation checked against the recomputed ordered content. Unsafe paths, paths outside the manuscript inventory, duplicates, and changed exclusions stop the write. `expected_manifest_sha256`, `cycle_id`, and `expected_revision` provide the same optimistic checks as `set-pending`.
+
+A proposed write records the scope fingerprint without creating a snapshot. Its successful command result contains `validation.full_manuscript: false` and concrete validation blockers; this is truthful proposed state, not a command failure. A narrowed confirmed scope can likewise be recorded without claiming full-manuscript coverage.
+
+For confirmation, reuse the proposed record's exact ordered path/hash entries, exclusions, and `created_at`, change `status` to `confirmed`, and add:
+
+```json
+{
+  "author_confirmation": {
+    "decision_id": "SCOPE-001",
+    "confirmed_at": "<author-decision-utc-timestamp>",
+    "reading_order_confirmed": true
+  }
+}
+```
+
+The confirmation applies to the exact normalized scope and reading order preserved in the snapshot. Missing or false reading-order confirmation stops the write. This decision reference is scope-confirmation evidence, not manuscript-edit, publication, restore, evaluation, or completion approval.
 
 The confirmed operation creates or reuses two immutable artifacts beneath the registered convergence state root:
 
 - `inventories/<inventory-fingerprint>.json` contains the complete observed manuscript inventory, current hashes, exclusions, manuscript root, and observation timestamp. Its fingerprint hashes canonical JSON containing the manuscript root, file path/hash pairs sorted by path, and exclusions sorted by code-unit order; the timestamp is excluded.
 - `scopes/<scope-id>-<scope-fingerprint>.json` contains the exact confirmed scope, its ordered files and hashes, sorted exclusions, an inventory reference with path, SHA-256 and inventory fingerprint, and the author-confirmation reference. Including both scope ID and scope fingerprint in the filename permits distinct confirmed scope IDs to share identical content.
 
-Write snapshot content through a verified temporary sibling and publish it without overwriting an existing path. Reuse an identical existing artifact. If the same artifact identity has different content, stop with an immutable-snapshot conflict rather than replacing history. Update the manifest with the scope fingerprint, snapshot project-relative path, and snapshot SHA-256 through a verified temporary sibling and atomic rename. Snapshot creation and manifest update are coordinated writes, not a claimed multi-file filesystem transaction.
+Scope and manifest writes use the same lock, in-lock reread, current-input checks, and verified atomic primitives as pending-action writes. Snapshots publish without overwriting an existing path; identical existing artifacts are reused and conflicting bytes stop the operation. The command writes inventory evidence, then scope evidence, then coordinated manifest state. It does not claim a multi-file filesystem transaction. Interruption diagnostics identify published snapshots and manifest state; retry the exact same confirmed input after a pre-manifest interruption, or reread the manifest before any later attempt.
 
-Use `validateFullManuscriptScope` from the same public module or the validator CLI to rederive the full-manuscript result. A proposed or narrowed scope can be recorded truthfully but does not return `full_manuscript=true`.
-
-Before a later manuscript write, repeat the read, presence, and hash comparison. Treat a mismatch as a stopped approval and backup gate, not as permission to refresh the scope silently.
+The result reports scope and inventory fingerprints, snapshot references and hashes, the manifest hash, and validation with scope identity, full-manuscript result, snapshot path, and concrete blockers. Use `validateFullManuscriptScope` from the same public source module, the public status command, or the validator CLI to rederive that result independently. Before a later manuscript write, repeat the read, presence, and hash comparison. A mismatch is a stopped approval and backup gate, not permission to refresh scope silently. V3.0 and v3.1 retain their existing scope record behavior and migrate through setup first.
 
 ## Backup and creation commit
 
