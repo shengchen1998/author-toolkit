@@ -62,6 +62,8 @@ For shared creation, write proposed text only beneath `<paths.creation>/staging/
 
 A restore requires separate explicit approval naming the backup or commit and files, followed by a safety backup of current content through `author-project`. Move batch-created files into that safety backup before removing them from the manuscript. Story Bible creative changes require author confirmation and consistency with the approved plan.
 
+Before dependent work after external manuscript changes, use `author-project reconcile-manuscript` with exact inventory, story-state, target, and tracker `creation-import` evidence. It writes no manuscript and does not replace restore approval, safety backups, or input-hash checks. An active cycle keeps its starting snapshot and incorporates the confirmed target without a parallel cycle. Use `revise-increment` only with provable satisfied previous full-manuscript evidence; otherwise use `revise-draft`. Empty manuscript blocks satisfaction and completion until an approved nonempty restore or import receives a full-manuscript `revise-draft` pass.
+
 Standalone skill runs leave shared project state unchanged. Incorporate their output only when the author explicitly requests it, preserving the source and recording the decision and shared evidence required by the active strategy.
 
 ## Preserve truthful evidence

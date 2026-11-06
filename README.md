@@ -520,6 +520,33 @@ the restored batch are moved into that safety backup before being removed from
 the manuscript. Use `creation-import` to reconcile external manuscript changes
 instead of silently refreshing hashes or story state.
 
+`author-project reconcile-manuscript` verifies the exact tracker import decision,
+current inventory, confirmed scope or null empty target, and story-state sources.
+It preserves an immutable manuscript reconciliation and, during an active cycle,
+extends that cycle's target, change set, and work set without rewriting its
+starting snapshot. Use `revise-increment` only while the previous satisfied
+full-manuscript proof remains intact; otherwise use full-manuscript
+`revise-draft`. Empty deletion cannot satisfy or complete a cycle. Recovery
+requires an approved nonempty restore or import followed by `revise-draft`.
+The command does not write manuscript and does not replace backup, restore, or
+input-hash approvals. For first-time bootstrap, an active null starting scope
+lets the first approved nonempty import supply initial publication evidence
+without a creation commit; it still requires initial full-manuscript
+`revise-draft` evaluation and completion. A rejected empty bootstrap cannot
+complete before such an import or publication establishes that evidence.
+Later bootstrap imports and edits preserve the null cumulative origin and form
+one ordered event chain. Every reconciliation previous scope or execution input
+scope follows the preceding target or output scope, every event is verified
+once, and the final target equals current scope. A real creation commit supplies
+an event whose scope_before matches the starting scope or null origin and whose
+scope_after passes the existing batch, journal, approval, and verified-file
+checks. Creation commit→import and creation commit→edit→import cannot omit that
+event. Empty reconciliation is a legal intermediate state awaiting nonempty
+recovery, never a completed target. Missing links, skipped empty predecessors,
+and forged targets remain blockers. Every cycle-external reconciliation requires
+an explicit `previous_scope`; only verified empty recovery may explicitly set it
+to null, and omitting the field is a usage error before any write.
+
 ### Coverage units and chunked review
 
 A full local coverage unit can be reused only when its source-report identity,
@@ -548,7 +575,10 @@ operations are not added to the closed report v2 `stage` enumeration.
 
 Creation batches, commit journals, story state, coverage units and indexes,
 review jobs, and reader state use their own artifact contracts rather than
-masquerading as revision reports. The canonical project registration schema is
+masquerading as revision reports. External changes use the closed
+`references/manuscript-reconciliation-schema.json` artifact and the optional
+manifest `manuscript_reconciliation` reference to its latest immutable record.
+The canonical project registration schema is
 `references/project-schema-v3.1.json`; setup deploys it with the other shared
 contracts into the writing project. The v3.0 schema remains available for
 reading and upgrading existing projects.

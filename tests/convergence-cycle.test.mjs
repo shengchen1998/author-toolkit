@@ -287,7 +287,9 @@ test("a public transition resumes the same cycle with versioned refs and preserv
       reason: "The historical target snapshot remains evidence after an expected manuscript edit.",
     },
   });
-  assert.equal(afterExpectedEdit.valid, true, JSON.stringify(afterExpectedEdit.blockers));
+  assert.equal(afterExpectedEdit.valid, false);
+  assert.equal(afterExpectedEdit.blockers[0].code, "external-reconciliation-required");
+  assert.equal(afterExpectedEdit.required_action.operation, "creation-import");
   assert.deepEqual(afterExpectedEdit.cycle.target_scope, scopeRef);
 });
 

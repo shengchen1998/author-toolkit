@@ -103,6 +103,16 @@
         }
       ]
     },
+    "manuscript_reconciliation": {
+      "type": "object",
+      "required": ["reconciliation_id", "path", "sha256"],
+      "additionalProperties": false,
+      "properties": {
+        "reconciliation_id": { "$ref": "#/$defs/scope_id" },
+        "path": { "$ref": "relative-path-schema.json" },
+        "sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
     "pending_action": {
       "type": "object",
       "required": ["operation", "status", "reason", "updated_at"],

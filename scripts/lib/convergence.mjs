@@ -6,8 +6,10 @@ import {
   validateCoverageIndex,
   validateCreationBatch,
   validateCreationCommit,
+  validateStoryStateMarkdown,
 } from "./artifacts.mjs";
 import { collectManuscriptInventory } from "./manuscript.mjs";
+import { deriveCreationChangeSet, externalReconciliationBlock } from "./cycles.mjs";
 import { validateManifest } from "./manifest.mjs";
 import { validateEvidenceReport } from "./markdown.mjs";
 import {
@@ -23,6 +25,7 @@ import {
 import {
   validateConvergenceCycleSchema,
   validateConvergenceEvaluationSchema,
+  validateManuscriptReconciliationSchema,
   validateNoEditSkipSchema,
   validateReaderStateSchema,
   validateRelativePath,
@@ -32,6 +35,7 @@ import {
   validateSemanticAttestationSchema,
 } from "./schemas.mjs";
 import {
+  diffManuscriptInventories,
   validateFullManuscriptScope,
   validateInventorySnapshot,
   validateScopeSnapshot,
@@ -662,6 +666,299 @@ async function loadReport(computation, reference, { currentPass = true, inputFil
   return { report, reference: { ...reference, report_id: report.report_id }, markdown };
 }
 
+function scopeEventIdentity(reference) {
+  return reference === null || reference === undefined
+    ? null
+    : JSON.stringify([
+        reference.scope_id,
+        reference.scope_fingerprint,
+        reference.snapshot_path,
+        reference.snapshot_sha256,
+      ]);
+}
+
+function buildScopeEventChain(cycle, roots, reconciliations, executionChain, creationEvents = []) {
+  const events = [
+    ...creationEvents,
+    ...reconciliations.map((value) => ({
+      type: "reconciliation",
+      value,
+      input: value.previous_scope,
+      output: value.target_scope,
+    })),
+    ...executionChain.map((value) => ({
+      type: "execution",
+      value,
+      input: value.input_scope,
+      output: value.target_scope,
+    })),
+  ];
+  if (events.length === 0) return null;
+  const startingIdentity = cycle?.bootstrap ? null : scopeEventIdentity(cycle?.starting_scope);
+  const targetIdentity = scopeEventIdentity(roots.target_scope);
+  const used = new Set();
+  const chain = [];
+  const failed = new Set();
+
+  function visit(currentIdentity, emptyPending) {
+    if (used.size === events.length) {
+      return !emptyPending && currentIdentity === targetIdentity ? [...chain] : null;
+    }
+    const memoKey = `${currentIdentity ?? "null"}|${emptyPending}|${[...used].sort((left, right) => left - right).join(",")}`;
+    if (failed.has(memoKey)) return null;
+    for (const [index, event] of events.entries()) {
+      if (used.has(index) || scopeEventIdentity(event.input) !== currentIdentity) continue;
+      let nextEmptyPending = false;
+      if (event.type === "reconciliation") {
+        const reconciliation = event.value;
+        if (currentIdentity === null) {
+          if (emptyPending) {
+            if (
+              !reconciliation.recovery_from_empty ||
+              !reconciliation.target_scope ||
+              reconciliation.required_strategy !== "revise-draft"
+            ) continue;
+          } else if (
+            used.size > 0 ||
+            reconciliation.recovery_from_empty ||
+            !reconciliation.target_scope
+          ) continue;
+        } else if (reconciliation.recovery_from_empty) continue;
+        if (reconciliation.target_scope === null) {
+          if (currentIdentity === null) continue;
+          nextEmptyPending = true;
+        }
+      } else if (event.type === "execution" && currentIdentity === null) continue;
+
+      used.add(index);
+      chain.push(event);
+      const result = visit(scopeEventIdentity(event.output), nextEmptyPending);
+      if (result) return result;
+      chain.pop();
+      used.delete(index);
+    }
+    failed.add(memoKey);
+    return null;
+  }
+
+  return visit(startingIdentity, false);
+}
+
+async function validateImportDecision(project, reconciliation, previousScope, targetScope, inventory) {
+  const trackerText = await readFile(
+    path.resolve(project.root, project.manifest.paths.audit_tracker),
+    "utf8",
+  );
+  const tracker = await parseTrackerState(trackerText, project.root);
+  const decisions = tracker.approvals.filter(
+    (approval) => approval.id === reconciliation.author_decision_id,
+  );
+  const decision = decisions.length === 1 ? decisions[0] : null;
+  const tokens = new Set(decision?.reason.split(/\s+/) ?? []);
+  const scopeForDecision = targetScope ?? previousScope;
+  return Boolean(
+    tracker.valid &&
+    decision &&
+    scopeForDecision &&
+    decision.status === "approved" &&
+    decision.type === "creation-import" &&
+    decision.operation === "creation-import" &&
+    decision.scopeId === scopeForDecision.scope_id &&
+    JSON.stringify(decision.paths) === JSON.stringify(scopeForDecision.files.map((file) => file.path)) &&
+    (!targetScope || (
+      targetScope.author_confirmation?.decision_id === reconciliation.author_decision_id &&
+      targetScope.author_confirmation?.reading_order_confirmed === true
+    )) &&
+    tokens.has(`reconciliation_id=${reconciliation.reconciliation_id}`) &&
+    tokens.has(`inventory_fingerprint=${reconciliation.inventory.inventory_fingerprint}`) &&
+    tokens.has(`scope_fingerprint=${targetScope?.scope_fingerprint ?? "null"}`)
+  );
+}
+
+async function buildCreationCommitEvents(
+  project,
+  computation,
+  cycle,
+  roots,
+  creationCommits,
+  creationBatches,
+  reconciliations,
+  executionChain,
+) {
+  const events = [];
+  const scopeReferences = new Map();
+  for (const reference of [
+    ...reconciliations.flatMap((reconciliation) => [
+      reconciliation.previous_scope,
+      reconciliation.target_scope,
+    ]),
+    ...executionChain.flatMap((execution) => [execution.input_scope, execution.target_scope]),
+    roots.target_scope,
+  ].filter(Boolean)) {
+    scopeReferences.set(scopeEventIdentity(reference), reference);
+  }
+  for (const commit of creationCommits) {
+    const batch = creationBatches.find((candidate) => candidate.batch_id === commit.batch_id);
+    const commitReference = relatedArtifactsReference(
+      computation.cycle?.related_artifacts.creation_commits,
+      commit.commit_id,
+      "commit_id",
+    );
+    const batchReference = relatedArtifactsReference(
+      computation.cycle?.related_artifacts.creation_batches,
+      commit.batch_id,
+      "batch_id",
+    );
+    const inputScope = cycle?.bootstrap ? null : cycle?.starting_scope ?? null;
+    if (
+      !batch ||
+      !commitReference ||
+      !batchReference ||
+      commit.scope_before_id !== (inputScope?.scope_id ?? null) ||
+      batch.scope_id !== commit.scope_after_id
+    ) {
+      return null;
+    }
+    let matched = null;
+    for (const targetReference of scopeReferences.values()) {
+      if (
+        targetReference.scope_id !== commit.scope_after_id ||
+        targetReference.scope_id !== batch.scope_id
+      ) continue;
+      const outputSnapshot = await computation.json(
+        {
+          path: targetReference.snapshot_path,
+          sha256: targetReference.snapshot_sha256,
+        },
+        "creation-target-scope",
+        `${commit.commit_id}:${targetReference.scope_fingerprint}`,
+        validateScopeSnapshot,
+      );
+      if (!outputSnapshot) continue;
+      const candidate = {
+        ...cycle,
+        target_scope: targetReference,
+        related_artifacts: {
+          ...cycle.related_artifacts,
+          creation_batches: [batchReference],
+          creation_commits: [commitReference],
+        },
+      };
+      try {
+        const changeSet = await deriveCreationChangeSet(project, cycle, candidate, {
+          related_artifacts: { creation_commits: [commitReference] },
+        });
+        if (changeSet) {
+          matched = {
+            type: "creation",
+            value: { commit, batch, changeSet, outputSnapshot },
+            input: inputScope,
+            output: targetReference,
+          };
+          break;
+        }
+      } catch {
+        continue;
+      }
+    }
+    if (!matched) return null;
+    events.push(matched);
+  }
+  return events;
+}
+
+function relatedArtifactsReference(references, id, field) {
+  return (references ?? []).find((reference) => reference[field] === id) ?? null;
+}
+
+async function validateScopeEventChain(
+  project,
+  computation,
+  cycle,
+  roots,
+  reconciliations,
+  reconciliationScopes,
+  reconciliationInventories,
+  executionChain,
+  executionScopes,
+  creationEvents,
+) {
+  const chain = buildScopeEventChain(cycle, roots, reconciliations, executionChain, creationEvents);
+  if (!chain) return null;
+  let origin = { files: [], excluded_files: [] };
+  if (!cycle?.bootstrap) {
+    origin = await computation.json(
+      {
+        path: cycle.starting_scope.snapshot_path,
+        sha256: cycle.starting_scope.snapshot_sha256,
+      },
+      "starting-scope",
+      cycle.starting_scope.scope_id,
+      validateScopeSnapshot,
+    );
+    if (!origin) return null;
+  }
+  let previousScope = origin;
+  let approvalsValid = true;
+  for (const event of chain) {
+    if (event.type === "creation") {
+      if (!event.value.outputSnapshot) return null;
+      previousScope = event.value.outputSnapshot;
+      continue;
+    }
+    if (event.type === "execution") {
+      const scopes = executionScopes.get(event.value.execution_id);
+      if (!scopes?.input || !scopes.target) return null;
+      previousScope = scopes.target;
+      continue;
+    }
+    const reconciliation = event.value;
+    const targetScope = reconciliation.target_scope
+      ? reconciliationScopes.get(reconciliation.reconciliation_id)
+      : null;
+    const inventory = reconciliationInventories.get(reconciliation.reconciliation_id);
+    if (
+      (reconciliation.cycle_id !== null && reconciliation.cycle_id !== roots.cycle_id) ||
+      !sameScopeReference(
+        reconciliation.change_set.from_scope,
+        cycle?.bootstrap ? null : cycle.starting_scope,
+      ) ||
+      !sameScopeReference(reconciliation.change_set.to_scope, reconciliation.target_scope) ||
+      (reconciliation.target_scope && !targetScope) ||
+      !inventory
+    ) {
+      return null;
+    }
+    const expected = diffManuscriptInventories(origin, targetScope ?? inventory);
+    for (const field of [
+      "created",
+      "modified",
+      "deleted",
+      "reordered",
+      "evidence_affected",
+      "dependency_affected",
+    ]) {
+      if (JSON.stringify(expected[field]) !== JSON.stringify(reconciliation.change_set[field])) {
+        return null;
+      }
+    }
+    try {
+      const approved = await validateImportDecision(
+        project,
+        reconciliation,
+        previousScope,
+        targetScope,
+        inventory,
+      );
+      if (!approved) approvalsValid = false;
+    } catch {
+      approvalsValid = false;
+    }
+    previousScope = targetScope;
+  }
+  return { chain, approvalsValid };
+}
+
 async function computeEvaluation(project, cycle, roots, evaluationId, createdAt) {
   const computation = newComputation(project, cycle, roots, evaluationId, createdAt);
   const { block, record } = computation;
@@ -670,6 +967,30 @@ async function computeEvaluation(project, cycle, roots, evaluationId, createdAt)
     no_edit_skips: roots.no_edit_skips ?? [],
     review_groups: roots.review_group ? [roots.review_group] : [],
   };
+  const currentScope = project.manifest.current_scope;
+  const trackedReference = cycle?.target_scope ?? cycle?.starting_scope ??
+    (currentScope ? {
+      scope_id: currentScope.scope_id,
+      scope_fingerprint: currentScope.scope_fingerprint,
+      snapshot_path: currentScope.snapshot_path,
+      snapshot_sha256: currentScope.snapshot_sha256,
+    } : null);
+  try {
+    const external = await externalReconciliationBlock(project, trackedReference, cycle);
+    if (external) {
+      block(
+        "external-reconciliation-required",
+        external.blockers[0].message,
+        "indeterminate",
+        { required_action: external.required_action },
+      );
+    }
+  } catch (error) {
+    block(
+      "external-inventory-unproven",
+      `The previous manuscript inventory cannot be compared with current disk state: ${error.message}`,
+    );
+  }
   const fullScope = await validateFullManuscriptScope(project.manifest, project.manifestPath);
   const inventory = await collectManuscriptInventory(
     project.root,
@@ -771,6 +1092,79 @@ async function computeEvaluation(project, cycle, roots, evaluationId, createdAt)
       );
     }
   }
+  const reconciliations = [];
+  const reconciliationScopes = new Map();
+  const reconciliationInventories = new Map();
+  const reconciliationReferences = relatedArtifacts.reconciliations ?? [];
+  for (const [index, reference] of reconciliationReferences.entries()) {
+    const isLatest = index === reconciliationReferences.length - 1;
+    const reconciliation = await computation.json(
+      reference,
+      "manuscript-reconciliation",
+      reference.reconciliation_id,
+      validateManuscriptReconciliationSchema,
+    );
+    if (!reconciliation) continue;
+    reconciliations.push(reconciliation);
+    if (reconciliation.target_scope) {
+      const targetScope = await computation.json(
+        {
+          path: reconciliation.target_scope.snapshot_path,
+          sha256: reconciliation.target_scope.snapshot_sha256,
+        },
+        "reconciliation-target-scope",
+        `${reconciliation.reconciliation_id}:${reconciliation.target_scope.scope_id}`,
+        validateScopeSnapshot,
+      );
+      if (targetScope) reconciliationScopes.set(reconciliation.reconciliation_id, targetScope);
+      if (
+        targetScope &&
+        (targetScope.scope_id !== reconciliation.target_scope.scope_id ||
+          targetScope.scope_fingerprint !== reconciliation.target_scope.scope_fingerprint)
+      ) {
+        block(
+          "reconciliation-target-snapshot-mismatch",
+          `Reconciliation ${reconciliation.reconciliation_id} has a different target snapshot identity.`,
+        );
+      }
+    }
+    if (
+      reconciliation.reconciliation_id !== reference.reconciliation_id ||
+      (reconciliation.cycle_id !== null && reconciliation.cycle_id !== roots.cycle_id)
+    ) {
+      block(
+        "reconciliation-identity-mismatch",
+        "Reconciliation identity or cycle ownership differs from the evaluated cycle.",
+      );
+    }
+    if (isLatest) {
+      for (const proof of reconciliation.proof_blockers) {
+        block(proof.code, proof.message);
+      }
+    }
+    const inventory = await computation.json(
+      reconciliation.inventory,
+      "reconciliation-inventory",
+      reconciliation.inventory.inventory_fingerprint,
+      validateInventorySnapshot,
+    );
+    if (inventory) reconciliationInventories.set(reconciliation.reconciliation_id, inventory);
+    if (isLatest) {
+      for (const storyReference of reconciliation.story_state) {
+        const contents = await computation.bytes(storyReference, "story-state", storyReference.path);
+        if (!contents) continue;
+        const storyValidation = validateStoryStateMarkdown(contents.toString("utf8"));
+        if (!storyValidation.valid) {
+          block(
+            "story-state-contract-invalid",
+            `Reconciled story state ${storyReference.path} is invalid.`,
+            "indeterminate",
+            { path: storyReference.path },
+          );
+        }
+      }
+    }
+  }
   const creationBatches = [];
   for (const reference of relatedArtifacts.creation_batches ?? []) {
     const batch = await computation.json(
@@ -811,12 +1205,94 @@ async function computeEvaluation(project, cycle, roots, evaluationId, createdAt)
       );
     }
   }
+  const executionChain = [];
+  const executionScopes = new Map();
+  for (const reference of relatedArtifacts.revision_executions ?? []) {
+    const execution = await computation.json(
+      reference,
+      "revision-execution",
+      reference.execution_id,
+      validateRevisionExecution,
+    );
+    if (execution?.status === "verified" && execution.cycle_id === roots.cycle_id) {
+      executionChain.push(execution);
+      const inputScope = await computation.json(
+        {
+          path: execution.input_scope.snapshot_path,
+          sha256: execution.input_scope.snapshot_sha256,
+        },
+        "execution-input-scope",
+        execution.input_scope.scope_id,
+        validateScopeSnapshot,
+      );
+      const targetScope = await computation.json(
+        {
+          path: execution.target_scope.snapshot_path,
+          sha256: execution.target_scope.snapshot_sha256,
+        },
+        "execution-target-scope",
+        execution.execution_id,
+        validateScopeSnapshot,
+      );
+      executionScopes.set(execution.execution_id, {
+        input: inputScope,
+        target: targetScope,
+      });
+    }
+  }
+  const creationEvents = await buildCreationCommitEvents(
+    project,
+    computation,
+    cycle,
+    roots,
+    creationCommits,
+    creationBatches,
+    reconciliations,
+    executionChain,
+  );
+  const eventValidation = creationEvents === null ? null : await validateScopeEventChain(
+    project,
+    computation,
+    cycle,
+    roots,
+    reconciliations,
+    reconciliationScopes,
+    reconciliationInventories,
+    executionChain,
+    executionScopes,
+    creationEvents,
+  );
+  if (reconciliations.length > 0 && !eventValidation) {
+    block(
+      "reconciliation-target-mismatch",
+      "Reconciliation and execution events do not form a complete chain to the current target.",
+    );
+    block(
+      "reconciliation-chain-mismatch",
+      "The reconciliation and execution event chain has a missing, inconsistent, or non-current link.",
+    );
+  }
   if (cycle?.initiating_strategy === "write-fiction") {
     const changedTarget = cycle.bootstrap || !sameScopeReference(roots.target_scope, cycle.starting_scope);
-    if (changedTarget && creationCommits.length === 0) {
+    const importChain = creationCommits.length === 0 ? eventValidation?.chain ?? null : null;
+    let approvedBootstrapImport = false;
+    if (importChain) {
+      const first = importChain[0];
+      approvedBootstrapImport = eventValidation.approvalsValid &&
+        first.type === "reconciliation" &&
+        first.value.required_strategy === "revise-draft" &&
+        !first.value.recovery_from_empty;
+      if (!eventValidation.approvalsValid) {
+        block(
+          "creation-import-approval-missing",
+          "The bootstrap import chain no longer has every exact approved creation-import decision.",
+        );
+      }
+    }
+    if (changedTarget && creationCommits.length === 0 && !approvedBootstrapImport) {
       block(
         "creation-commit-evidence-missing",
-        "The creation target has no linked creation commit execution record.",
+        "The creation target has no linked creation commit execution record or approved first bootstrap import.",
         "not_satisfied",
       );
     }
@@ -2098,12 +2574,101 @@ export async function getConvergenceStatus(projectRoot) {
     reference = source?.evaluationReference ?? null;
   }
   const requestCompletion = await getRequestCompletion(project.root, cycle);
+  const observedInventory = await collectManuscriptInventory(
+    project.root,
+    project.manifest.manuscript_root,
+    project.manifest.paths,
+  );
+  if (
+    observedInventory.files.length === 0 &&
+    (reference || (active?.value.related_artifacts.reconciliations ?? []).length > 0)
+  ) {
+    const requiredAction = active?.value.recovery_position ? {
+      strategy: active.value.recovery_position.required_strategy,
+      operation: active.value.recovery_position.operation,
+      command: active.value.recovery_position.required_strategy,
+    } : {
+      strategy: "write-fiction",
+      operation: "creation-import",
+      command: "write-fiction",
+    };
+    return {
+      query_valid: true,
+      outcome: "not_satisfied",
+      current: false,
+      evaluation: null,
+      evaluation_reference: reference,
+      cycle: active?.value ?? null,
+      pending_action: project.manifest.pending_action ?? null,
+      request_completion: requestCompletion,
+      required_action: requiredAction,
+      blockers: [{
+        code: "empty-manuscript",
+        message: "An empty manuscript cannot satisfy current-draft revision convergence; restore or import nonempty manuscript before full-manuscript revise-draft recovery.",
+        required_action: requiredAction,
+      }],
+    };
+  }
   if (!reference) {
-    return missingEvaluationStatus(
+    const missing = missingEvaluationStatus(
       active?.value ?? null,
       project.manifest.pending_action ?? null,
       requestCompletion,
     );
+    if (active?.value.starting_scope) {
+      const historicalReferences = [{
+        path: active.value.starting_scope.snapshot_path,
+        sha256: active.value.starting_scope.snapshot_sha256,
+      }];
+      if (active.value.starting_evaluation) historicalReferences.push(active.value.starting_evaluation);
+      try {
+        for (const historical of historicalReferences) {
+          const contents = await readFile(path.resolve(project.root, historical.path));
+          if (sha256Bytes(contents) !== historical.sha256) {
+            throw new Error(`Historical artifact hash changed: ${historical.path}`);
+          }
+        }
+      } catch (error) {
+        return {
+          ...missing,
+          required_action: DEFAULT_ACTION,
+          blockers: [{
+            code: "starting-scope-unproven",
+            message: `The preserved starting scope or evaluation cannot be proven: ${error.message}`,
+            required_action: DEFAULT_ACTION,
+          }, ...missing.blockers],
+        };
+      }
+    }
+    const reconciliations = active?.value.related_artifacts.reconciliations ?? [];
+    if (reconciliations.length === 0) return missing;
+    const reconciliationReference = reconciliations.at(-1);
+    try {
+      const contents = await readFile(path.resolve(project.root, reconciliationReference.path), "utf8");
+      if (sha256Bytes(contents) !== reconciliationReference.sha256) {
+        throw new Error("Reconciliation content hash changed");
+      }
+      const reconciliation = JSON.parse(contents);
+      return {
+        ...missing,
+        blockers: [
+          ...(reconciliation.proof_blockers ?? []).map((blocker) => ({
+            ...blocker,
+            required_action: missing.required_action,
+          })),
+          ...missing.blockers,
+        ],
+      };
+    } catch (error) {
+      return {
+        ...missing,
+        blockers: [{
+          code: "reconciliation-artifact-unavailable",
+          message: `The latest reconciliation cannot be trusted: ${error.message}`,
+          required_action: missing.required_action,
+        }, ...missing.blockers],
+      };
+    }
   }
 
   try {
@@ -2168,6 +2733,48 @@ export async function findSatisfiedStartingEvaluation(project, scopeReference) {
           current_evaluation: result.recomputed,
         };
       }
+    } catch {
+      continue;
+    }
+  }
+  return null;
+}
+
+
+export async function findHistoricalSatisfiedEvaluation(project, scopeReference, preferredReference = null) {
+  for (const source of (await evaluationSources(project)).reverse()) {
+    if (
+      preferredReference &&
+      (source.evaluationReference.evaluation_id !== preferredReference.evaluation_id ||
+        source.evaluationReference.path !== preferredReference.path ||
+        source.evaluationReference.sha256 !== preferredReference.sha256)
+    ) continue;
+    try {
+      const { value: evaluation } = await readEvaluationReference(project, source.evaluationReference);
+      if (evaluation.outcome !== "satisfied" || !sameScopeReference(evaluation.target_scope, scopeReference)) {
+        continue;
+      }
+      for (const artifact of evaluation.evidence_graph.artifacts) {
+        if (["manuscript", "tracker", "story-state"].includes(artifact.role)) continue;
+        const contents = await readFile(path.resolve(project.root, artifact.path));
+        if (sha256Bytes(contents) !== artifact.sha256) throw new Error("Historical evidence changed");
+      }
+      const scopeText = await readFile(path.resolve(project.root, scopeReference.snapshot_path), "utf8");
+      if (sha256Bytes(scopeText) !== scopeReference.snapshot_sha256) continue;
+      const scope = JSON.parse(scopeText);
+      if (!validateScopeSnapshot(scope).valid) continue;
+      const inventoryText = await readFile(path.resolve(project.root, scope.inventory.path), "utf8");
+      if (sha256Bytes(inventoryText) !== scope.inventory.sha256) continue;
+      const inventory = JSON.parse(inventoryText);
+      if (!validateInventorySnapshot(inventory).valid) continue;
+      const scopeFiles = scope.files.map((file) => `${file.path}\0${file.sha256}`).sort();
+      const inventoryFiles = inventory.files.map((file) => `${file.path}\0${file.sha256}`).sort();
+      if (JSON.stringify(scopeFiles) !== JSON.stringify(inventoryFiles)) continue;
+      return {
+        cycle: source.cycle,
+        evaluation,
+        evaluation_reference: source.evaluationReference,
+      };
     } catch {
       continue;
     }

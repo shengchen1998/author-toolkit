@@ -780,3 +780,214 @@ test("bootstrap cannot enter revise-increment before its first publication", asy
   assert.equal(active.revision, 1);
   assert.equal(active.current_strategy, "write-fiction");
 });
+
+
+test("a rejected empty bootstrap cannot complete before its first approved import reaches initial convergence", async (t) => {
+  const { projectRoot } = await createConvergenceProject(t);
+  const started = await runInput(projectRoot, "start-cycle", {
+    cycle_id: "cycle-bootstrap-import-901",
+    initiating_strategy: "write-fiction",
+    bootstrap: true,
+    starting_scope: null,
+  });
+  assert.equal(started.status, 0, `${started.stdout}\n${started.stderr}`);
+
+  const rejectedContents = "Rejected first staging draft.\n";
+  const rejectedFiles = [{
+    path: "manuscript/chapter-001.md",
+    action: "create",
+    input_sha256: null,
+    output_sha256: sha256(rejectedContents),
+  }];
+  const rejectedDependencyFingerprint = sha256("Rejected first bootstrap batch.");
+  await writeJson(
+    path.join(projectRoot, ".author-toolkit", "creation", "batches", "batch-rejected-bootstrap-901.json"),
+    {
+      schema_version: "1.0.0",
+      batch_id: "batch-rejected-bootstrap-901",
+      operation: "chapter-creation",
+      source_mode: "author",
+      status: "rejected",
+      scope_id: null,
+      plan: {
+        summary: "Reject the first staged bootstrap draft without publication.",
+        context: [],
+        dependency_fingerprint: rejectedDependencyFingerprint,
+      },
+      files: rejectedFiles.map((file) => ({ ...file, status: "staged" })),
+      story_state: [],
+      approvals: ["REJECT-901"],
+      commit: null,
+      next_action: "Preserve rejected staging and await an approved nonempty import.",
+      created_at: timestamp,
+      updated_at: timestamp,
+    },
+  );
+  await appendApproval(projectRoot, {
+    id: "REJECT-901",
+    type: "creation-rejection",
+    operation: "chapter-review",
+    scopeId: "scope-rejected-bootstrap-901",
+    paths: ["manuscript/chapter-001.md"],
+    reason: `Author rejected the first empty-project staging batch. batch_id=batch-rejected-bootstrap-901 dependency_fingerprint=${rejectedDependencyFingerprint} scope_fingerprint=${computeScopeFingerprint({ files: [], excluded_files: [] })}`,
+  });
+  const trackerBeforeRejectedCompletion = await readFile(path.join(projectRoot, "audit-tracker.md"), "utf8");
+  const rejectedCompletion = await runInput(projectRoot, "complete-cycle", {
+    cycle_id: "cycle-bootstrap-import-901",
+    expected_revision: 1,
+    evaluation_id: "evaluation-rejected-bootstrap-901",
+    decision_id: "REJECTCOMPLETE-901",
+    author_confirmed: true,
+  });
+  assert.equal(rejectedCompletion.status, 1, `${rejectedCompletion.stdout}\n${rejectedCompletion.stderr}`);
+  assert.equal(
+    JSON.parse(rejectedCompletion.stdout).blockers[0].code,
+    "completion-evaluation-not-satisfied",
+  );
+  assert.equal(await readFile(path.join(projectRoot, "audit-tracker.md"), "utf8"), trackerBeforeRejectedCompletion);
+  const rejectedActive = JSON.parse(await readFile(
+    path.join(projectRoot, ".author-toolkit", "convergence", "active-cycle.json"),
+    "utf8",
+  ));
+  assert.equal(rejectedActive.revision, 1);
+  assert.equal(rejectedActive.starting_scope, null);
+  assert.equal(rejectedActive.target_scope, null);
+
+  const importedContents = "First approved external chapter.\n";
+  await writeFile(path.join(projectRoot, "manuscript", "chapter-001.md"), importedContents, "utf8");
+  await recordScope(projectRoot, {
+    scope_id: "scope-bootstrap-import-901",
+    description: "The first approved nonempty external manuscript.",
+    status: "confirmed",
+    files: [{ path: "manuscript/chapter-001.md", sha256: sha256(importedContents) }],
+    excluded_files: [],
+    created_at: timestamp,
+  }, {
+    authorConfirmation: {
+      decision_id: "IMPORT-901",
+      confirmed_at: timestamp,
+      reading_order_confirmed: true,
+    },
+    now: new Date(timestamp),
+  });
+  const targetScope = await currentScopeReference(projectRoot);
+  const chapterState = {
+    schema_version: "1.0.0",
+    state_id: "imported-chapter-901",
+    level: "chapter",
+    scope_id: targetScope.scope_id,
+    updated_at: timestamp,
+    sources: [{ path: "manuscript/chapter-001.md", sha256: sha256(importedContents) }],
+    summary: "Observed facts from the first approved external chapter.",
+    records: [],
+    children: [],
+  };
+  const chapterRelative = ".author-toolkit/creation/state/chapters/imported-chapter-901.md";
+  await mkdir(path.dirname(path.join(projectRoot, chapterRelative)), { recursive: true });
+  await writeFile(
+    path.join(projectRoot, chapterRelative),
+    storyStateMarkdown(chapterState),
+    "utf8",
+  );
+  const chapterReference = await artifactAt(projectRoot, chapterRelative);
+  const currentState = {
+    schema_version: "1.0.0",
+    state_id: "current",
+    level: "current",
+    scope_id: targetScope.scope_id,
+    updated_at: timestamp,
+    sources: [chapterReference],
+    summary: "Current state after the first approved external import.",
+    records: [],
+    children: [chapterReference],
+  };
+  const currentRelative = ".author-toolkit/creation/state/current.md";
+  await writeFile(path.join(projectRoot, currentRelative), storyStateMarkdown(currentState), "utf8");
+  const currentReference = await artifactAt(projectRoot, currentRelative);
+  const inventory = JSON.parse(await readFile(
+    path.join(projectRoot, targetScope.snapshot_path),
+    "utf8",
+  )).inventory;
+  await appendApproval(projectRoot, {
+    id: "IMPORT-901",
+    type: "creation-import",
+    operation: "creation-import",
+    scopeId: targetScope.scope_id,
+    paths: ["manuscript/chapter-001.md"],
+    reason: `Author approved the first nonempty external import and story state. reconciliation_id=reconciliation-bootstrap-import-901 inventory_fingerprint=${inventory.inventory_fingerprint} scope_fingerprint=${targetScope.scope_fingerprint}`,
+  });
+
+  const reconciled = await runInput(projectRoot, "reconcile-manuscript", {
+    reconciliation_id: "reconciliation-bootstrap-import-901",
+    cycle_id: "cycle-bootstrap-import-901",
+    expected_revision: 1,
+    author_decision_id: "IMPORT-901",
+    target_scope: targetScope,
+    story_state: [chapterReference, currentReference],
+  });
+  assert.equal(reconciled.status, 0, `${reconciled.stdout}\n${reconciled.stderr}`);
+  const reconciliation = JSON.parse(reconciled.stdout);
+  assert.equal(reconciliation.cycle.starting_scope, null);
+  assert.equal(reconciliation.cycle.starting_evaluation, null);
+  assert.equal(reconciliation.cycle.current_strategy, "revise-draft");
+  assert.equal(reconciliation.cycle.recovery_position.operation, "intake");
+  assert.equal(reconciliation.cycle.change_set.from_scope, null);
+  assert.deepEqual(reconciliation.cycle.change_set.created, [{
+    path: "manuscript/chapter-001.md",
+    sha256: sha256(importedContents),
+  }]);
+  assert.deepEqual(reconciliation.cycle.work_set.entries.map((entry) => entry.path), [
+    "manuscript/chapter-001.md",
+  ]);
+  assert.deepEqual(reconciliation.reconciliation.proof_blockers, []);
+
+  const evidence = await createNoEditEvidence(projectRoot, {
+    passId: "pass-bootstrap-import-901",
+    noEditDecisionId: "NOEDITIMPORT-901",
+  });
+  const reviewed = await runInput(projectRoot, "transition-cycle", {
+    cycle_id: "cycle-bootstrap-import-901",
+    expected_revision: 2,
+    current_strategy: "revise-draft",
+    recovery_position: {
+      operation: "current-scope-review",
+      reason: "The first approved import has its initial full-manuscript evidence and review.",
+    },
+    requested_pass: evidence.passReference,
+    related_artifacts: {
+      review_groups: [evidence.reviewGroupReference],
+      reviews: evidence.reviewJobs.map(({ reference }) => reference),
+      no_edit_skips: [evidence.noEditReference],
+    },
+  });
+  assert.equal(reviewed.status, 0, `${reviewed.stdout}\n${reviewed.stderr}`);
+  const evaluated = await runInput(
+    projectRoot,
+    "evaluate-cycle",
+    evidence.evaluationInput("evaluation-bootstrap-import-901", 3, "cycle-bootstrap-import-901"),
+  );
+  assert.equal(evaluated.status, 0, `${evaluated.stdout}\n${evaluated.stderr}`);
+  const evaluation = JSON.parse(evaluated.stdout).evaluation;
+  assert.equal(evaluation.outcome, "satisfied");
+  assert.ok(evaluation.evidence_graph.artifacts.some(
+    (artifact) => artifact.role === "manuscript-reconciliation" &&
+      artifact.artifact_id === "reconciliation-bootstrap-import-901"
+  ));
+  assert.ok(!evaluation.blockers.some((blocker) => blocker.code === "creation-commit-evidence-missing"));
+
+  const completed = await runInput(projectRoot, "complete-cycle", {
+    cycle_id: "cycle-bootstrap-import-901",
+    expected_revision: 4,
+    evaluation_id: "evaluation-bootstrap-import-901-completion",
+    decision_id: "COMPLETE-901",
+    author_confirmed: true,
+  });
+  assert.equal(completed.status, 0, `${completed.stdout}\n${completed.stderr}`);
+  const completedCycle = JSON.parse(completed.stdout).cycle;
+  assert.equal(completedCycle.status, "completed");
+  assert.equal(completedCycle.current_strategy, "revise-draft");
+  assert.equal(completedCycle.starting_scope, null);
+  assert.equal(completedCycle.related_artifacts.creation_commits.length, 0);
+  assert.equal(completedCycle.related_artifacts.reconciliations.length, 1);
+  assert.equal(completedCycle.completion.decision_id, "COMPLETE-901");
+});

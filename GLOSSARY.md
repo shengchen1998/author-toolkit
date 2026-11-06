@@ -42,6 +42,10 @@ The deterministic content identity of a requested pass, independent of its recor
 The observed created, modified, deleted, reordered, evidence-affected, and dependency-affected paths between two manuscript states.
 _Avoid_: Author intent, required work
 
+**Manuscript reconciliation**:
+The immutable record joining an exact external manuscript inventory and author import decision to reconciled story state, observed changes, affected evidence, and the required recovery route. It never writes manuscript or substitutes for backup and restore approvals.
+_Avoid_: Silent scope-hash refresh, a caller-supplied confirmation flag
+
 **Work set**:
 The target-scope paths requiring new evidence or approved edits after considering requests, observed changes, dependencies, and reusable evidence.
 _Avoid_: Target scope, request set

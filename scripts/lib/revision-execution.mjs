@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 
+import { externalReconciliationBlock } from "./cycles.mjs";
 import { validateManifest } from "./manifest.mjs";
 import {
   validateConvergenceCycleSchema,
@@ -590,6 +591,17 @@ export async function prepareDraftRevisionExecution(projectRoot, request, option
     const initial = await readOptionalActiveCycle(project);
     const activeFailure = independentCycleFailure(initial);
     if (activeFailure) return activeFailure;
+    const currentScope = project.manifest.current_scope;
+    const external = await externalReconciliationBlock(
+      project,
+      currentScope ? {
+        scope_id: currentScope.scope_id,
+        scope_fingerprint: currentScope.scope_fingerprint,
+        snapshot_path: currentScope.snapshot_path,
+        snapshot_sha256: currentScope.snapshot_sha256,
+      } : null,
+    );
+    if (external) return external;
     const createdAt = operationTime(options);
     const execution = {
       schema_version: "1.0.0",
@@ -654,6 +666,12 @@ export async function prepareRevisionExecution(projectRoot, request, options = {
     const cycle = active.value;
     const cycleFailure = checkCycleRequest(cycle, request);
     if (cycleFailure) return cycleFailure;
+    const external = await externalReconciliationBlock(
+      project,
+      cycle.target_scope ?? cycle.starting_scope,
+      cycle,
+    );
+    if (external) return external;
     if (cycle.recovery_position.operation !== "chapter-revision") {
       return failure("cycle-operation-mismatch", "Revision preparation requires the active chapter-revision recovery position.", cycle);
     }

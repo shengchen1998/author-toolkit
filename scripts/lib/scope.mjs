@@ -127,6 +127,96 @@ async function currentInventory(projectRoot, manifest) {
   };
 }
 
+export async function collectVersionedInventory(projectRoot, manifest) {
+  const current = await currentInventory(projectRoot, manifest);
+  const inventory = {
+    manuscript_root: manifest.manuscript_root,
+    files: current.files,
+    excluded_files: sorted(current.excludedFiles),
+  };
+  return {
+    ...inventory,
+    inventory_fingerprint: computeInventoryFingerprint(inventory),
+  };
+}
+
+export async function recordInventorySnapshot(projectRoot, manifest, options = {}) {
+  const observed = await collectVersionedInventory(projectRoot, manifest);
+  const now = options.now instanceof Date ? options.now : new Date();
+  if (Number.isNaN(now.getTime())) throw new Error("Invalid inventory recording time");
+  const record = {
+    schema_version: "1.0.0",
+    ...observed,
+    created_at: now.toISOString(),
+  };
+  const validation = validateInventorySnapshot(record);
+  if (!validation.valid) throw validationError(validation);
+  const relative = path.posix.join(
+    manifest.paths.convergence,
+    "inventories",
+    `${record.inventory_fingerprint}.json`,
+  );
+  const absolute = path.resolve(projectRoot, relative);
+  const text = `${JSON.stringify(record, null, 2)}\n`;
+  await writeImmutable(absolute, text);
+  return {
+    record,
+    reference: {
+      path: relative,
+      sha256: sha256(text),
+      inventory_fingerprint: record.inventory_fingerprint,
+    },
+  };
+}
+
+export function diffManuscriptInventories(previous, current) {
+  const beforeByPath = new Map((previous.files ?? []).map((file) => [file.path, file]));
+  const afterByPath = new Map((current.files ?? []).map((file) => [file.path, file]));
+  const created = current.files.filter((file) => !beforeByPath.has(file.path));
+  const modified = current.files.filter((file) =>
+    beforeByPath.has(file.path) && beforeByPath.get(file.path).sha256 !== file.sha256
+  ).map((file) => ({
+    path: file.path,
+    input_sha256: beforeByPath.get(file.path).sha256,
+    output_sha256: file.sha256,
+  }));
+  const deleted = previous.files.filter((file) => !afterByPath.has(file.path)).map((file) => ({
+    path: file.path,
+    input_sha256: file.sha256,
+  }));
+  const beforeRetained = previous.files.filter((file) => afterByPath.has(file.path)).map((file) => file.path);
+  const afterRetained = current.files.filter((file) => beforeByPath.has(file.path)).map((file) => file.path);
+  const reordered = [];
+  if (JSON.stringify(beforeRetained) !== JSON.stringify(afterRetained)) {
+    const afterIndex = new Map(afterRetained.map((filePath, index) => [filePath, index]));
+    for (const [beforeIndex, filePath] of beforeRetained.entries()) {
+      const beforePrevious = beforeRetained[beforeIndex - 1] ?? null;
+      const indexAfter = afterIndex.get(filePath);
+      const afterPrevious = afterRetained[indexAfter - 1] ?? null;
+      if (beforePrevious !== afterPrevious) {
+        reordered.push({
+          path: filePath,
+          before_index: previous.files.findIndex((file) => file.path === filePath),
+          after_index: current.files.findIndex((file) => file.path === filePath),
+        });
+      }
+    }
+  }
+  return {
+    created,
+    modified,
+    deleted,
+    reordered,
+    evidence_affected: [...new Set([
+      ...created.map((file) => file.path),
+      ...modified.map((file) => file.path),
+      ...deleted.map((file) => file.path),
+      ...reordered.map((file) => file.path),
+    ])],
+    dependency_affected: [],
+  };
+}
+
 function validationError(result) {
   return new Error(
     `v3.2 scope validation failed:\n${result.errors

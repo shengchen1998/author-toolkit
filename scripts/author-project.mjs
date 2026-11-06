@@ -13,6 +13,7 @@ import {
   prepareDraftRevisionExecution,
   prepareRevisionExecution,
   projectRootFromManifest,
+  reconcileManuscript,
   startCycle,
   transitionCycle,
   verifyDraftRevisionExecution,
@@ -34,12 +35,14 @@ const commands = new Set([
   "prepare-revision-execution",
   "verify-draft-revision-execution",
   "verify-revision-execution",
+  "reconcile-manuscript",
 ]);
 
 function usage() {
   console.log(`Usage:
   node scripts/author-project.mjs start-cycle --project-root ROOT --input FILE
   node scripts/author-project.mjs transition-cycle --project-root ROOT --input FILE
+  node scripts/author-project.mjs reconcile-manuscript --project-root ROOT --input FILE
   node scripts/author-project.mjs prepare-draft-revision-execution --project-root ROOT --input FILE
   node scripts/author-project.mjs prepare-revision-execution --project-root ROOT --input FILE
   node scripts/author-project.mjs verify-draft-revision-execution --project-root ROOT --input FILE
@@ -54,7 +57,8 @@ function usage() {
   node scripts/author-project.mjs check-operation --project-root ROOT --input FILE
 
 Use --manifest FILE instead of --project-root ROOT when addressing the manifest directly.
-Transitions, revision execution, evaluations, and completions serialize independent processes with active-cycle.lock and recheck expected_revision in the lock.
+Transitions, reconciliation, revision execution, evaluations, and completions serialize independent processes with active-cycle.lock and recheck expected_revision in the lock.
+Reconciliation verifies an existing creation-import decision, current inventory, scope, and story state; it never writes manuscript or accepts a confirmation boolean as replacement evidence.
 Independent evaluate-draft uses the same evaluator without creating an active cycle; an active cycle requires evaluate-cycle instead.
 Independent draft preparation and verification use cycle_id=null and the same lock; an active cycle requires the cycle-bound operations.
 Preparation checks existing approvals, backups, and inputs without writing manuscript or creating author approval. Verification rereads actual output hashes.
@@ -82,7 +86,7 @@ function parseArguments(args) {
   if (Boolean(selection.projectRoot) === Boolean(selection.manifest)) {
     throw new Error("Select exactly one of --project-root or --manifest");
   }
-  if (["start-cycle", "transition-cycle", "evaluate-cycle", "evaluate-draft", "complete-cycle", "check-operation", "prepare-draft-revision-execution", "prepare-revision-execution", "verify-draft-revision-execution", "verify-revision-execution"].includes(command) && !selection.input) {
+  if (["start-cycle", "transition-cycle", "evaluate-cycle", "evaluate-draft", "complete-cycle", "check-operation", "prepare-draft-revision-execution", "prepare-revision-execution", "verify-draft-revision-execution", "verify-revision-execution", "reconcile-manuscript"].includes(command) && !selection.input) {
     throw new Error(`${command} requires --input`);
   }
   if (["cycle-status", "cycle-gate", "convergence-status", "convergence-gate"].includes(command) && selection.input) {
@@ -110,6 +114,9 @@ async function main() {
     if (selection.command === "start-cycle") result = await startCycle(projectRoot, input);
     if (selection.command === "transition-cycle") {
       result = await transitionCycle(projectRoot, input);
+    }
+    if (selection.command === "reconcile-manuscript") {
+      result = await reconcileManuscript(projectRoot, input);
     }
     if (selection.command === "prepare-draft-revision-execution") {
       result = await prepareDraftRevisionExecution(projectRoot, input);
