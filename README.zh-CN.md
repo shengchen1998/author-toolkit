@@ -250,6 +250,7 @@ v3.2 在 `<convergence-state-root>/active-cycle.json` 中至多保存一个已�
 ```bash
 node scripts/author-project.mjs start-cycle --project-root <project-root> --input <request.json>
 node scripts/author-project.mjs transition-cycle --project-root <project-root> --input <transition.json>
+node scripts/author-project.mjs reconcile-cycle --project-root <project-root> [--input <direction.json>]
 node scripts/author-project.mjs prepare-draft-revision-execution --project-root <project-root> --input <independent-preparation.json>
 node scripts/author-project.mjs verify-draft-revision-execution --project-root <project-root> --input <independent-verification.json>
 node scripts/author-project.mjs prepare-revision-execution --project-root <project-root> --input <preparation.json>
@@ -264,7 +265,14 @@ node scripts/author-project.mjs cycle-gate --project-root <project-root>
 第二个正文变更周期返回 `active-cycle-exists`, 并给出当前周期要求的策略, 操作和命令.
 续接先获取跨进程锁目录, 在锁内重新读取并核对周期 ID 和预期 revision, 再核对引用产物哈希并原子更新.
 同一预期 revision 只能有一个写入成功, 后续写入返回 `cycle-revision-conflict`. 锁超时或异常不会报告成功,
-崩溃遗留的锁目录需要明确恢复. 待处理操作仍只描述当前操作和作者门禁, 不拥有周期, 也不授权正文写入.
+崩溃遗留的锁目录必须核对 owner 后明确恢复.
+
+依赖操作先记录 manifest `cycle_operation`, 再发布产物并推进 active cycle, 最后在 manifest 收尾时清除协调记录.
+完成操作先写 completed history 和 `last_completed_cycle`, 再删除内容符合预期的 active 记录. 中断会以具体周期,
+revision, 操作, 范围或产物错配阻断依赖工作, 只读状态查询仍可用. 不带 direction 运行 `reconcile-cycle` 只做只读诊断.
+恢复方向只接受, 挂接, 续接, 放弃或完成同一项预期工作, 不改写评估, 批准, 提交日志, 备份或 verified 执行.
+待处理操作仍只描述当前操作和作者门禁, 其周期, revision, 操作和范围指纹字段仅是协调引用, 不拥有周期,
+也不授权正文写入, 发布, 恢复或完成. 这些文件通过协调恢复保持一致, 不构成多文件文件系统事务.
 
 请求驱动修改在 `executions/` 下保存修订执行记录. 准备操作核对已有作者决定, 准确编辑批准, 备份清单及字节和当前输入哈希,
 不会伪造批准或写入正文. 验证操作按准备阶段的哈希重读实际输出字节, 并绑定最终请求修订轮次和全稿目标范围.
@@ -277,7 +285,8 @@ node scripts/author-project.mjs cycle-gate --project-root <project-root>
 综合报告和复核组.
 
 完成需要单独明确的作者完成决定. 操作先把决定追加到 tracker, 再根据变化后的 tracker 哈希重新计算并保存评估,
-只有新评估仍为 `satisfied` 时才完成周期. 确定性检查验证证据身份和结构, 但实际阅读与编辑判断仍以宿主和逻辑读者的
+先发布 completed history 和已完成周期指针, 再删除 active 状态; 只有新评估仍为 `satisfied` 时才完成周期.
+确定性检查验证证据身份和结构, 但实际阅读与编辑判断仍以宿主和逻辑读者的
 语义证明以及记录的作者决定为信任边界. 状态查询还独立返回 `request_completion`: 请求批次和决定可以已经完成,
 而全稿证据尚未达到 `satisfied`.
 
@@ -301,8 +310,8 @@ node scripts/validate.mjs --convergence-gate <manifest-path>
 创作批次还记录计划, 所选上下文和目标输入的依赖指纹. 返回暂存稿时重新计算依赖指纹.
 纳入的依赖变化需要重新复核或规划; 无关正文增长只要求刷新发布范围, 不会单独使暂存内容失效.
 
-`pending_action` 只记录一个待执行或等待作者决定的待处理操作, 不是发布或恢复正文写入的许可,
-也不能替代当前草稿收敛周期历史或其恢复位置.
+`pending_action` 只记录一个待执行或等待作者决定的待处理操作. 可选周期, revision, 操作和范围指纹字段
+只用于协调同一项工作, 不是周期历史, 也不是正文写入, 发布, 恢复, 完成或续作的许可.
 
 ### 暂存, 提交与恢复
 

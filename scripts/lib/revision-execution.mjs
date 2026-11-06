@@ -2,6 +2,13 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 
 import { externalReconciliationBlock } from "./cycles.mjs";
+import {
+  beginCycleOperation,
+  completedPointerBlocker,
+  coordinationBlockers,
+  finishCycleOperation,
+  runCheckpoint,
+} from "./cycle-coordination.mjs";
 import { validateManifest } from "./manifest.mjs";
 import {
   validateConvergenceCycleSchema,
@@ -487,6 +494,19 @@ function failure(code, message, cycle, errors = []) {
   };
 }
 
+function coordinationFailure(project, active, options = {}) {
+  const blockers = coordinationBlockers(project, active, options);
+  if (blockers.length === 0) return null;
+  return {
+    valid: false,
+    cycle: active?.value ?? null,
+    execution: null,
+    state_written: false,
+    blockers,
+    required_action: blockers[0].required_action,
+  };
+}
+
 function checkCycleRequest(cycle, request) {
   if (cycle.cycle_id !== request.cycle_id) {
     return failure("cycle-id-mismatch", `The requested cycle does not match active cycle ${cycle.cycle_id}.`, cycle);
@@ -519,7 +539,14 @@ async function withCycleLock(project, options, operation) {
   let value;
   let operationError;
   try {
-    value = await operation();
+    const pointer = await completedPointerBlocker(project);
+    value = pointer
+      ? {
+          ...failure(pointer.code, pointer.message, null),
+          blockers: [pointer],
+          required_action: pointer.required_action,
+        }
+      : await operation();
   } catch (error) {
     operationError = error;
   }
@@ -646,6 +673,7 @@ export async function prepareDraftRevisionExecution(projectRoot, request, option
       if (error.code !== "EEXIST") throw error;
       return failure("revision-execution-already-exists", `Independent revision execution ${execution.execution_id} already exists; prepare a new execution ID instead of replacing it.`, null);
     }
+    await runCheckpoint(options, "execution-written");
     return {
       valid: true,
       cycle: null,
@@ -666,6 +694,10 @@ export async function prepareRevisionExecution(projectRoot, request, options = {
     const cycle = active.value;
     const cycleFailure = checkCycleRequest(cycle, request);
     if (cycleFailure) return cycleFailure;
+    const coordination = coordinationFailure(project, active, {
+      allowOperationId: options.recoveryOperationId ?? null,
+    });
+    if (coordination) return coordination;
     const external = await externalReconciliationBlock(
       project,
       cycle.target_scope ?? cycle.starting_scope,
@@ -682,7 +714,7 @@ export async function prepareRevisionExecution(projectRoot, request, options = {
       return failure("revision-pass-mismatch", "The execution must name the active requested pass.", cycle);
     }
     const createdAt = operationTime(options);
-    const execution = {
+    let execution = {
       schema_version: "1.0.0",
       execution_id: request.execution_id,
       cycle_id: request.cycle_id,
@@ -715,8 +747,37 @@ export async function prepareRevisionExecution(projectRoot, request, options = {
       `${execution.execution_id}.json`,
     );
     const absolute = path.resolve(project.root, relative);
-    const text = `${JSON.stringify(execution, null, 2)}\n`;
-    await createNoClobberVerified(absolute, text);
+    if (options.recoveryOperationId !== execution.execution_id) {
+      try {
+        await readFile(absolute, "utf8");
+        return failure("revision-execution-already-exists", `Revision execution ${execution.execution_id} already exists; reconcile it explicitly instead of replacing it.`, cycle);
+      } catch (error) {
+        if (error.code !== "ENOENT") throw error;
+      }
+    }
+    await beginCycleOperation(project, active, {
+      kind: "revision-preparation",
+      operationId: execution.execution_id,
+      artifactId: execution.execution_id,
+    }, options);
+    let text = `${JSON.stringify(execution, null, 2)}\n`;
+    try {
+      await createNoClobberVerified(absolute, text);
+    } catch (error) {
+      if (error.code !== "EEXIST") throw error;
+      if (options.recoveryOperationId !== execution.execution_id) {
+        return failure("revision-execution-already-exists", `Revision execution ${execution.execution_id} already exists; reconcile it explicitly instead of replacing it.`, cycle);
+      }
+      const existingText = await readFile(absolute, "utf8");
+      const existing = JSON.parse(existingText);
+      const expected = { ...execution, created_at: existing.created_at };
+      if (JSON.stringify(expected) !== JSON.stringify(existing)) {
+        return failure("revision-execution-identity-mismatch", "The stored prepared execution differs from the interrupted operation.", cycle);
+      }
+      execution = existing;
+      text = existingText;
+    }
+    await runCheckpoint(options, "execution-written");
     const reference = executionReference(execution, relative, text);
     const updated = {
       ...cycle,
@@ -732,10 +793,13 @@ export async function prepareRevisionExecution(projectRoot, request, options = {
         operation: "chapter-revision",
         reason: "The prepared approved batch awaits verified manuscript outputs; approval alone does not establish execution.",
         required_strategy: cycle.current_strategy,
+        operation_id: execution.execution_id,
       },
       updated_at: createdAt,
     };
     await writeAtomicVerified(active.file, `${JSON.stringify(updated, null, 2)}\n`);
+    await runCheckpoint(options, "cycle-written");
+    await finishCycleOperation(project, updated, execution.execution_id, options);
     return {
       valid: true,
       cycle: updated,
@@ -808,6 +872,10 @@ export async function verifyRevisionExecution(projectRoot, request, options = {}
     const cycle = active.value;
     const cycleFailure = checkCycleRequest(cycle, request);
     if (cycleFailure) return cycleFailure;
+    const coordination = coordinationFailure(project, active, {
+      allowOperationId: options.recoveryOperationId ?? null,
+    });
+    if (coordination) return coordination;
     const relative = path.posix.join(
       project.manifest.paths.convergence,
       "executions",
@@ -818,12 +886,12 @@ export async function verifyRevisionExecution(projectRoot, request, options = {}
     if (
       prepared.execution_id !== request.execution_id ||
       prepared.cycle_id !== request.cycle_id ||
-      prepared.status !== "prepared" ||
+      !["prepared", ...(options.recoveryOperationId === request.execution_id ? ["verified"] : [])].includes(prepared.status) ||
       !cycle.related_artifacts.revision_executions.some((reference) => reference.execution_id === request.execution_id)
     ) {
       return failure("revision-execution-identity-mismatch", "The prepared execution is not linked to this active cycle.", cycle);
     }
-    const verifiedAt = operationTime(options);
+    const verifiedAt = prepared.status === "verified" ? prepared.verified_at : operationTime(options);
     const execution = {
       ...prepared,
       requested_pass: request.requested_pass,
@@ -843,8 +911,14 @@ export async function verifyRevisionExecution(projectRoot, request, options = {}
         : "revision-execution-verification-invalid";
       return failure(code, "The prepared batch cannot be verified against current manuscript and target evidence.", cycle, validation.errors);
     }
+    await beginCycleOperation(project, active, {
+      kind: "revision-verification",
+      operationId: execution.execution_id,
+      artifactId: execution.execution_id,
+    }, options);
     const text = `${JSON.stringify(execution, null, 2)}\n`;
-    await writeAtomicVerified(absolute, text);
+    if (prepared.status === "prepared") await writeAtomicVerified(absolute, text);
+    await runCheckpoint(options, "execution-written");
     const reference = executionReference(execution, relative, text);
     const changeFromReference = cycle.bootstrap
       ? null
@@ -874,12 +948,15 @@ export async function verifyRevisionExecution(projectRoot, request, options = {}
         operation: "current-scope-review",
         reason: "Verified revision outputs require current affected coverage and another full-target current-scope review.",
         required_strategy: cycle.current_strategy,
+        operation_id: execution.execution_id,
       },
       updated_at: verifiedAt,
     };
     const cycleValidation = validateConvergenceCycleSchema(updated);
     if (!cycleValidation.valid) throw new Error(formatErrors(cycleValidation.errors));
     await writeAtomicVerified(active.file, `${JSON.stringify(updated, null, 2)}\n`);
+    await runCheckpoint(options, "cycle-written");
+    await finishCycleOperation(project, updated, execution.execution_id, options);
     return {
       valid: true,
       cycle: updated,
@@ -943,6 +1020,7 @@ export async function verifyDraftRevisionExecution(projectRoot, request, options
     if (concurrentFailure) return concurrentFailure;
     const text = `${JSON.stringify(execution, null, 2)}\n`;
     await writeAtomicVerified(absolute, text);
+    await runCheckpoint(options, "execution-written");
     return {
       valid: true,
       cycle: null,

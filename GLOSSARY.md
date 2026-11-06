@@ -12,6 +12,15 @@ _Avoid_: Publication, request completion, a stored convergence flag
 The authoritative cross-entry lifecycle connecting an initial full-manuscript convergence evaluation to a later target evaluation and an explicit completion decision.
 _Avoid_: Strategy, operation, requested pass, pending action
 
+**Cycle operation record**:
+The manifest `cycle_operation` coordination record for one operation's kind, operation ID, cycle ID, expected and intended revisions, optional artifact ID, and creation time. It is not a second lifecycle owner or manuscript approval.
+
+**Cycle reconciliation**:
+The public `reconcile-cycle` diagnosis and explicit-direction recovery of interrupted cycle, manifest, pending, artifact, and lock coordination. It preserves immutable history and does not claim a multi-file filesystem transaction.
+
+**Completed-cycle pointer**:
+The manifest `last_completed_cycle` reference to one immutable completed cycle by ID, revision, path, and SHA-256. It coordinates active-record removal and is not a permanent convergence flag.
+
 **Bootstrap**:
 The explicitly marked first-time creation exception for an empty manuscript with no starting scope. Its first nonempty publication resumes the same cycle through `revise-draft` and establishes the initial full-manuscript evaluation rather than assuming an empty starting point has reached current-draft revision convergence or routing to `revise-increment`.
 
@@ -80,8 +89,8 @@ _Avoid_: Pending action, permission to write
 The author's explicit decision to complete a cycle after its target evaluation is satisfied and current.
 
 **Pending action**:
-The operation-scoped record of requested, interrupted, or awaiting work and its author gate.
-_Avoid_: Cycle ownership, lifecycle history, write approval
+The operation-scoped record of requested, interrupted, or awaiting work and its author gate. Optional cycle, revision, operation, and scope-fingerprint fields are coordination references only.
+_Avoid_: Cycle ownership, lifecycle history, write, publication, restore, or completion approval
 
 **Convergence status**:
 The read-only description of evaluation outcome, currency, active lifecycle, pending action, recovery position, and blockers. A valid query can report an unfinished lifecycle without calling it malformed.

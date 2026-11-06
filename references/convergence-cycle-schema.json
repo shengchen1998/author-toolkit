@@ -220,7 +220,8 @@
           ]
         },
         "reason": { "type": "string", "minLength": 1 },
-        "required_strategy": { "$ref": "#/$defs/strategy" }
+        "required_strategy": { "$ref": "#/$defs/strategy" },
+        "operation_id": { "$ref": "#/$defs/id" }
       }
     },
     "planReference": {

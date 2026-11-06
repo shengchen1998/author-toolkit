@@ -1,4 +1,4 @@
-import { readdir, readFile, unlink } from "node:fs/promises";
+import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 
 import {
@@ -8,6 +8,13 @@ import {
   validateCreationCommit,
   validateStoryStateMarkdown,
 } from "./artifacts.mjs";
+import {
+  beginCycleOperation,
+  completedPointerBlocker,
+  coordinationBlockers,
+  finishCycleOperation,
+  runCheckpoint,
+} from "./cycle-coordination.mjs";
 import { collectManuscriptInventory } from "./manuscript.mjs";
 import { deriveCreationChangeSet, externalReconciliationBlock } from "./cycles.mjs";
 import { validateManifest } from "./manifest.mjs";
@@ -44,6 +51,7 @@ import {
   acquireDirectoryLock,
   createNoClobberVerified,
   releaseDirectoryLock,
+  removeVerified,
   sha256Bytes,
   writeAtomicVerified,
 } from "./state-io.mjs";
@@ -295,8 +303,10 @@ async function readProject(projectRoot) {
 async function readActiveCycle(project) {
   const file = path.resolve(project.root, project.manifest.paths.convergence, "active-cycle.json");
   let value;
+  let text;
   try {
-    value = JSON.parse(await readFile(file, "utf8"));
+    text = await readFile(file, "utf8");
+    value = JSON.parse(text);
   } catch (error) {
     if (error.code === "ENOENT") return null;
     throw error;
@@ -305,7 +315,7 @@ async function readActiveCycle(project) {
   if (!validation.valid || value.status !== "active") {
     throw new Error(`Living cycle is invalid: ${file}: ${formatErrors(validation.errors)}`);
   }
-  return { value, file };
+  return { value, file, text };
 }
 
 function operationTime(options = {}) {
@@ -2096,6 +2106,48 @@ async function recomputeStoredEvaluation(project, cycle, reference) {
   };
 }
 
+export async function recomputeCompletedCycleForRecovery(project, completed) {
+  if (completed?.status !== "completed" || !completed.target_evaluation) {
+    throw new Error("A completed cycle and target evaluation are required for recovery");
+  }
+  const result = await recomputeStoredEvaluation(
+    project,
+    completed,
+    completed.target_evaluation,
+  );
+  const trackerText = await readFile(
+    path.resolve(project.root, project.manifest.paths.audit_tracker),
+    "utf8",
+  );
+  const tracker = await parseTrackerState(trackerText, project.root);
+  const decision = tracker.completion_decisions.find(
+    (candidate) => candidate.id === completed.completion?.decision_id,
+  );
+  if (
+    !tracker.valid || !decision || decision.status !== "approved" ||
+    decision.cycleId !== completed.cycle_id ||
+    decision.scopeFingerprint !== completed.target_scope?.scope_fingerprint
+  ) {
+    throw new Error(`Completion decision ${completed.completion?.decision_id} is not current for the completed cycle`);
+  }
+  return result;
+}
+
+export async function recomputeCycleEvaluationForRecovery(project, cycle, reference) {
+  const result = await recomputeStoredEvaluation(project, cycle, reference);
+  if (
+    result.stored.cycle_id !== cycle.cycle_id ||
+    !sameScopeReference(result.stored.target_scope, cycle.target_scope) ||
+    !samePassReference(result.stored.requested_pass, cycle.requested_pass)
+  ) {
+    throw new Error("Published evaluation cycle, pass, or target scope does not match the interrupted cycle");
+  }
+  if (!result.current) {
+    throw new Error("Published evaluation is not current against its immutable evidence graph");
+  }
+  return result;
+}
+
 
 function publicFailure(code, message, cycle = null, details = {}) {
   return {
@@ -2109,6 +2161,19 @@ function publicFailure(code, message, cycle = null, details = {}) {
       command: cycle.recovery_position.required_strategy,
     } : DEFAULT_ACTION }],
     ...details,
+  };
+}
+
+function coordinationFailure(project, active, options = {}) {
+  const blockers = coordinationBlockers(project, active, options);
+  if (blockers.length === 0) return null;
+  return {
+    valid: false,
+    cycle: active?.value ?? null,
+    evaluation: null,
+    state_written: false,
+    blockers,
+    required_action: blockers[0].required_action,
   };
 }
 
@@ -2199,7 +2264,14 @@ async function lockProjectCycle(project, options, operation) {
   let value;
   let operationError;
   try {
-    value = await operation();
+    const pointer = await completedPointerBlocker(project);
+    value = pointer
+      ? {
+          ...publicFailure(pointer.code, pointer.message, null),
+          blockers: [pointer],
+          required_action: pointer.required_action,
+        }
+      : await operation();
   } catch (error) {
     operationError = error;
   }
@@ -2240,6 +2312,15 @@ export async function evaluateCycle(projectRoot, request, options = {}) {
     if (!cycle.target_scope || !cycle.requested_pass) {
       return publicFailure("evaluation-input-unavailable", "The active cycle requires target scope and requested-pass references before evaluation.", cycle);
     }
+    const coordination = coordinationFailure(project, active, {
+      allowOperationId: options.recoveryOperationId ?? null,
+    });
+    if (coordination) return coordination;
+    await beginCycleOperation(project, active, {
+      kind: "evaluation",
+      operationId: request.evaluation_id,
+      artifactId: request.evaluation_id,
+    }, options);
     const roots = {
       cycle_id: cycle.cycle_id,
       requested_pass: cycle.requested_pass,
@@ -2264,6 +2345,7 @@ export async function evaluateCycle(projectRoot, request, options = {}) {
     const absolute = path.resolve(project.root, relative);
     const text = `${JSON.stringify(evaluation, null, 2)}\n`;
     await publishImmutable(absolute, text);
+    await runCheckpoint(options, "evaluation-published");
     const reference = evaluationReference(evaluation, relative, text);
     const updated = {
       ...cycle,
@@ -2274,11 +2356,17 @@ export async function evaluateCycle(projectRoot, request, options = {}) {
             operation: null,
             reason: "The current satisfied target evaluation awaits an explicit author completion decision.",
             required_strategy: cycle.current_strategy,
+            operation_id: request.evaluation_id,
           }
-        : cycle.recovery_position,
+        : {
+            ...cycle.recovery_position,
+            operation_id: request.evaluation_id,
+          },
       updated_at: operationTime(options),
     };
     await writeAtomicVerified(active.file, `${JSON.stringify(updated, null, 2)}\n`);
+    await runCheckpoint(options, "cycle-written");
+    await finishCycleOperation(project, updated, request.evaluation_id, options);
     return {
       valid: evaluation.outcome === "satisfied",
       cycle: updated,
@@ -2338,6 +2426,7 @@ export async function evaluateDraft(projectRoot, request, options = {}) {
     const absolute = path.resolve(project.root, relative);
     const text = `${JSON.stringify(evaluation, null, 2)}\n`;
     await publishImmutable(absolute, text);
+    await runCheckpoint(options, "evaluation-published");
     return {
       valid: evaluation.outcome === "satisfied",
       cycle: null,
@@ -2395,6 +2484,10 @@ export async function completeCycle(projectRoot, request, options = {}) {
     if (!cycle.target_evaluation || !cycle.target_scope) {
       return publicFailure("completion-evaluation-not-satisfied", "A current satisfied target evaluation is required before completion.", cycle);
     }
+    const coordination = coordinationFailure(project, active, {
+      allowOperationId: options.recoveryOperationId ?? null,
+    });
+    if (coordination) return coordination;
     let current;
     try {
       current = await recomputeStoredEvaluation(project, cycle, cycle.target_evaluation);
@@ -2425,6 +2518,11 @@ export async function completeCycle(projectRoot, request, options = {}) {
       };
     }
 
+    await beginCycleOperation(project, active, {
+      kind: "completion",
+      operationId: request.decision_id,
+      artifactId: request.evaluation_id,
+    }, options);
     const completedAt = operationTime(options);
     if (!existingDecision) {
       const trackerAfter = appendCycleCompletionDecision(trackerBefore, {
@@ -2436,39 +2534,67 @@ export async function completeCycle(projectRoot, request, options = {}) {
       });
       await writeAtomicVerified(trackerPath, trackerAfter);
     }
-    const previous = current.stored;
-    const evaluation = await computeEvaluation(
-      project,
-      cycle,
-      {
-        cycle_id: cycle.cycle_id,
-        requested_pass: previous.requested_pass,
-        target_scope: previous.target_scope,
-        coverage_index: previous.coverage_index,
-        reports: previous.reports,
-        review_group: previous.review_group,
-        semantic_attestations: previous.semantic_attestations,
-      },
-      request.evaluation_id,
-      completedAt,
-    );
+    await runCheckpoint(options, "completion-decision-written");
     const relative = path.posix.join(
       project.manifest.paths.convergence,
       "evaluations",
-      `${evaluation.evaluation_id}.json`,
+      `${request.evaluation_id}.json`,
     );
     const absolute = path.resolve(project.root, relative);
-    const text = `${JSON.stringify(evaluation, null, 2)}\n`;
-    await publishImmutable(absolute, text);
-    const reference = evaluationReference(evaluation, relative, text);
+    let text;
+    try {
+      text = await readFile(absolute, "utf8");
+    } catch (error) {
+      if (error.code !== "ENOENT") throw error;
+      text = null;
+    }
+    let evaluation;
+    let reference;
+    if (text !== null) {
+      reference = {
+        evaluation_id: request.evaluation_id,
+        path: relative,
+        sha256: sha256Bytes(text),
+      };
+      const recovered = await recomputeCycleEvaluationForRecovery(project, cycle, reference);
+      evaluation = recovered.stored;
+      reference = evaluationReference(evaluation, relative, text);
+    } else {
+      const previous = current.stored;
+      evaluation = await computeEvaluation(
+        project,
+        cycle,
+        {
+          cycle_id: cycle.cycle_id,
+          requested_pass: previous.requested_pass,
+          target_scope: previous.target_scope,
+          coverage_index: previous.coverage_index,
+          reports: previous.reports,
+          review_group: previous.review_group,
+          semantic_attestations: previous.semantic_attestations,
+        },
+        request.evaluation_id,
+        completedAt,
+      );
+      text = `${JSON.stringify(evaluation, null, 2)}\n`;
+      await publishImmutable(absolute, text);
+      reference = evaluationReference(evaluation, relative, text);
+    }
+    await runCheckpoint(options, "evaluation-published");
     if (evaluation.outcome !== "satisfied") {
       const updated = {
         ...cycle,
         revision: cycle.revision + 1,
         target_evaluation: reference,
+        recovery_position: {
+          ...cycle.recovery_position,
+          operation_id: request.decision_id,
+        },
         updated_at: completedAt,
       };
       await writeAtomicVerified(active.file, `${JSON.stringify(updated, null, 2)}\n`);
+      await runCheckpoint(options, "cycle-written");
+      await finishCycleOperation(project, updated, request.decision_id, options);
       return {
         valid: false,
         cycle: updated,
@@ -2505,11 +2631,27 @@ export async function completeCycle(projectRoot, request, options = {}) {
       "cycles",
       `${cycle.cycle_id}.json`,
     );
+    const completedText = `${JSON.stringify(completed, null, 2)}\n`;
     await publishImmutable(
       path.resolve(project.root, completedRelative),
-      `${JSON.stringify(completed, null, 2)}\n`,
+      completedText,
     );
-    await unlink(active.file);
+    await runCheckpoint(options, "completed-cycle-published");
+    await finishCycleOperation(project, completed, request.decision_id, {
+      ...options,
+      complete: true,
+      completedAt,
+      manifestChanges: {
+        last_completed_cycle: {
+          cycle_id: completed.cycle_id,
+          revision: completed.revision,
+          path: completedRelative,
+          sha256: sha256Bytes(completedText),
+        },
+      },
+    });
+    await removeVerified(active.file, sha256Bytes(active.text));
+    await runCheckpoint(options, "active-cycle-removed");
     return {
       valid: true,
       cycle: completed,
@@ -2565,6 +2707,70 @@ export async function getConvergenceStatus(projectRoot) {
       required_action: null,
       blockers: [{ code: "cycle-state-invalid", message: error.message, required_action: null }],
     };
+  }
+  const coordination = coordinationBlockers(project, active);
+  if (coordination.length > 0) {
+    return {
+      query_valid: true,
+      outcome: "indeterminate",
+      current: false,
+      evaluation: null,
+      cycle: active?.value ?? null,
+      pending_action: project.manifest.pending_action ?? null,
+      request_completion: null,
+      required_action: coordination[0].required_action,
+      blockers: coordination,
+    };
+  }
+  const completedPointer = await completedPointerBlocker(project);
+  if (completedPointer) {
+    return {
+      query_valid: true,
+      outcome: "indeterminate",
+      current: false,
+      evaluation: null,
+      cycle: active?.value ?? null,
+      pending_action: project.manifest.pending_action ?? null,
+      request_completion: null,
+      required_action: completedPointer.required_action,
+      blockers: [completedPointer],
+    };
+  }
+  if (active) {
+    const completedPath = path.resolve(
+      project.root,
+      project.manifest.paths.convergence,
+      "cycles",
+      `${active.value.cycle_id}.json`,
+    );
+    let completed = null;
+    try {
+      completed = JSON.parse(await readFile(completedPath, "utf8"));
+    } catch (error) {
+      if (error.code !== "ENOENT") throw error;
+    }
+    if (completed?.status === "completed") {
+      const action = {
+        strategy: "author-project",
+        operation: "reconcile-cycle",
+        command: "author-project reconcile-cycle",
+      };
+      return {
+        query_valid: true,
+        outcome: "indeterminate",
+        current: false,
+        evaluation: null,
+        cycle: active.value,
+        pending_action: project.manifest.pending_action ?? null,
+        request_completion: null,
+        required_action: action,
+        blockers: [{
+          code: "cycle-completion-reconcile-required",
+          message: `Completed cycle ${completed.cycle_id} and its active record coexist; run reconcile-cycle before dependent work.`,
+          required_action: action,
+        }],
+      };
+    }
   }
   let cycle = active?.value ?? null;
   let reference = cycle?.target_evaluation ?? null;

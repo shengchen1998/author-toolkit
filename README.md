@@ -421,6 +421,7 @@ Use the executable `author-project` facade for lifecycle operations:
 ```bash
 node scripts/author-project.mjs start-cycle --project-root <project-root> --input <request.json>
 node scripts/author-project.mjs transition-cycle --project-root <project-root> --input <transition.json>
+node scripts/author-project.mjs reconcile-cycle --project-root <project-root> [--input <direction.json>]
 node scripts/author-project.mjs prepare-draft-revision-execution --project-root <project-root> --input <independent-preparation.json>
 node scripts/author-project.mjs verify-draft-revision-execution --project-root <project-root> --input <independent-verification.json>
 node scripts/author-project.mjs prepare-revision-execution --project-root <project-root> --input <preparation.json>
@@ -438,9 +439,21 @@ cross-process lock directory, reread the active cycle ID and expected revision
 inside that lock, and verify referenced artifact hashes before an atomic update.
 Only one writer can succeed for the same expected revision; later writers get
 `cycle-revision-conflict`. Lock timeouts and errors block without a success
-claim, and a leftover lock directory requires explicit recovery. Pending action
-still describes only the current operation and author gate; it does not own the
-cycle or authorize writes.
+claim, and a leftover lock directory requires owner-verified explicit recovery.
+
+Dependent operations record manifest `cycle_operation` before publishing their
+artifact and advancing the active cycle, then clear it during final manifest
+coordination. Completion writes completed history and `last_completed_cycle`
+before removing the expected active bytes. An interruption blocks dependent work
+with the exact cycle, revision, operation, scope, or artifact mismatch while
+read-only status remains available. Run `reconcile-cycle` without a direction for
+a write-free diagnosis. Recovery directions accept, attach, resume, discard, or
+finish only the exact intended work; they never rewrite evaluations, approvals,
+commit journals, backups, or verified executions. Pending action still describes
+only the current operation and author gate. Its cycle, revision, operation, and
+scope-fingerprint fields are coordination references, not ownership or approval
+for a write, publication, restore, or completion. These are coordinated writes,
+not a multi-file filesystem transaction.
 
 Request-driven edits use revision execution records under `executions/`. Preparation
 verifies existing author decisions, exact edit approvals, backup manifests and
@@ -462,8 +475,9 @@ and review group for the requested pass.
 
 Completion requires a separate explicit author decision. The operation appends
 that decision to the tracker, recomputes and saves a new evaluation with the
-changed tracker hash, and completes only if the new evaluation remains
-`satisfied`. Deterministic checks verify evidence identity and structure, but
+changed tracker hash, publishes completed history and the completed-cycle
+pointer before removing active state, and completes only if the new evaluation
+remains `satisfied`. Deterministic checks verify evidence identity and structure, but
 actual reading and editorial judgments remain bounded by trust in the host and
 logical-reviewer attestations and the recorded author decisions. Status also
 returns `request_completion` independently: approved request batches and decisions
@@ -496,9 +510,9 @@ unrelated manuscript growth requires a refreshed publication scope but does not
 by itself invalidate the staged content.
 
 `pending_action` describes the single next operation awaiting work or an author
-decision. It replaces stage-specific progress state and is not permission to
-publish or resume a manuscript write. It does not replace current-draft
-convergence cycle history or its recovery position.
+decision. Optional cycle, revision, operation, and scope-fingerprint fields keep
+it aligned with coordinated work; they do not make it lifecycle history or
+permission to write, publish, restore, complete, or resume manuscript changes.
 
 ### Creation staging, commits, and restores
 

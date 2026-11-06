@@ -2,6 +2,13 @@ import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 
 import { validateCreationBatch, validateCreationCommit } from "./artifacts.mjs";
+import {
+  beginCycleOperation,
+  completedPointerBlocker,
+  coordinationBlockers,
+  finishCycleOperation,
+  runCheckpoint,
+} from "./cycle-coordination.mjs";
 import { collectManuscriptInventory } from "./manuscript.mjs";
 import { validateManifest } from "./manifest.mjs";
 import {
@@ -135,6 +142,30 @@ function blocked(code, message, cycle) {
   };
 }
 
+function coordinationFailure(project, active, options = {}) {
+  const blockers = coordinationBlockers(project, active, options);
+  if (blockers.length === 0) return null;
+  return {
+    valid: false,
+    cycle: active?.value ?? null,
+    required_action: blockers[0].required_action,
+    blockers,
+    state_written: false,
+  };
+}
+
+async function completedPointerFailure(project, active = null) {
+  const pointer = await completedPointerBlocker(project);
+  if (!pointer) return null;
+  return {
+    valid: false,
+    cycle: active?.value ?? null,
+    required_action: pointer.required_action,
+    blockers: [pointer],
+    state_written: false,
+  };
+}
+
 const EXTERNAL_RECONCILIATION_ACTION = {
   strategy: "write-fiction",
   operation: "creation-import",
@@ -254,6 +285,10 @@ export async function startCycle(projectRoot, request, options = {}) {
       active.value,
     );
   }
+  const completedProblem = await completedPointerFailure(project, active);
+  if (completedProblem) return completedProblem;
+  const coordination = coordinationFailure(project, active);
+  if (coordination) return coordination;
   const currentScope = manifest.current_scope;
   const external = await externalReconciliationBlock(
     project,
@@ -392,6 +427,7 @@ export async function startCycle(projectRoot, request, options = {}) {
           ? "The approved external reconciliation joins this cycle; its complete target must restore current-draft revision convergence."
           : "The verified starting evaluation begins this cycle; its target must restore current-draft revision convergence.",
       required_strategy: request.initiating_strategy,
+      operation_id: `start-${request.cycle_id}`,
     },
     related_artifacts: reconciledStart
       ? {
@@ -462,7 +498,8 @@ export async function assertCycleAllowsOperation(projectRoot, request) {
   if (typeof request.manuscript_change !== "boolean") {
     throw new Error("manuscript_change must be explicit");
   }
-  const { root, manifest } = await readProject(projectRoot);
+  const project = await readProject(projectRoot);
+  const { root, manifest } = project;
   const active = await readActiveCycle(root, manifest);
   if (!request.manuscript_change) {
     return {
@@ -473,6 +510,10 @@ export async function assertCycleAllowsOperation(projectRoot, request) {
       blockers: [],
     };
   }
+  const completedProblem = await completedPointerFailure(project, active);
+  if (completedProblem) return { ...completedProblem, read_only: false };
+  const coordination = coordinationFailure(project, active);
+  if (coordination) return { ...coordination, read_only: false };
   const currentScope = manifest.current_scope;
   const trackedReference = active?.value.target_scope ?? active?.value.starting_scope ??
     (currentScope ? {
@@ -563,6 +604,7 @@ function validateTransitionRequest(request) {
   const allowed = new Set([
     "cycle_id",
     "expected_revision",
+    "operation_id",
     "current_strategy",
     "recovery_position",
     "target_scope",
@@ -579,6 +621,12 @@ function validateTransitionRequest(request) {
   }
   if (request.current_strategy !== undefined && !STRATEGIES.has(request.current_strategy)) {
     throw new Error("transition-cycle current_strategy is invalid");
+  }
+  if (
+    request.operation_id !== undefined &&
+    !/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(request.operation_id)
+  ) {
+    throw new Error("transition-cycle operation_id is invalid");
   }
   if (request.recovery_position !== undefined) {
     const keys = Object.keys(request.recovery_position).sort();
@@ -972,6 +1020,10 @@ async function transitionCycleLocked(project, request, options) {
       ),
     };
   }
+  const coordination = coordinationFailure(project, active, {
+    allowOperationId: options.recoveryOperationId ?? null,
+  });
+  if (coordination) return { stateWritten: false, result: coordination };
 
   const creationDiagnosticLink = cycle.initiating_strategy === "write-fiction" &&
     (request.related_artifacts?.creation_batches?.length ?? 0) > 0;
@@ -1012,16 +1064,20 @@ async function transitionCycleLocked(project, request, options) {
       ),
     };
   }
+  const operationId = request.operation_id ??
+    request.related_artifacts?.creation_commits?.[0]?.commit_id ??
+    request.related_artifacts?.reconciliations?.[0]?.reconciliation_id ??
+    request.related_artifacts?.revision_executions?.[0]?.execution_id ??
+    `${cycle.cycle_id}-transition-${cycle.revision + 1}`;
   const candidate = {
     ...cycle,
     revision: cycle.revision + 1,
     current_strategy: currentStrategy,
-    recovery_position: request.recovery_position
-      ? {
-          ...request.recovery_position,
-          required_strategy: currentStrategy,
-        }
-      : cycle.recovery_position,
+    recovery_position: {
+      ...(request.recovery_position ?? cycle.recovery_position),
+      required_strategy: currentStrategy,
+      operation_id: operationId,
+    },
     target_scope: Object.hasOwn(request, "target_scope")
       ? request.target_scope
       : cycle.target_scope,
@@ -1069,7 +1125,13 @@ async function transitionCycleLocked(project, request, options) {
     };
   }
 
+  await beginCycleOperation(project, active, {
+    kind: request.related_artifacts?.creation_commits ? "creation-publication" : "cycle-transition",
+    operationId,
+  }, options);
   await writeAtomicVerified(active.file, `${JSON.stringify(candidate, null, 2)}\n`);
+  await runCheckpoint(options, "cycle-written");
+  await finishCycleOperation(project, candidate, operationId, options);
   return {
     stateWritten: true,
     result: {
@@ -1124,7 +1186,10 @@ export async function transitionCycle(projectRoot, request, options = {}) {
   let outcome;
   let operationError;
   try {
-    outcome = await transitionCycleLocked(project, request, options);
+    const completedProblem = await completedPointerFailure(project, initial);
+    outcome = completedProblem
+      ? { stateWritten: false, result: completedProblem }
+      : await transitionCycleLocked(project, request, options);
   } catch (error) {
     operationError = error;
   }

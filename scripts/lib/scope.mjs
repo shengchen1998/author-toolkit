@@ -1,5 +1,5 @@
-import { createHash, randomUUID } from "node:crypto";
-import { link, mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
+import { readFile } from "node:fs/promises";
 import path from "node:path";
 
 import { validateManifest } from "./manifest.mjs";
@@ -12,6 +12,7 @@ import {
   validateInventorySnapshotSchema,
   validateScopeSnapshotSchema,
 } from "./schemas.mjs";
+import { createNoClobberVerified, writeAtomicVerified } from "./state-io.mjs";
 
 function sha256(contents) {
   return createHash("sha256").update(contents).digest("hex");
@@ -49,43 +50,18 @@ export function computeInventoryFingerprint(inventory) {
 }
 
 async function atomicWrite(file, contents) {
-  const temporary = path.join(
-    path.dirname(file),
-    `.${path.basename(file)}.${process.pid}.${randomUUID()}.tmp`,
-  );
-  try {
-    await writeFile(temporary, contents, { encoding: "utf8", flag: "wx" });
-    if (sha256(await readFile(temporary)) !== sha256(contents)) {
-      throw new Error(`Temporary write verification failed: ${file}`);
-    }
-    await rename(temporary, file);
-  } finally {
-    await rm(temporary, { force: true });
-  }
+  await writeAtomicVerified(file, contents);
 }
 
 async function writeImmutable(file, contents) {
-  await mkdir(path.dirname(file), { recursive: true });
-  const temporary = path.join(
-    path.dirname(file),
-    `.${path.basename(file)}.${process.pid}.${randomUUID()}.tmp`,
-  );
   try {
-    await writeFile(temporary, contents, { encoding: "utf8", flag: "wx" });
-    if (sha256(await readFile(temporary)) !== sha256(contents)) {
-      throw new Error(`Temporary write verification failed: ${file}`);
+    await createNoClobberVerified(file, contents);
+  } catch (error) {
+    if (error.code !== "EEXIST") throw error;
+    const existing = await readFile(file, "utf8");
+    if (existing !== contents) {
+      throw new Error(`Immutable snapshot already exists with different content: ${file}`);
     }
-    try {
-      await link(temporary, file);
-    } catch (error) {
-      if (error.code !== "EEXIST") throw error;
-      const existing = await readFile(file, "utf8");
-      if (existing !== contents) {
-        throw new Error(`Immutable snapshot already exists with different content: ${file}`);
-      }
-    }
-  } finally {
-    await rm(temporary, { force: true });
   }
 }
 

@@ -44,7 +44,9 @@ Independent local or narrowed `revise-draft` work may finish without a cycle, bu
 
 Reuse evidence only when its operation, `scope_id`, input versions, requested coverage and subchecks, and dependency state all match the proposed work. Reuse local coverage units by their exact paths and hashes, and reevaluate affected whole-book synthesis after changes. Treat changed inputs or dependencies as stale evidence to reconcile, not as hashes to refresh silently. Creation evidence does not satisfy `chapter-revision`.
 
-A pending action records interrupted or awaiting work. Recheck current evidence and approvals before acting on it; it does not authorize a manuscript write.
+A pending action records interrupted or awaiting work. Its cycle, revision, operation, and scope fields are coordination references only. Recheck current evidence and approvals before acting on it; it does not authorize a manuscript write, publication, restore, or cycle completion.
+
+When status reports an interrupted `cycle_operation`, a completed/active conflict, a pending identity mismatch, or a leftover active-cycle lock, stop dependent work and run `author-project reconcile-cycle` without a direction first. Apply only the documented direction for the exact cycle and operation after reviewing current artifacts. A direction never rewrites evaluations, approvals, journals, backups, or verified executions and never replaces their independent author gates. Do not remove a lock unless its recorded PID is not running and its exact owner token is supplied.
 
 ## Keep author decisions explicit
 

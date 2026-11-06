@@ -113,6 +113,41 @@
         "sha256": { "$ref": "#/$defs/sha256" }
       }
     },
+    "cycle_operation": {
+      "type": "object",
+      "required": ["kind", "operation_id", "cycle_id", "expected_revision", "intended_revision", "created_at"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "enum": [
+            "cycle-transition",
+            "revision-preparation",
+            "revision-verification",
+            "creation-publication",
+            "manuscript-reconciliation",
+            "evaluation",
+            "completion"
+          ]
+        },
+        "operation_id": { "$ref": "#/$defs/scope_id" },
+        "cycle_id": { "$ref": "#/$defs/scope_id" },
+        "expected_revision": { "type": "integer", "minimum": 1 },
+        "intended_revision": { "type": "integer", "minimum": 2 },
+        "artifact_id": { "$ref": "#/$defs/scope_id" },
+        "created_at": { "$ref": "#/$defs/timestamp" }
+      }
+    },
+    "last_completed_cycle": {
+      "type": "object",
+      "required": ["cycle_id", "revision", "path", "sha256"],
+      "additionalProperties": false,
+      "properties": {
+        "cycle_id": { "$ref": "#/$defs/scope_id" },
+        "revision": { "type": "integer", "minimum": 1 },
+        "path": { "$ref": "relative-path-schema.json" },
+        "sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
     "pending_action": {
       "type": "object",
       "required": ["operation", "status", "reason", "updated_at"],
@@ -143,6 +178,10 @@
         },
         "status": { "enum": ["in_progress", "awaiting_author", "blocked"] },
         "scope_id": { "$ref": "#/$defs/scope_id" },
+        "scope_fingerprint": { "$ref": "#/$defs/sha256" },
+        "cycle_id": { "$ref": "#/$defs/scope_id" },
+        "cycle_revision": { "type": "integer", "minimum": 1 },
+        "operation_id": { "$ref": "#/$defs/scope_id" },
         "reason": { "type": "string", "minLength": 1 },
         "artifacts": {
           "type": "array",
