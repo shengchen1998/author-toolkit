@@ -13,6 +13,17 @@ const relativePathSchema = readSchema("relative-path-schema.json");
 const projectSchema = readSchema("project-schema.json");
 const projectV3Schema = readSchema("project-schema-v3.json");
 const projectV31Schema = readSchema("project-schema-v3.1.json");
+const projectV32Schema = readSchema("project-schema-v3.2.json");
+const scopeSnapshotSchema = readSchema("scope-snapshot-schema.json");
+const inventorySnapshotSchema = readSchema("inventory-snapshot-schema.json");
+const convergenceCycleSchema = readSchema("convergence-cycle-schema.json");
+const requestedPassSchema = readSchema("requested-pass-schema.json");
+const noEditSkipSchema = readSchema("no-edit-skip-schema.json");
+const reviewGroupSchema = readSchema("review-group-schema.json");
+const semanticAttestationSchema = readSchema("semantic-attestation-schema.json");
+const convergenceEvaluationSchema = readSchema("convergence-evaluation-schema.json");
+const revisionExecutionSchema = readSchema("revision-execution-schema.json");
+const manuscriptReconciliationSchema = readSchema("manuscript-reconciliation-schema.json");
 const reportSchema = readSchema("report-schema-v2.json");
 const storyStateSchema = readSchema("story-state-schema.json");
 const creationBatchSchema = readSchema("creation-batch-schema.json");
@@ -30,6 +41,17 @@ ajv.addSchema(relativePathSchema);
 ajv.addSchema(projectSchema);
 ajv.addSchema(projectV3Schema);
 ajv.addSchema(projectV31Schema);
+ajv.addSchema(projectV32Schema);
+ajv.addSchema(scopeSnapshotSchema);
+ajv.addSchema(inventorySnapshotSchema);
+ajv.addSchema(convergenceCycleSchema);
+ajv.addSchema(requestedPassSchema);
+ajv.addSchema(noEditSkipSchema);
+ajv.addSchema(reviewGroupSchema);
+ajv.addSchema(semanticAttestationSchema);
+ajv.addSchema(convergenceEvaluationSchema);
+ajv.addSchema(revisionExecutionSchema);
+ajv.addSchema(manuscriptReconciliationSchema);
 ajv.addSchema(reportSchema);
 ajv.addSchema(storyStateSchema);
 ajv.addSchema(creationBatchSchema);
@@ -45,6 +67,17 @@ const relativePathValidator = ajv.getSchema("relative-path-schema.json");
 const projectValidator = ajv.getSchema("project-schema.json");
 const projectV3Validator = ajv.getSchema("project-schema-v3.json");
 const projectV31Validator = ajv.getSchema("project-schema-v3.1.json");
+const projectV32Validator = ajv.getSchema("project-schema-v3.2.json");
+const scopeSnapshotValidator = ajv.getSchema("scope-snapshot-schema.json");
+const inventorySnapshotValidator = ajv.getSchema("inventory-snapshot-schema.json");
+const convergenceCycleValidator = ajv.getSchema("convergence-cycle-schema.json");
+const requestedPassValidator = ajv.getSchema("requested-pass-schema.json");
+const noEditSkipValidator = ajv.getSchema("no-edit-skip-schema.json");
+const reviewGroupValidator = ajv.getSchema("review-group-schema.json");
+const semanticAttestationValidator = ajv.getSchema("semantic-attestation-schema.json");
+const convergenceEvaluationValidator = ajv.getSchema("convergence-evaluation-schema.json");
+const revisionExecutionValidator = ajv.getSchema("revision-execution-schema.json");
+const manuscriptReconciliationValidator = ajv.getSchema("manuscript-reconciliation-schema.json");
 const reportValidator = ajv.getSchema("report-schema-v2.json");
 const storyStateValidator = ajv.getSchema("story-state-schema.json");
 const creationBatchValidator = ajv.getSchema("creation-batch-schema.json");
@@ -80,6 +113,50 @@ export function validateProjectV3Schema(value) {
 
 export function validateProjectV31Schema(value) {
   return evaluate(projectV31Validator, value);
+}
+
+export function validateProjectV32Schema(value) {
+  return evaluate(projectV32Validator, value);
+}
+
+export function validateScopeSnapshotSchema(value) {
+  return evaluate(scopeSnapshotValidator, value);
+}
+
+export function validateInventorySnapshotSchema(value) {
+  return evaluate(inventorySnapshotValidator, value);
+}
+
+export function validateConvergenceCycleSchema(value) {
+  return evaluate(convergenceCycleValidator, value);
+}
+
+export function validateRequestedPassSchema(value) {
+  return evaluate(requestedPassValidator, value);
+}
+
+export function validateNoEditSkipSchema(value) {
+  return evaluate(noEditSkipValidator, value);
+}
+
+export function validateReviewGroupSchema(value) {
+  return evaluate(reviewGroupValidator, value);
+}
+
+export function validateSemanticAttestationSchema(value) {
+  return evaluate(semanticAttestationValidator, value);
+}
+
+export function validateConvergenceEvaluationSchema(value) {
+  return evaluate(convergenceEvaluationValidator, value);
+}
+
+export function validateRevisionExecutionSchema(value) {
+  return evaluate(revisionExecutionValidator, value);
+}
+
+export function validateManuscriptReconciliationSchema(value) {
+  return evaluate(manuscriptReconciliationValidator, value);
 }
 
 export function validateReportEnvelope(value) {
@@ -127,6 +204,17 @@ export function validateSchemaDefinitions() {
     ["project-schema.json", projectSchema],
     ["project-schema-v3.json", projectV3Schema],
     ["project-schema-v3.1.json", projectV31Schema],
+    ["project-schema-v3.2.json", projectV32Schema],
+    ["scope-snapshot-schema.json", scopeSnapshotSchema],
+    ["inventory-snapshot-schema.json", inventorySnapshotSchema],
+    ["convergence-cycle-schema.json", convergenceCycleSchema],
+    ["requested-pass-schema.json", requestedPassSchema],
+    ["no-edit-skip-schema.json", noEditSkipSchema],
+    ["review-group-schema.json", reviewGroupSchema],
+    ["semantic-attestation-schema.json", semanticAttestationSchema],
+    ["convergence-evaluation-schema.json", convergenceEvaluationSchema],
+    ["revision-execution-schema.json", revisionExecutionSchema],
+    ["manuscript-reconciliation-schema.json", manuscriptReconciliationSchema],
     ["report-schema-v2.json", reportSchema],
     ["story-state-schema.json", storyStateSchema],
     ["creation-batch-schema.json", creationBatchSchema],

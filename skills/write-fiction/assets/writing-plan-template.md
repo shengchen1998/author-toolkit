@@ -3,6 +3,8 @@
 - Operation: writing-plan
 - Source mode: ai | author | mixed
 - Current scope:
+- Active cycle ID and revision:
+- Starting scope reference, or null for bootstrap:
 - Active batch:
 - Related findings or accepted risks:
 

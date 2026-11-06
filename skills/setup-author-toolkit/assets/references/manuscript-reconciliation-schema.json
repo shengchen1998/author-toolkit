@@ -1,0 +1,118 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "manuscript-reconciliation-schema.json",
+  "title": "author-toolkit immutable external manuscript reconciliation",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "reconciliation_id",
+    "cycle_id",
+    "previous_scope",
+    "previous_evaluation",
+    "proof_blockers",
+    "invalidated_evaluations",
+    "invalidated_coverage",
+    "target_scope",
+    "inventory",
+    "change_set",
+    "work_set",
+    "story_state",
+    "author_decision_id",
+    "recovery_from_empty",
+    "required_strategy",
+    "recovery_operation",
+    "created_at"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": { "const": "1.0.0" },
+    "reconciliation_id": { "$ref": "#/$defs/id" },
+    "cycle_id": {
+      "anyOf": [
+        { "$ref": "#/$defs/id" },
+        { "type": "null" }
+      ]
+    },
+    "previous_scope": {
+      "anyOf": [
+        { "$ref": "convergence-cycle-schema.json#/$defs/scopeReference" },
+        { "type": "null" }
+      ]
+    },
+    "previous_evaluation": {
+      "anyOf": [
+        { "$ref": "convergence-cycle-schema.json#/$defs/evaluationReference" },
+        { "type": "null" }
+      ]
+    },
+    "proof_blockers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["code", "message"],
+        "additionalProperties": false,
+        "properties": {
+          "code": { "type": "string", "minLength": 1 },
+          "message": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "invalidated_evaluations": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "$ref": "convergence-cycle-schema.json#/$defs/evaluationReference" }
+    },
+    "invalidated_coverage": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "$ref": "convergence-cycle-schema.json#/$defs/artifactReference" }
+    },
+    "target_scope": {
+      "anyOf": [
+        { "$ref": "convergence-cycle-schema.json#/$defs/scopeReference" },
+        { "type": "null" }
+      ]
+    },
+    "inventory": {
+      "type": "object",
+      "required": ["path", "sha256", "inventory_fingerprint"],
+      "additionalProperties": false,
+      "properties": {
+        "path": { "$ref": "relative-path-schema.json" },
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "inventory_fingerprint": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "change_set": { "$ref": "convergence-cycle-schema.json#/$defs/changeSet" },
+    "work_set": { "$ref": "convergence-cycle-schema.json#/$defs/workSet" },
+    "story_state": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "$ref": "convergence-cycle-schema.json#/$defs/artifactReference" }
+    },
+    "author_decision_id": {
+      "type": "string",
+      "pattern": "^[A-Z][A-Z0-9]*-[0-9]{3,}$"
+    },
+    "recovery_from_empty": { "type": "boolean" },
+    "required_strategy": { "$ref": "convergence-cycle-schema.json#/$defs/strategy" },
+    "recovery_operation": {
+      "anyOf": [
+        { "$ref": "convergence-cycle-schema.json#/$defs/operation" },
+        { "type": "null" }
+      ]
+    },
+    "created_at": { "type": "string", "format": "date-time" }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    }
+  }
+}

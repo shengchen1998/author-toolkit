@@ -28,6 +28,11 @@ Allowed statuses: `approved`, `deferred`, `cancelled`, `superseded`.
 | Approval ID | Type | Operation | Scope ID | Paths | Status | Reason | Updated |
 |---|---|---|---|---|---|---|---|
 
+## Cycle completions
+
+| Decision ID | Cycle ID | Target scope fingerprint | Status | Reason | Updated |
+|---|---|---|---|---|---|
+
 ## Open questions
 
 ## Approved decisions

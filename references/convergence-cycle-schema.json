@@ -1,0 +1,484 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "convergence-cycle-schema.json",
+  "title": "author-toolkit current-draft convergence cycle v1",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "cycle_id",
+    "revision",
+    "status",
+    "initiating_strategy",
+    "current_strategy",
+    "bootstrap",
+    "starting_scope",
+    "target_scope",
+    "requested_pass",
+    "recovery_position",
+    "related_artifacts",
+    "change_set",
+    "work_set",
+    "starting_evaluation",
+    "target_evaluation",
+    "completion",
+    "created_at",
+    "updated_at"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": { "const": "1.0.0" },
+    "cycle_id": { "$ref": "#/$defs/id" },
+    "revision": { "type": "integer", "minimum": 1 },
+    "status": { "enum": ["active", "completed"] },
+    "initiating_strategy": { "$ref": "#/$defs/strategy" },
+    "current_strategy": { "$ref": "#/$defs/strategy" },
+    "bootstrap": { "type": "boolean" },
+    "starting_scope": {
+      "anyOf": [
+        { "$ref": "#/$defs/scopeReference" },
+        { "type": "null" }
+      ]
+    },
+    "target_scope": {
+      "anyOf": [
+        { "$ref": "#/$defs/scopeReference" },
+        { "type": "null" }
+      ]
+    },
+    "requested_pass": {
+      "anyOf": [
+        { "$ref": "#/$defs/passReference" },
+        { "type": "null" }
+      ]
+    },
+    "recovery_position": {
+      "anyOf": [
+        { "$ref": "#/$defs/recoveryPosition" },
+        { "type": "null" }
+      ]
+    },
+    "related_artifacts": { "$ref": "#/$defs/relatedArtifacts" },
+    "change_set": { "$ref": "#/$defs/changeSet" },
+    "work_set": { "$ref": "#/$defs/workSet" },
+    "starting_evaluation": {
+      "anyOf": [
+        { "$ref": "#/$defs/evaluationReference" },
+        { "type": "null" }
+      ]
+    },
+    "target_evaluation": {
+      "anyOf": [
+        { "$ref": "#/$defs/evaluationReference" },
+        { "type": "null" }
+      ]
+    },
+    "completion": {
+      "anyOf": [
+        { "$ref": "#/$defs/completion" },
+        { "type": "null" }
+      ]
+    },
+    "created_at": { "$ref": "#/$defs/timestamp" },
+    "updated_at": { "$ref": "#/$defs/timestamp" }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": { "bootstrap": { "const": true } }
+      },
+      "then": {
+        "properties": {
+          "initiating_strategy": { "const": "write-fiction" },
+          "starting_scope": { "type": "null" },
+          "starting_evaluation": { "type": "null" }
+        }
+      },
+      "else": {
+        "properties": {
+          "starting_scope": { "$ref": "#/$defs/scopeReference" },
+          "starting_evaluation": { "$ref": "#/$defs/evaluationReference" }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": { "status": { "const": "active" } }
+      },
+      "then": {
+        "properties": {
+          "recovery_position": { "$ref": "#/$defs/recoveryPosition" },
+          "completion": { "type": "null" }
+        }
+      },
+      "else": {
+        "properties": {
+          "target_scope": { "$ref": "#/$defs/scopeReference" },
+          "target_evaluation": { "$ref": "#/$defs/evaluationReference" },
+          "recovery_position": { "type": "null" },
+          "completion": { "$ref": "#/$defs/completion" }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "timestamp": { "type": "string", "format": "date-time" },
+    "strategy": {
+      "enum": [
+        "write-fiction",
+        "revise-fiction",
+        "revise-draft",
+        "revise-increment",
+        "revise-request"
+      ]
+    },
+    "operation": {
+      "enum": [
+        "intake",
+        "story-bible",
+        "draft-baseline",
+        "structure",
+        "characters",
+        "diagnostics",
+        "revision-plan",
+        "chapter-revision",
+        "prose",
+        "ai-cleanup",
+        "current-scope-review",
+        "final-review",
+        "creation-baseline",
+        "writing-plan",
+        "chapter-creation",
+        "chapter-review",
+        "creation-commit",
+        "creation-import",
+        "milestone-review"
+      ]
+    },
+    "artifactReference": {
+      "type": "object",
+      "required": ["path", "sha256"],
+      "additionalProperties": false,
+      "properties": {
+        "path": { "$ref": "relative-path-schema.json" },
+        "sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "scopeReference": {
+      "type": "object",
+      "required": [
+        "scope_id",
+        "scope_fingerprint",
+        "snapshot_path",
+        "snapshot_sha256"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "scope_id": { "$ref": "#/$defs/id" },
+        "scope_fingerprint": { "$ref": "#/$defs/sha256" },
+        "snapshot_path": { "$ref": "relative-path-schema.json" },
+        "snapshot_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "passReference": {
+      "type": "object",
+      "required": ["pass_id", "pass_fingerprint", "path", "sha256"],
+      "additionalProperties": false,
+      "properties": {
+        "pass_id": { "$ref": "#/$defs/id" },
+        "pass_fingerprint": { "$ref": "#/$defs/sha256" },
+        "path": { "$ref": "relative-path-schema.json" },
+        "sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "evaluationReference": {
+      "type": "object",
+      "required": ["evaluation_id", "path", "sha256"],
+      "additionalProperties": false,
+      "properties": {
+        "evaluation_id": { "$ref": "#/$defs/id" },
+        "path": { "$ref": "relative-path-schema.json" },
+        "sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "recoveryPosition": {
+      "type": "object",
+      "required": ["operation", "reason", "required_strategy"],
+      "additionalProperties": false,
+      "properties": {
+        "operation": {
+          "anyOf": [
+            { "$ref": "#/$defs/operation" },
+            { "type": "null" }
+          ]
+        },
+        "reason": { "type": "string", "minLength": 1 },
+        "required_strategy": { "$ref": "#/$defs/strategy" },
+        "operation_id": { "$ref": "#/$defs/id" }
+      }
+    },
+    "planReference": {
+      "type": "object",
+      "required": ["plan_id", "path", "sha256"],
+      "additionalProperties": false,
+      "properties": {
+        "plan_id": { "$ref": "#/$defs/id" },
+        "path": { "$ref": "relative-path-schema.json" },
+        "sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "batchReference": {
+      "type": "object",
+      "required": ["batch_id", "path", "sha256"],
+      "additionalProperties": false,
+      "properties": {
+        "batch_id": { "$ref": "#/$defs/id" },
+        "path": { "$ref": "relative-path-schema.json" },
+        "sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "commitReference": {
+      "type": "object",
+      "required": ["commit_id", "batch_id", "path", "sha256"],
+      "additionalProperties": false,
+      "properties": {
+        "commit_id": { "$ref": "#/$defs/id" },
+        "batch_id": { "$ref": "#/$defs/id" },
+        "path": { "$ref": "relative-path-schema.json" },
+        "sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "executionReference": {
+      "type": "object",
+      "required": ["execution_id", "path", "sha256"],
+      "additionalProperties": false,
+      "properties": {
+        "execution_id": { "$ref": "#/$defs/id" },
+        "path": { "$ref": "relative-path-schema.json" },
+        "sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "reviewGroupReference": {
+      "type": "object",
+      "required": ["review_group_id", "path", "sha256"],
+      "additionalProperties": false,
+      "properties": {
+        "review_group_id": { "$ref": "#/$defs/id" },
+        "path": { "$ref": "relative-path-schema.json" },
+        "sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "reviewReference": {
+      "type": "object",
+      "required": ["job_id", "path", "sha256"],
+      "additionalProperties": false,
+      "properties": {
+        "job_id": { "$ref": "#/$defs/id" },
+        "path": { "$ref": "relative-path-schema.json" },
+        "sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "skipReference": {
+      "type": "object",
+      "required": ["skip_id", "path", "sha256"],
+      "additionalProperties": false,
+      "properties": {
+        "skip_id": { "$ref": "#/$defs/id" },
+        "path": { "$ref": "relative-path-schema.json" },
+        "sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "reconciliationReference": {
+      "type": "object",
+      "required": ["reconciliation_id", "path", "sha256"],
+      "additionalProperties": false,
+      "properties": {
+        "reconciliation_id": { "$ref": "#/$defs/id" },
+        "path": { "$ref": "relative-path-schema.json" },
+        "sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "relatedArtifacts": {
+      "type": "object",
+      "required": [
+        "plans",
+        "creation_batches",
+        "creation_commits",
+        "revision_executions",
+        "review_groups",
+        "reviews",
+        "no_edit_skips"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "plans": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/planReference" }
+        },
+        "creation_batches": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/batchReference" }
+        },
+        "creation_commits": {
+          "type": "array",
+          "maxItems": 1,
+          "items": { "$ref": "#/$defs/commitReference" }
+        },
+        "revision_executions": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/executionReference" }
+        },
+        "review_groups": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/reviewGroupReference" }
+        },
+        "reviews": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/reviewReference" }
+        },
+        "no_edit_skips": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/skipReference" }
+        },
+        "reconciliations": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/reconciliationReference" }
+        }
+      }
+    },
+    "createdFile": {
+      "type": "object",
+      "required": ["path", "sha256"],
+      "additionalProperties": false,
+      "properties": {
+        "path": { "$ref": "relative-path-schema.json" },
+        "sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "modifiedFile": {
+      "type": "object",
+      "required": ["path", "input_sha256", "output_sha256"],
+      "additionalProperties": false,
+      "properties": {
+        "path": { "$ref": "relative-path-schema.json" },
+        "input_sha256": { "$ref": "#/$defs/sha256" },
+        "output_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "deletedFile": {
+      "type": "object",
+      "required": ["path", "input_sha256"],
+      "additionalProperties": false,
+      "properties": {
+        "path": { "$ref": "relative-path-schema.json" },
+        "input_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "reorderedFile": {
+      "type": "object",
+      "required": ["path", "before_index", "after_index"],
+      "additionalProperties": false,
+      "properties": {
+        "path": { "$ref": "relative-path-schema.json" },
+        "before_index": { "type": "integer", "minimum": 0 },
+        "after_index": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "changeSet": {
+      "type": "object",
+      "required": [
+        "from_scope",
+        "to_scope",
+        "created",
+        "modified",
+        "deleted",
+        "reordered",
+        "evidence_affected",
+        "dependency_affected"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "from_scope": {
+          "anyOf": [
+            { "$ref": "#/$defs/scopeReference" },
+            { "type": "null" }
+          ]
+        },
+        "to_scope": {
+          "anyOf": [
+            { "$ref": "#/$defs/scopeReference" },
+            { "type": "null" }
+          ]
+        },
+        "created": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/createdFile" }
+        },
+        "modified": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/modifiedFile" }
+        },
+        "deleted": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/deletedFile" }
+        },
+        "reordered": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/reorderedFile" }
+        },
+        "evidence_affected": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "relative-path-schema.json" }
+        },
+        "dependency_affected": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "relative-path-schema.json" }
+        }
+      }
+    },
+    "workSet": {
+      "type": "object",
+      "required": ["entries"],
+      "additionalProperties": false,
+      "properties": {
+        "entries": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["path", "operations", "reason"],
+            "additionalProperties": false,
+            "properties": {
+              "path": { "$ref": "relative-path-schema.json" },
+              "operations": {
+                "type": "array",
+                "minItems": 1,
+                "uniqueItems": true,
+                "items": { "$ref": "#/$defs/operation" }
+              },
+              "reason": { "type": "string", "minLength": 1 }
+            }
+          }
+        }
+      }
+    },
+    "completion": {
+      "type": "object",
+      "required": ["decision_id", "target_evaluation_id", "completed_at"],
+      "additionalProperties": false,
+      "properties": {
+        "decision_id": { "$ref": "#/$defs/id" },
+        "target_evaluation_id": { "$ref": "#/$defs/id" },
+        "completed_at": { "$ref": "#/$defs/timestamp" }
+      }
+    }
+  }
+}

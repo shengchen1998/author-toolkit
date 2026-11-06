@@ -1,6 +1,6 @@
 # Author Toolkit 中文快速上手
 
-Author Toolkit 3.1.0 提供增量小说创作, 四个小说修订策略和六个独立写作技能. 创作与修订共享
+Author Toolkit 3.2.0 提供增量小说创作, 四个小说修订策略和六个独立写作技能. 创作与修订共享
 同一项目证据模型, 支持 Claude Code 与 Kimi Code. 完整说明见 [英文 README](README.md),
 共享用语见 [受控术语表](references/terminology.md).
 
@@ -113,7 +113,8 @@ AI, 作者和混合创作使用相同门禁. 每本书只保留一个活动创�
 写前必须同时批准章节计划和准确写入批次, 包括路径, 动作和输入版本. staging 后, 一次创作批次
 验收覆盖确定的正文内容, 故事状态差异和有序发布范围; 正文与范围批准分别记录. 验收后
 `creation-commit` 不再增加作者门禁. 发布本身不代表发布范围已达到当前草稿修订收敛;
-需要达到该状态时继续运行 `revise-increment`.
+首次创作引导的首次非空发布续接同一周期的 `revise-draft`, 建立初始全稿评估;
+普通创作后继续运行 `revise-increment`.
 
 ### `revise-fiction`: 全书修订
 
@@ -128,6 +129,10 @@ AI, 作者和混合创作使用相同门禁. 每本书只保留一个活动创�
 7. `prose`: 进行句子层审查和获批修改.
 8. `ai-cleanup`: 按作者要求检测或修改 AI 写作模式.
 9. `final-review`: 以三个独立视角完成全书终审并准备交接.
+
+只读结构分析与全书终审无需建立周期即可使用. 正文变更或会使所需证据失效的工作必须从当前
+`satisfied` 的全稿起始评估进入已链接的 `revise-fiction` 周期, 保留每项全书门禁,
+并在作者明确决定完成周期前恢复全稿的当前草稿修订收敛.
 
 ### `revise-draft`: 当前草稿修订
 
@@ -149,6 +154,13 @@ AI, 作者和混合创作使用相同门禁. 每本书只保留一个活动创�
 完整全书门禁要求更多人物弧线和全书连续性子检查. 当前草稿任务可以直接进入 `prose` 或
 `ai-cleanup`. 不需要改稿时, 可记录原因并跳过 `revision-plan` 和 `chapter-revision`.
 直接进入或收窄的请求修订轮次本身不代表已达到当前草稿修订收敛.
+
+独立的局部, 诊断, 直接句子层, AI 关联表达处理和收窄的当前草稿工作可以不建周期,
+但不得宣称全稿达到当前草稿修订收敛, 也不会降低最近一次 `satisfied` 全稿轮次的子检查基线. 若稿件尚未达到当前草稿修订收敛,
+其他正文变更入口保持阻断, 直到独立全稿 `evaluate-draft` 产生当前 `satisfied` 评估.
+该恢复中的已解决发现项必须在改稿前运行 `prepare-draft-revision-execution`, 随后运行
+`verify-draft-revision-execution`, 形成 `cycle_id: null` 且实际输入输出经过核对的执行记录.
+已激活周期中的当前草稿恢复则链接并评估同一周期. 所有跨入口路由只显示准确的宿主命令并等待作者.
 
 ### `revise-increment`: 增量创作后的修订
 
@@ -173,8 +185,8 @@ AI, 作者和混合创作使用相同门禁. 每本书只保留一个活动创�
 修订请求时使用此入口. 请求可以涉及情节, 场景, 人物, 连续性, 视角, 句子或 `ai-cleanup`;
 宏观结构请求可额外使用 `story-structure` Audit, 但不会因此改走 `revise-fiction` 的全书终审门禁.
 
-1. 核对全稿基准范围和当前草稿修订收敛证据. 尚未达到该状态时先回到 `revise-draft`;
-   创作或导入扩大范围时先运行 `revise-increment`.
+1. 核对全稿基准范围和当前草稿修订收敛证据. 尚未达到该状态或首次创作引导刚完成首次发布时先回到
+   `revise-draft`; 普通创作或导入扩大范围时先运行 `revise-increment`.
 2. 确认请求结果, 约束, 请求集合, 全稿目标范围和初始工作集合. 请求集合决定改什么,
    全稿目标范围决定需要重新证明什么.
 3. 在备份后只执行获批批次. 按实际文本和依赖变化扩大工作集合, 重跑受影响操作并组合目标范围的
@@ -185,12 +197,14 @@ AI, 作者和混合创作使用相同门禁. 每本书只保留一个活动创�
    处理复核发现项和返工, 分别报告请求完成以及全稿目标范围是否重新达到当前草稿修订收敛;
    请求批次完成本身不等于当前草稿修订收敛.
 
-叙事非虚构请直接调用 `narrative-nonfiction`. 多书籍项目和其他宿主不在 3.1 支持范围内.
+叙事非虚构请直接调用 `narrative-nonfiction`. 多书籍项目和其他宿主不在 3.2 支持范围内.
 
 ## 共享项目产物与证据
 
-五个策略共用中性的 `.author-toolkit/project.json` 和同一组登记路径. 新项目和迁移终态使用
-schema 3.1.0; v3.0 manifest 仍可读取, 并可进行增量 3.1 升级.
+五个策略共用中性的 `.author-toolkit/project.json` 和同一组登记路径. 新项目使用
+schema 3.2.0; v3.0 和 v3.1 manifest 仍可读取. `scripts/migrate-v32.mjs` 将 v2, v3.0 和
+v3.1 项目直接迁移到 v3.2. 现有 `scripts/migrate-v3.mjs` 命令和 `migrateProjectToV3`
+函数是具有相同目标的兼容包装.
 
 - `project.json`: 项目登记, 产物路径, 以及可选的 `current_scope` 和 `pending_action`.
   不包含 `workflow.name`, `current_stage` 或 `stages`.
@@ -205,13 +219,106 @@ schema 3.1.0; v3.0 manifest 仍可读取, 并可进行增量 3.1 升级.
 - `handoffs/`: 当前证据和下一操作的交接指针.
 - `paths.creation`: 创作产物路径, 默认 `.author-toolkit/creation/`, 包含
   `state/current.md`, `state/chapters/`, `state/volumes/`, `batches/` 和 `staging/`.
+- v3.2 的收敛状态根目录默认为 `.author-toolkit/convergence/`. 确认范围后在此保存不可变
+  范围快照和正文清单快照. 范围指纹覆盖有序路径/哈希对和排序后的排除项, 不覆盖记录元数据和时间戳.
+
+项目迁移保留正文稿件, 报告, 发现项, 批准, 范围, session, 暂存稿, 备份, 创作批次,
+提交日志和待处理操作. 只有精确的旧范围确认才能支持已确认范围快照; 其他旧已确认范围转为
+待重新确认的 proposed 范围. 旧报告和待处理操作不会生成 satisfied 评估或已激活的当前草稿收敛周期.
+依赖周期的工作必须先协调中断的提交日志和写入. 旧暂存稿只能明确拒绝, 或在当前 satisfied
+起始评估存在后进入新周期并精确重新批准. 无法重新验证的旧修订基准通过当前全稿 `revise-draft`
+恢复, 覆盖证据仅按正常复用规则处理. 迁移矩阵和恢复规程见 [3.2 迁移指南](docs/MIGRATION-3.2.md).
 
 章节和卷故事状态从已验收正文和有版本的来源派生, 用于续写; 它不能替代故事圣经的意图或正文事实.
 被拒绝的暂存稿不会进入故事状态或正文范围.
 
 实际路径以 manifest 登记为准, 包括自定义位置. 在稳定操作门禁处, 可在 `write-fiction`,
 `revise-fiction`, `revise-draft`, `revise-increment` 与 `revise-request` 之间切换并复用这些产物,
-无需第二套项目目录或迁移. 切换不会自动恢复待处理写入.
+无需第二套项目目录或迁移. 已激活的当前草稿收敛周期要求正文变更执行其恢复位置指定的下一步,
+并阻止并行正文变更周期. 只读检查保持可用, 切换不会自动恢复待处理写入.
+
+### 当前草稿收敛周期
+
+v3.2 在 `<convergence-state-root>/active-cycle.json` 中至多保存一个已激活的当前草稿收敛周期,
+已完成记录不可变地保存在 `<convergence-state-root>/cycles/`. 版本化契约记录发起与当前策略,
+首次创作引导, 起始与目标范围引用, 请求修订轮次, 恢复位置, 关联产物, 变化集合, 工作集合,
+收敛评估引用和完成决定. 请求修订的基准范围与增量修订的前一范围映射到同一个 `starting_scope` 角色.
+执行, 复核, 评估和完成引用用于连接后续证据, 引用本身不证明当前草稿修订收敛.
+
+首次创作引导只适用于正文清单实际为空且没有现有范围的 `write-fiction` 项目. 它使用空起始范围,
+但不把空正文视为已达到当前草稿修订收敛. 首次非空提交保留暂存, 精确批准, 备份, 提交日志和故事状态规则,
+以 null `scope_before_id` 关联首个创作批次, 并续接同一周期的 `revise-draft`. 初始全稿修订轮次关联首次发布,
+复核证据, `satisfied` 评估和显式完成决定. 空正文永远不能通过评估或完成周期. 后续创作只能走普通 satisfied
+起始门禁和单提交规则, 不能再次使用首次创作引导.
+
+普通启动要求当前 `satisfied` 的起始收敛评估. 有效全稿范围, 待处理操作或调用方声明都不能伪造该结果;
+证据缺失时以 `starting-evaluation-indeterminate` 阻止启动. 只有最新的已完成周期评估或独立评估可以作为起点;
+较新的收窄, `not_satisfied` 或 `indeterminate` 独立评估会阻止启动, 不能再回退到较早的 `satisfied` 记录开门.
+之后取得当前 `satisfied` 评估即可恢复普通启动.
+
+通过可执行 `author-project` 门面运行周期操作:
+
+```bash
+node scripts/author-project.mjs start-cycle --project-root <project-root> --input <request.json>
+node scripts/author-project.mjs transition-cycle --project-root <project-root> --input <transition.json>
+node scripts/author-project.mjs reconcile-cycle --project-root <project-root> [--input <direction.json>]
+node scripts/author-project.mjs prepare-draft-revision-execution --project-root <project-root> --input <independent-preparation.json>
+node scripts/author-project.mjs verify-draft-revision-execution --project-root <project-root> --input <independent-verification.json>
+node scripts/author-project.mjs prepare-revision-execution --project-root <project-root> --input <preparation.json>
+node scripts/author-project.mjs verify-revision-execution --project-root <project-root> --input <verification.json>
+node scripts/author-project.mjs evaluate-cycle --project-root <project-root> --input <evaluation-request.json>
+node scripts/author-project.mjs evaluate-draft --project-root <project-root> --input <independent-evaluation.json>
+node scripts/author-project.mjs complete-cycle --project-root <project-root> --input <completion.json>
+node scripts/author-project.mjs cycle-status --project-root <project-root>
+node scripts/author-project.mjs cycle-gate --project-root <project-root>
+```
+
+第二个正文变更周期返回 `active-cycle-exists`, 并给出当前周期要求的策略, 操作和命令.
+续接先获取跨进程锁目录, 在锁内重新读取并核对周期 ID 和预期 revision, 再核对引用产物哈希并原子更新.
+同一预期 revision 只能有一个写入成功, 后续写入返回 `cycle-revision-conflict`. 锁超时或异常不会报告成功,
+崩溃遗留的锁目录必须核对 owner 后明确恢复.
+
+依赖操作先记录 manifest `cycle_operation`, 再发布产物并推进 active cycle, 最后在 manifest 收尾时清除协调记录.
+完成操作先写 completed history 和 `last_completed_cycle`, 再删除内容符合预期的 active 记录. 中断会以具体周期,
+revision, 操作, 范围或产物错配阻断依赖工作, 只读状态查询仍可用. 不带 direction 运行 `reconcile-cycle` 只做只读诊断.
+恢复方向只接受, 挂接, 续接, 放弃或完成同一项预期工作, 不改写评估, 批准, 提交日志, 备份或 verified 执行.
+待处理操作仍只描述当前操作和作者门禁, 其周期, revision, 操作和范围指纹字段仅是协调引用, 不拥有周期,
+也不授权正文写入, 发布, 恢复或完成. 这些文件通过协调恢复保持一致, 不构成多文件文件系统事务.
+
+请求驱动修改在 `executions/` 下保存修订执行记录. 准备操作核对已有作者决定, 准确编辑批准, 备份清单及字节和当前输入哈希,
+不会伪造批准或写入正文. 计划决定与编辑批准绑定计划和批次身份及哈希, 操作, 输入范围指纹, 完整有序路径, 动作,
+输入哈希和获批输出; 相同范围 ID 不能让旧批准授权新内容. 验证操作按准备阶段的哈希重读实际输出字节,
+并绑定最终请求修订轮次和全稿目标范围. 最终轮次保留准备阶段的全部操作和子检查, 只能增加要求.
+纯插入和删除不会误报保留路径重排; 真实保留路径重排仍需准确的获批动作. `prepared` 不能满足当前草稿修订收敛.
+已解决发现项要求当前 verified 执行; defer 和 dismiss 保留作者决定, 获批的复核返工需要新的受影响覆盖度和全目标范围的当前范围复核.
+后续获批批次保留先前 verified 执行作为历史证据.
+
+全稿无修改跳过路径记录请求修订轮次指纹, 继承与新增子检查, 带哈希的覆盖证据, 无修改作者决定,
+三视角复核组, 完整新读者链和语义证明. `evaluate-cycle` 根据证据推导结果并生成不可变证据图,
+调用方不能直接填写结果. 评估器可以复用前一轮符合要求的局部覆盖单元, 但当前轮次仍需新的全目标范围索引,
+综合报告和复核组. satisfied 后更换请求修订轮次会使旧目标评估在状态, 门禁和完成检查中失效.
+只要周期的发起或当前策略为 `revise-fiction`, 包括 request→fiction 和 draft→fiction 工作,
+就必须让故事圣经, 结构和全书终审证据绑定当前轮次与范围; 只有当前范围复核不能满足全书操作门禁.
+链接修订执行后, 活跃周期必须先满足全书证据并明确完成, 才能切换到其他策略.
+
+完成需要单独明确的作者完成决定. 操作先把决定追加到 tracker, 再根据变化后的 tracker 哈希重新计算并保存评估,
+先发布 completed history 和已完成周期指针, 再删除 active 状态; 只有新评估仍为 `satisfied` 时才完成周期.
+确定性检查验证证据身份和结构, 但实际阅读与编辑判断仍以宿主和逻辑读者的
+语义证明以及记录的作者决定为信任边界. 状态查询还独立返回 `request_completion`: 请求批次和决定可以已经完成,
+而全稿证据尚未达到 `satisfied`.
+
+独立收敛状态和收敛门禁查询均为只读:
+
+```bash
+node scripts/validate.mjs --convergence-status <manifest-path>
+node scripts/validate.mjs --convergence-gate <manifest-path>
+```
+
+有效状态查询对 `satisfied`, `not_satisfied` 或 `indeterminate` 都正常退出. 门禁只有当前证据为
+`satisfied` 时才通过. 证据缺失返回 `indeterminate`, `current: false` 和结构化阻断原因,
+不妨碍状态查询, 诊断或复核.
+
+### 证据复用与待处理操作
 
 证据是否可以复用, 由 `operation`, `scope_id`, 输入版本, 覆盖度, 子检查和依赖共同判断.
 新范围需要作者确认. 输入或依赖变化时, 受影响证据标为 `stale`; 旧报告符合 schema 并不代表
@@ -220,7 +327,8 @@ schema 3.1.0; v3.0 manifest 仍可读取, 并可进行增量 3.1 升级.
 创作批次还记录计划, 所选上下文和目标输入的依赖指纹. 返回暂存稿时重新计算依赖指纹.
 纳入的依赖变化需要重新复核或规划; 无关正文增长只要求刷新发布范围, 不会单独使暂存内容失效.
 
-`pending_action` 只记录一个待执行或等待作者决定的待处理操作, 不是发布或恢复正文写入的许可.
+`pending_action` 只记录一个待执行或等待作者决定的待处理操作. 可选周期, revision, 操作和范围指纹字段
+只用于协调同一项工作, 不是周期历史, 也不是正文写入, 发布, 恢复, 完成或续作的许可.
 
 ### 暂存, 提交与恢复
 
@@ -234,6 +342,24 @@ AI 草稿先写入 `staging/<batch-id>/`, 作者和混合批次也遵守相同�
 恢复需要单独明确批准, 指明提交或备份以及准确文件. 先为当前内容建立安全备份. 对该批次新建的
 文件, 先移入安全备份再从正文稿件移除. 作者外部改动通过 `creation-import` 协调, 不能静默刷新
 hash 或故事状态.
+
+`author-project reconcile-manuscript` 核对 tracker 中准确的导入决定, 当前正文清单,
+已确认范围或空目标以及故事状态来源, 并保存不可变的正文协调记录. 活跃周期内,
+它扩展同一周期的目标范围, 变化集合和工作集合, 不改写起始快照. 只有前一全稿范围的
+`satisfied` 证据仍可证明时才使用 `revise-increment`; 否则执行全稿 `revise-draft`.
+全部删除不能满足或完成周期; 必须经过批准的非空恢复或导入, 再执行全稿 `revise-draft`.
+该命令不写正文, 也不替代备份, 恢复或输入 hash 批准. 首次创作引导中,
+活跃周期允许空起始范围, 因此首份经过批准的非空导入可以不经过创作提交,
+直接提供首次发布证据, 但仍须通过 initial full-manuscript `revise-draft` 评估和完成.
+空 bootstrap 批次被拒绝后, 没有这种导入或发布证据就不能完成.
+后续 bootstrap 导入和修订仍保留空累计起点, 并形成统一有序事件链.
+真实创作提交的 scope_before 必须衔接起始范围或空起点, scope_after 必须通过现有批次,
+提交日志, 批准和已验证文件转换检查; 后续导入或执行不能省略该提交事件.
+每个协调记录的前一范围或执行输入范围必须衔接前一事件的目标范围, 每个事件都重新验证一次,
+最终目标必须与当前范围一致. 空协调是等待非空恢复的合法中间状态, 不是完成目标.
+链缺口, 跳过空状态和伪造目标仍会阻断当前草稿修订收敛.
+所有周期外协调都必须显式提供 previous_scope; 只有经过验证的空稿恢复才能显式设为 null,
+省略该字段会在任何写入前被拒绝.
 
 ### 覆盖度与分块复核
 
@@ -249,11 +375,13 @@ hash 或故事状态.
 Finding v2 和 report v2 的版本保持不变, 创作操作不加入封闭的报告 v2 `stage` 枚举.
 共享工作流从 `.author-toolkit/references/` 读取这些契约; 独立技能从各自技能目录读取 finding v1.
 创作批次, 提交日志, 故事状态, 覆盖单元和覆盖索引, 复核任务和读者状态使用独立产物契约.
-项目登记的源契约为 `references/project-schema-v3.1.json`, setup 将其与其他共享契约一起部署到写作项目;
-v3.0 schema 保留用于读取和升级旧项目.
+外部变化使用封闭的 `references/manuscript-reconciliation-schema.json` 产物契约,
+manifest 的可选 `manuscript_reconciliation` 字段指向最新不可变正文协调记录.
+项目登记的源契约为 `references/project-schema-v3.2.json`, setup 将其与其他共享契约一起部署到写作项目;
+v3.0 和 v3.1 schema 保留用于读取和升级旧项目.
 
-迁移说明见 [docs/MIGRATION-3.1.md](docs/MIGRATION-3.1.md). 历史说明保留在
-[docs/MIGRATION-3.0.md](docs/MIGRATION-3.0.md) 和
+迁移说明见 [docs/MIGRATION-3.2.md](docs/MIGRATION-3.2.md). 历史说明保留在
+[docs/MIGRATION-3.1.md](docs/MIGRATION-3.1.md), [docs/MIGRATION-3.0.md](docs/MIGRATION-3.0.md) 和
 [docs/MIGRATION-2.0.md](docs/MIGRATION-2.0.md).
 
 随仓库提供的中英文 examples 有意保留 legacy v2 manifests 和 workflow fixtures 用于兼容性测试,
@@ -266,8 +394,8 @@ v3.0 schema 保留用于读取和升级旧项目.
 tracker, 故事圣经, 报告, session notes, 备份, handoff 和适用的创作状态恢复上下文,
 并根据当前范围, 待处理操作, 证据和依赖决定下一步.
 
-使用其他策略时可以保留暂存稿. 返回后根据依赖指纹和当前项目状态决定重新复核还是重新规划.
-策略切换和待处理操作都不会自动发布它.
+只读工作或当前周期要求的修订策略执行期间可以保留暂存稿, 并行正文变更周期仍被阻止.
+返回后根据依赖指纹和当前项目状态决定重新复核还是重新规划. 策略切换和待处理操作都不会自动发布它.
 
 恢复备份需要明确请求和作者确认. 继续流程, 切换技能或重新生成报告不会自动恢复备份, 也不会自动
 改写旧报告.
@@ -312,11 +440,13 @@ AI 关联发现只描述文本模式, 不能证明文本由 AI 生成.
 
 ## 验证状态
 
-3.1.0 工作树的仓库检查已通过: 136 项协议测试和 19 项默认校验, 详见
-[docs/VALIDATION.md](docs/VALIDATION.md). 通用本地源安装已发现全部 16 个技能, setup 共享载荷,
-项目内 schema 和独立技能本地契约均已验证. Kimi Code 已完成有限范围的创作提交和双向切换验证;
-完整宿主流程, `revise-increment` 与 `revise-request` 端到端运行和百万字稿件的创作质量仍未验证.
-3.0 和 2.0 的历史结果单独保留, 不能作为 3.1 已通过宿主或质量验证的证据.
+当前 3.2.0 的仓库检查已通过: 320 项协议测试和 19 项默认校验, 详见
+[docs/VALIDATION.md](docs/VALIDATION.md). 通用本地源安装已发现并复制全部 16 个技能, setup 共享载荷,
+项目内 schema 和独立技能本地契约均已验证. Kimi Code 2.4.1 已在一次性项目验证 setup, 首次创作基线,
+写作计划, staging, 章节复核, 首次发布与中断提交恢复, 普通创作基线, 发布后阻断, 增量与当前草稿 intake, 请求修订 intake 和迁移路由;
+四个长时间调用在有效产物写入后超时. 完整宿主评估与周期完成, 请求和增量端到端恢复, Claude Code,
+原生插件安装及百万字稿件的创作质量仍未验证. 3.1, 3.0 和 2.0 的历史结果单独保留,
+不能作为 3.2 已通过宿主或质量验证的证据.
 
 ## 开发与产物校验
 
@@ -327,12 +457,14 @@ npm test
 npm run validate
 ```
 
-可用对应 CLI 参数直接校验 manifest, report 和新产物. 新参数包括创作批次, 提交日志,
-故事状态, 覆盖产物和复核任务; 准确参数名以当前安装的 `--help` 为准:
+可用对应 CLI 参数直接校验 manifest, report 和新产物. 新参数包括范围快照, 正文清单快照,
+创作批次, 提交日志, 故事状态, 覆盖产物和复核任务; 准确参数名以当前安装的 `--help` 为准:
 
 ```bash
 node scripts/validate.mjs --help
 node scripts/validate.mjs --manifest /path/to/.author-toolkit/project.json
+node scripts/validate.mjs --scope-snapshot /path/to/scope.json
+node scripts/validate.mjs --inventory-snapshot /path/to/inventory.json
 node scripts/validate.mjs --report /path/to/report.md
 ```
 

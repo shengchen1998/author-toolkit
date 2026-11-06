@@ -1,0 +1,105 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "review-group-schema.json",
+  "title": "author-toolkit three-perspective review group v1",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "review_group_id",
+    "requested_pass",
+    "scope_fingerprint",
+    "jobs",
+    "reports",
+    "fresh_reader_attestation",
+    "created_at"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": { "const": "1.0.0" },
+    "review_group_id": { "$ref": "#/$defs/id" },
+    "requested_pass": { "$ref": "#/$defs/passReference" },
+    "scope_fingerprint": { "$ref": "#/$defs/sha256" },
+    "jobs": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "required": ["perspective", "job", "reader_state"],
+        "additionalProperties": false,
+        "properties": {
+          "perspective": { "enum": ["intent", "standards", "fresh"] },
+          "job": { "$ref": "#/$defs/jobReference" },
+          "reader_state": { "$ref": "#/$defs/readerStateReference" }
+        }
+      }
+    },
+    "reports": {
+      "type": "array",
+      "minItems": 3,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/reportReference" }
+    },
+    "fresh_reader_attestation": { "$ref": "#/$defs/attestationReference" },
+    "created_at": { "type": "string", "format": "date-time" }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+    },
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "passReference": {
+      "type": "object",
+      "required": ["pass_id", "pass_fingerprint", "path", "sha256"],
+      "additionalProperties": false,
+      "properties": {
+        "pass_id": { "$ref": "#/$defs/id" },
+        "pass_fingerprint": { "$ref": "#/$defs/sha256" },
+        "path": { "$ref": "relative-path-schema.json" },
+        "sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "jobReference": {
+      "type": "object",
+      "required": ["job_id", "path", "sha256"],
+      "additionalProperties": false,
+      "properties": {
+        "job_id": { "$ref": "#/$defs/id" },
+        "path": { "$ref": "relative-path-schema.json" },
+        "sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "readerStateReference": {
+      "type": "object",
+      "required": ["state_id", "path", "sha256"],
+      "additionalProperties": false,
+      "properties": {
+        "state_id": { "$ref": "#/$defs/id" },
+        "path": { "$ref": "relative-path-schema.json" },
+        "sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "reportReference": {
+      "type": "object",
+      "required": ["report_id", "path", "sha256"],
+      "additionalProperties": false,
+      "properties": {
+        "report_id": { "$ref": "#/$defs/id" },
+        "path": { "$ref": "relative-path-schema.json" },
+        "sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "attestationReference": {
+      "type": "object",
+      "required": ["attestation_id", "path", "sha256"],
+      "additionalProperties": false,
+      "properties": {
+        "attestation_id": { "$ref": "#/$defs/id" },
+        "path": { "$ref": "relative-path-schema.json" },
+        "sha256": { "$ref": "#/$defs/sha256" }
+      }
+    }
+  }
+}

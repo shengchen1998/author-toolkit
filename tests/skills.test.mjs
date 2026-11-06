@@ -211,7 +211,7 @@ test("incremental revision restores current-draft revision convergence for the t
     write,
     /creation acceptance and publication do not establish current-draft revision convergence for the publication scope/,
   );
-  assert.match(write, /Offer `revise-increment`/);
+  assert.match(write, /For ordinary creation, offer `revise-increment`/);
   assert.match(
     ask,
     /Revise added or affected chapters after the previous scope has reached current-draft revision convergence and the manuscript grows/,
@@ -240,8 +240,8 @@ test("request-driven revision restores current-draft revision convergence for th
     ]);
 
   assert.match(request, /confirmed base scope is a full-manuscript scope that has reached/);
-  assert.match(request, /Show `revise-increment` when creation or import grew the scope/);
-  assert.match(request, /otherwise show `revise-draft`/);
+  assert.match(request, /Show `revise-increment` only when ordinary creation or import grew the scope from a satisfied previous scope/);
+  assert.match(request, /show `revise-draft` after first-time bootstrap publication or for other recovery gaps/);
   assert.match(request, /entry's own approved edits are expected to stale that base scope/);
   assert.match(request, /request set[\s\S]*work set/);
   assert.match(request, /Requested macro structure[\s\S]*`story-structure` Audit/);
@@ -290,13 +290,17 @@ test("project operations register creation state and resumable publication", asy
   }
   assert.match(operations, /3\.0\.0/);
   assert.match(operations, /3\.1\.0/);
+  assert.match(operations, /3\.2\.0/);
   assert.match(operations, /paths\.creation/);
   assert.match(operations, /expected absent/i);
   assert.match(operations, /<paths\.creation>\/batches\/<commit-id>\.json/);
   assert.match(operations, /legacy `STAGES` remains revision-only/);
   assert.match(operations, /move created files into the safety backup/i);
-  assert.equal(template.schema_version, "3.1.0");
+  assert.match(operations, /scope_fingerprint/);
+  assert.match(operations, /validateFullManuscriptScope/);
+  assert.equal(template.schema_version, "3.2.0");
   assert.equal(template.paths.creation, ".author-toolkit/creation/");
+  assert.equal(template.paths.convergence, ".author-toolkit/convergence/");
 });
 
 test("local coverage reuse never preserves stale whole-book synthesis", async () => {

@@ -23,7 +23,7 @@ For final fresh book synthesis, the same reviewer must have read all actual manu
 
 ## Reports and findings
 
-Write immutable chunk reports and a synthesis report for each applicable volume/phase and book level. Use the selected mode's report v2 `stage`, actual source versions, one perspective in `subchecks`, and human-readable `Language coverage` and `Review coverage` sections. Record unit identity, parent or child report paths, execution path, and degraded context in `engine.notes` without adding fields to the closed envelope. Validate each report when the installed validator is available.
+Write immutable chunk reports and a synthesis report for each applicable volume/phase and book level. Use the selected mode's report v2 `stage`, actual source versions, one perspective in `subchecks`, and human-readable `Language coverage` and `Review coverage` sections. Record unit identity, parent or child report paths, execution path, and degraded context in `engine.notes`. Reports used for convergence evaluation also set the additive `scope_id`, `scope_fingerprint`, and `requested_pass` fields; do not invent other envelope fields. Validate each report when the installed validator is available.
 
 A unit can have full coverage while its report remains partial for the requested whole operation. A synthesis is full only when all its required children and applicable checklist coverage are complete. Otherwise mark it `partial` or `skipped`, identify every missing unit or check, and leave the corresponding review job incomplete.
 
@@ -32,5 +32,7 @@ Report concrete observations at real locations. In human-readable synthesis and 
 ## Collect and finish
 
 `collect` validates the review job and coverage before consolidating. Check the review ID, mode, scope, perspective, ordered source paths and hashes, every required unit, parent-child links, applicable syntheses, report envelopes, and finding IDs. For fresh, also verify one logical reviewer, strict unit order, and an unbroken chain of its own reader-state. Reject reports from another scope, perspective, source version, or reviewer chain as evidence for the missing coverage.
+
+For convergence evaluation, bind all three jobs, reader states, chunk and synthesis reports, and the fresh logical-reviewer attestation in `<project-root>/.author-toolkit/references/review-group-schema.json`. A completed fresh reader state must contain every completed job chunk in the required order; a valid prefix is insufficient. Record `fresh-reader-continuity` in `<project-root>/.author-toolkit/references/semantic-attestation-schema.json` with the exact job and reader-state hashes.
 
 Return a gap list and `partial` or `skipped` coverage when anything is missing. A perspective is complete only when every required unit and every applicable synthesis for that perspective is complete. `all` is complete only when this holds for intent, standards, and fresh under the same current scope and review mode. A consolidated report preserves all finding IDs, perspectives, and disagreements; it does not repair missing coverage or authorize edits.

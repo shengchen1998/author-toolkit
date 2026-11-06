@@ -18,6 +18,14 @@ Coordinate full-book revision from the shared project evidence. This skill suppl
 
 The full-book sequence is `intake`, `story-bible`, `structure`, `characters`, `revision-plan`, `chapter-revision`, `prose`, `ai-cleanup`, and `final-review`.
 
+## Current-draft revision convergence boundary
+
+Read-only `structure` analysis and `final-review` use `manuscript_change: false` with `author-project check-operation` and do not open a current-draft convergence cycle. They remain available for an unconverged manuscript or during an active cycle. They produce reports and findings without editing manuscript; accepted changes enter the protected path below.
+
+Manuscript-changing or required-evidence-invalidating work uses `manuscript_change: true` and requires a current satisfied full-manuscript starting evaluation. With no active cycle, start one through `author-project start-cycle` with the exact starting scope and `initiating_strategy: "revise-fiction"`; a satisfied gate alone does not authorize an unlinked edit. When an active cycle exists, only its exact recovery position may proceed and no parallel cycle may start. Keep the whole-book operation gates in the sequence above, including Story Bible, structure, character, revision, and final-review gates.
+
+After approved edits, confirm the full-manuscript target scope and requested pass, verify every execution, renew affected coverage and final-review evidence, and restore current-draft revision convergence for the full-manuscript target scope. Link the evidence to the same cycle, require a satisfied `evaluate-cycle` result, and wait for the author's explicit completion decision before `complete-cycle`. A whole-book operation gate or final review alone does not complete the cycle. Display any required strategy's exact host command and wait; never invoke another user entry through the Skill tool.
+
 ## Author interaction
 
 At every author gate, follow the [Author decision loop](references/state-and-findings.md#author-decision-loop) before presenting questions or approval requests. This applies within an operation as well as at its final gate.
@@ -42,11 +50,11 @@ Honor each callee's stopping point. A pause within an operation ends with the sa
 
 ## Approval and backup gate
 
-For manuscript changes, first obtain a diagnosis or proposal without editing. Show the affected paths and intended change batch, then obtain explicit author approval. Record the approval in the shared tracker with its `approval_id`, operation, `scope_id`, paths, and reason. After approval and before the first write, invoke `author-project` with `record-backup` for every affected file and that `approval_id`. Apply only the approved batch after every backup succeeds.
+For manuscript changes, first obtain a diagnosis or proposal without editing. Show the affected paths and intended change batch, then obtain explicit author approval. Record the approval in the shared tracker with its `approval_id`, operation, `scope_id`, paths, and reason. After approval and before the first write, invoke `author-project` with `record-backup` for every affected file and that `approval_id`. Run `prepare-revision-execution` against the active cycle before editing and apply only the approved batch after every backup succeeds. Confirm the resulting full-manuscript scope and requested pass, then run `verify-revision-execution` to bind actual output hashes to the same cycle.
 
 A restore requires separate explicit approval naming the backup ID and files. Invoke `author-project` with `record-restore`, which preserves the current text in a safety backup before restoring. Never treat an earlier edit approval as restore approval.
 
-Story Bible changes require author confirmation and remain consistent with the approved plan. `author-project` handles state and backups only; it never supplies creative content.
+Story Bible changes require author confirmation and remain consistent with the approved plan. When a Story Bible or baseline change invalidates required target evidence, use the protected cycle path and restore current-draft revision convergence before completion. `author-project` handles state and backups only; it never supplies creative content.
 
 ## Reports and shared state
 
@@ -56,9 +64,9 @@ Prose is blocked while structure is unstable. The author may explicitly override
 
 ## Strategy switching and evidence reuse
 
-`write-fiction`, `revise-draft`, `revise-increment`, and `revise-request` read and write this same project state. At any stable operation gate, show the exact command for the author's selected strategy; do not switch automatically or require the current strategy's full sequence to finish. Switching never resets scope, reports, findings, approvals, staged drafts, or backups. Display any pending approval, interrupted write, or commit before starting new work; never resume it merely because another entry was invoked.
+`write-fiction`, `revise-draft`, `revise-increment`, and `revise-request` read and write this same project state. At a stable operation gate, follow the [current-draft convergence cycle rules](../author-project/references/operations.md#current-draft-convergence-cycle). Read-only whole-book work remains available during an active cycle; manuscript changes must follow its exact recovery position and cannot start a parallel cycle. Show the required or selected strategy's exact command and wait. Switching never resets scope, reports, findings, approvals, staged drafts, or backups. Display any pending approval, interrupted write, or commit before starting new work; never resume it merely because another entry was invoked.
 
-Reuse full local coverage units only when source-report identity, operation, paths and hashes, subchecks, and dependencies still match. Keep the unit's original scope for provenance and use the target scope for the composed index and synthesis. Reevaluate every applicable whole-book synthesis after membership, reading-order, text, or dependency changes; unchanged local units do not keep that synthesis current. A current-scope diagnostic does not satisfy the full-book structure gate merely because it exists, and a current-scope review does not satisfy final review. Creation evidence does not satisfy `chapter-revision`. When the author wants current-draft revision convergence after incremental creation, show the `revise-increment` command. When the current scope is a full-manuscript scope that has reached current-draft revision convergence and the author wants a new revision of existing content, show the `revise-request` command.
+Reuse full local coverage units only when source-report identity, operation, paths and hashes, subchecks, and dependencies still match. Keep the unit's original scope for provenance and use the target scope for the composed index and synthesis. Reevaluate every applicable whole-book synthesis after membership, reading-order, text, or dependency changes; unchanged local units do not keep that synthesis current. A current-scope diagnostic does not satisfy the full-book structure gate merely because it exists, and a current-scope review does not satisfy final review. Creation evidence does not satisfy `chapter-revision`. When the author wants current-draft revision convergence after ordinary incremental creation, show the `revise-increment` command; after first-time bootstrap publication, show `revise-draft` instead. When the current scope is a full-manuscript scope that has reached current-draft revision convergence and the author wants a new revision of existing content, show the `revise-request` command.
 
 Standalone calls to the underlying skills leave shared state untouched. If the author explicitly asks to incorporate standalone work, register the source artifact, convert its findings to v2 with stable IDs, and record the author's decision in the shared project.
 

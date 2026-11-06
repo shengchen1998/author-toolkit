@@ -5,12 +5,25 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import {
+  checkConvergenceGate,
+  getCycleStatus,
+  projectRootFromManifest,
+  validateConvergenceCycle,
+  validateConvergenceEvaluation,
+  validateNoEditSkip,
+  validateRequestedPass,
+  validateReviewGroup,
+  validateRevisionExecution,
+  validateSemanticAttestation,
   validateCoverageIndex,
   validateCoverageUnit,
   validateCreationBatch,
   validateCreationCommit,
   validateEvidenceReport,
+  validateFullManuscriptScope,
+  validateInventorySnapshot,
   validateManifest,
+  validateManuscriptReconciliationSchema,
   validateMarkdownReport,
   validateProjectFiles,
   validateReaderState,
@@ -18,6 +31,7 @@ import {
   validateReviewJob,
   validateSchemaDefinitions,
   validateScopeCurrency,
+  validateScopeSnapshot,
   validateStoryState,
   validateStoryStateMarkdown,
   validateTracker,
@@ -28,6 +42,36 @@ import { V3_SCHEMA_VERSIONS } from "./lib/constants.mjs";
 const root = fileURLToPath(new URL("../", import.meta.url));
 const examples = ["fiction-revision-en", "fiction-revision-zh"];
 const artifactTypes = [
+  { key: "scopeSnapshots", option: "--scope-snapshot", validate: validateScopeSnapshot },
+  {
+    key: "inventorySnapshots",
+    option: "--inventory-snapshot",
+    validate: validateInventorySnapshot,
+  },
+  {
+    key: "convergenceCycles",
+    option: "--convergence-cycle",
+    validate: validateConvergenceCycle,
+  },
+  { key: "requestedPasses", option: "--requested-pass", validate: validateRequestedPass },
+  { key: "revisionExecutions", option: "--revision-execution", validate: validateRevisionExecution },
+  {
+    key: "manuscriptReconciliations",
+    option: "--manuscript-reconciliation",
+    validate: validateManuscriptReconciliationSchema,
+  },
+  { key: "noEditSkips", option: "--no-edit-skip", validate: validateNoEditSkip },
+  { key: "reviewGroups", option: "--review-group", validate: validateReviewGroup },
+  {
+    key: "semanticAttestations",
+    option: "--semantic-attestation",
+    validate: validateSemanticAttestation,
+  },
+  {
+    key: "convergenceEvaluations",
+    option: "--convergence-evaluation",
+    validate: validateConvergenceEvaluation,
+  },
   { key: "creationBatches", option: "--creation-batch", validate: validateCreationBatch },
   { key: "creationCommits", option: "--creation-commit", validate: validateCreationCommit },
   { key: "coverageUnits", option: "--coverage-unit", validate: validateCoverageUnit },
@@ -51,6 +95,13 @@ function usage() {
   console.log(`Usage:
   node scripts/validate.mjs
   node scripts/validate.mjs [--manifest FILE] [--report FILE] [--workflow-fixture FILE]...
+  node scripts/validate.mjs [--scope-snapshot FILE] [--inventory-snapshot FILE]...
+  node scripts/validate.mjs [--convergence-cycle FILE] [--requested-pass FILE]...
+  node scripts/validate.mjs [--revision-execution FILE] [--manuscript-reconciliation FILE]...
+  node scripts/validate.mjs [--no-edit-skip FILE] [--review-group FILE]...
+  node scripts/validate.mjs [--semantic-attestation FILE] [--convergence-evaluation FILE]...
+  node scripts/validate.mjs --convergence-status MANIFEST
+  node scripts/validate.mjs --convergence-gate MANIFEST
   node scripts/validate.mjs [--creation-batch FILE] [--creation-commit FILE]...
   node scripts/validate.mjs [--coverage-unit FILE] [--coverage-index FILE]...
   node scripts/validate.mjs [--review-job FILE] [--reader-state FILE] [--story-state FILE]...
@@ -77,6 +128,8 @@ function parseArguments(args) {
     manifests: [],
     reports: [],
     workflowFixtures: [],
+    convergenceStatus: [],
+    convergenceGate: [],
     ...Object.fromEntries(artifactTypes.map(({ key }) => [key, []])),
     help: false,
   };
@@ -84,6 +137,8 @@ function parseArguments(args) {
     "--manifest": "manifests",
     "--report": "reports",
     "--workflow-fixture": "workflowFixtures",
+    "--convergence-status": "convergenceStatus",
+    "--convergence-gate": "convergenceGate",
     ...Object.fromEntries(artifactTypes.map(({ key, option }) => [option, key])),
   };
 
@@ -107,6 +162,26 @@ async function main() {
   const selection = parseArguments(process.argv.slice(2));
   if (selection.help) {
     usage();
+    return;
+  }
+
+  const queryRequested = selection.convergenceStatus.length > 0 || selection.convergenceGate.length > 0;
+  if (queryRequested) {
+    const selectedCount = Object.entries(selection).reduce(
+      (count, [key, files]) => count + (key === "help" ? 0 : files.length),
+      0,
+    );
+    if (selectedCount !== 1) {
+      throw new Error("A convergence query cannot be repeated or combined with other checks");
+    }
+    const isStatus = selection.convergenceStatus.length === 1;
+    const manifestPath = isStatus ? selection.convergenceStatus[0] : selection.convergenceGate[0];
+    const projectRoot = projectRootFromManifest(manifestPath);
+    const result = isStatus
+      ? await getCycleStatus(projectRoot)
+      : await checkConvergenceGate(projectRoot);
+    console.log(JSON.stringify(result, null, 2));
+    if (isStatus ? !result.query_valid : !result.valid) process.exitCode = 1;
     return;
   }
 
@@ -154,11 +229,20 @@ async function main() {
       if (result.valid) {
         check(`${path.relative(root, file)}#files`, await validateProjectFiles(manifest, file));
         if (V3_SCHEMA_VERSIONS.has(manifest.schema_version) && manifest.current_scope) {
-          check(`${path.relative(root, file)}#scope`, await validateScopeCurrency(manifest, file));
+          const scopeResult =
+            manifest.schema_version === "3.2.0"
+              ? await validateFullManuscriptScope(manifest, file)
+              : await validateScopeCurrency(manifest, file);
+          check(`${path.relative(root, file)}#scope`, scopeResult);
+          if (manifest.schema_version === "3.2.0") {
+            console.log(
+              `  scope_id=${scopeResult.scope_id} scope_fingerprint=${scopeResult.scope_fingerprint} full_manuscript=${scopeResult.full_manuscript}`,
+            );
+          }
         }
         check(`${path.relative(root, file)}#tracker`, await validateTracker(manifest, file));
       } else if (
-        !["2.0.0", "3.0.0", "3.1.0"].includes(manifest?.schema_version) ||
+        !["2.0.0", "3.0.0", "3.1.0", "3.2.0"].includes(manifest?.schema_version) ||
         manifest?.project_type !== "fiction" ||
         (manifest?.schema_version === "2.0.0" &&
           manifest?.workflow?.name !== "revise-fiction")

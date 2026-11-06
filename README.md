@@ -5,14 +5,15 @@ project evidence model, plus six independent writing skills for Claude Code and
 Kimi Code.
 
 [Chinese quick start](README.zh-CN.md) | [Controlled terminology](references/terminology.md) |
-[3.1 migration](docs/MIGRATION-3.1.md) |
+[3.2 migration](docs/MIGRATION-3.2.md) |
+[3.1 migration history](docs/MIGRATION-3.1.md) |
 [3.0 migration history](docs/MIGRATION-3.0.md) |
 [2.0 migration history](docs/MIGRATION-2.0.md) |
 [Validation status](docs/VALIDATION.md)
 
 ## What is included
 
-Version 3.1.0 contains 16 skills in three groups.
+Version 3.2.0 contains 16 skills in three groups.
 
 ### User entry points
 
@@ -36,7 +37,7 @@ These skills support the user entries. They are not separate user workflows.
 
 | Skill | Purpose |
 | --- | --- |
-| `author-project` | Read and update project registration, neutral evidence, current scope, pending actions, artifact paths, backups, and restores. |
+| `author-project` | Read and update project registration, neutral evidence, current scope, pending actions, current-draft convergence cycles, artifact paths, backups, and restores. |
 | `author-handoff` | Preserve session context and support resume, rework, and switching between creation and revision user entries. |
 | `author-review` | Run independent intent, craft, and fresh-reader reviews without editing the manuscript, including resumable chunked review for large books. |
 
@@ -64,7 +65,7 @@ or rewriting, invoke `prose-mechanics` with its AI-Isms audit; shared
 
 ## Scope and language support
 
-The shared 3.1 creation and revision workflows support single-book fiction
+The shared 3.2 creation and revision workflows support single-book fiction
 projects with Markdown or plain-text manuscripts. `write-fiction` can start
 without a complete outline or ending and can also continue an existing manuscript.
 `revise-fiction` addresses the whole book. `revise-draft` can work on an
@@ -78,7 +79,7 @@ revision to existing content, and restores that state for the full-manuscript
 target scope.
 
 Narrative nonfiction remains a direct `narrative-nonfiction` task. Multi-book
-projects and integrations with other hosts are outside the supported 3.1
+projects and integrations with other hosts are outside the supported 3.2
 workflows.
 
 English and Chinese are the core workflow languages. Chinese prose audits use
@@ -218,8 +219,11 @@ acceptance covers the exact manuscript content, proposed story-state differences
 and resulting ordered publication scope; manuscript and scope approvals are
 recorded separately. Acceptance allows `creation-commit` to proceed without
 another author gate. Publication alone does not establish current-draft revision
-convergence for the publication scope; continue with `revise-increment` when
-that is the goal.
+convergence for the publication scope. After first-time bootstrap publication,
+continue the same cycle with `revise-draft` for the initial full-manuscript
+evaluation. After ordinary creation, continue the same cycle with
+`revise-increment`; another `writing-plan` waits for satisfied full-target
+evaluation and the author's explicit cycle completion decision.
 
 ### `revise-fiction`: whole-book revision
 
@@ -235,6 +239,12 @@ The nine operations are:
 8. `ai-cleanup`: Detect or revise AI writing patterns as requested.
 9. `final-review`: Verify the whole-book result with three independent
    perspectives and prepare the handoff.
+
+Read-only structure analysis and final review remain available without opening a
+cycle. Manuscript-changing or required-evidence-invalidating work starts from a
+current satisfied full-manuscript evaluation in a linked `revise-fiction` cycle,
+retains every whole-book gate, and restores current-draft revision convergence before
+the author's explicit cycle completion decision.
 
 ### `revise-draft`: current-draft revision
 
@@ -262,6 +272,18 @@ continuity. A draft engagement may enter directly at `prose` or `ai-cleanup`. If
 no manuscript revision is requested, `revision-plan` and `chapter-revision` may
 be skipped with the reason recorded. A direct entry or narrowed requested pass
 does not by itself establish current-draft revision convergence.
+
+Independent local, diagnostic, direct-prose, AI-cleanup, and narrowed draft work
+may finish without a cycle or a current-draft revision convergence claim. It never
+reduces the last satisfied full-manuscript subcheck baseline. If it leaves the
+manuscript unconverged, the other manuscript-changing entries remain blocked
+until an independent full-manuscript `evaluate-draft` operation produces a
+current satisfied evaluation. A resolved finding in that recovery requires
+`prepare-draft-revision-execution` before editing and
+`verify-draft-revision-execution` afterward, producing a `cycle_id: null`
+execution whose approved inputs and actual outputs are checked. Active-cycle
+draft recovery instead links and evaluates the same cycle. Every cross-entry
+route displays its exact host command and waits for the author.
 
 ### `revise-increment`: revision after incremental creation
 
@@ -300,8 +322,8 @@ can additionally use `story-structure` Audit without adopting the
 
 1. Verify the full-manuscript base scope and its current-draft revision
    convergence evidence. Return to `revise-draft` when that base scope has not
-   reached that state, or to `revise-increment` when creation or import has
-   grown the scope.
+   reached that state, to `revise-draft` after first-time bootstrap publication,
+   or to `revise-increment` when ordinary creation or import has grown the scope.
 2. Confirm the requested outcome, constraints, request set, full-manuscript
    target scope, and initial work set. The request set determines what to change;
    the full-manuscript target scope determines what must be proven current again.
@@ -323,8 +345,10 @@ The skill definitions contain the full gates and audit rules.
 ## Shared project files and evidence
 
 All five strategies use the same neutral `.author-toolkit/project.json` and
-artifact paths. New projects and migrated projects use schema 3.1.0; v3.0
-manifests remain readable and can receive the additive 3.1 upgrade.
+artifact paths. New projects use schema 3.2.0; v3.0 and v3.1 manifests remain
+readable. `scripts/migrate-v32.mjs` migrates v2, v3.0, and v3.1 projects directly
+to v3.2. The existing `scripts/migrate-v3.mjs` command and
+`migrateProjectToV3` function are compatibility wrappers with the same target.
 
 - `project.json` records project registration, artifact locations, and optional
   `current_scope` and `pending_action`. It has no `workflow.name`,
@@ -350,6 +374,22 @@ manifests remain readable and can receive the additive 3.1 upgrade.
 - `paths.creation` registers creation state and defaults to
   `.author-toolkit/creation/`. It contains `state/current.md`,
   `state/chapters/`, `state/volumes/`, `batches/`, and `staging/`.
+- The convergence state root defaults to `.author-toolkit/convergence/` on v3.2.
+  Confirming a scope preserves an immutable scope snapshot and inventory snapshot
+  there. The scope fingerprint covers ordered path/hash pairs and sorted
+  exclusions; record metadata and timestamps are excluded.
+
+Project migration preserves manuscripts, reports, findings, approvals, scopes,
+sessions, staging, backups, batches, journals, and pending work. Only an exact
+legacy scope confirmation supports a confirmed scope snapshot; other legacy
+confirmed scopes become proposed for reconfirmation. Legacy reports and pending
+actions create no satisfied evaluation or active cycle. Reconcile interrupted
+journals and writes before dependent cycle work. Explicitly reject legacy
+staging, or reapprove its exact content in a new cycle only after a current
+satisfied starting evaluation. An unproven legacy revision base uses current
+full-manuscript `revise-draft` recovery with the normal coverage-reuse rules.
+See [Migrating to 3.2](docs/MIGRATION-3.2.md) for the migration matrix and
+recovery procedure.
 
 Chapter and volume story state is derived from accepted manuscript text and
 versioned source artifacts. It supports continuation; it does not replace the
@@ -359,8 +399,133 @@ enter story state or manuscript scope.
 The manifest records the actual paths, including custom locations. Switching
 among `write-fiction`, `revise-fiction`, `revise-draft`, `revise-increment`, and
 `revise-request` at a stable operation gate reuses these artifacts and requires
-no second project tree or migration. It does not automatically resume a pending
-write.
+no second project tree or migration. An active current-draft convergence cycle
+instead requires its exact recovery work for manuscript changes and blocks a
+parallel manuscript-changing cycle. Read-only inspection remains available, and
+no switch automatically resumes a pending write.
+
+### Current-draft convergence cycles
+
+V3.2 stores at most one active current-draft convergence cycle in
+`<convergence-state-root>/active-cycle.json`. Completed records remain immutable under
+`<convergence-state-root>/cycles/`. The versioned contract records initiating and
+current strategies, bootstrap, starting and target scope references, requested
+pass, recovery position, related artifacts, change set, work set, evaluation
+references, and completion. Request base scope and increment previous scope map
+to the same `starting_scope` role. Execution, review, evaluation, and completion
+references connect later evidence without making the reference itself proof of
+current-draft revision convergence.
+
+First-time bootstrap is available only for `write-fiction` with an actually empty
+manuscript and no existing scope. It uses a null starting scope without treating
+the empty manuscript as having reached current-draft revision convergence. Its
+first committed publication keeps the exact staging, approval, backup, journal,
+and story-state requirements, records a null `scope_before_id`, and resumes the
+same cycle through `revise-draft`. The initial full-manuscript pass links that
+publication, its requested pass and review evidence, a satisfied evaluation, and
+the explicit completion decision. Empty manuscript state cannot satisfy or
+complete the cycle. Later creation uses the ordinary satisfied-start and
+one-commit rules; bootstrap is not available again.
+
+Every ordinary start requires a current satisfied starting convergence evaluation. A
+valid full-manuscript scope, pending action, or caller-supplied claim cannot
+manufacture that result; unavailable proof blocks the start with
+`starting-evaluation-indeterminate`. Only the latest completed-cycle or independent
+evaluation is eligible: a newer narrowed, `not_satisfied`, or `indeterminate`
+independent result blocks the start instead of reopening it through an older
+satisfied record. A later current satisfied evaluation restores the ordinary start.
+
+Use the executable `author-project` facade for lifecycle operations:
+
+```bash
+node scripts/author-project.mjs start-cycle --project-root <project-root> --input <request.json>
+node scripts/author-project.mjs transition-cycle --project-root <project-root> --input <transition.json>
+node scripts/author-project.mjs reconcile-cycle --project-root <project-root> [--input <direction.json>]
+node scripts/author-project.mjs prepare-draft-revision-execution --project-root <project-root> --input <independent-preparation.json>
+node scripts/author-project.mjs verify-draft-revision-execution --project-root <project-root> --input <independent-verification.json>
+node scripts/author-project.mjs prepare-revision-execution --project-root <project-root> --input <preparation.json>
+node scripts/author-project.mjs verify-revision-execution --project-root <project-root> --input <verification.json>
+node scripts/author-project.mjs evaluate-cycle --project-root <project-root> --input <evaluation-request.json>
+node scripts/author-project.mjs evaluate-draft --project-root <project-root> --input <independent-evaluation.json>
+node scripts/author-project.mjs complete-cycle --project-root <project-root> --input <completion.json>
+node scripts/author-project.mjs cycle-status --project-root <project-root>
+node scripts/author-project.mjs cycle-gate --project-root <project-root>
+```
+
+A second manuscript-changing cycle returns `active-cycle-exists` with the active
+cycle's required strategy, operation, and command. Transitions acquire a
+cross-process lock directory, reread the active cycle ID and expected revision
+inside that lock, and verify referenced artifact hashes before an atomic update.
+Only one writer can succeed for the same expected revision; later writers get
+`cycle-revision-conflict`. Lock timeouts and errors block without a success
+claim, and a leftover lock directory requires owner-verified explicit recovery.
+
+Dependent operations record manifest `cycle_operation` before publishing their
+artifact and advancing the active cycle, then clear it during final manifest
+coordination. Completion writes completed history and `last_completed_cycle`
+before removing the expected active bytes. An interruption blocks dependent work
+with the exact cycle, revision, operation, scope, or artifact mismatch while
+read-only status remains available. Run `reconcile-cycle` without a direction for
+a write-free diagnosis. Recovery directions accept, attach, resume, discard, or
+finish only the exact intended work; they never rewrite evaluations, approvals,
+commit journals, backups, or verified executions. Pending action still describes
+only the current operation and author gate. Its cycle, revision, operation, and
+scope-fingerprint fields are coordination references, not ownership or approval
+for a write, publication, restore, or completion. These are coordinated writes,
+not a multi-file filesystem transaction.
+
+Request-driven edits use revision execution records under `executions/`. Preparation
+verifies existing author decisions, exact edit approvals, backup manifests and
+bytes, and current input hashes without creating approval or writing manuscript.
+Plan decisions and edit approvals bind the plan and batch identities and hashes,
+operation, input scope fingerprint, complete ordered paths, actions, input hashes,
+and approved outputs; the same scope ID cannot make an old approval valid for new
+content. Verification rereads actual output bytes against the prepared hashes and
+binds the final requested pass and full-manuscript target scope. The final pass
+preserves every prepared operation and subcheck and may only add requirements.
+Pure insertion and deletion do not invent retained-path reorders; real retained
+reordering still requires exact approved actions. `prepared` never satisfies
+current-draft revision convergence. Resolved findings require a current verified
+execution; deferred and dismissed findings retain their decisions, and accepted
+review fixes require new affected coverage and another full-target current-scope
+review. Earlier verified executions remain historical after later approved batches.
+
+A full-manuscript no-edit pass records its requested-pass fingerprint, inherited
+and newly requested subchecks, hashed coverage evidence, no-edit decisions,
+three-perspective review group, complete fresh reader chain, and semantic
+attestations. `evaluate-cycle` derives the outcome and an immutable evidence
+graph; callers cannot supply an outcome. The evaluator accepts eligible local
+units from an earlier pass while requiring a new full-target index, synthesis,
+and review group for the requested pass. Changing the cycle's requested pass
+after satisfaction makes its old target evaluation stale for status, gate, and
+completion. Whenever a cycle's initiating or current strategy is `revise-fiction`,
+including request→fiction and draft→fiction work, it requires current full-target
+Story Bible, structure, and final-review evidence bound to that pass and scope;
+current-scope review alone cannot satisfy the whole-book gates. Once revision
+execution is linked, the active cycle cannot switch away from `revise-fiction`
+before that evidence and explicit cycle completion.
+
+Completion requires a separate explicit author decision. The operation appends
+that decision to the tracker, recomputes and saves a new evaluation with the
+changed tracker hash, publishes completed history and the completed-cycle
+pointer before removing active state, and completes only if the new evaluation
+remains `satisfied`. Deterministic checks verify evidence identity and structure, but
+actual reading and editorial judgments remain bounded by trust in the host and
+logical-reviewer attestations and the recorded author decisions. Status also
+returns `request_completion` independently: approved request batches and decisions
+can be complete while full-manuscript evidence is not yet satisfied.
+
+Independent convergence status and convergence gate queries are read-only:
+
+```bash
+node scripts/validate.mjs --convergence-status <manifest-path>
+node scripts/validate.mjs --convergence-gate <manifest-path>
+```
+
+A valid status query exits successfully for `satisfied`, `not_satisfied`, or
+`indeterminate`. The gate succeeds only for current `satisfied` evidence. Missing
+proof returns `indeterminate`, `current: false`, and structured blockers without
+preventing status, diagnostics, or review.
 
 ### Evidence reuse and pending actions
 
@@ -377,8 +542,9 @@ unrelated manuscript growth requires a refreshed publication scope but does not
 by itself invalidate the staged content.
 
 `pending_action` describes the single next operation awaiting work or an author
-decision. It replaces stage-specific progress state and is not permission to
-publish or resume a manuscript write.
+decision. Optional cycle, revision, operation, and scope-fingerprint fields keep
+it aligned with coordinated work; they do not make it lifecycle history or
+permission to write, publish, restore, complete, or resume manuscript changes.
 
 ### Creation staging, commits, and restores
 
@@ -399,6 +565,33 @@ exact files. Current content receives a safety backup first. Files created by
 the restored batch are moved into that safety backup before being removed from
 the manuscript. Use `creation-import` to reconcile external manuscript changes
 instead of silently refreshing hashes or story state.
+
+`author-project reconcile-manuscript` verifies the exact tracker import decision,
+current inventory, confirmed scope or null empty target, and story-state sources.
+It preserves an immutable manuscript reconciliation and, during an active cycle,
+extends that cycle's target, change set, and work set without rewriting its
+starting snapshot. Use `revise-increment` only while the previous satisfied
+full-manuscript proof remains intact; otherwise use full-manuscript
+`revise-draft`. Empty deletion cannot satisfy or complete a cycle. Recovery
+requires an approved nonempty restore or import followed by `revise-draft`.
+The command does not write manuscript and does not replace backup, restore, or
+input-hash approvals. For first-time bootstrap, an active null starting scope
+lets the first approved nonempty import supply initial publication evidence
+without a creation commit; it still requires initial full-manuscript
+`revise-draft` evaluation and completion. A rejected empty bootstrap cannot
+complete before such an import or publication establishes that evidence.
+Later bootstrap imports and edits preserve the null cumulative origin and form
+one ordered event chain. Every reconciliation previous scope or execution input
+scope follows the preceding target or output scope, every event is verified
+once, and the final target equals current scope. A real creation commit supplies
+an event whose scope_before matches the starting scope or null origin and whose
+scope_after passes the existing batch, journal, approval, and verified-file
+checks. Creation commit→import and creation commit→edit→import cannot omit that
+event. Empty reconciliation is a legal intermediate state awaiting nonempty
+recovery, never a completed target. Missing links, skipped empty predecessors,
+and forged targets remain blockers. Every cycle-external reconciliation requires
+an explicit `previous_scope`; only verified empty recovery may explicitly set it
+to null, and omitting the field is a usage error before any write.
 
 ### Coverage units and chunked review
 
@@ -428,14 +621,18 @@ operations are not added to the closed report v2 `stage` enumeration.
 
 Creation batches, commit journals, story state, coverage units and indexes,
 review jobs, and reader state use their own artifact contracts rather than
-masquerading as revision reports. The canonical project registration schema is
-`references/project-schema-v3.1.json`; setup deploys it with the other shared
-contracts into the writing project. The v3.0 schema remains available for
-reading and upgrading existing projects.
+masquerading as revision reports. External changes use the closed
+`references/manuscript-reconciliation-schema.json` artifact and the optional
+manifest `manuscript_reconciliation` reference to its latest immutable record.
+The canonical project registration schema is
+`references/project-schema-v3.2.json`; setup deploys it with the other shared
+contracts into the writing project. The v3.0 and v3.1 schemas remain available
+for reading and upgrading existing projects.
 
 Existing reports are not automatically rewritten. See
-[Migrating to 3.1](docs/MIGRATION-3.1.md). The
-[3.0 migration guide](docs/MIGRATION-3.0.md) and
+[Migrating to 3.2](docs/MIGRATION-3.2.md). The
+[3.1 migration guide](docs/MIGRATION-3.1.md),
+[3.0 migration guide](docs/MIGRATION-3.0.md), and
 [2.0 migration guide](docs/MIGRATION-2.0.md) remain available as historical
 documentation.
 
@@ -469,10 +666,11 @@ handoffs, and applicable creation state to recover context. They evaluate the
 current scope, pending action, evidence, and dependencies instead of inferring
 operation completion by moving or renaming files.
 
-A staged draft may remain while another strategy is used. On return, its
-dependency fingerprint and the current project state determine whether it can be
-reviewed again or needs a new plan. Neither a strategy switch nor a pending
-action publishes it.
+A staged draft may remain during read-only work or the active cycle's required
+revision strategy; a parallel manuscript-changing cycle remains blocked. On
+return, its dependency fingerprint and the current project state determine
+whether it can be reviewed again or needs a new plan. Neither a strategy switch
+nor a pending action publishes it.
 
 Use backups to inspect or restore pre-edit manuscript content. Ask for
 restoration explicitly; a resume, strategy switch, or report rerun does not
@@ -490,13 +688,15 @@ npm run validate
 ```
 
 Validate a manifest or report directly with the corresponding CLI option. The
-validator also provides options for creation batches, commit journals, story
-state, coverage artifacts, and review jobs; use the installed CLI as the source
-for their exact names:
+validator also provides options for scope snapshots, inventory snapshots,
+creation batches, commit journals, story state, coverage artifacts, and review
+jobs; use the installed CLI as the source for their exact names:
 
 ```bash
 node scripts/validate.mjs --help
 node scripts/validate.mjs --manifest /path/to/.author-toolkit/project.json
+node scripts/validate.mjs --scope-snapshot /path/to/scope.json
+node scripts/validate.mjs --inventory-snapshot /path/to/inventory.json
 node scripts/validate.mjs --report /path/to/report.md
 ```
 

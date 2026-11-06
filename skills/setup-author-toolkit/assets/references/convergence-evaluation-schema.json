@@ -1,0 +1,167 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "convergence-evaluation-schema.json",
+  "title": "author-toolkit current-draft convergence evaluation v1",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "evaluation_id",
+    "cycle_id",
+    "requested_pass",
+    "target_scope",
+    "coverage_index",
+    "reports",
+    "review_group",
+    "semantic_attestations",
+    "outcome",
+    "blockers",
+    "evidence_graph",
+    "created_at"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": { "const": "1.0.0" },
+    "evaluation_id": { "$ref": "#/$defs/id" },
+    "cycle_id": {
+      "anyOf": [
+        { "$ref": "#/$defs/id" },
+        { "type": "null" }
+      ]
+    },
+    "requested_pass": { "$ref": "#/$defs/passReference" },
+    "target_scope": { "$ref": "#/$defs/scopeReference" },
+    "coverage_index": { "$ref": "#/$defs/artifactReference" },
+    "reports": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/reportReference" }
+    },
+    "review_group": { "$ref": "#/$defs/reviewGroupReference" },
+    "semantic_attestations": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/attestationReference" }
+    },
+    "outcome": { "enum": ["satisfied", "not_satisfied", "indeterminate"] },
+    "blockers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["code", "message", "required_action"],
+        "additionalProperties": false,
+        "properties": {
+          "code": { "type": "string", "minLength": 1 },
+          "message": { "type": "string", "minLength": 1 },
+          "path": { "type": "string", "minLength": 1 },
+          "artifact_id": { "type": "string", "minLength": 1 },
+          "required_action": {
+            "anyOf": [
+              { "type": "null" },
+              {
+                "type": "object",
+                "required": ["strategy", "operation", "command"],
+                "additionalProperties": false,
+                "properties": {
+                  "strategy": { "type": "string", "minLength": 1 },
+                  "operation": { "type": ["string", "null"] },
+                  "command": { "type": "string", "minLength": 1 }
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    "evidence_graph": {
+      "type": "object",
+      "required": ["artifacts"],
+      "additionalProperties": false,
+      "properties": {
+        "artifacts": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "object",
+            "required": ["role", "artifact_id", "path", "sha256"],
+            "additionalProperties": false,
+            "properties": {
+              "role": { "type": "string", "minLength": 1 },
+              "artifact_id": { "type": "string", "minLength": 1 },
+              "path": { "$ref": "relative-path-schema.json" },
+              "sha256": { "$ref": "#/$defs/sha256" }
+            }
+          }
+        }
+      }
+    },
+    "created_at": { "type": "string", "format": "date-time" }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+    },
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "artifactReference": {
+      "type": "object",
+      "required": ["path", "sha256"],
+      "additionalProperties": false,
+      "properties": {
+        "path": { "$ref": "relative-path-schema.json" },
+        "sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "reportReference": {
+      "type": "object",
+      "required": ["report_id", "path", "sha256"],
+      "additionalProperties": false,
+      "properties": {
+        "report_id": { "$ref": "#/$defs/id" },
+        "path": { "$ref": "relative-path-schema.json" },
+        "sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "passReference": {
+      "type": "object",
+      "required": ["pass_id", "pass_fingerprint", "path", "sha256"],
+      "additionalProperties": false,
+      "properties": {
+        "pass_id": { "$ref": "#/$defs/id" },
+        "pass_fingerprint": { "$ref": "#/$defs/sha256" },
+        "path": { "$ref": "relative-path-schema.json" },
+        "sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "scopeReference": {
+      "type": "object",
+      "required": ["scope_id", "scope_fingerprint", "snapshot_path", "snapshot_sha256"],
+      "additionalProperties": false,
+      "properties": {
+        "scope_id": { "$ref": "#/$defs/id" },
+        "scope_fingerprint": { "$ref": "#/$defs/sha256" },
+        "snapshot_path": { "$ref": "relative-path-schema.json" },
+        "snapshot_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "reviewGroupReference": {
+      "type": "object",
+      "required": ["review_group_id", "path", "sha256"],
+      "additionalProperties": false,
+      "properties": {
+        "review_group_id": { "$ref": "#/$defs/id" },
+        "path": { "$ref": "relative-path-schema.json" },
+        "sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "attestationReference": {
+      "type": "object",
+      "required": ["attestation_id", "path", "sha256"],
+      "additionalProperties": false,
+      "properties": {
+        "attestation_id": { "$ref": "#/$defs/id" },
+        "path": { "$ref": "relative-path-schema.json" },
+        "sha256": { "$ref": "#/$defs/sha256" }
+      }
+    }
+  }
+}

@@ -1,12 +1,27 @@
-import { createHash, randomUUID } from "node:crypto";
-import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
+import { mkdir, readFile } from "node:fs/promises";
 import path from "node:path";
 
 import { formatApprovalPaths } from "./approval-paths.mjs";
+import { inspectLegacyRecovery } from "./legacy-recovery.mjs";
 import { validateManifest } from "./manifest.mjs";
 import { collectManuscriptInventory } from "./manuscript.mjs";
 import { validateProjectFiles, validateScopeCurrency } from "./project-files.mjs";
-import { validateTracker, validateTrackerV3Markdown } from "./tracker.mjs";
+import {
+  parseTrackerState,
+  validateTracker,
+  validateTrackerV3Markdown,
+} from "./tracker.mjs";
+import {
+  computeScopeFingerprint,
+  recordInventorySnapshot,
+  recordScope,
+  validateFullManuscriptScope,
+} from "./scope.mjs";
+import {
+  createNoClobberVerified,
+  writeAtomicVerified,
+} from "./state-io.mjs";
 
 const APPROVAL_HEADERS = [
   "Approval ID",
@@ -243,19 +258,6 @@ function countApprovals(tracker) {
   return 0;
 }
 
-async function atomicWrite(file, contents) {
-  const temporary = path.join(
-    path.dirname(file),
-    `.${path.basename(file)}.${process.pid}.${randomUUID()}.tmp`,
-  );
-  try {
-    await writeFile(temporary, contents, { encoding: "utf8", flag: "wx" });
-    await rename(temporary, file);
-  } finally {
-    await rm(temporary, { force: true });
-  }
-}
-
 function utcStamp(date) {
   return date.toISOString().replace(/[-:.]/g, "");
 }
@@ -276,107 +278,136 @@ async function validateOnDisk(manifest, manifestPath) {
 }
 
 export async function migrateProjectToV3(projectRoot, { now = new Date() } = {}) {
+  return migrateProjectToV32(projectRoot, { now });
+}
+
+
+const CONVERGENCE_DIRECTORIES = [
+  "cycles",
+  "scopes",
+  "inventories",
+  "reconciliations",
+  "passes",
+  "executions",
+  "no-edit-skips",
+  "review-groups",
+  "attestations",
+  "evaluations",
+];
+
+function migrationTimestamp(now) {
+  const value = now instanceof Date ? now : new Date(now);
+  if (Number.isNaN(value.getTime())) throw new Error("Invalid migration time");
+  return value;
+}
+
+function v32Manifest(legacy, timestamp) {
+  const manifest = {
+    ...legacy,
+    schema_version: "3.2.0",
+    paths: {
+      ...legacy.paths,
+      creation: legacy.paths.creation ?? ".author-toolkit/creation/",
+      convergence: ".author-toolkit/convergence/",
+    },
+    updated_at: timestamp,
+  };
+  delete manifest.workflow;
+  if (manifest.$schema) {
+    manifest.$schema = manifest.$schema.replace(/[^/]*$/, "project-schema-v3.2.json");
+  }
+  return manifest;
+}
+
+async function createOperationalSkeleton(projectRoot, manifest) {
+  for (const directory of ["state/chapters", "state/volumes", "batches", "staging"]) {
+    await mkdir(path.resolve(projectRoot, manifest.paths.creation, directory), { recursive: true });
+  }
+  for (const directory of CONVERGENCE_DIRECTORIES) {
+    await mkdir(path.resolve(projectRoot, manifest.paths.convergence, directory), { recursive: true });
+  }
+}
+
+async function migrationSummary({
+  manifestPath,
+  snapshotPath,
+  sourceVersion,
+  manifest,
+  approvalCount,
+  scopeSnapshots = [],
+  inventorySnapshots = [],
+}) {
+  return {
+    manifest: manifestPath,
+    snapshot: snapshotPath,
+    source_schema_version: sourceVersion,
+    target_schema_version: "3.2.0",
+    scope_id: manifest.current_scope?.scope_id ?? null,
+    scope_fingerprint: manifest.current_scope?.scope_fingerprint ?? null,
+    approval_count: approvalCount,
+    created_snapshots: {
+      scopes: scopeSnapshots,
+      inventories: inventorySnapshots,
+    },
+    recovery: await inspectLegacyRecovery(path.dirname(path.dirname(manifestPath)), manifest),
+    valid: true,
+  };
+}
+
+export async function migrateProjectToV32(projectRoot, { now = new Date() } = {}) {
   const root = path.resolve(projectRoot);
   const manifestPath = path.join(root, ".author-toolkit", "project.json");
   const originalManifestText = await readFile(manifestPath, "utf8");
   const legacy = JSON.parse(originalManifestText);
-
-  if (legacy.schema_version === "3.1.0") {
+  if (legacy.schema_version === "3.2.0") {
     const validation = await validateOnDisk(legacy, manifestPath);
-    assertValid("v3.1 project validation", {
-      valid: validation.valid,
-      errors: [validation.manifest, validation.files, validation.tracker].flatMap((result) => result.errors),
-    });
-    const tracker = await readFile(path.resolve(root, legacy.paths.audit_tracker), "utf8");
-    return {
-      manifest: manifestPath,
-      snapshot: null,
-      scope_id: legacy.current_scope?.scope_id ?? null,
-      approval_count: countApprovals(tracker),
-      valid: true,
-    };
-  }
-
-  if (legacy.schema_version === "3.0.0") {
-    const validation = await validateOnDisk(legacy, manifestPath);
-    assertValid("v3 project validation", {
-      valid: validation.valid,
-      errors: [validation.manifest, validation.files, validation.tracker].flatMap((result) => result.errors),
-    });
-    const migrationTime = now instanceof Date ? now : new Date(now);
-    if (Number.isNaN(migrationTime.getTime())) throw new Error("Invalid migration time");
-    const timestamp = migrationTime.toISOString();
-    const manifest = {
-      ...legacy,
-      schema_version: "3.1.0",
-      paths: { ...legacy.paths, creation: ".author-toolkit/creation/" },
-      updated_at: timestamp,
-    };
-    if (manifest.$schema) {
-      manifest.$schema = manifest.$schema.replace(/[^/]*$/, "project-schema-v3.1.json");
-    }
-    assertValid("v3.1 manifest preflight validation", validateManifest(manifest));
-
-    const migrationDirectory = path.join(
-      root,
-      ".author-toolkit",
-      "migrations",
-      `${utcStamp(migrationTime)}-v3_0-v3_1`,
-    );
-    const snapshotPath = path.join(migrationDirectory, "project.json");
-    const migrationRecord = {
-      migrated_at: timestamp,
-      source_schema_version: "3.0.0",
-      target_schema_version: "3.1.0",
-      current_scope: legacy.current_scope ?? null,
-      pending_action: legacy.pending_action ?? null,
-    };
-
-    await mkdir(path.dirname(migrationDirectory), { recursive: true });
-    await mkdir(migrationDirectory);
-    await atomicWrite(snapshotPath, originalManifestText);
-    await atomicWrite(
-      path.join(migrationDirectory, "migration.json"),
-      `${JSON.stringify(migrationRecord, null, 2)}\n`,
-    );
-    for (const directory of ["state/chapters", "state/volumes", "batches", "staging"]) {
-      await mkdir(path.resolve(root, manifest.paths.creation, directory), { recursive: true });
-    }
-    await atomicWrite(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
-
-    const upgradedValidation = await validateOnDisk(manifest, manifestPath);
-    assertValid("upgraded project validation", {
-      valid: upgradedValidation.valid,
+    const scopeValidation = legacy.current_scope?.status === "confirmed"
+      ? await validateFullManuscriptScope(legacy, manifestPath)
+      : { valid: true, errors: [] };
+    assertValid("v3.2 project validation", {
+      valid: validation.valid && scopeValidation.valid,
       errors: [
-        upgradedValidation.manifest,
-        upgradedValidation.files,
-        upgradedValidation.tracker,
+        validation.manifest,
+        validation.files,
+        validation.tracker,
+        scopeValidation,
       ].flatMap((result) => result.errors),
     });
     const tracker = await readFile(path.resolve(root, legacy.paths.audit_tracker), "utf8");
-    return {
-      manifest: manifestPath,
-      snapshot: snapshotPath,
-      scope_id: legacy.current_scope?.scope_id ?? null,
-      approval_count: countApprovals(tracker),
-      valid: true,
-    };
+    return migrationSummary({
+      manifestPath,
+      snapshotPath: null,
+      sourceVersion: "3.2.0",
+      manifest: legacy,
+      approvalCount: countApprovals(tracker),
+    });
   }
-
+  const migrationTime = migrationTimestamp(now);
+  if (["3.0.0", "3.1.0"].includes(legacy.schema_version)) {
+    return migrateLegacyV3Project(
+      root,
+      manifestPath,
+      originalManifestText,
+      legacy,
+      migrationTime,
+      legacy.schema_version,
+    );
+  }
   if (legacy.schema_version !== "2.0.0") {
     throw new Error(`Unsupported project schema_version: ${legacy.schema_version ?? "missing"}`);
   }
   assertValid("v2 manifest validation", validateManifest(legacy));
-
-  const migrationTime = now instanceof Date ? now : new Date(now);
-  if (Number.isNaN(migrationTime.getTime())) throw new Error("Invalid migration time");
   const timestamp = migrationTime.toISOString();
-  const currentScope = await createCurrentScope(
+  const proposedScope = await createCurrentScope(
     root,
     legacy.manuscript_root,
     legacy.paths,
     timestamp,
   );
+  const currentScope = {
+    ...proposedScope,
+    scope_fingerprint: computeScopeFingerprint(proposedScope),
+  };
   const pendingAction = convertPendingAction(legacy.workflow, currentScope.scope_id, timestamp);
   const trackerPath = path.resolve(root, legacy.paths.audit_tracker);
   const originalTracker = await readFile(trackerPath, "utf8");
@@ -391,73 +422,198 @@ export async function migrateProjectToV3(projectRoot, { now = new Date() } = {})
     timestamp,
     existingApprovalIds,
   );
-
   const manifest = {
-    ...legacy,
-    schema_version: "3.1.0",
-    paths: { ...legacy.paths, creation: ".author-toolkit/creation/" },
+    ...v32Manifest(legacy, timestamp),
+    current_scope: currentScope,
   };
-  delete manifest.workflow;
-  if (manifest.$schema) {
-    manifest.$schema = manifest.$schema.replace(/[^/]*$/, "project-schema-v3.1.json");
-  }
-  manifest.current_scope = currentScope;
   if (pendingAction) manifest.pending_action = pendingAction;
   else delete manifest.pending_action;
-  manifest.updated_at = timestamp;
-
   const updatedTracker = updateTracker(originalTracker, approvals);
 
-  assertValid("v3.1 manifest preflight validation", validateManifest(manifest));
-  assertValid("v3.1 tracker preflight validation", await validateTrackerV3Markdown(updatedTracker, root));
+  assertValid("v3.2 manifest preflight validation", validateManifest(manifest));
+  assertValid("v3.2 tracker preflight validation", await validateTrackerV3Markdown(updatedTracker, root));
 
   const migrationDirectory = path.join(
     root,
     ".author-toolkit",
     "migrations",
-    `${utcStamp(migrationTime)}-v2-v3`,
+    `${utcStamp(migrationTime)}-v2-v3_2`,
   );
   const snapshotPath = path.join(migrationDirectory, "project.json");
+  await mkdir(path.dirname(migrationDirectory), { recursive: true });
+  await mkdir(migrationDirectory);
+  await createNoClobberVerified(snapshotPath, originalManifestText);
+  await createOperationalSkeleton(root, manifest);
+  assertValid("v3.2 project files preflight validation", await validateProjectFiles(manifest, manifestPath));
+
+  await writeAtomicVerified(trackerPath, updatedTracker);
+  try {
+    await writeAtomicVerified(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
+  } catch (error) {
+    await writeAtomicVerified(trackerPath, originalTracker);
+    throw error;
+  }
+
+  const inventory = await recordInventorySnapshot(root, manifest, { now: migrationTime });
   const migrationRecord = {
     migrated_at: timestamp,
     source_schema_version: "2.0.0",
-    target_schema_version: "3.1.0",
+    target_schema_version: "3.2.0",
+    legacy_current_scope: legacy.current_scope ?? null,
     current_scope: currentScope,
     pending_action: pendingAction,
     overrides: approvals,
+    scope_disposition: "proposed-reconfirmation-required",
+    created_snapshots: { scopes: [], inventories: [inventory.reference] },
   };
-
-  await mkdir(path.dirname(migrationDirectory), { recursive: true });
-  await mkdir(migrationDirectory);
-  await atomicWrite(snapshotPath, originalManifestText);
-  await atomicWrite(
+  await writeAtomicVerified(
     path.join(migrationDirectory, "migration.json"),
     `${JSON.stringify(migrationRecord, null, 2)}\n`,
   );
-  for (const directory of ["state/chapters", "state/volumes", "batches", "staging"]) {
-    await mkdir(path.resolve(root, manifest.paths.creation, directory), { recursive: true });
-  }
-  assertValid("v3.1 project files preflight validation", await validateProjectFiles(manifest, manifestPath));
-
-  await atomicWrite(trackerPath, updatedTracker);
-  try {
-    await atomicWrite(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
-  } catch (error) {
-    await atomicWrite(trackerPath, originalTracker);
-    throw error;
-  }
 
   const validation = await validateOnDisk(manifest, manifestPath);
   assertValid("migrated project validation", {
     valid: validation.valid,
     errors: [validation.manifest, validation.files, validation.tracker].flatMap((result) => result.errors),
   });
+  return migrationSummary({
+    manifestPath,
+    snapshotPath,
+    sourceVersion: "2.0.0",
+    manifest,
+    approvalCount: countApprovals(updatedTracker),
+    inventorySnapshots: [inventory.reference],
+  });
+}
 
+
+async function findLegacyScopeConfirmation(root, legacy) {
+  if (legacy.current_scope?.status !== "confirmed") return null;
+  const tracker = await readFile(path.resolve(root, legacy.paths.audit_tracker), "utf8");
+  const parsed = await parseTrackerState(tracker, root);
+  if (!parsed.valid) return null;
+  const scopeFingerprint = computeScopeFingerprint(legacy.current_scope);
+  const candidates = parsed.approvals.filter((approval) =>
+    approval.type === "scope-confirmation" &&
+    approval.operation === "intake" &&
+    approval.scopeId === legacy.current_scope.scope_id &&
+    approval.status === "approved" &&
+    JSON.stringify(approval.paths) === JSON.stringify(
+      legacy.current_scope.files.map((file) => file.path),
+    ) &&
+    approval.reason.split(/\s+/).includes(`scope_fingerprint=${scopeFingerprint}`) &&
+    approval.reason.split(/\s+/).includes("reading_order_confirmed=true")
+  );
+  if (candidates.length !== 1) return null;
   return {
-    manifest: manifestPath,
-    snapshot: snapshotPath,
-    scope_id: currentScope.scope_id,
-    approval_count: countApprovals(updatedTracker),
-    valid: true,
+    decision_id: candidates[0].id,
+    confirmed_at: candidates[0].updated,
+    reading_order_confirmed: true,
   };
+}
+
+async function migrateLegacyV3Project(
+  root,
+  manifestPath,
+  originalManifestText,
+  legacy,
+  migrationTime,
+  sourceVersion,
+) {
+  const validation = await validateOnDisk(legacy, manifestPath);
+  assertValid(`${sourceVersion === "3.0.0" ? "v3" : "v3.1"} project validation`, {
+    valid: validation.valid,
+    errors: [validation.manifest, validation.files, validation.tracker].flatMap((result) => result.errors),
+  });
+  const timestamp = migrationTime.toISOString();
+  const scopeConfirmation = await findLegacyScopeConfirmation(root, legacy);
+  const manifest = v32Manifest(legacy, timestamp);
+  if (legacy.current_scope) {
+    manifest.current_scope = {
+      ...legacy.current_scope,
+      status: "proposed",
+      scope_fingerprint: computeScopeFingerprint(legacy.current_scope),
+    };
+    delete manifest.current_scope.snapshot_path;
+    delete manifest.current_scope.snapshot_sha256;
+  }
+  assertValid("v3.2 manifest preflight validation", validateManifest(manifest));
+
+  const sourceTag = `v${sourceVersion.split(".").slice(0, 2).join("_")}`;
+  const migrationDirectory = path.join(
+    root,
+    ".author-toolkit",
+    "migrations",
+    `${utcStamp(migrationTime)}-${sourceTag}-v3_2`,
+  );
+  const snapshotPath = path.join(migrationDirectory, "project.json");
+  await mkdir(path.dirname(migrationDirectory), { recursive: true });
+  await mkdir(migrationDirectory);
+  await createNoClobberVerified(snapshotPath, originalManifestText);
+  await createOperationalSkeleton(root, manifest);
+  assertValid("v3.2 project files preflight validation", await validateProjectFiles(manifest, manifestPath));
+  await writeAtomicVerified(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
+
+  let migratedManifest = manifest;
+  let inventory;
+  const scopeSnapshots = [];
+  if (scopeConfirmation) {
+    const recorded = await recordScope(root, legacy.current_scope, {
+      authorConfirmation: scopeConfirmation,
+      now: migrationTime,
+    });
+    migratedManifest = { ...manifest, current_scope: recorded.current_scope };
+    scopeSnapshots.push({
+      path: recorded.current_scope.snapshot_path,
+      sha256: recorded.current_scope.snapshot_sha256,
+      scope_id: recorded.scope_id,
+      scope_fingerprint: recorded.scope_fingerprint,
+      inventory_fingerprint: recorded.inventory_fingerprint,
+    });
+    const snapshot = JSON.parse(
+      await readFile(path.resolve(root, recorded.current_scope.snapshot_path), "utf8"),
+    );
+    inventory = { reference: snapshot.inventory };
+  } else {
+    inventory = await recordInventorySnapshot(root, migratedManifest, { now: migrationTime });
+  }
+  const tracker = await readFile(path.resolve(root, legacy.paths.audit_tracker), "utf8");
+  const migrationRecord = {
+    migrated_at: timestamp,
+    source_schema_version: sourceVersion,
+    target_schema_version: "3.2.0",
+    legacy_current_scope: legacy.current_scope ?? null,
+    current_scope: migratedManifest.current_scope ?? null,
+    pending_action: legacy.pending_action ?? null,
+    overrides: [],
+    scope_disposition: scopeConfirmation
+      ? "confirmed-with-legacy-evidence"
+      : legacy.current_scope?.status === "confirmed"
+        ? "reconfirmation-required"
+        : legacy.current_scope?.status ?? "none",
+    scope_confirmation: scopeConfirmation,
+    created_snapshots: { scopes: scopeSnapshots, inventories: [inventory.reference] },
+  };
+  await writeAtomicVerified(
+    path.join(migrationDirectory, "migration.json"),
+    `${JSON.stringify(migrationRecord, null, 2)}\n`,
+  );
+  const upgradedValidation = await validateOnDisk(migratedManifest, manifestPath);
+  assertValid("migrated project validation", {
+    valid: upgradedValidation.valid,
+    errors: [
+      upgradedValidation.manifest,
+      upgradedValidation.files,
+      upgradedValidation.tracker,
+    ].flatMap((result) => result.errors),
+  });
+  return migrationSummary({
+    manifestPath,
+    snapshotPath,
+    sourceVersion,
+    manifest: migratedManifest,
+    approvalCount: countApprovals(tracker),
+    scopeSnapshots,
+    inventorySnapshots: [inventory.reference],
+  });
 }

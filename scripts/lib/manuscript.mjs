@@ -24,6 +24,10 @@ function isOperational(relativePath, roots) {
   );
 }
 
+export function isOperationalManuscriptPath(relativePath, paths = {}) {
+  return isOperational(relativePath, operationalRoots(paths));
+}
+
 export async function collectManuscriptInventory(projectRoot, manuscriptRoot, paths = {}) {
   const absoluteRoot = path.resolve(projectRoot, manuscriptRoot);
   const roots = operationalRoots(paths);

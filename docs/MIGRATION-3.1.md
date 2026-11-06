@@ -1,5 +1,7 @@
 # Migrating to Author Toolkit 3.1
 
+> **Historical guide:** This page records the 3.1 migration behavior. For direct v2, v3.0, or v3.1 migration to the current convergence-state model, see [Migrating to Author Toolkit 3.2](MIGRATION-3.2.md). The compatibility command now targets v3.2.
+
 Author Toolkit 3.1.0 adds `write-fiction` and creation state to the shared
 project evidence model. `write-fiction`, `revise-fiction`, `revise-draft`,
 `revise-increment`, and `revise-request` use one manifest and can switch at

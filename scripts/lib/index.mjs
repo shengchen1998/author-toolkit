@@ -45,6 +45,9 @@ export {
   validateProjectSchema,
   validateProjectV3Schema,
   validateProjectV31Schema,
+  validateProjectV32Schema,
+  validateInventorySnapshotSchema,
+  validateScopeSnapshotSchema,
   validateReaderStateSchema,
   validateRelativePath,
   validateReportEnvelope,
@@ -53,3 +56,68 @@ export {
   validateStoryState,
 } from "./schemas.mjs";
 export { validateWorkflow, validateWorkflowSequence } from "./workflow.mjs";
+export {
+  computeInventoryFingerprint,
+  computeScopeFingerprint,
+  recordScope,
+  validateFullManuscriptScope,
+  validateInventorySnapshot,
+  validateScopeSnapshot,
+} from "./scope.mjs";
+export { validateConvergenceCycleSchema } from "./schemas.mjs";
+export {
+  assertCycleAllowsOperation,
+  checkConvergenceGate,
+  getCycleStatus,
+  startCycle,
+  transitionCycle,
+  validateConvergenceCycle,
+} from "./cycles.mjs";
+
+export {
+  appendCycleCompletionDecision,
+  parseTrackerState,
+} from "./tracker.mjs";
+export {
+  validateConvergenceEvaluationSchema,
+  validateNoEditSkipSchema,
+  validateRequestedPassSchema,
+  validateReviewGroupSchema,
+  validateSemanticAttestationSchema,
+} from "./schemas.mjs";
+export {
+  completeCycle,
+  computeRequestedPassFingerprint,
+  deriveRequestedPassBaseline,
+  evaluateCycle,
+  evaluateDraft,
+  findHistoricalSatisfiedEvaluation,
+  findSatisfiedStartingEvaluation,
+  getConvergenceStatus,
+  validateConvergenceEvaluation,
+  validateNoEditSkip,
+  validateRequestedPass,
+  validateReviewGroup,
+  validateSemanticAttestation,
+} from "./convergence.mjs";
+export {
+  getRequestCompletion,
+  prepareDraftRevisionExecution,
+  prepareRevisionExecution,
+  validateRevisionExecution,
+  validateRevisionExecutionAgainstDisk,
+  verifyDraftRevisionExecution,
+  verifyRevisionExecution,
+} from "./revision-execution.mjs";
+export {
+  validateManuscriptReconciliationSchema,
+  validateRevisionExecutionSchema,
+} from "./schemas.mjs";
+export {
+  collectVersionedInventory,
+  diffManuscriptInventories,
+  recordInventorySnapshot,
+} from "./scope.mjs";
+export { reconcileManuscript } from "./reconciliation.mjs";
+export { reconcileCycle } from "./cycle-recovery.mjs";
+export { migrateProjectToV3, migrateProjectToV32 } from "./migration.mjs";

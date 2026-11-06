@@ -78,6 +78,34 @@
         "notes": { "type": "string", "minLength": 1 }
       }
     },
+    "scope_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+    },
+    "scope_fingerprint": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "requested_pass": {
+      "type": "object",
+      "required": ["pass_id", "pass_fingerprint", "path", "sha256"],
+      "additionalProperties": false,
+      "properties": {
+        "pass_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "pass_fingerprint": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "path": { "$ref": "relative-path-schema.json" },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      }
+    },
     "findings": {
       "type": "array",
       "items": { "$ref": "finding-schema-v2.json" }
