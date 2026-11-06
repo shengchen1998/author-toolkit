@@ -11,20 +11,12 @@ import {
   createNoEditEvidence,
   currentScopeReference,
   fileSha256,
-  runAuthorProject,
   runAuthorProjectAsync,
+  runInput,
   runValidator,
   timestamp,
   writeJson,
 } from "./convergence-helpers.mjs";
-
-async function runInput(projectRoot, command, input) {
-  const inputPath = await writeJson(
-    path.join(projectRoot, `${command}-${input.evaluation_id ?? input.cycle_id}.json`),
-    input,
-  );
-  return runAuthorProject([command, "--project-root", projectRoot, "--input", inputPath]);
-}
 
 async function establishNoEditEvaluation(t, { evidenceOptions = {}, complete = false } = {}) {
   const { projectRoot, manifestPath } = await createConvergenceProject(t);
@@ -342,6 +334,78 @@ test("a no-change request inherits the last satisfied pass and only extends its 
   });
   assert.equal(completed.status, 0, `${completed.stdout}\n${completed.stderr}`);
   assert.equal(JSON.parse(completed.stdout).cycle.status, "completed");
+});
+
+
+test("replacing a satisfied requested pass makes its old target evaluation stale for status, gate, and completion", async (t) => {
+  const first = await establishNoEditEvaluation(t);
+  assert.equal(first.evaluated.status, 0, `${first.evaluated.stdout}\n${first.evaluated.stderr}`);
+  const trackerPath = path.join(first.projectRoot, "audit-tracker.md");
+  const trackerBeforeNewPass = await readFile(trackerPath, "utf8");
+  const expanded = await createNoEditEvidence(first.projectRoot, {
+    passId: "pass-002-expanded-after-satisfied",
+    baselinePass: first.evidence.passReference,
+    noEditDecisionId: "NOEDIT-EXPANDED-002",
+    requestedSubchecks: [{
+      operation: "diagnostics",
+      subcheck: "information-release",
+      author_decision_id: "REQUEST-EXPANDED-002",
+    }],
+  });
+  await writeFile(trackerPath, trackerBeforeNewPass, "utf8");
+  const transitioned = await runInput(first.projectRoot, "transition-cycle", {
+    cycle_id: "cycle-bootstrap-001",
+    expected_revision: 3,
+    current_strategy: "revise-draft",
+    recovery_position: {
+      operation: "current-scope-review",
+      reason: "The author added one check after satisfaction; its new evidence is not complete.",
+    },
+    requested_pass: expanded.passReference,
+  });
+  assert.equal(transitioned.status, 0, `${transitioned.stdout}\n${transitioned.stderr}`);
+  assert.equal(
+    JSON.parse(transitioned.stdout).cycle.target_evaluation.evaluation_id,
+    "evaluation-001",
+  );
+
+  const status = runValidator(["--convergence-status", first.manifestPath]);
+  assert.equal(status.status, 0, `${status.stdout}\n${status.stderr}`);
+  const statusResult = JSON.parse(status.stdout);
+  assert.equal(statusResult.current, false);
+  assert.equal(statusResult.outcome, "indeterminate");
+  assert.ok(statusResult.blockers.some(
+    (blocker) => blocker.code === "requested-pass-evaluation-mismatch"
+  ));
+  const gate = runValidator(["--convergence-gate", first.manifestPath]);
+  assert.equal(gate.status, 1, `${gate.stdout}\n${gate.stderr}`);
+  assert.ok(JSON.parse(gate.stdout).blockers.some(
+    (blocker) => blocker.code === "requested-pass-evaluation-mismatch"
+  ));
+
+  const completed = await runInput(first.projectRoot, "complete-cycle", {
+    cycle_id: "cycle-bootstrap-001",
+    expected_revision: 4,
+    evaluation_id: "evaluation-expanded-before-work-completion",
+    decision_id: "COMPLETE-902",
+    author_confirmed: true,
+  });
+  assert.equal(completed.status, 1, `${completed.stdout}\n${completed.stderr}`);
+  assert.equal(
+    JSON.parse(completed.stdout).blockers[0].code,
+    "completion-evaluation-not-satisfied",
+  );
+  assert.equal(await readFile(trackerPath, "utf8"), trackerBeforeNewPass);
+  await assert.rejects(
+    readFile(path.join(
+      first.projectRoot,
+      ".author-toolkit",
+      "convergence",
+      "cycles",
+      "cycle-bootstrap-001.json",
+    )),
+    { code: "ENOENT" },
+  );
 });
 
 

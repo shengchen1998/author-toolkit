@@ -6,23 +6,16 @@ import test from "node:test";
 
 import { recordScope } from "../scripts/lib/index.mjs";
 import {
+  appendRevisionExecutionApprovals,
   artifactAt,
   createConvergenceProject,
   createNoEditEvidence,
   currentScopeReference,
-  runAuthorProject,
+  runInput,
   runValidator,
   timestamp,
   writeJson,
 } from "./convergence-helpers.mjs";
-
-async function runInput(projectRoot, command, input) {
-  const inputPath = await writeJson(
-    path.join(projectRoot, `${command}-${input.evaluation_id ?? input.cycle_id ?? input.execution_id ?? input.strategy}.json`),
-    input,
-  );
-  return runAuthorProject([command, "--project-root", projectRoot, "--input", inputPath]);
-}
 
 async function confirmCurrentScope(
   projectRoot,
@@ -255,6 +248,101 @@ test("a narrowed independent pass blocks dependent entries without reducing the 
   ));
   const finalGate = runValidator(["--convergence-gate", manifestPath]);
   assert.equal(finalGate.status, 0, `${finalGate.stdout}\n${finalGate.stderr}`);
+  const started = await runInput(projectRoot, "start-cycle", {
+    cycle_id: "cycle-after-latest-satisfied",
+    initiating_strategy: "revise-request",
+    bootstrap: false,
+    starting_scope: recovered.scopeReference,
+  });
+  assert.equal(started.status, 0, `${started.stdout}\n${started.stderr}`);
+  assert.equal(
+    JSON.parse(started.stdout).cycle.starting_evaluation.evaluation_id,
+    "evaluation-independent-003",
+  );
+});
+
+
+test("a newer narrowed, not_satisfied, or indeterminate independent evaluation blocks start-cycle", async (t) => {
+  for (const outcome of ["narrowed", "not_satisfied", "indeterminate"]) {
+    const manuscript = `The latest independent ${outcome} result must control entry.\n`;
+    const { projectRoot } = await createConvergenceProject(t, {
+      manuscripts: [{ name: "chapter-001.md", contents: manuscript }],
+    });
+    await confirmCurrentScope(projectRoot, manuscript);
+    const evaluate = (evidence, evaluationId, attestations = null) => runInput(
+      projectRoot,
+      "evaluate-draft",
+      {
+        evaluation_id: evaluationId,
+        requested_pass: evidence.passReference,
+        target_scope: evidence.scopeReference,
+        coverage_index: evidence.coverageIndexReference,
+        reports: evidence.reports,
+        review_group: evidence.reviewGroupReference,
+        no_edit_skips: [evidence.noEditReference],
+        semantic_attestations: attestations ?? [
+          evidence.hostAttestationReference,
+          evidence.freshAttestationReference,
+        ],
+      },
+    );
+    const base = await createNoEditEvidence(projectRoot, { passId: `pass-base-${outcome}` });
+    const baseEvaluation = await evaluate(base, `evaluation-base-${outcome}`);
+    assert.equal(baseEvaluation.status, 0, `${outcome}: ${baseEvaluation.stdout}\n${baseEvaluation.stderr}`);
+    const trackerPath = path.join(projectRoot, "audit-tracker.md");
+    const baseTracker = await readFile(trackerPath, "utf8");
+
+    const options = {
+      passId: `pass-latest-${outcome}`,
+      baselinePass: base.passReference,
+      noEditDecisionId: `NOEDIT-LATEST-${outcome.toUpperCase()}`,
+    };
+    if (outcome === "narrowed") {
+      options.narrowing = {
+        author_decision_id: "NARROW-LATEST-001",
+        reason: "The author requested a narrowed diagnostic after the satisfied baseline.",
+        gaps: ["This narrowed result does not restore unrestricted full-manuscript convergence."],
+      };
+    }
+    const latest = await createNoEditEvidence(projectRoot, options);
+    await writeFile(trackerPath, baseTracker, "utf8");
+    if (outcome === "not_satisfied") {
+      const coverageIndexPath = path.join(projectRoot, latest.coverageIndexReference.path);
+      const coverageIndex = JSON.parse(await readFile(coverageIndexPath, "utf8"));
+      coverageIndex.entries[0].synthesis_coverage = "partial";
+      await writeJson(coverageIndexPath, coverageIndex);
+      latest.coverageIndexReference.sha256 = createHash("sha256")
+        .update(await readFile(coverageIndexPath))
+        .digest("hex");
+    }
+    const latestEvaluation = await evaluate(
+      latest,
+      `evaluation-latest-${outcome}`,
+      outcome === "indeterminate" ? [latest.freshAttestationReference] : null,
+    );
+    assert.equal(latestEvaluation.status, 1, `${outcome}: ${latestEvaluation.stdout}\n${latestEvaluation.stderr}`);
+    assert.equal(
+      JSON.parse(latestEvaluation.stdout).evaluation.outcome,
+      outcome === "narrowed" ? "not_satisfied" : outcome,
+    );
+
+    const started = await runInput(projectRoot, "start-cycle", {
+      cycle_id: `cycle-blocked-${outcome}`,
+      initiating_strategy: "revise-request",
+      bootstrap: false,
+      starting_scope: base.scopeReference,
+    });
+    assert.equal(started.status, 1, `${outcome}: ${started.stdout}\n${started.stderr}`);
+    assert.equal(
+      JSON.parse(started.stdout).blockers[0].code,
+      "starting-evaluation-indeterminate",
+      outcome,
+    );
+    await assert.rejects(
+      readFile(path.join(projectRoot, ".author-toolkit", "convergence", "active-cycle.json")),
+      { code: "ENOENT" },
+    );
+  }
 });
 
 
@@ -299,26 +387,6 @@ test("manuscript-changing revise-fiction uses verified execution and restores fu
   });
   assert.equal(transitioned.status, 0, `${transitioned.stdout}\n${transitioned.stderr}`);
 
-  const trackerPath = path.join(projectRoot, "audit-tracker.md");
-  for (const approval of [{
-    id: "PLAN-001",
-    type: "revision-plan",
-    operation: "revision-plan",
-    reason: "Author confirmed the exact whole-book revision plan.",
-  }, {
-    id: "EDIT-001",
-    type: "edit",
-    operation: "chapter-revision",
-    reason: "Author approved the exact input and planned output versions.",
-  }]) {
-    const tracker = await readFile(trackerPath, "utf8");
-    const separator = "|---|---|---|---|---|---|---|---|\n";
-    const index = tracker.indexOf(separator, tracker.indexOf("## Approvals"));
-    assert.ok(index >= 0);
-    const insertAt = index + separator.length;
-    const row = `| ${approval.id} | ${approval.type} | ${approval.operation} | scope-001 | \`manuscript/chapter-001.md\` | approved | ${approval.reason} | ${timestamp} |\n`;
-    await writeFile(trackerPath, tracker.slice(0, insertAt) + row + tracker.slice(insertAt), "utf8");
-  }
   const planRelative = "sessions/fiction-plan-001.md";
   const batchRelative = "sessions/fiction-batch-001.json";
   await writeFile(path.join(projectRoot, planRelative), "# Whole-book revision plan\n\nChange dawn to dusk.\n", "utf8");
@@ -335,7 +403,7 @@ test("manuscript-changing revise-fiction uses verified execution and restores fu
     approval_id: "EDIT-001",
     scope_id: "scope-001",
   });
-  const prepared = await runInput(projectRoot, "prepare-revision-execution", {
+  const execution = {
     cycle_id: "cycle-fiction-001",
     expected_revision: 2,
     execution_id: "execution-fiction-001",
@@ -362,7 +430,11 @@ test("manuscript-changing revise-fiction uses verified execution and restores fu
       input_sha256: createHash("sha256").update(original).digest("hex"),
       output_sha256: createHash("sha256").update(output).digest("hex"),
     }],
+  };
+  await appendRevisionExecutionApprovals(projectRoot, execution, {
+    planReason: "Author confirmed the exact whole-book revision plan.",
   });
+  const prepared = await runInput(projectRoot, "prepare-revision-execution", execution);
   assert.equal(prepared.status, 0, `${prepared.stdout}\n${prepared.stderr}`);
 
   await writeFile(path.join(projectRoot, "manuscript", "chapter-001.md"), output, "utf8");
@@ -403,13 +475,58 @@ test("manuscript-changing revise-fiction uses verified execution and restores fu
     "evaluate-cycle",
     target.evaluationInput("evaluation-fiction-002", 5, "cycle-fiction-001"),
   );
-  assert.equal(evaluated.status, 0, `${evaluated.stdout}\n${evaluated.stderr}`);
-  assert.equal(JSON.parse(evaluated.stdout).evaluation.outcome, "satisfied");
+  assert.equal(evaluated.status, 1, `${evaluated.stdout}\n${evaluated.stderr}`);
+  const currentScopeOnly = JSON.parse(evaluated.stdout).evaluation;
+  assert.equal(currentScopeOnly.outcome, "not_satisfied");
+  assert.ok(currentScopeOnly.blockers.some(
+    (blocker) => blocker.code === "whole-book-operation-missing"
+  ));
+  assert.ok(currentScopeOnly.blockers.some(
+    (blocker) => blocker.code === "whole-book-final-review-mismatch"
+  ));
+
+  const wholeBook = await createNoEditEvidence(projectRoot, {
+    passId: "pass-003-whole-book",
+    baselinePass: base.passReference,
+    noEditDecisionId: "NOEDIT-003",
+    storyBibleDecisionId: "STORY-003",
+    wholeBook: true,
+  });
+  const wholeBookLinked = await runInput(projectRoot, "transition-cycle", {
+    cycle_id: "cycle-fiction-001",
+    expected_revision: 6,
+    current_strategy: "revise-fiction",
+    recovery_position: {
+      operation: "final-review",
+      reason: "Story Bible, structure, and final-review evidence now cover the full target.",
+    },
+    requested_pass: wholeBook.passReference,
+    related_artifacts: {
+      review_groups: [wholeBook.reviewGroupReference],
+      reviews: wholeBook.reviewJobs.map(({ reference }) => reference),
+      no_edit_skips: [wholeBook.noEditReference],
+    },
+  });
+  assert.equal(wholeBookLinked.status, 0, `${wholeBookLinked.stdout}\n${wholeBookLinked.stderr}`);
+  const wholeBookEvaluated = await runInput(
+    projectRoot,
+    "evaluate-cycle",
+    wholeBook.evaluationInput("evaluation-fiction-003", 7, "cycle-fiction-001"),
+  );
+  assert.equal(wholeBookEvaluated.status, 0, `${wholeBookEvaluated.stdout}\n${wholeBookEvaluated.stderr}`);
+  const wholeBookResult = JSON.parse(wholeBookEvaluated.stdout);
+  assert.equal(wholeBookResult.evaluation.outcome, "satisfied");
+  assert.ok(wholeBookResult.evaluation.evidence_graph.artifacts.some((artifact) =>
+    artifact.role === "report" && artifact.path === wholeBook.reports.find(
+      (reference) => reference.report_id === "pass-003-whole-book-story-bible"
+    ).path
+  ));
+  assert.ok(wholeBook.reviewJobs.every(({ job }) => job.mode === "final"));
 
   const completed = await runInput(projectRoot, "complete-cycle", {
     cycle_id: "cycle-fiction-001",
-    expected_revision: 6,
-    evaluation_id: "evaluation-fiction-002-completion",
+    expected_revision: 8,
+    evaluation_id: "evaluation-fiction-003-completion",
     decision_id: "COMPLETE-002",
     author_confirmed: true,
   });

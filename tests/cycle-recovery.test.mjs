@@ -17,6 +17,8 @@ import {
   verifyRevisionExecution,
 } from "../scripts/lib/index.mjs";
 import {
+  appendRevisionExecutionApprovals,
+  appendTrackerApproval as appendRecoveryApproval,
   artifactAt,
   createConvergenceProject,
   createFirstPublicationArtifacts,
@@ -481,17 +483,6 @@ for (const phase of ["after-operation-manifest", "after-evaluation", "after-comp
 }
 
 
-async function appendRecoveryApproval(projectRoot, approval) {
-  const trackerPath = path.join(projectRoot, "audit-tracker.md");
-  const tracker = await readFile(trackerPath, "utf8");
-  const separator = "|---|---|---|---|---|---|---|---|\n";
-  const index = tracker.indexOf(separator, tracker.indexOf("## Approvals"));
-  const insertAt = index + separator.length;
-  const paths = approval.paths.map((value) => `\`${value}\``).join(", ");
-  const row = `| ${approval.id} | ${approval.type} | ${approval.operation} | ${approval.scopeId} | ${paths} | approved | ${approval.reason} | ${timestamp} |\n`;
-  await writeFile(trackerPath, tracker.slice(0, insertAt) + row + tracker.slice(insertAt), "utf8");
-}
-
 async function establishChapterRevision(t, { strategy = null } = {}) {
   let fixture;
   let cycleId = "cycle-bootstrap-001";
@@ -538,23 +529,6 @@ async function establishChapterRevision(t, { strategy = null } = {}) {
   });
   assert.equal(transitioned.valid, true, JSON.stringify(transitioned.blockers));
   const scope = fixture.evidence.scopeReference;
-  for (const approval of [{
-    id: "PLAN-001",
-    type: "revision-plan",
-    operation: "revision-plan",
-    reason: "Author confirmed the exact revision plan.",
-  }, {
-    id: "EDIT-001",
-    type: "edit",
-    operation: "chapter-revision",
-    reason: "Author approved the exact input and planned output versions.",
-  }]) {
-    await appendRecoveryApproval(fixture.projectRoot, {
-      ...approval,
-      scopeId: scope.scope_id,
-      paths: ["manuscript/chapter-001.md"],
-    });
-  }
   const original = "The ferry leaves at dawn.\nMara watches it go.";
   const output = "The ferry leaves at dusk.\nMara watches it go.";
   const planRelative = "sessions/request-plan-001.md";
@@ -601,6 +575,7 @@ async function establishChapterRevision(t, { strategy = null } = {}) {
       output_sha256: createHash("sha256").update(output).digest("hex"),
     }],
   };
+  await appendRevisionExecutionApprovals(fixture.projectRoot, execution);
   return { ...fixture, execution, original, output, backupRelative };
 }
 

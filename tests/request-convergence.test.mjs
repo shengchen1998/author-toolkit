@@ -1,46 +1,39 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import test from "node:test";
 
 import { recordScope } from "../scripts/lib/index.mjs";
 import {
+  appendRevisionExecutionApprovals,
+  appendTrackerApproval as appendApproval,
   artifactAt,
   createConvergenceProject,
   createFirstPublicationArtifacts,
   createNoEditEvidence,
   currentScopeReference,
-  runAuthorProject,
   runAuthorProjectAsync,
+  runInput,
   runValidator,
   timestamp,
   writeJson,
 } from "./convergence-helpers.mjs";
 
-async function runInput(projectRoot, command, input) {
-  const inputPath = await writeJson(
-    path.join(projectRoot, `${command}-${input.execution_id ?? input.cycle_id}.json`),
-    input,
-  );
-  return runAuthorProject([command, "--project-root", projectRoot, "--input", inputPath]);
-}
-
-async function appendApproval(projectRoot, approval) {
-  const trackerPath = path.join(projectRoot, "audit-tracker.md");
-  const tracker = await readFile(trackerPath, "utf8");
-  const separator = "|---|---|---|---|---|---|---|---|\n";
-  const index = tracker.indexOf(separator, tracker.indexOf("## Approvals"));
-  assert.ok(index >= 0);
-  const insertAt = index + separator.length;
-  const paths = approval.paths.map((value) => `\`${value}\``).join(", ");
-  const row = `| ${approval.id} | ${approval.type} | ${approval.operation} | ${approval.scopeId} | ${paths} | approved | ${approval.reason} | ${timestamp} |\n`;
-  await writeFile(trackerPath, tracker.slice(0, insertAt) + row + tracker.slice(insertAt), "utf8");
-}
-
-async function preparedProject(t) {
+async function preparedProject(t, { actions = null, inputOrder = null, inputs = null } = {}) {
   const original = "The ferry leaves at dawn.\nMara watches it go.";
   const output = "The ferry leaves at dusk.\nMara watches it go.";
+  const batchActions = actions ?? [{
+    path: "manuscript/chapter-001.md",
+    action: "modify",
+    input: original,
+    output,
+  }];
+  const inputFiles = inputs ?? batchActions
+    .filter((action) => action.input !== null)
+    .map(({ path: filePath, input }) => ({ path: filePath, input }));
+  const inputByPath = new Map(inputFiles.map((file) => [file.path, file.input]));
+  const orderedInputPaths = inputOrder ?? inputFiles.map((file) => file.path);
   const { projectRoot } = await createConvergenceProject(t);
   const started = await runInput(projectRoot, "start-cycle", {
     cycle_id: "cycle-bootstrap-001",
@@ -49,15 +42,18 @@ async function preparedProject(t) {
     starting_scope: null,
   });
   assert.equal(started.status, 0, `${started.stdout}\n${started.stderr}`);
-  await writeFile(path.join(projectRoot, "manuscript", "chapter-001.md"), original, "utf8");
+  for (const file of inputFiles) {
+    await mkdir(path.dirname(path.join(projectRoot, file.path)), { recursive: true });
+    await writeFile(path.join(projectRoot, file.path), file.input, "utf8");
+  }
   await recordScope(projectRoot, {
     scope_id: "scope-request-001",
     description: "The complete manuscript before the approved request edit.",
     status: "confirmed",
-    files: [{
-      path: "manuscript/chapter-001.md",
-      sha256: createHash("sha256").update(original).digest("hex"),
-    }],
+    files: orderedInputPaths.map((filePath) => ({
+      path: filePath,
+      sha256: createHash("sha256").update(inputByPath.get(filePath)).digest("hex"),
+    })),
     excluded_files: [],
     created_at: timestamp,
   }, {
@@ -85,23 +81,6 @@ async function preparedProject(t) {
   });
   assert.equal(transitioned.status, 0, transitioned.stderr);
 
-  for (const approval of [{
-    id: "PLAN-001",
-    type: "revision-plan",
-    operation: "revision-plan",
-    reason: "Author confirmed the exact request plan and finding disposition.",
-  }, {
-    id: "EDIT-001",
-    type: "edit",
-    operation: "chapter-revision",
-    reason: "Author approved the exact input and planned output versions.",
-  }]) {
-    await appendApproval(projectRoot, {
-      ...approval,
-      scopeId: scope.scope_id,
-      paths: ["manuscript/chapter-001.md"],
-    });
-  }
   const planRelative = "sessions/request-plan-001.md";
   const batchRelative = "sessions/request-batch-001.json";
   await writeFile(
@@ -113,9 +92,18 @@ async function preparedProject(t) {
     batch_id: "request-batch-001",
     action: "Change dawn to dusk in chapter 1.",
   });
-  const backupRelative = ".author-toolkit/backups/backup-001/manuscript/chapter-001.md";
-  await mkdir(path.dirname(path.join(projectRoot, backupRelative)), { recursive: true });
-  await writeFile(path.join(projectRoot, backupRelative), original, "utf8");
+  const backupFiles = [];
+  for (const action of batchActions) {
+    if (action.action === "create") continue;
+    const backupRelative = `.author-toolkit/backups/backup-001/${action.path}`;
+    await mkdir(path.dirname(path.join(projectRoot, backupRelative)), { recursive: true });
+    await writeFile(path.join(projectRoot, backupRelative), action.input, "utf8");
+    backupFiles.push({
+      path: action.path,
+      backup_path: backupRelative,
+      sha256: createHash("sha256").update(action.input).digest("hex"),
+    });
+  }
   const backupManifestRelative = ".author-toolkit/backups/backup-001/manifest.json";
   await writeJson(path.join(projectRoot, backupManifestRelative), {
     backup_id: "backup-001",
@@ -133,24 +121,23 @@ async function preparedProject(t) {
     finding_dispositions: [],
     author_decision_ids: ["PLAN-001"],
     approval_ids: ["EDIT-001"],
-    backups: [{
+    backups: backupFiles.length > 0 ? [{
       backup_id: "backup-001",
       approval_id: "EDIT-001",
       manifest: await artifactAt(projectRoot, backupManifestRelative),
-      files: [{
-        path: "manuscript/chapter-001.md",
-        backup_path: backupRelative,
-        sha256: createHash("sha256").update(original).digest("hex"),
-      }],
-    }],
-    files: [{
-      path: "manuscript/chapter-001.md",
-      action: "modify",
-      input_sha256: createHash("sha256").update(original).digest("hex"),
-      output_sha256: createHash("sha256").update(output).digest("hex"),
-    }],
+      files: backupFiles,
+    }] : [],
+    files: batchActions.map((action) => ({
+      path: action.path,
+      action: action.action,
+      input_sha256: action.input === null ? null : createHash("sha256").update(action.input).digest("hex"),
+      output_sha256: action.output === null ? null : createHash("sha256").update(action.output).digest("hex"),
+    })),
   };
-  return { projectRoot, evidence, scope, original, output, execution };
+  await appendRevisionExecutionApprovals(projectRoot, execution, {
+    planReason: "Author confirmed the exact request plan and finding disposition.",
+  });
+  return { projectRoot, evidence, scope, original, output, execution, actions: batchActions, inputOrder: orderedInputPaths };
 }
 
 test("an approved batch remains prepared until current output bytes verify", async (t) => {
@@ -232,6 +219,188 @@ test("an approved batch remains prepared until current output bytes verify", asy
 });
 
 
+test("revision preparation rejects stale approvals for changed batches, actions, outputs, scope fingerprints, and plan operations", async (t) => {
+  for (const change of ["batch", "action", "output", "scope-fingerprint", "plan-operation"]) {
+    const fixture = await preparedProject(t);
+    const execution = {
+      ...fixture.execution,
+      execution_id: `execution-stale-${change}`,
+      files: structuredClone(fixture.execution.files),
+    };
+    const trackerPath = path.join(fixture.projectRoot, "audit-tracker.md");
+    if (change === "batch") {
+      const batchPath = path.join(fixture.projectRoot, execution.batch.path);
+      await writeJson(batchPath, {
+        batch_id: execution.batch.batch_id,
+        action: "Replace the approved batch with different content under the same scope ID.",
+      });
+      execution.batch = await artifactAt(fixture.projectRoot, execution.batch.path);
+    }
+    if (change === "action") execution.files[0].action = "reorder";
+    if (change === "output") {
+      execution.files[0].output_sha256 = createHash("sha256")
+        .update("This output was not covered by the original approval.")
+        .digest("hex");
+    }
+    if (change === "scope-fingerprint") {
+      const tracker = await readFile(trackerPath, "utf8");
+      await writeFile(
+        trackerPath,
+        tracker.replaceAll(execution.input_scope.scope_fingerprint, "0".repeat(64)),
+        "utf8",
+      );
+    }
+    if (change === "plan-operation") {
+      const tracker = await readFile(trackerPath, "utf8");
+      await writeFile(
+        trackerPath,
+        tracker.replace(
+          "| PLAN-001 | revision-plan | revision-plan |",
+          "| PLAN-001 | revision-plan | chapter-revision |",
+        ),
+        "utf8",
+      );
+    }
+
+    const prepared = await runInput(fixture.projectRoot, "prepare-revision-execution", execution);
+    assert.equal(prepared.status, 1, `${change}: ${prepared.stdout}\n${prepared.stderr}`);
+    assert.equal(
+      JSON.parse(prepared.stdout).blockers[0].code,
+      "revision-execution-preparation-invalid",
+      change,
+    );
+    await assert.rejects(
+      readFile(path.join(
+        fixture.projectRoot,
+        ".author-toolkit",
+        "convergence",
+        "executions",
+        `${execution.execution_id}.json`,
+      )),
+      { code: "ENOENT" },
+    );
+  }
+});
+
+
+test("verification preserves prepared requested subchecks and rejects a reduced final pass", async (t) => {
+  const fixture = await preparedProject(t);
+  const expanded = await createNoEditEvidence(fixture.projectRoot, {
+    passId: "pass-prepared-expanded-002",
+    baselinePass: fixture.evidence.passReference,
+    noEditDecisionId: "NOEDIT-202",
+    requestedSubchecks: [{
+      operation: "diagnostics",
+      subcheck: "information-release",
+      author_decision_id: "REQUEST-202",
+    }],
+  });
+  const transition = await runInput(fixture.projectRoot, "transition-cycle", {
+    cycle_id: "cycle-bootstrap-001",
+    expected_revision: 2,
+    current_strategy: "revise-draft",
+    recovery_position: {
+      operation: "chapter-revision",
+      reason: "Prepare the approved edit with one additional required check.",
+    },
+    requested_pass: expanded.passReference,
+  });
+  assert.equal(transition.status, 0, `${transition.stdout}\n${transition.stderr}`);
+  const prepared = await runInput(fixture.projectRoot, "prepare-revision-execution", {
+    ...fixture.execution,
+    expected_revision: 3,
+    requested_pass: expanded.passReference,
+  });
+  assert.equal(prepared.status, 0, `${prepared.stdout}\n${prepared.stderr}`);
+  const preparedResult = JSON.parse(prepared.stdout);
+
+  await writeFile(
+    path.join(fixture.projectRoot, "manuscript", "chapter-001.md"),
+    fixture.output,
+    "utf8",
+  );
+  await recordScope(fixture.projectRoot, {
+    scope_id: fixture.scope.scope_id,
+    description: "The complete manuscript after the approved request edit.",
+    status: "confirmed",
+    files: [{
+      path: "manuscript/chapter-001.md",
+      sha256: createHash("sha256").update(fixture.output).digest("hex"),
+    }],
+    excluded_files: [],
+    created_at: timestamp,
+  }, {
+    authorConfirmation: {
+      decision_id: "SCOPE-002",
+      confirmed_at: timestamp,
+      reading_order_confirmed: true,
+    },
+    now: new Date(timestamp),
+  });
+  const targetScope = await currentScopeReference(fixture.projectRoot);
+  const reduced = await createNoEditEvidence(fixture.projectRoot, {
+    passId: "pass-final-reduced-003",
+    baselinePass: fixture.evidence.passReference,
+    noEditDecisionId: "NOEDIT-203",
+  });
+  assert.ok(
+    expanded.pass.required_operations
+      .find((requirement) => requirement.operation === "diagnostics")
+      .subchecks.includes("information-release"),
+  );
+  assert.ok(
+    !reduced.pass.required_operations
+      .find((requirement) => requirement.operation === "diagnostics")
+      .subchecks.includes("information-release"),
+  );
+
+  const verified = await runInput(fixture.projectRoot, "verify-revision-execution", {
+    cycle_id: "cycle-bootstrap-001",
+    expected_revision: 4,
+    execution_id: "execution-001",
+    requested_pass: reduced.passReference,
+    target_scope: targetScope,
+  });
+  assert.equal(verified.status, 1, `${verified.stdout}\n${verified.stderr}`);
+  const failed = JSON.parse(verified.stdout);
+  assert.equal(failed.blockers[0].code, "revision-pass-requirements-reduced");
+  assert.equal(failed.state_written, false);
+  assert.equal(
+    JSON.parse(await readFile(preparedResult.execution_path, "utf8")).status,
+    "prepared",
+  );
+  const active = JSON.parse(await readFile(
+    path.join(fixture.projectRoot, ".author-toolkit", "convergence", "active-cycle.json"),
+    "utf8",
+  ));
+  assert.equal(active.revision, 4);
+  assert.equal(active.requested_pass.pass_id, expanded.pass.pass_id);
+  assert.equal(active.target_scope.scope_fingerprint, fixture.scope.scope_fingerprint);
+
+  const lawfulFinal = await createNoEditEvidence(fixture.projectRoot, {
+    passId: "pass-final-expanded-004",
+    baselinePass: expanded.passReference,
+    noEditDecisionId: "NOEDIT-204",
+  });
+  const lawfulVerification = await runInput(fixture.projectRoot, "verify-revision-execution", {
+    cycle_id: "cycle-bootstrap-001",
+    expected_revision: 4,
+    execution_id: "execution-001",
+    requested_pass: lawfulFinal.passReference,
+    target_scope: targetScope,
+  });
+  assert.equal(lawfulVerification.status, 0, `${lawfulVerification.stdout}\n${lawfulVerification.stderr}`);
+  const lawfulResult = JSON.parse(lawfulVerification.stdout);
+  assert.equal(lawfulResult.execution.status, "verified");
+  assert.ok(
+    lawfulResult.cycle.requested_pass.pass_fingerprint === lawfulFinal.passReference.pass_fingerprint &&
+    lawfulFinal.pass.required_operations
+      .find((requirement) => requirement.operation === "diagnostics")
+      .subchecks.includes("information-release"),
+  );
+});
+
+
 test("approval without verified execution blocks convergence as not_satisfied", async (t) => {
   const fixture = await preparedProject(t);
   const prepared = await runInput(
@@ -299,6 +468,149 @@ async function completeBootstrapBase(fixture) {
   });
   assert.equal(completed.status, 0, `${completed.stdout}\n${completed.stderr}`);
 }
+
+test("revision verification compares retained paths by relative order for insertion, deletion, and reorder", async (t) => {
+  const first = "Chapter one remains unchanged.\n";
+  const second = "Chapter two remains unchanged.\n";
+  const inserted = "The inserted chapter has approved content.\n";
+  const firstPath = "manuscript/chapter-001.md";
+  const secondPath = "manuscript/chapter-002.md";
+  const insertedPath = "manuscript/chapter-inserted.md";
+  const scenarios = [{
+    name: "insertion",
+    inputs: [{ path: firstPath, input: first }, { path: secondPath, input: second }],
+    actions: [{ path: insertedPath, action: "create", input: null, output: inserted }],
+    target: [
+      { path: firstPath, contents: first },
+      { path: insertedPath, contents: inserted },
+      { path: secondPath, contents: second },
+    ],
+    created: [insertedPath],
+    deleted: [],
+    reordered: [],
+  }, {
+    name: "deletion",
+    inputs: [{ path: firstPath, input: first }, { path: secondPath, input: second }],
+    actions: [{ path: firstPath, action: "delete", input: first, output: null }],
+    target: [{ path: secondPath, contents: second }],
+    created: [],
+    deleted: [firstPath],
+    reordered: [],
+  }, {
+    name: "reorder",
+    inputs: [{ path: firstPath, input: first }, { path: secondPath, input: second }],
+    actions: [
+      { path: firstPath, action: "reorder", input: first, output: first },
+      { path: secondPath, action: "reorder", input: second, output: second },
+    ],
+    target: [
+      { path: secondPath, contents: second },
+      { path: firstPath, contents: first },
+    ],
+    created: [],
+    deleted: [],
+    reordered: [firstPath, secondPath],
+  }, {
+    name: "modify-reorder",
+    inputs: [{ path: firstPath, input: first }, { path: secondPath, input: second }],
+    actions: [
+      { path: firstPath, action: "modify", input: first, output: "Chapter one is revised and moved.\n" },
+      { path: secondPath, action: "reorder", input: second, output: second },
+    ],
+    target: [
+      { path: secondPath, contents: second },
+      { path: firstPath, contents: "Chapter one is revised and moved.\n" },
+    ],
+    created: [],
+    deleted: [],
+    reordered: [firstPath, secondPath],
+  }];
+
+  for (const [index, scenario] of scenarios.entries()) {
+    const suffix = index + 1;
+    const fixture = await preparedProject(t, {
+      inputs: scenario.inputs,
+      actions: scenario.actions,
+    });
+    await completeBootstrapBase(fixture);
+    const cycleId = `cycle-retained-${scenario.name}`;
+    const started = await runInput(fixture.projectRoot, "start-cycle", {
+      cycle_id: cycleId,
+      initiating_strategy: "revise-request",
+      bootstrap: false,
+      starting_scope: fixture.scope,
+    });
+    assert.equal(started.status, 0, `${scenario.name}: ${started.stdout}\n${started.stderr}`);
+    const beforeEdit = await createNoEditEvidence(fixture.projectRoot, {
+      passId: `pass-${scenario.name}-plan`,
+      baselinePass: fixture.evidence.passReference,
+      noEditDecisionId: `NOEDIT-30${suffix}`,
+    });
+    const planned = await runInput(fixture.projectRoot, "transition-cycle", {
+      cycle_id: cycleId,
+      expected_revision: 1,
+      current_strategy: "revise-request",
+      recovery_position: {
+        operation: "chapter-revision",
+        reason: `Verify the approved ${scenario.name} against retained relative order.`,
+      },
+      target_scope: fixture.scope,
+      requested_pass: beforeEdit.passReference,
+    });
+    assert.equal(planned.status, 0, `${scenario.name}: ${planned.stdout}\n${planned.stderr}`);
+    const prepared = await runInput(fixture.projectRoot, "prepare-revision-execution", {
+      ...fixture.execution,
+      cycle_id: cycleId,
+      expected_revision: 2,
+      requested_pass: beforeEdit.passReference,
+    });
+    assert.equal(prepared.status, 0, `${scenario.name}: ${prepared.stdout}\n${prepared.stderr}`);
+
+    const targetPaths = new Set(scenario.target.map((file) => file.path));
+    for (const input of scenario.inputs) {
+      if (!targetPaths.has(input.path)) await rm(path.join(fixture.projectRoot, input.path));
+    }
+    for (const file of scenario.target) {
+      await writeFile(path.join(fixture.projectRoot, file.path), file.contents, "utf8");
+    }
+    await recordScope(fixture.projectRoot, {
+      scope_id: fixture.scope.scope_id,
+      description: `The complete manuscript after approved ${scenario.name}.`,
+      status: "confirmed",
+      files: scenario.target.map((file) => ({
+        path: file.path,
+        sha256: createHash("sha256").update(file.contents).digest("hex"),
+      })),
+      excluded_files: [],
+      created_at: timestamp,
+    }, {
+      authorConfirmation: {
+        decision_id: "SCOPE-002",
+        confirmed_at: timestamp,
+        reading_order_confirmed: true,
+      },
+      now: new Date(timestamp),
+    });
+    const targetScope = await currentScopeReference(fixture.projectRoot);
+    const finalEvidence = await createNoEditEvidence(fixture.projectRoot, {
+      passId: `pass-${scenario.name}-final`,
+      baselinePass: fixture.evidence.passReference,
+      noEditDecisionId: `NOEDIT-40${suffix}`,
+    });
+    const verified = await runInput(fixture.projectRoot, "verify-revision-execution", {
+      cycle_id: cycleId,
+      expected_revision: 3,
+      execution_id: fixture.execution.execution_id,
+      requested_pass: finalEvidence.passReference,
+      target_scope: targetScope,
+    });
+    assert.equal(verified.status, 0, `${scenario.name}: ${verified.stdout}\n${verified.stderr}`);
+    const changeSet = JSON.parse(verified.stdout).cycle.change_set;
+    assert.deepEqual(changeSet.created.map((file) => file.path), scenario.created, scenario.name);
+    assert.deepEqual(changeSet.deleted.map((file) => file.path), scenario.deleted, scenario.name);
+    assert.deepEqual(changeSet.reordered.map((file) => file.path), scenario.reordered, scenario.name);
+  }
+});
 
 test("an edited request preserves its base and completes only after full-target convergence", async (t) => {
   const fixture = await preparedProject(t);
@@ -453,28 +765,14 @@ test("an edited request preserves its base and completes only after full-target 
   assert.ok(openResult.evaluation.blockers.some((blocker) => blocker.code === "open-findings"));
 
   const reworkOutput = "The ferry leaves at night.\nMara watches it go.";
-  for (const approval of [{
-    id: "PLAN-101",
-    type: "revision-plan",
-    operation: "revision-plan",
-    reason: "Author accepted the review finding and confirmed its exact rework plan.",
-  }, {
-    id: "EDIT-101",
-    type: "edit",
-    operation: "chapter-revision",
-    reason: "Author approved the review-finding rework input and output versions.",
-  }, {
+  await appendApproval(fixture.projectRoot, {
     id: "RESOLVE-101",
     type: "finding-decision",
     operation: "current-scope-review",
+    scopeId: target.scope_id,
+    paths: ["manuscript/chapter-001.md"],
     reason: "Author accepted the review finding for verified execution.",
-  }]) {
-    await appendApproval(fixture.projectRoot, {
-      ...approval,
-      scopeId: target.scope_id,
-      paths: ["manuscript/chapter-001.md"],
-    });
-  }
+  });
   const reworkPlan = "sessions/request-plan-101.md";
   const reworkBatch = "sessions/request-batch-101.json";
   await writeFile(
@@ -505,7 +803,7 @@ test("an edited request preserves its base and completes only after full-target 
     },
   });
   assert.equal(reworkPlanned.status, 0, reworkPlanned.stderr);
-  const reworkPrepared = await runInput(fixture.projectRoot, "prepare-revision-execution", {
+  const reworkExecution = {
     cycle_id: "cycle-request-002",
     expected_revision: 8,
     execution_id: "execution-101",
@@ -536,7 +834,16 @@ test("an edited request preserves its base and completes only after full-target 
       input_sha256: createHash("sha256").update(fixture.output).digest("hex"),
       output_sha256: createHash("sha256").update(reworkOutput).digest("hex"),
     }],
+  };
+  await appendRevisionExecutionApprovals(fixture.projectRoot, reworkExecution, {
+    planReason: "Author accepted the review finding and confirmed its exact rework plan.",
+    editReason: "Author approved the review-finding rework input and output versions.",
   });
+  const reworkPrepared = await runInput(
+    fixture.projectRoot,
+    "prepare-revision-execution",
+    reworkExecution,
+  );
   assert.equal(reworkPrepared.status, 0, `${reworkPrepared.stdout}\n${reworkPrepared.stderr}`);
   await writeFile(manuscriptPath, reworkOutput, "utf8");
   await recordScope(fixture.projectRoot, {

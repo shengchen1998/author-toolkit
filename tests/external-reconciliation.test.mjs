@@ -6,10 +6,12 @@ import test from "node:test";
 
 import { computeInventoryFingerprint, recordScope } from "../scripts/lib/index.mjs";
 import {
+  appendTrackerApproval as appendApproval,
   createConvergenceProject,
   createNoEditEvidence,
   currentScopeReference,
   runAuthorProject,
+  runInput,
   runValidator,
   timestamp,
   writeJson,
@@ -17,14 +19,6 @@ import {
 
 function sha256(value) {
   return createHash("sha256").update(value).digest("hex");
-}
-
-async function runInput(projectRoot, command, input) {
-  const inputPath = await writeJson(
-    path.join(projectRoot, `${command}-${input.cycle_id ?? input.reconciliation_id ?? "request"}.json`),
-    input,
-  );
-  return runAuthorProject([command, "--project-root", projectRoot, "--input", inputPath]);
 }
 
 async function establishSatisfiedProject(t, manuscripts = [{
@@ -182,18 +176,6 @@ test("an approved external modification reconciles into the same cycle without r
     startingSnapshotBefore,
   );
 });
-
-async function appendApproval(projectRoot, approval) {
-  const trackerPath = path.join(projectRoot, "audit-tracker.md");
-  const tracker = await readFile(trackerPath, "utf8");
-  const separator = "|---|---|---|---|---|---|---|---|\n";
-  const index = tracker.indexOf(separator, tracker.indexOf("## Approvals"));
-  assert.ok(index >= 0);
-  const insertAt = index + separator.length;
-  const paths = approval.paths.map((value) => `\`${value}\``).join(", ");
-  const row = `| ${approval.id} | ${approval.type} | ${approval.operation} | ${approval.scopeId} | ${paths} | approved | ${approval.reason} | ${timestamp} |\n`;
-  await writeFile(trackerPath, tracker.slice(0, insertAt) + row + tracker.slice(insertAt), "utf8");
-}
 
 async function confirmImportedScope(projectRoot, decisionId, scopeId = "scope-001") {
   const manifest = JSON.parse(await readFile(

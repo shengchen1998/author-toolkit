@@ -6,11 +6,12 @@ import test from "node:test";
 
 import { recordScope } from "../scripts/lib/index.mjs";
 import {
+  appendRevisionExecutionApprovals,
   artifactAt,
   createConvergenceProject,
   createNoEditEvidence,
   currentScopeReference,
-  runAuthorProject,
+  runInput,
   runValidator,
   timestamp,
   writeJson,
@@ -19,14 +20,6 @@ import {
 const original = "The ferry leaves at dawn.\nMara watches it go.";
 const output = "The ferry leaves at dusk.\nMara watches it go.";
 const manuscriptPath = "manuscript/chapter-001.md";
-
-async function runInput(projectRoot, command, input) {
-  const inputPath = await writeJson(
-    path.join(projectRoot, `${command}-${input.evaluation_id ?? input.cycle_id ?? input.execution_id ?? input.strategy}.json`),
-    input,
-  );
-  return runAuthorProject([command, "--project-root", projectRoot, "--input", inputPath]);
-}
 
 async function confirmScope(projectRoot, contents, decisionId) {
   await recordScope(projectRoot, {
@@ -61,17 +54,6 @@ async function evaluateDraft(projectRoot, evidence, evaluationId, revisionExecut
     revision_executions: revisionExecutions,
     semantic_attestations: [evidence.hostAttestationReference, evidence.freshAttestationReference],
   });
-}
-
-async function appendApproval(projectRoot, approval) {
-  const trackerPath = path.join(projectRoot, "audit-tracker.md");
-  const tracker = await readFile(trackerPath, "utf8");
-  const separator = "|---|---|---|---|---|---|---|---|\n";
-  const index = tracker.indexOf(separator, tracker.indexOf("## Approvals"));
-  assert.ok(index >= 0);
-  const insertAt = index + separator.length;
-  const row = `| ${approval.id} | ${approval.type} | ${approval.operation} | scope-001 | \`${manuscriptPath}\` | approved | ${approval.reason} | ${timestamp} |\n`;
-  await writeFile(trackerPath, tracker.slice(0, insertAt) + row + tracker.slice(insertAt), "utf8");
 }
 
 async function executionRequest(projectRoot, evidence, input, plannedOutput) {
@@ -132,20 +114,11 @@ test("an independent resolved finding recovers only through verified output and 
   const baseEvaluation = await evaluateDraft(projectRoot, base, "evaluation-independent-001");
   assert.equal(baseEvaluation.status, 0, `${baseEvaluation.stdout}\n${baseEvaluation.stderr}`);
 
-  for (const approval of [{
-    id: "PLAN-002",
-    type: "revision-plan",
-    operation: "revision-plan",
-    reason: "Author accepted DIAG-001 for the exact independent edit.",
-  }, {
-    id: "EDIT-002",
-    type: "edit",
-    operation: "chapter-revision",
-    reason: "Author approved the exact independent input and planned output.",
-  }]) {
-    await appendApproval(projectRoot, approval);
-  }
   const preparation = await executionRequest(projectRoot, base, original, output);
+  await appendRevisionExecutionApprovals(projectRoot, preparation, {
+    planReason: "Author accepted DIAG-001 for the exact independent edit.",
+    editReason: "Author approved the exact independent input and planned output.",
+  });
   const prepared = await runInput(
     projectRoot,
     "prepare-draft-revision-execution",
@@ -297,20 +270,11 @@ test("independent preparation rejects changed current input without publishing a
   });
   await confirmScope(projectRoot, original, "SCOPE-001");
   const base = await createNoEditEvidence(projectRoot, { passId: "pass-001" });
-  for (const approval of [{
-    id: "PLAN-002",
-    type: "revision-plan",
-    operation: "revision-plan",
-    reason: "Author accepted DIAG-001 for the exact independent edit.",
-  }, {
-    id: "EDIT-002",
-    type: "edit",
-    operation: "chapter-revision",
-    reason: "Author approved the exact independent input and planned output.",
-  }]) {
-    await appendApproval(projectRoot, approval);
-  }
   const preparation = await executionRequest(projectRoot, base, original, output);
+  await appendRevisionExecutionApprovals(projectRoot, preparation, {
+    planReason: "Author accepted DIAG-001 for the exact independent edit.",
+    editReason: "Author approved the exact independent input and planned output.",
+  });
   await writeFile(path.join(projectRoot, manuscriptPath), "Changed before independent preparation.\n", "utf8");
 
   const prepared = await runInput(

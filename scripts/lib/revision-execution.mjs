@@ -17,7 +17,7 @@ import {
   validateRevisionExecutionSchema,
   validateScopeSnapshotSchema,
 } from "./schemas.mjs";
-import { validateFullManuscriptScope } from "./scope.mjs";
+import { diffManuscriptInventories, validateFullManuscriptScope } from "./scope.mjs";
 import {
   acquireDirectoryLock,
   createNoClobberVerified,
@@ -182,6 +182,48 @@ function contextError(code, message, pathValue = null, artifactId = null) {
   };
 }
 
+function revisionApprovalFingerprint(execution, operation) {
+  return sha256Bytes(JSON.stringify({
+    operation,
+    plan: {
+      plan_id: execution.plan.plan_id,
+      path: execution.plan.path,
+      sha256: execution.plan.sha256,
+    },
+    batch: {
+      batch_id: execution.batch.batch_id,
+      path: execution.batch.path,
+      sha256: execution.batch.sha256,
+    },
+    input_scope: {
+      scope_id: execution.input_scope.scope_id,
+      scope_fingerprint: execution.input_scope.scope_fingerprint,
+    },
+    files: execution.files.map(({ path: filePath, action, input_sha256, output_sha256 }) => ({
+      path: filePath,
+      action,
+      input_sha256,
+      output_sha256,
+    })),
+  }));
+}
+
+function revisionApprovalBindingMatches(approval, execution, operation) {
+  const expected = new Map([
+    ["plan_id", execution.plan.plan_id],
+    ["plan_sha256", execution.plan.sha256],
+    ["batch_id", execution.batch.batch_id],
+    ["batch_sha256", execution.batch.sha256],
+    ["scope_fingerprint", execution.input_scope.scope_fingerprint],
+    ["revision_approval", revisionApprovalFingerprint(execution, operation)],
+  ]);
+  const tokens = String(approval.reason ?? "").split(/\s+/).filter(Boolean);
+  return [...expected].every(([token, value]) =>
+    tokens.filter((candidate) => candidate.startsWith(`${token}=`)).length === 1 &&
+    tokens.includes(`${token}=${value}`)
+  );
+}
+
 async function validateExecutionContext(project, execution, options = {}) {
   const errors = [];
   const structural = validateRevisionExecution(execution);
@@ -235,15 +277,42 @@ async function validateExecutionContext(project, execution, options = {}) {
         if (
           !approval ||
           approval.status !== "approved" ||
+          approval.type !== "edit" ||
           approval.operation !== "chapter-revision" ||
           approval.scopeId !== execution.input_scope.scope_id ||
-          !allPaths.every((filePath) => approval.paths.includes(filePath))
+          JSON.stringify(approval.paths) !== JSON.stringify(allPaths) ||
+          !revisionApprovalBindingMatches(approval, execution, "chapter-revision")
         ) {
           errors.push(contextError(
             "revision-approval-mismatch",
-            `Edit approval ${approvalId} does not authorize the exact input scope, paths, and chapter-revision batch.`,
+            `Edit approval ${approvalId} does not authorize the exact plan, batch, input scope fingerprint, ordered paths, actions, input hashes, and approved outputs.`,
             null,
             approvalId,
+          ));
+        }
+      }
+      const planDecisions = execution.author_decision_ids
+        .map((decisionId) => approvalById.get(decisionId))
+        .filter((decision) => decision?.type === "revision-plan");
+      if (planDecisions.length !== 1) {
+        errors.push(contextError(
+          "revision-author-decision-missing",
+          "The execution requires exactly one revision-plan author decision.",
+        ));
+      } else {
+        const decision = planDecisions[0];
+        if (
+          decision.status !== "approved" ||
+          decision.operation !== "revision-plan" ||
+          decision.scopeId !== execution.input_scope.scope_id ||
+          JSON.stringify(decision.paths) !== JSON.stringify(allPaths) ||
+          !revisionApprovalBindingMatches(decision, execution, "revision-plan")
+        ) {
+          errors.push(contextError(
+            "revision-author-decision-missing",
+            `Plan decision ${decision.id} does not authorize the exact plan, batch, operation, input scope fingerprint, ordered paths, actions, input hashes, and approved outputs.`,
+            null,
+            decision.id,
           ));
         }
       }
@@ -253,6 +322,7 @@ async function validateExecutionContext(project, execution, options = {}) {
       ]);
       for (const decisionId of decisionIds) {
         const decision = approvalById.get(decisionId);
+        if (decision?.type === "revision-plan") continue;
         if (
           !decision ||
           decision.status !== "approved" ||
@@ -408,20 +478,13 @@ async function validateExecutionContext(project, execution, options = {}) {
 
     if (execution.status === "verified") {
       const expectedActions = new Map();
-      for (const file of targetScope.files) {
-        const before = inputScope.files.find((candidate) => candidate.path === file.path);
-        if (!before) expectedActions.set(file.path, "create");
-        else if (before.sha256 !== file.sha256) expectedActions.set(file.path, "modify");
+      const targetChanges = diffManuscriptInventories(inputScope, targetScope);
+      for (const file of targetChanges.created) expectedActions.set(file.path, "create");
+      for (const file of targetChanges.modified) expectedActions.set(file.path, "modify");
+      for (const file of targetChanges.deleted) expectedActions.set(file.path, "delete");
+      for (const file of targetChanges.reordered) {
+        if (!expectedActions.has(file.path)) expectedActions.set(file.path, "reorder");
       }
-      for (const file of inputScope.files) {
-        if (!outputByPath.has(file.path)) expectedActions.set(file.path, "delete");
-      }
-      const beforeOrder = new Map(inputScope.files.map((file, index) => [file.path, index]));
-      targetScope.files.forEach((file, index) => {
-        if (beforeOrder.has(file.path) && beforeOrder.get(file.path) !== index && !expectedActions.has(file.path)) {
-          expectedActions.set(file.path, "reorder");
-        }
-      });
       for (const [filePath, action] of expectedActions) {
         const actual = execution.files.find((file) => file.path === filePath);
         if (!actual || actual.action !== action) {
@@ -828,40 +891,50 @@ function validateVerifyRequest(request, { independent = false } = {}) {
   }
 }
 
+async function validateFinalPassExtension(project, preparedReference, finalReference) {
+  if (samePassReference(preparedReference, finalReference)) return [];
+  const prepared = await readCurrentPass(project, preparedReference);
+  const final = await readCurrentPass(project, finalReference);
+  const errors = [];
+  for (const requirement of prepared.required_operations) {
+    const finalRequirement = final.required_operations.find(
+      (candidate) => candidate.operation === requirement.operation
+    );
+    if (!finalRequirement) {
+      errors.push(contextError(
+        "revision-pass-requirements-reduced",
+        `Final pass removed prepared operation ${requirement.operation}.`,
+      ));
+      continue;
+    }
+    const missingSubchecks = requirement.subchecks.filter(
+      (subcheck) => !finalRequirement.subchecks.includes(subcheck)
+    );
+    if (missingSubchecks.length > 0) {
+      errors.push(contextError(
+        "revision-pass-requirements-reduced",
+        `Final pass reduced prepared ${requirement.operation} subchecks: ${missingSubchecks.join(", ")}.`,
+      ));
+    }
+  }
+  for (const request of prepared.requested_subchecks) {
+    const finalRequirement = final.required_operations.find(
+      (candidate) => candidate.operation === request.operation
+    );
+    if (!finalRequirement?.subchecks.includes(request.subcheck)) {
+      errors.push(contextError(
+        "revision-pass-requirements-reduced",
+        `Final pass removed prepared requested subcheck ${request.operation}/${request.subcheck}.`,
+        null,
+        request.author_decision_id,
+      ));
+    }
+  }
+  return errors;
+}
+
 function buildChangeSet(inputScope, targetScope) {
-  const beforeByPath = new Map(inputScope.files.map((file, index) => [file.path, { ...file, index }]));
-  const afterByPath = new Map(targetScope.files.map((file, index) => [file.path, { ...file, index }]));
-  const created = [];
-  const modified = [];
-  const deleted = [];
-  const reordered = [];
-  for (const file of targetScope.files) {
-    const before = beforeByPath.get(file.path);
-    if (!before) created.push({ path: file.path, sha256: file.sha256 });
-    else if (before.sha256 !== file.sha256) {
-      modified.push({ path: file.path, input_sha256: before.sha256, output_sha256: file.sha256 });
-    }
-    const after = afterByPath.get(file.path);
-    if (before && before.index !== after.index) {
-      reordered.push({ path: file.path, before_index: before.index, after_index: after.index });
-    }
-  }
-  for (const file of inputScope.files) {
-    if (!afterByPath.has(file.path)) deleted.push({ path: file.path, input_sha256: file.sha256 });
-  }
-  return {
-    created,
-    modified,
-    deleted,
-    reordered,
-    evidence_affected: [...new Set([
-      ...created.map((file) => file.path),
-      ...modified.map((file) => file.path),
-      ...deleted.map((file) => file.path),
-      ...reordered.map((file) => file.path),
-    ])],
-    dependency_affected: [],
-  };
+  return diffManuscriptInventories(inputScope, targetScope);
 }
 
 export async function verifyRevisionExecution(projectRoot, request, options = {}) {
@@ -890,6 +963,19 @@ export async function verifyRevisionExecution(projectRoot, request, options = {}
       !cycle.related_artifacts.revision_executions.some((reference) => reference.execution_id === request.execution_id)
     ) {
       return failure("revision-execution-identity-mismatch", "The prepared execution is not linked to this active cycle.", cycle);
+    }
+    let passReductions;
+    try {
+      passReductions = await validateFinalPassExtension(
+        project,
+        prepared.requested_pass,
+        request.requested_pass,
+      );
+    } catch (error) {
+      return failure("revision-execution-verification-invalid", "The prepared or final requested pass cannot be trusted.", cycle, [contextError("revision-artifact-mismatch", error.message)]);
+    }
+    if (passReductions.length > 0) {
+      return failure("revision-pass-requirements-reduced", "The final pass must preserve every prepared operation and subcheck; it may only add requirements.", cycle, passReductions);
     }
     const verifiedAt = prepared.status === "verified" ? prepared.verified_at : operationTime(options);
     const execution = {
@@ -994,6 +1080,19 @@ export async function verifyDraftRevisionExecution(projectRoot, request, options
       prepared.status !== "prepared"
     ) {
       return failure("revision-execution-identity-mismatch", "The independent execution is missing, already verified, or bound to a cycle.", null);
+    }
+    let passReductions;
+    try {
+      passReductions = await validateFinalPassExtension(
+        project,
+        prepared.requested_pass,
+        request.requested_pass,
+      );
+    } catch (error) {
+      return failure("revision-execution-verification-invalid", "The prepared or final requested pass cannot be trusted.", null, [contextError("revision-artifact-mismatch", error.message)]);
+    }
+    if (passReductions.length > 0) {
+      return failure("revision-pass-requirements-reduced", "The final pass must preserve every prepared operation and subcheck; it may only add requirements.", null, passReductions);
     }
     const verifiedAt = operationTime(options);
     const execution = {
