@@ -236,6 +236,66 @@ export async function appendRevisionExecutionApprovals(projectRoot, execution, o
   }
 }
 
+export async function createRevisionExecutionFixture(projectRoot, options = {}) {
+  const original = options.original ?? "The ferry leaves at dawn.\nMara watches it go.";
+  const output = options.output ?? "The ferry leaves at dusk.\nMara watches it go.";
+  const manuscriptPath = options.manuscriptPath ?? "manuscript/chapter-001.md";
+  const planId = options.planId ?? "cross-plan-001";
+  const batchId = options.batchId ?? "cross-batch-001";
+  const backupId = options.backupId ?? "backup-cross-001";
+  const planRelative = `sessions/${planId}.md`;
+  const batchRelative = `sessions/${batchId}.json`;
+  await writeFile(path.join(projectRoot, planRelative), `# Revision plan\n\n${options.action ?? "Change dawn to dusk."}\n`, "utf8");
+  await writeJson(path.join(projectRoot, batchRelative), {
+    batch_id: batchId,
+    action: options.action ?? "Change dawn to dusk.",
+  });
+  const backupRelative = `.author-toolkit/backups/${backupId}/${manuscriptPath}`;
+  await mkdir(path.dirname(path.join(projectRoot, backupRelative)), { recursive: true });
+  await writeFile(path.join(projectRoot, backupRelative), original, "utf8");
+  const backupManifestRelative = `.author-toolkit/backups/${backupId}/manifest.json`;
+  await writeJson(path.join(projectRoot, backupManifestRelative), {
+    backup_id: backupId,
+    approval_id: options.editApprovalId ?? "EDIT-001",
+    scope_id: options.inputScope.scope_id,
+  });
+  const execution = {
+    ...(options.cycleId === undefined ? {} : { cycle_id: options.cycleId }),
+    ...(options.expectedRevision === undefined ? {} : { expected_revision: options.expectedRevision }),
+    execution_id: options.executionId ?? "execution-cross-001",
+    plan: { plan_id: planId, ...(await artifactAt(projectRoot, planRelative)) },
+    batch: { batch_id: batchId, ...(await artifactAt(projectRoot, batchRelative)) },
+    requested_pass: options.requestedPass,
+    input_scope: options.inputScope,
+    finding_dispositions: [],
+    author_decision_ids: [options.planDecisionId ?? "PLAN-001"],
+    approval_ids: [options.editApprovalId ?? "EDIT-001"],
+    backups: [{
+      backup_id: backupId,
+      approval_id: options.editApprovalId ?? "EDIT-001",
+      manifest: await artifactAt(projectRoot, backupManifestRelative),
+      files: [{
+        path: manuscriptPath,
+        backup_path: backupRelative,
+        sha256: createHash("sha256").update(original).digest("hex"),
+      }],
+    }],
+    files: [{
+      path: manuscriptPath,
+      action: "modify",
+      input_sha256: createHash("sha256").update(original).digest("hex"),
+      output_sha256: createHash("sha256").update(output).digest("hex"),
+    }],
+  };
+  await appendRevisionExecutionApprovals(projectRoot, execution, {
+    planDecisionId: options.planDecisionId,
+    approvalIds: options.editApprovalId ? [options.editApprovalId] : undefined,
+    planReason: options.planReason,
+    editReason: options.editReason,
+  });
+  return { execution, original, output, manuscriptPath };
+}
+
 const coverageOperations = ["diagnostics", "characters", "prose", "ai-cleanup"];
 const reviewPerspectives = ["intent", "standards", "fresh"];
 

@@ -10,6 +10,7 @@ import {
   artifactAt,
   createConvergenceProject,
   createNoEditEvidence,
+  createRevisionExecutionFixture,
   currentScopeReference,
   runInput,
   runValidator,
@@ -539,4 +540,214 @@ test("manuscript-changing revise-fiction uses verified execution and restores fu
   assert.equal(completedResult.cycle.related_artifacts.revision_executions.length, 1);
   const finalGate = runValidator(["--convergence-gate", manifestPath]);
   assert.equal(finalGate.status, 0, `${finalGate.stdout}\n${finalGate.stderr}`);
+});
+
+async function evaluateIndependent(projectRoot, evidence, evaluationId) {
+  return runInput(projectRoot, "evaluate-draft", {
+    evaluation_id: evaluationId,
+    requested_pass: evidence.passReference,
+    target_scope: evidence.scopeReference,
+    coverage_index: evidence.coverageIndexReference,
+    reports: evidence.reports,
+    review_group: evidence.reviewGroupReference,
+    no_edit_skips: [evidence.noEditReference],
+    semantic_attestations: [evidence.hostAttestationReference, evidence.freshAttestationReference],
+  });
+}
+
+async function exerciseCrossStrategyFiction(t, { initiatingStrategy, switchAfterExecution = false }) {
+  const original = "The ferry leaves at dawn.\nMara watches it go.";
+  const output = "The ferry leaves at dusk.\nMara watches it go.";
+  const cycleId = `cycle-${initiatingStrategy}-fiction-crossing`;
+  const { projectRoot, manifestPath } = await createConvergenceProject(t, {
+    manuscripts: [{ name: "chapter-001.md", contents: original }],
+  });
+  await confirmCurrentScope(projectRoot, original);
+  const base = await createNoEditEvidence(projectRoot, { passId: "pass-001" });
+  const baseEvaluation = await evaluateIndependent(projectRoot, base, "evaluation-independent-001");
+  assert.equal(baseEvaluation.status, 0, `${baseEvaluation.stdout}\n${baseEvaluation.stderr}`);
+
+  const started = await runInput(projectRoot, "start-cycle", {
+    cycle_id: cycleId,
+    initiating_strategy: initiatingStrategy,
+    bootstrap: false,
+    starting_scope: base.scopeReference,
+  });
+  assert.equal(started.status, 0, `${started.stdout}\n${started.stderr}`);
+  const fictionPlanned = await runInput(projectRoot, "transition-cycle", {
+    cycle_id: cycleId,
+    expected_revision: 1,
+    current_strategy: "revise-fiction",
+    recovery_position: {
+      operation: "chapter-revision",
+      reason: "Cross-entry manuscript work now follows the revise-fiction whole-book gates.",
+    },
+    target_scope: base.scopeReference,
+    requested_pass: base.passReference,
+  });
+  assert.equal(fictionPlanned.status, 0, `${fictionPlanned.stdout}\n${fictionPlanned.stderr}`);
+
+  const fixture = await createRevisionExecutionFixture(projectRoot, {
+    cycleId,
+    expectedRevision: 2,
+    inputScope: base.scopeReference,
+    requestedPass: base.passReference,
+    original,
+    output,
+  });
+  const prepared = await runInput(projectRoot, "prepare-revision-execution", fixture.execution);
+  assert.equal(prepared.status, 0, `${prepared.stdout}\n${prepared.stderr}`);
+  await writeFile(path.join(projectRoot, fixture.manuscriptPath), output, "utf8");
+  await confirmCurrentScope(projectRoot, output, "scope-001", "SCOPE-002");
+  const currentOnly = await createNoEditEvidence(projectRoot, {
+    passId: "pass-002-current-only",
+    baselinePass: base.passReference,
+    noEditDecisionId: "NOEDIT-002",
+  });
+  const verified = await runInput(projectRoot, "verify-revision-execution", {
+    cycle_id: cycleId,
+    expected_revision: 3,
+    execution_id: fixture.execution.execution_id,
+    requested_pass: currentOnly.passReference,
+    target_scope: currentOnly.scopeReference,
+  });
+  assert.equal(verified.status, 0, `${verified.stdout}\n${verified.stderr}`);
+
+  if (switchAfterExecution) {
+    const switched = await runInput(projectRoot, "transition-cycle", {
+      cycle_id: cycleId,
+      expected_revision: 4,
+      current_strategy: "revise-request",
+      recovery_position: {
+        operation: "current-scope-review",
+        reason: "Attempt to leave whole-book responsibility behind after execution.",
+      },
+      requested_pass: currentOnly.passReference,
+    });
+    assert.equal(switched.status, 1, `${switched.stdout}\n${switched.stderr}`);
+    assert.equal(
+      JSON.parse(switched.stdout).blockers[0].code,
+      "revise-fiction-strategy-change-blocked",
+    );
+    const active = JSON.parse(await readFile(
+      path.join(projectRoot, ".author-toolkit", "convergence", "active-cycle.json"),
+      "utf8",
+    ));
+    assert.equal(active.revision, 4);
+    assert.equal(active.current_strategy, "revise-fiction");
+  }
+
+  const reviewLinked = await runInput(projectRoot, "transition-cycle", {
+    cycle_id: cycleId,
+    expected_revision: 4,
+    current_strategy: "revise-fiction",
+    recovery_position: {
+      operation: "current-scope-review",
+      reason: "The current-scope review alone cannot satisfy whole-book gates.",
+    },
+    requested_pass: currentOnly.passReference,
+    related_artifacts: {
+      review_groups: [currentOnly.reviewGroupReference],
+      reviews: currentOnly.reviewJobs.map(({ reference }) => reference),
+      no_edit_skips: [currentOnly.noEditReference],
+    },
+  });
+  assert.equal(reviewLinked.status, 0, `${reviewLinked.stdout}\n${reviewLinked.stderr}`);
+  const evaluated = await runInput(
+    projectRoot,
+    "evaluate-cycle",
+    currentOnly.evaluationInput("evaluation-cross-current-only", 5, cycleId),
+  );
+  assert.equal(evaluated.status, 1, `${evaluated.stdout}\n${evaluated.stderr}`);
+  const currentOnlyResult = JSON.parse(evaluated.stdout).evaluation;
+  assert.equal(currentOnlyResult.outcome, "not_satisfied");
+  assert.ok(currentOnlyResult.blockers.some(
+    (blocker) => blocker.code === "whole-book-operation-missing"
+  ));
+  assert.ok(currentOnlyResult.blockers.some(
+    (blocker) => blocker.code === "whole-book-final-review-mismatch"
+  ));
+  const failedGate = runValidator(["--convergence-gate", manifestPath]);
+  assert.equal(failedGate.status, 1, `${failedGate.stdout}\n${failedGate.stderr}`);
+  const failedCompletion = await runInput(projectRoot, "complete-cycle", {
+    cycle_id: cycleId,
+    expected_revision: 6,
+    evaluation_id: "evaluation-cross-current-only-completion",
+    decision_id: "COMPLETE-901",
+    author_confirmed: true,
+  });
+  assert.equal(failedCompletion.status, 1, `${failedCompletion.stdout}\n${failedCompletion.stderr}`);
+
+  const wholeBook = await createNoEditEvidence(projectRoot, {
+    passId: "pass-003-whole-book",
+    baselinePass: base.passReference,
+    noEditDecisionId: "NOEDIT-003",
+    storyBibleDecisionId: "STORY-003",
+    wholeBook: true,
+  });
+  const wholeBookLinked = await runInput(projectRoot, "transition-cycle", {
+    cycle_id: cycleId,
+    expected_revision: 6,
+    current_strategy: "revise-fiction",
+    recovery_position: {
+      operation: "final-review",
+      reason: "Complete Story Bible, structure, and final-review evidence is now linked.",
+    },
+    requested_pass: wholeBook.passReference,
+    related_artifacts: {
+      review_groups: [wholeBook.reviewGroupReference],
+      reviews: wholeBook.reviewJobs.map(({ reference }) => reference),
+      no_edit_skips: [wholeBook.noEditReference],
+    },
+  });
+  assert.equal(wholeBookLinked.status, 0, `${wholeBookLinked.stdout}\n${wholeBookLinked.stderr}`);
+  const wholeBookEvaluated = await runInput(
+    projectRoot,
+    "evaluate-cycle",
+    wholeBook.evaluationInput("evaluation-cross-whole-book", 7, cycleId),
+  );
+  assert.equal(wholeBookEvaluated.status, 0, `${wholeBookEvaluated.stdout}\n${wholeBookEvaluated.stderr}`);
+  assert.equal(JSON.parse(wholeBookEvaluated.stdout).evaluation.outcome, "satisfied");
+
+  if (switchAfterExecution) {
+    const switchedAfterSatisfied = await runInput(projectRoot, "transition-cycle", {
+      cycle_id: cycleId,
+      expected_revision: 8,
+      current_strategy: "revise-request",
+      recovery_position: {
+        operation: "current-scope-review",
+        reason: "The active revise-fiction cycle must still complete before a strategy switch.",
+      },
+      requested_pass: wholeBook.passReference,
+    });
+    assert.equal(switchedAfterSatisfied.status, 1, `${switchedAfterSatisfied.stdout}\n${switchedAfterSatisfied.stderr}`);
+    assert.equal(
+      JSON.parse(switchedAfterSatisfied.stdout).blockers[0].code,
+      "revise-fiction-strategy-change-blocked",
+    );
+  }
+  const completed = await runInput(projectRoot, "complete-cycle", {
+    cycle_id: cycleId,
+    expected_revision: 8,
+    evaluation_id: "evaluation-cross-whole-book-completion",
+    decision_id: "COMPLETE-002",
+    author_confirmed: true,
+  });
+  assert.equal(completed.status, 0, `${completed.stdout}\n${completed.stderr}`);
+  assert.equal(JSON.parse(completed.stdout).cycle.current_strategy, "revise-fiction");
+  const finalGate = runValidator(["--convergence-gate", manifestPath]);
+  assert.equal(finalGate.status, 0, `${finalGate.stdout}\n${finalGate.stderr}`);
+}
+
+for (const initiatingStrategy of ["revise-request", "revise-draft"]) {
+  test(`${initiatingStrategy} to revise-fiction requires whole-book evidence after verified execution`, async (t) => {
+    await exerciseCrossStrategyFiction(t, { initiatingStrategy });
+  });
+}
+
+test("revise-fiction execution cannot switch strategy before whole-book completion", async (t) => {
+  await exerciseCrossStrategyFiction(t, {
+    initiatingStrategy: "revise-fiction",
+    switchAfterExecution: true,
+  });
 });

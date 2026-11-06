@@ -498,9 +498,12 @@ graph; callers cannot supply an outcome. The evaluator accepts eligible local
 units from an earlier pass while requiring a new full-target index, synthesis,
 and review group for the requested pass. Changing the cycle's requested pass
 after satisfaction makes its old target evaluation stale for status, gate, and
-completion. Manuscript-changing `revise-fiction` also requires current
-full-target Story Bible, structure, and final-review evidence bound to that pass
-and scope; current-scope review alone cannot satisfy the whole-book gates.
+completion. Whenever a cycle's initiating or current strategy is `revise-fiction`,
+including request→fiction and draft→fiction work, it requires current full-target
+Story Bible, structure, and final-review evidence bound to that pass and scope;
+current-scope review alone cannot satisfy the whole-book gates. Once revision
+execution is linked, the active cycle cannot switch away from `revise-fiction`
+before that evidence and explicit cycle completion.
 
 Completion requires a separate explicit author decision. The operation appends
 that decision to the tracker, recomputes and saves a new evaluation with the

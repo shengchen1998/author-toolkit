@@ -271,7 +271,8 @@ export async function computeEvaluation(project, cycle, roots, evaluationId, cre
     no_edit_skips: roots.no_edit_skips ?? [],
     review_groups: roots.review_group ? [roots.review_group] : [],
   };
-  const wholeBook = cycle?.initiating_strategy === "revise-fiction";
+  const wholeBook = cycle?.initiating_strategy === "revise-fiction" ||
+    cycle?.current_strategy === "revise-fiction";
   const currentScope = project.manifest.current_scope;
   const trackedReference = cycle?.target_scope ?? cycle?.starting_scope ??
     (currentScope ? {
