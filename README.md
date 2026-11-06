@@ -537,9 +537,15 @@ complete before such an import or publication establishes that evidence.
 Later bootstrap imports and edits preserve the null cumulative origin and form
 one ordered event chain. Every reconciliation previous scope or execution input
 scope follows the preceding target or output scope, every event is verified
-once, and the final target equals current scope. Empty reconciliation is a legal
-intermediate state awaiting nonempty recovery, never a completed target. Missing
-links, skipped empty predecessors, and forged targets remain blockers.
+once, and the final target equals current scope. A real creation commit supplies
+an event whose scope_before matches the starting scope or null origin and whose
+scope_after passes the existing batch, journal, approval, and verified-file
+checks. Creation commit→import and creation commit→edit→import cannot omit that
+event. Empty reconciliation is a legal intermediate state awaiting nonempty
+recovery, never a completed target. Missing links, skipped empty predecessors,
+and forged targets remain blockers. Every cycle-external reconciliation requires
+an explicit `previous_scope`; only verified empty recovery may explicitly set it
+to null, and omitting the field is a usage error before any write.
 
 ### Coverage units and chunked review
 

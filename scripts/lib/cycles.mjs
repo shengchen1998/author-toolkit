@@ -698,7 +698,7 @@ function sameApprovalPaths(actual, expected) {
   return JSON.stringify(actual) === JSON.stringify(expected);
 }
 
-async function deriveCreationChangeSet(project, cycle, candidate, request) {
+export async function deriveCreationChangeSet(project, cycle, candidate, request) {
   if (!request.related_artifacts?.creation_commits) return null;
   const batchReferences = candidate.related_artifacts.creation_batches;
   const commitReferences = candidate.related_artifacts.creation_commits;

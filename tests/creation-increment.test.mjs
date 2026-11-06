@@ -1116,3 +1116,174 @@ for (const [scenario, option, expectedOrder] of [
     assert.equal(manifest.current_scope.scope_fingerprint, publication.targetScope.scope_fingerprint);
   });
 }
+
+
+test("ordinary creation commit connects its starting scope to later external reconciliation", async (t) => {
+  const fixture = await prepareOrdinaryExternalImport(t);
+  assert.equal(fixture.reconciliationResult.reconciliation.required_strategy, "revise-increment");
+  const reviewed = await runInput(fixture.projectRoot, "transition-cycle", {
+    cycle_id: fixture.cycle.cycle_id,
+    expected_revision: 3,
+    current_strategy: "revise-increment",
+    recovery_position: {
+      operation: "current-scope-review",
+      reason: "The ordinary creation commit and external change have full-target evidence.",
+    },
+    requested_pass: fixture.evidence.passReference,
+    related_artifacts: {
+      review_groups: [fixture.evidence.reviewGroupReference],
+      reviews: fixture.evidence.reviewJobs.map(({ reference }) => reference),
+      no_edit_skips: [fixture.evidence.noEditReference],
+    },
+  });
+  assert.equal(reviewed.status, 0, `${reviewed.stdout}\n${reviewed.stderr}`);
+  const evaluated = await runInput(
+    fixture.projectRoot,
+    "evaluate-cycle",
+    fixture.evidence.evaluationInput("evaluation-ordinary-import-960", 4, fixture.cycle.cycle_id),
+  );
+  assert.equal(evaluated.status, 0, `${evaluated.stdout}\n${evaluated.stderr}`);
+  assert.equal(JSON.parse(evaluated.stdout).evaluation.outcome, "satisfied");
+  assert.deepEqual(JSON.parse(evaluated.stdout).cycle.change_set.from_scope, fixture.startingScope);
+});
+
+
+test("removing a creation commit event prevents an external chain from closing", async (t) => {
+  const fixture = await prepareOrdinaryExternalImport(t);
+  const activePath = path.join(fixture.projectRoot, ".author-toolkit", "convergence", "active-cycle.json");
+  const active = JSON.parse(await readFile(activePath, "utf8"));
+  active.related_artifacts.creation_commits = [];
+  await writeJson(activePath, active);
+  const reviewed = await runInput(fixture.projectRoot, "transition-cycle", {
+    cycle_id: fixture.cycle.cycle_id,
+    expected_revision: 3,
+    current_strategy: "revise-draft",
+    recovery_position: {
+      operation: "current-scope-review",
+      reason: "A missing commit must not be replaced by batch or current scope evidence.",
+    },
+    requested_pass: fixture.evidence.passReference,
+    related_artifacts: {
+      review_groups: [fixture.evidence.reviewGroupReference],
+      reviews: fixture.evidence.reviewJobs.map(({ reference }) => reference),
+      no_edit_skips: [fixture.evidence.noEditReference],
+    },
+  });
+  assert.equal(reviewed.status, 0, `${reviewed.stdout}\n${reviewed.stderr}`);
+  const evaluated = await runInput(
+    fixture.projectRoot,
+    "evaluate-cycle",
+    fixture.evidence.evaluationInput("evaluation-missing-creation-commit", 4, fixture.cycle.cycle_id),
+  );
+  assert.equal(evaluated.status, 1, `${evaluated.stdout}\n${evaluated.stderr}`);
+  const result = JSON.parse(evaluated.stdout);
+  assert.equal(result.evaluation.outcome, "not_satisfied");
+  assert.ok(result.evaluation.blockers.some(
+    (blocker) => blocker.code === "reconciliation-chain-mismatch" ||
+      blocker.code === "creation-commit-evidence-missing"
+  ));
+});
+
+async function prepareOrdinaryExternalImport(t) {
+  const fixture = await establishSatisfiedBase(t);
+  const cycle = await startOrdinaryCreation(fixture);
+  const publication = await publishMultiChapterBatch(fixture);
+  const linked = await linkPublication(fixture, cycle, publication);
+  assert.equal(linked.status, 0, `${linked.stdout}\n${linked.stderr}`);
+  const modified = "The ferry leaves after the external edit.\nMara watches it go.";
+  await writeFile(path.join(fixture.projectRoot, "manuscript", "chapter-001.md"), modified, "utf8");
+  const targetFiles = publication.targetFiles.map((file) => file.path === "manuscript/chapter-001.md"
+    ? { path: file.path, sha256: sha256(modified) }
+    : file);
+  const targetScope = await confirmScope(
+    fixture.projectRoot,
+    publication.targetScope.scope_id,
+    targetFiles,
+    "IMPORT-960",
+  );
+  const storyState = await writeOrdinaryStoryState(fixture.projectRoot, targetScope);
+  const inventory = JSON.parse(await readFile(
+    path.join(fixture.projectRoot, targetScope.snapshot_path),
+    "utf8",
+  )).inventory;
+  await appendApproval(fixture.projectRoot, {
+    id: "IMPORT-960",
+    type: "creation-import",
+    operation: "creation-import",
+    scopeId: targetScope.scope_id,
+    paths: targetFiles.map((file) => file.path),
+    reason: `Author approved the external change after ordinary creation. reconciliation_id=reconciliation-ordinary-960 inventory_fingerprint=${inventory.inventory_fingerprint} scope_fingerprint=${targetScope.scope_fingerprint}`,
+  });
+  const reconciled = await runInput(fixture.projectRoot, "reconcile-manuscript", {
+    reconciliation_id: "reconciliation-ordinary-960",
+    cycle_id: cycle.cycle_id,
+    expected_revision: 2,
+    author_decision_id: "IMPORT-960",
+    target_scope: targetScope,
+    story_state: storyState,
+  });
+  assert.equal(reconciled.status, 0, `${reconciled.stdout}\n${reconciled.stderr}`);
+  assert.deepEqual(JSON.parse(reconciled.stdout).reconciliation.previous_scope, publication.targetScope);
+  const evidence = await createNoEditEvidence(fixture.projectRoot, {
+    passId: "pass-ordinary-import-960",
+    baselinePass: fixture.baseEvidence.passReference,
+    noEditDecisionId: "NOEDIT-960",
+  });
+  return {
+    ...fixture,
+    cycle,
+    publication,
+    targetScope,
+    evidence,
+    reconciliationResult: JSON.parse(reconciled.stdout),
+  };
+}
+
+async function writeOrdinaryStoryState(projectRoot, targetScope) {
+  const snapshot = JSON.parse(await readFile(path.join(projectRoot, targetScope.snapshot_path), "utf8"));
+  const references = [];
+  const children = [];
+  for (const [index, file] of snapshot.files.entries()) {
+    const relative = `.author-toolkit/creation/state/chapters/ordinary-${index + 1}.md`;
+    const value = {
+      schema_version: "1.0.0",
+      state_id: `ordinary-${index + 1}`,
+      level: "chapter",
+      scope_id: targetScope.scope_id,
+      updated_at: timestamp,
+      sources: [{ path: file.path, sha256: file.sha256 }],
+      summary: `Observed facts for ${file.path}.`,
+      records: [],
+      children: [],
+    };
+    const absolute = path.join(projectRoot, relative);
+    await mkdir(path.dirname(absolute), { recursive: true });
+    await writeFile(
+      absolute,
+      `# Reconciled chapter\n\n\`\`\`json\n${JSON.stringify(value, null, 2)}\n\`\`\`\n`,
+      "utf8",
+    );
+    const reference = { path: relative, sha256: sha256(await readFile(absolute)) };
+    references.push(reference);
+    children.push(reference);
+  }
+  const current = {
+    schema_version: "1.0.0",
+    state_id: "current",
+    level: "current",
+    scope_id: targetScope.scope_id,
+    updated_at: timestamp,
+    sources: children,
+    summary: "Current story state after ordinary creation and external reconciliation.",
+    records: [],
+    children,
+  };
+  const relative = ".author-toolkit/creation/state/current.md";
+  await writeFile(
+    path.join(projectRoot, relative),
+    `# Current state\n\n\`\`\`json\n${JSON.stringify(current, null, 2)}\n\`\`\`\n`,
+    "utf8",
+  );
+  references.push({ path: relative, sha256: sha256(await readFile(path.join(projectRoot, relative))) });
+  return references;
+}

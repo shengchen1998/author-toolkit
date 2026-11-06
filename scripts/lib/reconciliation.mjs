@@ -327,6 +327,9 @@ export async function reconcileManuscript(projectRoot, request, options = {}) {
     } else if (!cycle && request.cycle_id) {
       outcome = failure("active-cycle-required", "The named active cycle is unavailable; do not open a parallel recovery cycle.");
     } else {
+      if (!cycle && !Object.hasOwn(request, "previous_scope")) {
+        throw new Error("reconcile-manuscript without an active cycle requires an explicit previous_scope field, which may be null only for verified empty recovery");
+      }
       let previousEmptyReconciliation = false;
       if (project.manifest.manuscript_reconciliation) {
         const previousReconciliation = JSON.parse((await readArtifact(
@@ -391,9 +394,12 @@ export async function reconcileManuscript(projectRoot, request, options = {}) {
 
       const bootstrapRecovery = Boolean(cycle?.bootstrap);
       const preferredEvaluation = cycle?.target_evaluation ?? cycle?.starting_evaluation ?? null;
+      const proofScopeReference = cycle?.target_evaluation
+        ? previousReference
+        : cycle?.starting_scope ?? previousReference;
       const previousEvaluation = bootstrapRecovery ? null : await findHistoricalSatisfiedEvaluation(
         project,
-        previousReference,
+        proofScopeReference,
         preferredEvaluation,
       );
       const recoveringFromEmpty = previousEmptyReconciliation || Boolean(

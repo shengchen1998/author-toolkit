@@ -9,7 +9,7 @@ import {
   validateStoryStateMarkdown,
 } from "./artifacts.mjs";
 import { collectManuscriptInventory } from "./manuscript.mjs";
-import { externalReconciliationBlock } from "./cycles.mjs";
+import { deriveCreationChangeSet, externalReconciliationBlock } from "./cycles.mjs";
 import { validateManifest } from "./manifest.mjs";
 import { validateEvidenceReport } from "./markdown.mjs";
 import {
@@ -677,8 +677,9 @@ function scopeEventIdentity(reference) {
       ]);
 }
 
-function buildScopeEventChain(cycle, roots, reconciliations, executionChain) {
+function buildScopeEventChain(cycle, roots, reconciliations, executionChain, creationEvents = []) {
   const events = [
+    ...creationEvents,
     ...reconciliations.map((value) => ({
       type: "reconciliation",
       value,
@@ -727,7 +728,7 @@ function buildScopeEventChain(cycle, roots, reconciliations, executionChain) {
           if (currentIdentity === null) continue;
           nextEmptyPending = true;
         }
-      } else if (currentIdentity === null) continue;
+      } else if (event.type === "execution" && currentIdentity === null) continue;
 
       used.add(index);
       chain.push(event);
@@ -774,6 +775,102 @@ async function validateImportDecision(project, reconciliation, previousScope, ta
   );
 }
 
+async function buildCreationCommitEvents(
+  project,
+  computation,
+  cycle,
+  roots,
+  creationCommits,
+  creationBatches,
+  reconciliations,
+  executionChain,
+) {
+  const events = [];
+  const scopeReferences = new Map();
+  for (const reference of [
+    ...reconciliations.flatMap((reconciliation) => [
+      reconciliation.previous_scope,
+      reconciliation.target_scope,
+    ]),
+    ...executionChain.flatMap((execution) => [execution.input_scope, execution.target_scope]),
+    roots.target_scope,
+  ].filter(Boolean)) {
+    scopeReferences.set(scopeEventIdentity(reference), reference);
+  }
+  for (const commit of creationCommits) {
+    const batch = creationBatches.find((candidate) => candidate.batch_id === commit.batch_id);
+    const commitReference = relatedArtifactsReference(
+      computation.cycle?.related_artifacts.creation_commits,
+      commit.commit_id,
+      "commit_id",
+    );
+    const batchReference = relatedArtifactsReference(
+      computation.cycle?.related_artifacts.creation_batches,
+      commit.batch_id,
+      "batch_id",
+    );
+    const inputScope = cycle?.bootstrap ? null : cycle?.starting_scope ?? null;
+    if (
+      !batch ||
+      !commitReference ||
+      !batchReference ||
+      commit.scope_before_id !== (inputScope?.scope_id ?? null) ||
+      batch.scope_id !== commit.scope_after_id
+    ) {
+      return null;
+    }
+    let matched = null;
+    for (const targetReference of scopeReferences.values()) {
+      if (
+        targetReference.scope_id !== commit.scope_after_id ||
+        targetReference.scope_id !== batch.scope_id
+      ) continue;
+      const outputSnapshot = await computation.json(
+        {
+          path: targetReference.snapshot_path,
+          sha256: targetReference.snapshot_sha256,
+        },
+        "creation-target-scope",
+        `${commit.commit_id}:${targetReference.scope_fingerprint}`,
+        validateScopeSnapshot,
+      );
+      if (!outputSnapshot) continue;
+      const candidate = {
+        ...cycle,
+        target_scope: targetReference,
+        related_artifacts: {
+          ...cycle.related_artifacts,
+          creation_batches: [batchReference],
+          creation_commits: [commitReference],
+        },
+      };
+      try {
+        const changeSet = await deriveCreationChangeSet(project, cycle, candidate, {
+          related_artifacts: { creation_commits: [commitReference] },
+        });
+        if (changeSet) {
+          matched = {
+            type: "creation",
+            value: { commit, batch, changeSet, outputSnapshot },
+            input: inputScope,
+            output: targetReference,
+          };
+          break;
+        }
+      } catch {
+        continue;
+      }
+    }
+    if (!matched) return null;
+    events.push(matched);
+  }
+  return events;
+}
+
+function relatedArtifactsReference(references, id, field) {
+  return (references ?? []).find((reference) => reference[field] === id) ?? null;
+}
+
 async function validateScopeEventChain(
   project,
   computation,
@@ -784,8 +881,9 @@ async function validateScopeEventChain(
   reconciliationInventories,
   executionChain,
   executionScopes,
+  creationEvents,
 ) {
-  const chain = buildScopeEventChain(cycle, roots, reconciliations, executionChain);
+  const chain = buildScopeEventChain(cycle, roots, reconciliations, executionChain, creationEvents);
   if (!chain) return null;
   let origin = { files: [], excluded_files: [] };
   if (!cycle?.bootstrap) {
@@ -803,6 +901,11 @@ async function validateScopeEventChain(
   let previousScope = origin;
   let approvalsValid = true;
   for (const event of chain) {
+    if (event.type === "creation") {
+      if (!event.value.outputSnapshot) return null;
+      previousScope = event.value.outputSnapshot;
+      continue;
+    }
     if (event.type === "execution") {
       const scopes = executionScopes.get(event.value.execution_id);
       if (!scopes?.input || !scopes.target) return null;
@@ -1137,7 +1240,17 @@ async function computeEvaluation(project, cycle, roots, evaluationId, createdAt)
       });
     }
   }
-  const eventValidation = await validateScopeEventChain(
+  const creationEvents = await buildCreationCommitEvents(
+    project,
+    computation,
+    cycle,
+    roots,
+    creationCommits,
+    creationBatches,
+    reconciliations,
+    executionChain,
+  );
+  const eventValidation = creationEvents === null ? null : await validateScopeEventChain(
     project,
     computation,
     cycle,
@@ -1147,6 +1260,7 @@ async function computeEvaluation(project, cycle, roots, evaluationId, createdAt)
     reconciliationInventories,
     executionChain,
     executionScopes,
+    creationEvents,
   );
   if (reconciliations.length > 0 && !eventValidation) {
     block(

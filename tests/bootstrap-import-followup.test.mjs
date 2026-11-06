@@ -7,6 +7,7 @@ import test from "node:test";
 import { computeInventoryFingerprint, recordScope } from "../scripts/lib/index.mjs";
 import {
   createConvergenceProject,
+  createFirstPublicationArtifacts,
   createNoEditEvidence,
   currentScopeReference,
   runAuthorProject,
@@ -835,6 +836,7 @@ async function writeEmptyStoryState(projectRoot) {
     children: [],
   };
   const relative = ".author-toolkit/creation/state/current.md";
+  await mkdir(path.dirname(path.join(projectRoot, relative)), { recursive: true });
   await writeFile(
     path.join(projectRoot, relative),
     `# Empty current state\n\n\`\`\`json\n${JSON.stringify(emptyState, null, 2)}\n\`\`\`\n`,
@@ -1101,3 +1103,175 @@ async function prepareExecutionThenImportFixture(t) {
   assert.equal(second.result.status, 0, `${second.result.stdout}\n${second.result.stderr}`);
   return { projectRoot, cycleId, first, execution, second };
 }
+
+
+test("a real creation commit joins the event chain before an external import", async (t) => {
+  const { projectRoot } = await createConvergenceProject(t);
+  const cycleId = "cycle-creation-then-import";
+  const original = "First committed chapter.\n";
+  const external = "First committed chapter, changed externally.\n";
+  await startBootstrap(projectRoot, cycleId);
+  await writeFile(path.join(projectRoot, "manuscript", "chapter-001.md"), original, "utf8");
+  const publicationScope = await confirmScope(projectRoot, "SCOPE-001", "scope-first-publication", [
+    { path: "manuscript/chapter-001.md", contents: original },
+  ]);
+  const publication = await createFirstPublicationArtifacts(projectRoot);
+  const linked = await runInput(projectRoot, "transition-cycle", {
+    cycle_id: cycleId,
+    expected_revision: 1,
+    current_strategy: "revise-draft",
+    recovery_position: {
+      operation: "intake",
+      reason: "The real first creation commit precedes external reconciliation.",
+    },
+    target_scope: publicationScope,
+    related_artifacts: publication.relatedArtifacts,
+  });
+  assert.equal(linked.status, 0, `${linked.stdout}\n${linked.stderr}`);
+  const imported = await importIntoBootstrap(projectRoot, {
+    cycleId,
+    expectedRevision: 2,
+    reconciliationId: "reconciliation-after-creation-commit",
+    decisionId: "IMPORT-940",
+    scopeId: "scope-after-creation-commit",
+    files: [{ path: "manuscript/chapter-001.md", contents: external }],
+  });
+  assert.equal(imported.result.status, 0, `${imported.stdout}\n${imported.stderr}`);
+  assert.deepEqual(JSON.parse(imported.result.stdout).reconciliation.previous_scope, publicationScope);
+
+  const { evaluated } = await evaluateImportedBootstrap(
+    projectRoot,
+    cycleId,
+    3,
+    "pass-creation-then-import",
+  );
+  assert.equal(evaluated.status, 0, `${evaluated.stdout}\n${evaluated.stderr}`);
+  assert.equal(JSON.parse(evaluated.stdout).evaluation.outcome, "satisfied");
+});
+
+
+test("cycle-external empty recovery accepts explicit null previous_scope but rejects omission without writes", async (t) => {
+  const original = "Original chapter before external deletion.\n";
+  const restored = "Recovered chapter with explicit null previous scope.\n";
+  const { projectRoot, manifestPath } = await createConvergenceProject(t, {
+    manuscripts: [{ name: "chapter-001.md", contents: original }],
+  });
+  const previousScope = await confirmScope(projectRoot, "SCOPE-950", "scope-previous-950", [
+    { path: "manuscript/chapter-001.md", contents: original },
+  ]);
+  await rm(path.join(projectRoot, "manuscript", "chapter-001.md"));
+  const emptyReference = await writeEmptyStoryState(projectRoot);
+  const emptyInventoryFingerprint = computeInventoryFingerprint({
+    manuscript_root: "manuscript",
+    files: [],
+    excluded_files: [],
+  });
+  await appendApproval(projectRoot, {
+    id: "IMPORT-950",
+    type: "creation-import",
+    operation: "creation-import",
+    scopeId: previousScope.scope_id,
+    paths: ["manuscript/chapter-001.md"],
+    reason: `Author confirmed external empty state. reconciliation_id=reconciliation-external-empty-950 inventory_fingerprint=${emptyInventoryFingerprint} scope_fingerprint=null`,
+  });
+  const emptied = await runInput(projectRoot, "reconcile-manuscript", {
+    reconciliation_id: "reconciliation-external-empty-950",
+    previous_scope: previousScope,
+    author_decision_id: "IMPORT-950",
+    target_scope: null,
+    story_state: [emptyReference],
+  });
+  assert.equal(emptied.status, 0, `${emptied.stdout}\n${emptied.stderr}`);
+
+  await writeFile(path.join(projectRoot, "manuscript", "chapter-001.md"), restored, "utf8");
+  const targetScope = await confirmScope(projectRoot, "IMPORT-951", "scope-recovered-951", [
+    { path: "manuscript/chapter-001.md", contents: restored },
+  ]);
+  const storyState = await writeStoryState(projectRoot, targetScope, [
+    { path: "manuscript/chapter-001.md", contents: restored },
+  ]);
+  await approveImport(projectRoot, "reconciliation-external-recovery-951", "IMPORT-951", targetScope, [
+    { path: "manuscript/chapter-001.md", contents: restored },
+  ]);
+  const input = {
+    reconciliation_id: "reconciliation-external-recovery-951",
+    author_decision_id: "IMPORT-951",
+    target_scope: targetScope,
+    story_state: storyState,
+  };
+  const manifestBeforeOmission = await readFile(manifestPath, "utf8");
+  const omitted = await runInput(projectRoot, "reconcile-manuscript", input);
+  assert.equal(omitted.status, 2, `${omitted.stdout}\n${omitted.stderr}`);
+  assert.match(omitted.stderr, /previous_scope/);
+  assert.equal(await readFile(manifestPath, "utf8"), manifestBeforeOmission);
+  await assert.rejects(readFile(
+    path.join(projectRoot, ".author-toolkit", "convergence", "reconciliations", `${input.reconciliation_id}.json`),
+    "utf8",
+  ), { code: "ENOENT" });
+
+  const recovered = await runInput(projectRoot, "reconcile-manuscript", {
+    ...input,
+    previous_scope: null,
+  });
+  assert.equal(recovered.status, 0, `${recovered.stdout}\n${recovered.stderr}`);
+  const result = JSON.parse(recovered.stdout);
+  assert.equal(result.cycle, null);
+  assert.equal(result.reconciliation.previous_scope, null);
+  assert.equal(result.reconciliation.recovery_from_empty, true);
+  assert.equal(result.required_action.strategy, "revise-draft");
+});
+
+
+test("creation commit and verified edit form a continuous chain before external import", async (t) => {
+  const { projectRoot } = await createConvergenceProject(t);
+  const cycleId = "cycle-creation-edit-import";
+  const original = "First committed chapter.\n";
+  const edited = "First committed chapter, revised by execution.\n";
+  const external = "First committed chapter, changed externally after execution.\n";
+  await startBootstrap(projectRoot, cycleId);
+  await writeFile(path.join(projectRoot, "manuscript", "chapter-001.md"), original, "utf8");
+  const publicationScope = await confirmScope(projectRoot, "SCOPE-001", "scope-first-publication", [
+    { path: "manuscript/chapter-001.md", contents: original },
+  ]);
+  const publication = await createFirstPublicationArtifacts(projectRoot);
+  const linked = await runInput(projectRoot, "transition-cycle", {
+    cycle_id: cycleId,
+    expected_revision: 1,
+    current_strategy: "revise-draft",
+    recovery_position: {
+      operation: "intake",
+      reason: "Creation publication precedes an approved edit and external import.",
+    },
+    target_scope: publicationScope,
+    related_artifacts: publication.relatedArtifacts,
+  });
+  assert.equal(linked.status, 0, `${linked.stdout}\n${linked.stderr}`);
+  const execution = await verifyBootstrapEdit(
+    projectRoot,
+    cycleId,
+    2,
+    publicationScope,
+    original,
+    edited,
+    "970",
+  );
+  const imported = await importIntoBootstrap(projectRoot, {
+    cycleId,
+    expectedRevision: 5,
+    reconciliationId: "reconciliation-after-creation-edit",
+    decisionId: "IMPORT-970",
+    scopeId: "scope-after-creation-edit",
+    files: [{ path: "manuscript/chapter-001.md", contents: external }],
+  });
+  assert.equal(imported.result.status, 0, `${imported.stdout}\n${imported.stderr}`);
+  assert.deepEqual(JSON.parse(imported.result.stdout).reconciliation.previous_scope, execution.targetScope);
+
+  const { evaluated } = await evaluateImportedBootstrap(
+    projectRoot,
+    cycleId,
+    6,
+    "pass-creation-edit-import",
+  );
+  assert.equal(evaluated.status, 0, `${evaluated.stdout}\n${evaluated.stderr}`);
+  assert.equal(JSON.parse(evaluated.stdout).evaluation.outcome, "satisfied");
+});
