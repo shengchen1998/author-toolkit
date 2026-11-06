@@ -2,6 +2,19 @@
 
 Use the controlled workflow terminology in `<project-root>/.author-toolkit/references/terminology.md` for shared names, contract values, and their boundaries.
 
+## Directory
+
+| Need | Quick route |
+| --- | --- |
+| Report format and immutability | [Report envelope](#report-envelope) |
+| Finding identity and statuses | [Finding identity across reruns](#finding-identity-across-reruns); [Living tracker](#living-tracker) |
+| Author decisions and approvals | [Author decision loop](#author-decision-loop); [Author approvals](#author-approvals) |
+| Scope currency and stale evidence | [Scope and input currency](#scope-and-input-currency); [Stale propagation](#stale-propagation) |
+| Evidence reuse and coverage | [Evidence reuse across skills](#evidence-reuse-across-skills); [Coverage units and synthesis](#coverage-units-and-synthesis) |
+| Dependency exception | [Spec #14](https://github.com/shengchen1998/author-toolkit/issues/14#user-content-dependency-exceptions-and-coverage-evidence) defines the planned term; its concrete contract arrives with #21. Until then, exact dependency matching in the evidence-reuse and coverage rules applies. |
+| Current-draft revision convergence | [Definition, evaluation, and completion](#current-draft-revision-convergence) |
+| Pending and standalone work | [Pending actions and session writes](#pending-actions-and-session-writes); [Standalone work](#standalone-work) |
+
 ## Report envelope
 
 Use `<project-root>/.author-toolkit/references/report-schema-v2.json` as the authoritative envelope contract and resolve its reference to `finding-schema-v2.json`. Read both schemas before writing. Do not infer v2 from the legacy `finding-schema.json`.
