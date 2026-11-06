@@ -73,9 +73,13 @@ node <setup-skill>/assets/runtime/author-project.mjs init --project-root <projec
 node <setup-skill>/assets/runtime/author-project.mjs read --project-root <project-root>
 node <setup-skill>/assets/runtime/author-project.mjs status --project-root <project-root>
 node <setup-skill>/assets/runtime/author-project.mjs status --project-root <project-root> --full
+node <setup-skill>/assets/runtime/author-project.mjs set-pending --project-root <project-root> --input <pending-action.json>
+node <setup-skill>/assets/runtime/author-project.mjs record-scope --project-root <project-root> --input <scope.json>
 ```
 
 `init` 部署匹配的共享引用并创建中性 manifest, 空 tracker 和备份索引以及操作目录, 不导入发现项, 批准, 评估或当前草稿修订收敛声明. 重入时只校验已有项目, 不重置状态. 自定义操作路径使用 `--input <initialization.json>`, 自定义正文位置使用 `--manuscript-root <path>`.
+
+`set-pending` 记录操作范围内的待处理工作和产物引用, 保留当前范围及活跃周期协调标识, 不创建任何批准. `record-scope` 接受有序路径或路径/hash 项, 在共享锁内重新计算当前正文 hash 和排除项, 支持 proposed 与 confirmed 范围. 确认必须提供明确的阅读顺序证据. 已确认结果包含确定性的范围和清单指纹, 不可变快照引用, 全稿校验结果和具体阻断项. 两个命令都会复核可选的 manifest hash 与周期 revision, 并通过经过校验的原子写入发布. 输入字段和中断恢复见 author-project 操作参考.
 
 所有公共项目命令, 包括 cycle, reconciliation, execution, evaluation 和 completion, 都返回统一 JSON 项目响应信封: `response_contract_version: "1.0"`, `command`, 布尔值 `valid`, 命令对应的 `result` 和结构化 `errors`. 原操作结果位于 `result` 内, 错误以 stdout 上的 JSON 返回, 不再提供并行文本错误契约. 成功命令和有效的只读状态查询退出码为 0, 包括 `not_satisfied` 和 `indeterminate` 生命周期状态. 项目, 操作, 证据或门禁校验失败退出码为 1. 参数, 输入文件或输入结构用法错误退出码为 2.
 

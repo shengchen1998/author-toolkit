@@ -3346,8 +3346,8 @@ var require_utils = __commonJS({
       }
       return ind;
     }
-    function removeDotSegments(path22) {
-      let input = path22;
+    function removeDotSegments(path23) {
+      let input = path23;
       const output = [];
       let nextSlash = -1;
       let len = 0;
@@ -3421,11 +3421,11 @@ var require_utils = __commonJS({
       }
       return output.join("");
     }
-    function removeDotSegmentsRelative(path22) {
-      if (path22 === "" || path22[0] === "/") {
-        return removeDotSegments(path22);
+    function removeDotSegmentsRelative(path23) {
+      if (path23 === "" || path23[0] === "/") {
+        return removeDotSegments(path23);
       }
-      const segments = path22.split("/");
+      const segments = path23.split("/");
       const last = segments.length - 1;
       const output = [];
       let trailingDirectory = false;
@@ -3788,8 +3788,8 @@ var require_schemes = __commonJS({
       }
       if (wsComponent.resourceName) {
         const queryIndex = wsComponent.resourceName.indexOf("?");
-        const path22 = queryIndex === -1 ? wsComponent.resourceName : wsComponent.resourceName.slice(0, queryIndex);
-        wsComponent.path = path22 && path22 !== "/" ? path22 : void 0;
+        const path23 = queryIndex === -1 ? wsComponent.resourceName : wsComponent.resourceName.slice(0, queryIndex);
+        wsComponent.path = path23 && path23 !== "/" ? path23 : void 0;
         wsComponent.query = queryIndex === -1 ? void 0 : wsComponent.resourceName.slice(queryIndex + 1);
         wsComponent.resourceName = void 0;
       }
@@ -9553,10 +9553,391 @@ var init_cycle_coordination = __esm({
   }
 });
 
+// scripts/lib/evaluation-contracts.mjs
+function artifactError(instancePath, message, keyword = "convergence-artifact") {
+  return { instancePath, keyword, message, params: {} };
+}
+function sameReference(left, right) {
+  return left?.path === right?.path && left?.sha256 === right?.sha256;
+}
+function samePassReference(left, right) {
+  return sameReference(left, right) && left?.pass_id === right?.pass_id && left?.pass_fingerprint === right?.pass_fingerprint;
+}
+function sameScopeReference(left, right) {
+  return left?.scope_id === right?.scope_id && left?.scope_fingerprint === right?.scope_fingerprint && left?.snapshot_path === right?.snapshot_path && left?.snapshot_sha256 === right?.snapshot_sha256;
+}
+function canonicalPassContent(pass) {
+  return {
+    target_scope: {
+      scope_id: pass.target_scope.scope_id,
+      scope_fingerprint: pass.target_scope.scope_fingerprint
+    },
+    required_operations: pass.required_operations,
+    paths: pass.paths,
+    language: pass.language,
+    dependencies: pass.dependencies,
+    inapplicability: pass.inapplicability,
+    narrowing: pass.narrowing ? { reason: pass.narrowing.reason, gaps: pass.narrowing.gaps } : null,
+    baseline_pass: pass.baseline_pass ? {
+      pass_id: pass.baseline_pass.pass_id,
+      pass_fingerprint: pass.baseline_pass.pass_fingerprint
+    } : null,
+    requested_subchecks: pass.requested_subchecks.map(({ operation, subcheck }) => ({
+      operation,
+      subcheck
+    }))
+  };
+}
+function computeRequestedPassFingerprint(pass) {
+  return sha256Bytes(JSON.stringify(canonicalPassContent(pass)));
+}
+function deriveRequestedPassBaseline(lastSatisfiedFullPass, newRequests = []) {
+  const operations = /* @__PURE__ */ new Map();
+  for (const requirement of lastSatisfiedFullPass?.required_operations ?? []) {
+    operations.set(requirement.operation, {
+      operation: requirement.operation,
+      paths: [...requirement.paths],
+      subchecks: new Set(requirement.subchecks)
+    });
+  }
+  for (const request of newRequests) {
+    if (!operations.has(request.operation)) {
+      operations.set(request.operation, {
+        operation: request.operation,
+        paths: [...request.paths ?? lastSatisfiedFullPass?.paths ?? []],
+        subchecks: /* @__PURE__ */ new Set()
+      });
+    }
+    operations.get(request.operation).subchecks.add(request.subcheck);
+  }
+  return [...operations.values()].map((requirement) => ({
+    operation: requirement.operation,
+    paths: requirement.paths,
+    subchecks: [...requirement.subchecks].sort()
+  }));
+}
+function validateRequestedPass(value) {
+  const schema = validateRequestedPassSchema(value);
+  const errors = [...schema.errors];
+  if (value?.target_scope && Array.isArray(value?.required_operations) && Array.isArray(value?.paths) && Array.isArray(value?.dependencies) && Array.isArray(value?.inapplicability) && Array.isArray(value?.requested_subchecks)) {
+    const expected = computeRequestedPassFingerprint(value);
+    if (value.pass_fingerprint !== expected) {
+      errors.push(artifactError(
+        "/pass_fingerprint",
+        `pass_fingerprint must match canonical requested-pass content: ${expected}`,
+        "requested-pass-fingerprint"
+      ));
+    }
+  }
+  const operations = /* @__PURE__ */ new Set();
+  for (const [index, requirement] of (value?.required_operations ?? []).entries()) {
+    if (operations.has(requirement.operation)) {
+      errors.push(artifactError(
+        `/required_operations/${index}/operation`,
+        `duplicate required operation: ${requirement.operation}`,
+        "requested-pass-operation"
+      ));
+    }
+    operations.add(requirement.operation);
+  }
+  const requested = /* @__PURE__ */ new Set();
+  for (const [index, request] of (value?.requested_subchecks ?? []).entries()) {
+    const key = `${request.operation}\0${request.subcheck}`;
+    if (requested.has(key)) {
+      errors.push(artifactError(
+        `/requested_subchecks/${index}`,
+        "a newly requested subcheck can appear only once",
+        "requested-pass-subcheck"
+      ));
+    }
+    requested.add(key);
+  }
+  const inapplicable = /* @__PURE__ */ new Set();
+  for (const [index, reason] of (value?.inapplicability ?? []).entries()) {
+    for (const filePath of reason.paths) {
+      const key = `${reason.operation}\0${reason.subcheck}\0${filePath}`;
+      if (inapplicable.has(key)) {
+        errors.push(artifactError(
+          `/inapplicability/${index}`,
+          `duplicate inapplicability record for ${reason.operation}/${reason.subcheck} at ${filePath}`,
+          "requested-pass-applicability"
+        ));
+      }
+      inapplicable.add(key);
+      const requirement = passRequirements(value, reason.operation);
+      if (requirement?.subchecks.includes(reason.subcheck) && requirement.paths.includes(filePath)) {
+        errors.push(artifactError(
+          `/inapplicability/${index}`,
+          `${reason.operation}/${reason.subcheck} cannot be required and inapplicable at ${filePath}`,
+          "requested-pass-applicability"
+        ));
+      }
+    }
+  }
+  return { valid: errors.length === 0, errors };
+}
+function validateNoEditSkip(value) {
+  const schema = validateNoEditSkipSchema(value);
+  const errors = [...schema.errors];
+  for (const operation of ["revision-plan", "chapter-revision"]) {
+    if (!value?.operations?.includes(operation)) {
+      errors.push(artifactError(
+        "/operations",
+        `a no-edit skip must record ${operation}`,
+        "no-edit-operations"
+      ));
+    }
+  }
+  return { valid: errors.length === 0, errors };
+}
+function validateReviewGroup(value) {
+  const schema = validateReviewGroupSchema(value);
+  const errors = [...schema.errors];
+  const perspectives = new Set((value?.jobs ?? []).map((entry) => entry.perspective));
+  for (const perspective of PERSPECTIVES) {
+    if (!perspectives.has(perspective)) {
+      errors.push(artifactError(
+        "/jobs",
+        `review group requires its ${perspective} perspective`,
+        "review-group-perspective"
+      ));
+    }
+  }
+  if (perspectives.size !== (value?.jobs ?? []).length) {
+    errors.push(artifactError(
+      "/jobs",
+      "review group perspectives must be unique",
+      "review-group-perspective"
+    ));
+  }
+  return { valid: errors.length === 0, errors };
+}
+function validateSemanticAttestation(value) {
+  const schema = validateSemanticAttestationSchema(value);
+  const errors = [...schema.errors];
+  const claims = /* @__PURE__ */ new Set();
+  for (const [index, claim] of (value?.claims ?? []).entries()) {
+    if (claims.has(claim.claim_type)) {
+      errors.push(artifactError(
+        `/claims/${index}/claim_type`,
+        "one attestation cannot repeat a claim type",
+        "semantic-attestation-claim"
+      ));
+    }
+    claims.add(claim.claim_type);
+  }
+  return { valid: errors.length === 0, errors };
+}
+function validateConvergenceEvaluation(value) {
+  const schema = validateConvergenceEvaluationSchema(value);
+  const errors = [...schema.errors];
+  if (value?.outcome === "satisfied" && value?.blockers?.length > 0) {
+    errors.push(artifactError(
+      "/blockers",
+      "a satisfied evaluation cannot retain blockers",
+      "convergence-evaluation-outcome"
+    ));
+  }
+  if (value?.outcome !== "satisfied" && value?.blockers?.length === 0) {
+    errors.push(artifactError(
+      "/blockers",
+      "a non-satisfied evaluation requires concrete blockers",
+      "convergence-evaluation-outcome"
+    ));
+  }
+  return { valid: errors.length === 0, errors };
+}
+function passRequirements(pass, operation) {
+  return pass?.required_operations?.find((requirement) => requirement.operation === operation) ?? null;
+}
+var COVERAGE_OPERATIONS, PERSPECTIVES, DEFAULT_ACTION;
+var init_evaluation_contracts = __esm({
+  "scripts/lib/evaluation-contracts.mjs"() {
+    init_schemas();
+    init_state_io();
+    COVERAGE_OPERATIONS = ["diagnostics", "characters", "prose", "ai-cleanup"];
+    PERSPECTIVES = ["intent", "standards", "fresh"];
+    DEFAULT_ACTION = Object.freeze({
+      strategy: "revise-draft",
+      operation: "intake",
+      command: "revise-draft"
+    });
+  }
+});
+
+// scripts/lib/evaluation-artifacts.mjs
+import { readdir as readdir3, readFile as readFile4 } from "node:fs/promises";
+import path5 from "node:path";
+async function readProject(projectRoot) {
+  const root = path5.resolve(projectRoot);
+  const manifestPath = path5.join(root, ".author-toolkit", "project.json");
+  const manifest = JSON.parse(await readFile4(manifestPath, "utf8"));
+  const validation = validateManifest(manifest);
+  if (!validation.valid) {
+    throw new Error(`Project validation failed: ${validation.errors.map((error) => error.message).join("; ")}`);
+  }
+  if (manifest.schema_version !== "3.2.0") {
+    throw new Error("Convergence evaluation requires a v3.2 project");
+  }
+  return { root, manifestPath, manifest };
+}
+async function readActiveCycle(project) {
+  const file = path5.resolve(project.root, project.manifest.paths.convergence, "active-cycle.json");
+  let value;
+  let text;
+  try {
+    text = await readFile4(file, "utf8");
+    value = JSON.parse(text);
+  } catch (error) {
+    if (error.code === "ENOENT") return null;
+    throw error;
+  }
+  const validation = validateConvergenceCycleSchema(value);
+  if (!validation.valid || value.status !== "active") {
+    throw new Error(`Living cycle is invalid: ${file}: ${formatErrors(validation.errors)}`);
+  }
+  return { value, file, text };
+}
+function operationTime(options = {}) {
+  const now = options.now instanceof Date ? options.now : /* @__PURE__ */ new Date();
+  if (Number.isNaN(now.getTime())) throw new Error("Invalid convergence operation time");
+  return now.toISOString();
+}
+function evaluationReference(evaluation, relativePath, text) {
+  return {
+    evaluation_id: evaluation.evaluation_id,
+    path: relativePath,
+    sha256: sha256Bytes(text)
+  };
+}
+async function publishImmutable(file, text) {
+  try {
+    await createNoClobberVerified(file, text);
+  } catch (error) {
+    if (error.code !== "EEXIST") throw error;
+    const existing = await readFile4(file, "utf8");
+    if (existing !== text) throw new Error(`Immutable artifact already differs: ${file}`);
+  }
+}
+function formatErrors(errors) {
+  return errors.map((error) => `${error.instancePath || "/"} ${error.message}`).join("; ");
+}
+async function completedCycles(project) {
+  const directory = path5.resolve(project.root, project.manifest.paths.convergence, "cycles");
+  let entries2;
+  try {
+    entries2 = await readdir3(directory, { withFileTypes: true });
+  } catch (error) {
+    if (error.code === "ENOENT") return [];
+    throw error;
+  }
+  const cycles = [];
+  for (const entry of entries2) {
+    if (!entry.isFile() || !entry.name.endsWith(".json")) continue;
+    const value = JSON.parse(await readFile4(path5.join(directory, entry.name), "utf8"));
+    const validation = validateConvergenceCycleSchema(value);
+    if (!validation.valid) {
+      throw new Error(`Completed cycle is invalid: ${entry.name}: ${formatErrors(validation.errors)}`);
+    }
+    if (value.status === "completed") cycles.push(value);
+  }
+  return cycles.sort(
+    (left, right) => String(left.completion?.completed_at ?? left.updated_at).localeCompare(
+      String(right.completion?.completed_at ?? right.updated_at)
+    ) || left.cycle_id.localeCompare(right.cycle_id)
+  );
+}
+async function readEvaluationReference(project, reference) {
+  const text = await readFile4(path5.resolve(project.root, reference.path), "utf8");
+  if (sha256Bytes(text) !== reference.sha256) {
+    throw new Error(`Evaluation content hash changed: ${reference.path}`);
+  }
+  const value = JSON.parse(text);
+  const validation = validateConvergenceEvaluation(value);
+  if (!validation.valid) throw new Error(formatErrors(validation.errors));
+  if (value.evaluation_id !== reference.evaluation_id) {
+    throw new Error(`Evaluation identity changed: ${reference.path}`);
+  }
+  return { value, text };
+}
+async function evaluationSources(project) {
+  const sources = (await completedCycles(project)).map((cycle) => ({
+    cycle,
+    evaluationReference: cycle.target_evaluation,
+    passReference: cycle.requested_pass,
+    sortAt: cycle.completion?.completed_at ?? cycle.updated_at
+  }));
+  const directory = path5.resolve(project.root, project.manifest.paths.convergence, "evaluations");
+  let entries2;
+  try {
+    entries2 = await readdir3(directory, { withFileTypes: true });
+  } catch (error) {
+    if (error.code === "ENOENT") return sources;
+    throw error;
+  }
+  for (const entry of entries2) {
+    if (!entry.isFile() || !entry.name.endsWith(".json")) continue;
+    const relative = path5.posix.join(
+      project.manifest.paths.convergence,
+      "evaluations",
+      entry.name
+    );
+    const text = await readFile4(path5.resolve(project.root, relative), "utf8");
+    const evaluationReference2 = {
+      evaluation_id: entry.name.slice(0, -".json".length),
+      path: relative,
+      sha256: sha256Bytes(text)
+    };
+    const { value: evaluation } = await readEvaluationReference(project, evaluationReference2);
+    if (evaluation.cycle_id !== null) continue;
+    sources.push({
+      cycle: null,
+      evaluationReference: evaluationReference2,
+      passReference: evaluation.requested_pass,
+      sortAt: evaluation.created_at
+    });
+  }
+  return sources.sort(
+    (left, right) => left.sortAt.localeCompare(right.sortAt) || left.evaluationReference.path.localeCompare(right.evaluationReference.path)
+  );
+}
+async function latestSatisfiedPass(project, excludeCycleId = null, excludeEvaluationId = null) {
+  for (const source of (await evaluationSources(project)).reverse()) {
+    if (source.cycle?.cycle_id === excludeCycleId || source.evaluationReference.evaluation_id === excludeEvaluationId || !source.passReference) continue;
+    try {
+      const { value: evaluation } = await readEvaluationReference(project, source.evaluationReference);
+      if (evaluation.outcome !== "satisfied") continue;
+      const passText = await readFile4(path5.resolve(project.root, source.passReference.path), "utf8");
+      if (sha256Bytes(passText) !== source.passReference.sha256) continue;
+      const pass = JSON.parse(passText);
+      if (!validateRequestedPass(pass).valid || pass.narrowing !== null) continue;
+      if (pass.pass_id !== source.passReference.pass_id || pass.pass_fingerprint !== source.passReference.pass_fingerprint) continue;
+      return {
+        cycle: source.cycle,
+        evaluation,
+        evaluationReference: source.evaluationReference,
+        pass,
+        passReference: source.passReference
+      };
+    } catch {
+      continue;
+    }
+  }
+  return null;
+}
+var init_evaluation_artifacts = __esm({
+  "scripts/lib/evaluation-artifacts.mjs"() {
+    init_manifest();
+    init_schemas();
+    init_state_io();
+    init_evaluation_contracts();
+  }
+});
+
 // scripts/lib/scope.mjs
 import { createHash as createHash3 } from "node:crypto";
-import { readFile as readFile4 } from "node:fs/promises";
-import path5 from "node:path";
+import { mkdir as mkdir2, readFile as readFile5 } from "node:fs/promises";
+import path6 from "node:path";
 function sha256(contents) {
   return createHash3("sha256").update(contents).digest("hex");
 }
@@ -9592,7 +9973,7 @@ async function writeImmutable(file, contents) {
     await createNoClobberVerified(file, contents);
   } catch (error) {
     if (error.code !== "EEXIST") throw error;
-    const existing = await readFile4(file, "utf8");
+    const existing = await readFile5(file, "utf8");
     if (existing !== contents) {
       throw new Error(`Immutable snapshot already exists with different content: ${file}`);
     }
@@ -9601,7 +9982,7 @@ async function writeImmutable(file, contents) {
 async function readExistingInventory(file, expected) {
   let contents;
   try {
-    contents = await readFile4(file, "utf8");
+    contents = await readFile5(file, "utf8");
   } catch (error) {
     if (error.code === "ENOENT") return null;
     throw error;
@@ -9620,11 +10001,14 @@ async function currentInventory(projectRoot, manifest) {
   );
   const files = [];
   for (const entry of inventory.files) {
-    files.push({ path: entry.path, sha256: sha256(await readFile4(entry.absolute)) });
+    files.push({ path: entry.path, sha256: sha256(await readFile5(entry.absolute)) });
   }
+  const lockRoot = `${manifest.paths.convergence.replace(/\/$/, "")}/active-cycle.lock`;
   return {
     files,
-    excludedFiles: inventory.excludedFiles,
+    excludedFiles: inventory.excludedFiles.filter(
+      (filePath) => filePath !== lockRoot && !filePath.startsWith(`${lockRoot}/`)
+    ),
     absoluteByPath: new Map(inventory.files.map((entry) => [entry.path, entry.absolute]))
   };
 }
@@ -9651,12 +10035,12 @@ async function recordInventorySnapshot(projectRoot, manifest, options = {}) {
   };
   const validation = validateInventorySnapshot(record);
   if (!validation.valid) throw validationError(validation);
-  const relative = path5.posix.join(
+  const relative = path6.posix.join(
     manifest.paths.convergence,
     "inventories",
     `${record.inventory_fingerprint}.json`
   );
-  const absolute = path5.resolve(projectRoot, relative);
+  const absolute = path6.resolve(projectRoot, relative);
   const text = `${JSON.stringify(record, null, 2)}
 `;
   await writeImmutable(absolute, text);
@@ -9722,61 +10106,137 @@ function validationError(result) {
 ${result.errors.map((error) => `${error.instancePath || "/"} ${error.message}`).join("\n")}`
   );
 }
-async function recordScope(projectRoot, scope, options = {}) {
-  const root = path5.resolve(projectRoot);
-  const manifestPath = path5.join(root, ".author-toolkit", "project.json");
-  const manifest = JSON.parse(await readFile4(manifestPath, "utf8"));
+function scopeStateError(code, message, details = {}) {
+  const error = new Error(message);
+  error.projectCode = code;
+  error.projectDetails = details;
+  return error;
+}
+async function recordScopeLocked(root, manifestPath, initialConvergence, scope, options, progress) {
+  await runCheckpoint(options, "lock-acquired");
+  const manifestText = await readFile5(manifestPath, "utf8");
+  const actualManifestHash = sha256(manifestText);
+  if (options.expectedManifestSha256 !== void 0 && actualManifestHash !== options.expectedManifestSha256) {
+    throw scopeStateError(
+      "manifest-hash-conflict",
+      "The project manifest changed after the scope input was prepared; reread it before retrying.",
+      {
+        expected_sha256: options.expectedManifestSha256,
+        actual_sha256: actualManifestHash
+      }
+    );
+  }
+  const manifest = JSON.parse(manifestText);
   if (manifest.schema_version !== "3.2.0") {
     throw new Error("recordScope immutable snapshots require a v3.2 project");
   }
   const originalValidation = validateManifest(manifest);
   if (!originalValidation.valid) throw validationError(originalValidation);
+  if (manifest.paths.convergence !== initialConvergence) {
+    throw scopeStateError(
+      "project-lock-path-conflict",
+      "The registered convergence path changed while scope recording waited for its lock."
+    );
+  }
+  const active = await readActiveCycle({ root, manifest });
+  if (options.cycleId !== void 0 && !active) {
+    throw scopeStateError("active-cycle-required", "The named active cycle is unavailable.");
+  }
+  if (active && options.cycleId !== void 0 && (active.value.cycle_id !== options.cycleId || active.value.revision !== options.expectedRevision)) {
+    throw scopeStateError(
+      "cycle-revision-conflict",
+      `Expected cycle ${options.cycleId} revision ${options.expectedRevision}, but the active cycle is ${active.value.cycle_id} revision ${active.value.revision}.`
+    );
+  }
+  progress.active = active;
   const now = options.now instanceof Date ? options.now : /* @__PURE__ */ new Date();
   if (Number.isNaN(now.getTime())) throw new Error("Invalid scope recording time");
   const updatedAt = now.toISOString();
-  const scopeFingerprint = computeScopeFingerprint(scope);
+  if (!["proposed", "confirmed"].includes(scope.status)) {
+    throw new Error(`Unsupported scope status: ${scope.status}`);
+  }
+  const confirmation = options.authorConfirmation;
+  if (scope.status === "confirmed" && (!confirmation || confirmation.reading_order_confirmed !== true)) {
+    throw scopeStateError(
+      "scope-confirmation-required",
+      "A confirmed scope requires author confirmation of its exact reading order."
+    );
+  }
+  const inventory = await currentInventory(root, manifest);
+  const scopePaths = /* @__PURE__ */ new Set();
+  const files = [];
+  for (const entry of Array.isArray(scope.files) ? scope.files : []) {
+    const filePath = typeof entry === "string" ? entry : entry?.path;
+    const expectedHash = typeof entry === "object" && entry !== null ? entry.sha256 : void 0;
+    if (scopePaths.has(filePath)) throw new Error(`Duplicate scope path: ${filePath}`);
+    scopePaths.add(filePath);
+    const absolute = inventory.absoluteByPath.get(filePath);
+    if (!absolute) {
+      throw scopeStateError(
+        "scope-path-invalid",
+        `Scope path is not in the current manuscript inventory: ${filePath}`,
+        { path: filePath }
+      );
+    }
+    const actualHash = inventory.files.find((file) => file.path === filePath).sha256;
+    if (expectedHash !== void 0 && actualHash !== expectedHash) {
+      throw scopeStateError(
+        "scope-input-hash-conflict",
+        `Scope input hash is not current: ${filePath}`,
+        { path: filePath, expected_sha256: expectedHash, actual_sha256: actualHash }
+      );
+    }
+    files.push({ path: filePath, sha256: actualHash });
+  }
+  const excludedFiles = scope.excluded_files === void 0 ? sorted(inventory.excludedFiles) : scope.excluded_files;
+  if (JSON.stringify(sorted(excludedFiles)) !== JSON.stringify(sorted(inventory.excludedFiles))) {
+    throw scopeStateError(
+      "scope-exclusions-conflict",
+      "Scope exclusions do not match the current manuscript inventory.",
+      { expected: excludedFiles, actual: sorted(inventory.excludedFiles) }
+    );
+  }
+  const normalizedScope = {
+    ...scope,
+    files,
+    excluded_files: sorted(excludedFiles),
+    created_at: scope.created_at ?? updatedAt
+  };
+  const scopeFingerprint = computeScopeFingerprint(normalizedScope);
+  if (scope.scope_fingerprint !== void 0 && scope.scope_fingerprint !== scopeFingerprint) {
+    throw scopeStateError(
+      "scope-fingerprint-conflict",
+      `Scope fingerprint ${scope.scope_fingerprint} does not match the current ordered manuscript content ${scopeFingerprint}.`,
+      { expected_sha256: scope.scope_fingerprint, actual_sha256: scopeFingerprint }
+    );
+  }
   const currentScope = {
-    scope_id: scope.scope_id,
-    description: scope.description,
-    status: scope.status,
-    files: scope.files.map(({ path: filePath, sha256: hash }) => ({ path: filePath, sha256: hash })),
-    excluded_files: [...scope.excluded_files],
-    created_at: scope.created_at,
+    scope_id: normalizedScope.scope_id,
+    description: normalizedScope.description,
+    status: normalizedScope.status,
+    files: normalizedScope.files,
+    excluded_files: normalizedScope.excluded_files,
+    created_at: normalizedScope.created_at,
     scope_fingerprint: scopeFingerprint
   };
-  if (scope.status === "proposed") {
+  if (normalizedScope.status === "proposed") {
     const updated2 = { ...manifest, current_scope: currentScope, updated_at: updatedAt };
     const validation2 = validateManifest(updated2);
     if (!validation2.valid) throw validationError(validation2);
     await atomicWrite(manifestPath, `${JSON.stringify(updated2, null, 2)}
 `);
+    progress.manifestWritten = true;
+    await runCheckpoint(options, "manifest-updated");
     return {
-      scope_id: scope.scope_id,
+      scope_id: normalizedScope.scope_id,
       scope_fingerprint: scopeFingerprint,
       inventory_fingerprint: null,
       snapshot_path: null,
       inventory_path: null,
+      snapshot_reference: null,
+      inventory_reference: null,
       current_scope: currentScope
     };
-  }
-  if (scope.status !== "confirmed") throw new Error(`Unsupported scope status: ${scope.status}`);
-  const confirmation = options.authorConfirmation;
-  if (!confirmation || confirmation.reading_order_confirmed !== true) {
-    throw new Error("A confirmed scope requires author confirmation of its reading order");
-  }
-  const inventory = await currentInventory(root, manifest);
-  const scopePaths = /* @__PURE__ */ new Set();
-  for (const file of scope.files) {
-    if (scopePaths.has(file.path)) throw new Error(`Duplicate scope path: ${file.path}`);
-    scopePaths.add(file.path);
-    const absolute = inventory.absoluteByPath.get(file.path);
-    if (!absolute) throw new Error(`Scope path is not in manuscript inventory: ${file.path}`);
-    if (sha256(await readFile4(absolute)) !== file.sha256) {
-      throw new Error(`Scope input hash is not current: ${file.path}`);
-    }
-  }
-  if (JSON.stringify(sorted(scope.excluded_files)) !== JSON.stringify(sorted(inventory.excludedFiles))) {
-    throw new Error("Scope exclusions do not match the current manuscript inventory");
   }
   const inventoryRecord = {
     schema_version: "1.0.0",
@@ -9787,30 +10247,30 @@ async function recordScope(projectRoot, scope, options = {}) {
     created_at: updatedAt
   };
   inventoryRecord.inventory_fingerprint = computeInventoryFingerprint(inventoryRecord);
-  const inventoryRelative = path5.posix.join(
+  const inventoryRelative = path6.posix.join(
     manifest.paths.convergence,
     "inventories",
     `${inventoryRecord.inventory_fingerprint}.json`
   );
-  const inventoryPath = path5.resolve(root, inventoryRelative);
+  const inventoryPath = path6.resolve(root, inventoryRelative);
   let inventoryText = await readExistingInventory(inventoryPath, inventoryRecord);
   if (inventoryText === null) inventoryText = `${JSON.stringify(inventoryRecord, null, 2)}
 `;
-  const snapshotRelative = path5.posix.join(
+  const snapshotRelative = path6.posix.join(
     manifest.paths.convergence,
     "scopes",
-    `${scope.scope_id}-${scopeFingerprint}.json`
+    `${normalizedScope.scope_id}-${scopeFingerprint}.json`
   );
-  const snapshotPath = path5.resolve(root, snapshotRelative);
+  const snapshotPath = path6.resolve(root, snapshotRelative);
   const snapshot = {
     schema_version: "1.0.0",
-    scope_id: scope.scope_id,
+    scope_id: normalizedScope.scope_id,
     scope_fingerprint: scopeFingerprint,
-    description: scope.description,
+    description: normalizedScope.description,
     status: "confirmed",
     files: currentScope.files,
-    excluded_files: sorted(scope.excluded_files),
-    created_at: scope.created_at,
+    excluded_files: normalizedScope.excluded_files,
+    created_at: normalizedScope.created_at,
     inventory: {
       path: inventoryRelative,
       sha256: sha256(inventoryText),
@@ -9834,17 +10294,84 @@ async function recordScope(projectRoot, scope, options = {}) {
   const validation = validateManifest(updated);
   if (!validation.valid) throw validationError(validation);
   await writeImmutable(inventoryPath, inventoryText);
+  progress.inventoryPublished = true;
+  progress.inventoryPath = inventoryPath;
+  await runCheckpoint(options, "inventory-published");
   await writeImmutable(snapshotPath, snapshotText);
+  progress.snapshotPublished = true;
+  progress.snapshotPath = snapshotPath;
+  await runCheckpoint(options, "snapshot-published");
   await atomicWrite(manifestPath, `${JSON.stringify(updated, null, 2)}
 `);
+  progress.manifestWritten = true;
+  await runCheckpoint(options, "manifest-updated");
   return {
-    scope_id: scope.scope_id,
+    scope_id: normalizedScope.scope_id,
     scope_fingerprint: scopeFingerprint,
     inventory_fingerprint: inventoryRecord.inventory_fingerprint,
     snapshot_path: snapshotPath,
     inventory_path: inventoryPath,
+    snapshot_reference: {
+      path: snapshotRelative,
+      sha256: currentScope.snapshot_sha256
+    },
+    inventory_reference: {
+      path: inventoryRelative,
+      sha256: sha256(inventoryText),
+      inventory_fingerprint: inventoryRecord.inventory_fingerprint
+    },
     current_scope: currentScope
   };
+}
+async function recordScope(projectRoot, scope, options = {}) {
+  const root = path6.resolve(projectRoot);
+  const manifestPath = path6.join(root, ".author-toolkit", "project.json");
+  const initialManifest = JSON.parse(await readFile5(manifestPath, "utf8"));
+  if (initialManifest.schema_version !== "3.2.0") {
+    throw new Error("recordScope immutable snapshots require a v3.2 project");
+  }
+  const originalValidation = validateManifest(initialManifest);
+  if (!originalValidation.valid) throw validationError(originalValidation);
+  await mkdir2(path6.resolve(root, initialManifest.paths.convergence), { recursive: true });
+  const lock = await acquireDirectoryLock(
+    path6.resolve(root, initialManifest.paths.convergence, "active-cycle.lock"),
+    {
+      timeoutMs: options.lockTimeoutMs ?? 1e4,
+      retryMs: options.lockRetryMs ?? 20
+    }
+  );
+  if (!lock.acquired) {
+    throw scopeStateError(
+      lock.code === "timeout" ? "project-lock-timeout" : "project-lock-error",
+      `Cannot coordinate scope recording at ${lock.directory}: ${lock.error.message}`,
+      { lock_path: lock.directory }
+    );
+  }
+  const progress = options.progress ?? {};
+  let outcome;
+  let operationError;
+  try {
+    outcome = await recordScopeLocked(
+      root,
+      manifestPath,
+      initialManifest.paths.convergence,
+      scope,
+      options,
+      progress
+    );
+  } catch (error) {
+    operationError = error;
+  }
+  const released = await releaseDirectoryLock(lock);
+  if (!released.released) {
+    throw scopeStateError(
+      "project-lock-release-error",
+      `Cannot release scope lock ${lock.directory}: ${released.error.message}${operationError ? `; operation also failed: ${operationError.message}` : ""}`,
+      { lock_path: lock.directory }
+    );
+  }
+  if (operationError) throw operationError;
+  return outcome;
 }
 function scopeFailure(instancePath, message, keyword = "full-manuscript-scope") {
   return { instancePath, keyword, message, params: {} };
@@ -9911,7 +10438,7 @@ async function validateFullManuscriptScope(manifest, manifestPath) {
   let snapshotText;
   let snapshot;
   try {
-    snapshotText = await readFile4(path5.resolve(projectRoot, scope.snapshot_path), "utf8");
+    snapshotText = await readFile5(path6.resolve(projectRoot, scope.snapshot_path), "utf8");
     snapshot = JSON.parse(snapshotText);
     result.errors.push(...validateScopeSnapshot(snapshot).errors);
     result.inventory_fingerprint = snapshot.inventory?.inventory_fingerprint ?? null;
@@ -9924,7 +10451,7 @@ async function validateFullManuscriptScope(manifest, manifestPath) {
         )
       );
     }
-    const expectedSnapshotPath = path5.posix.join(
+    const expectedSnapshotPath = path6.posix.join(
       manifest.paths.convergence,
       "scopes",
       `${scope.scope_id}-${scope.scope_fingerprint}.json`
@@ -9986,7 +10513,7 @@ async function validateFullManuscriptScope(manifest, manifestPath) {
   let inventory;
   if (snapshot?.inventory) {
     try {
-      const expectedInventoryPath = path5.posix.join(
+      const expectedInventoryPath = path6.posix.join(
         manifest.paths.convergence,
         "inventories",
         `${snapshot.inventory.inventory_fingerprint}.json`
@@ -10000,8 +10527,8 @@ async function validateFullManuscriptScope(manifest, manifestPath) {
           )
         );
       }
-      const inventoryText = await readFile4(
-        path5.resolve(projectRoot, snapshot.inventory.path),
+      const inventoryText = await readFile5(
+        path6.resolve(projectRoot, snapshot.inventory.path),
         "utf8"
       );
       inventory = JSON.parse(inventoryText);
@@ -10084,7 +10611,7 @@ async function validateFullManuscriptScope(manifest, manifestPath) {
       if (!absolute) {
         let message = `scope path is not a current manuscript-inventory path: ${file.path}`;
         try {
-          await readFile4(path5.resolve(projectRoot, file.path));
+          await readFile5(path6.resolve(projectRoot, file.path));
         } catch (error) {
           message = `cannot read current manuscript ${file.path}: ${error.message}`;
         }
@@ -10198,6 +10725,8 @@ var init_scope = __esm({
     init_manifest();
     init_manuscript();
     init_project_files();
+    init_cycle_coordination();
+    init_evaluation_artifacts();
     init_schemas();
     init_state_io();
   }
@@ -10269,8 +10798,8 @@ var init_approval_paths = __esm({
 });
 
 // scripts/lib/tracker.mjs
-import { readFile as readFile5, stat as stat3 } from "node:fs/promises";
-import path6 from "node:path";
+import { readFile as readFile6, stat as stat3 } from "node:fs/promises";
+import path7 from "node:path";
 function trackerError(instancePath, message) {
   return { instancePath, keyword: "tracker", message, params: {} };
 }
@@ -10413,7 +10942,7 @@ async function validateTrackerMarkdown(markdown, projectRoot) {
       continue;
     }
     try {
-      const reportStat = await stat3(path6.resolve(projectRoot, report));
+      const reportStat = await stat3(path7.resolve(projectRoot, report));
       if (!reportStat.isFile()) {
         errors.push(trackerError(`${rowPath}/report`, `current report is not a file: ${report}`));
       }
@@ -10704,9 +11233,9 @@ async function validateTracker(manifest, manifestPath) {
     return { valid: true, errors: [] };
   }
   const projectRoot = projectRootFromManifest(manifestPath);
-  const trackerPath = path6.resolve(projectRoot, manifest.paths.audit_tracker);
+  const trackerPath = path7.resolve(projectRoot, manifest.paths.audit_tracker);
   try {
-    const markdown = await readFile5(trackerPath, "utf8");
+    const markdown = await readFile6(trackerPath, "utf8");
     return V3_SCHEMA_VERSIONS.has(manifest.schema_version) ? await validateTrackerV3Markdown(markdown, projectRoot) : await validateTrackerMarkdown(markdown, projectRoot);
   } catch (error) {
     return {
@@ -10767,8 +11296,8 @@ var init_tracker = __esm({
 });
 
 // scripts/lib/legacy-recovery.mjs
-import { readdir as readdir3, readFile as readFile6, stat as stat4 } from "node:fs/promises";
-import path7 from "node:path";
+import { readdir as readdir4, readFile as readFile7, stat as stat4 } from "node:fs/promises";
+import path8 from "node:path";
 async function exists(file) {
   try {
     await stat4(file);
@@ -10780,7 +11309,7 @@ async function exists(file) {
 }
 async function readJson(file) {
   try {
-    return JSON.parse(await readFile6(file, "utf8"));
+    return JSON.parse(await readFile7(file, "utf8"));
   } catch (error) {
     if (error.code === "ENOENT" || error instanceof SyntaxError) return null;
     throw error;
@@ -10788,7 +11317,7 @@ async function readJson(file) {
 }
 async function entries(directory) {
   try {
-    return await readdir3(directory, { withFileTypes: true });
+    return await readdir4(directory, { withFileTypes: true });
   } catch (error) {
     if (error.code === "ENOENT") return [];
     throw error;
@@ -10814,7 +11343,7 @@ async function hasValidLegacyRejection(projectRoot, manifest, batch, batchId) {
     return false;
   }
   const tracker = await parseTrackerState(
-    await readFile6(path7.resolve(projectRoot, manifest.paths.audit_tracker), "utf8"),
+    await readFile7(path8.resolve(projectRoot, manifest.paths.audit_tracker), "utf8"),
     projectRoot
   );
   const rejectionApprovals = batch.approvals.map((approvalId) => tracker.approvals.find((approval2) => approval2.id === approvalId)).filter((approval2) => approval2?.type === "creation-rejection");
@@ -10833,18 +11362,18 @@ async function hasValidLegacyRejection(projectRoot, manifest, batch, batchId) {
 }
 async function inspectLegacyRecovery(projectRoot, manifest) {
   const pendingAction = manifest.pending_action ?? null;
-  if (manifest.cycle_operation || pendingAction?.cycle_id || await exists(path7.resolve(projectRoot, manifest.paths.convergence, "active-cycle.json"))) {
+  if (manifest.cycle_operation || pendingAction?.cycle_id || await exists(path8.resolve(projectRoot, manifest.paths.convergence, "active-cycle.json"))) {
     return emptyRecovery(pendingAction);
   }
   const interruptedCommits = [];
   const commitBlockers = [];
-  const batchesRelative = path7.posix.join(manifest.paths.creation, "batches");
-  const batchesAbsolute = path7.resolve(projectRoot, batchesRelative);
+  const batchesRelative = path8.posix.join(manifest.paths.creation, "batches");
+  const batchesAbsolute = path8.resolve(projectRoot, batchesRelative);
   for (const entry of await entries(batchesAbsolute)) {
     if (!entry.isFile() || !entry.name.endsWith(".json")) continue;
-    const commit = await readJson(path7.join(batchesAbsolute, entry.name));
+    const commit = await readJson(path8.join(batchesAbsolute, entry.name));
     if (!commit?.commit_id || TERMINAL_COMMIT_STATUSES.has(commit.status)) continue;
-    const relative = path7.posix.join(batchesRelative, entry.name);
+    const relative = path8.posix.join(batchesRelative, entry.name);
     const record = {
       commit_id: commit.commit_id,
       batch_id: commit.batch_id ?? null,
@@ -10880,11 +11409,11 @@ async function inspectLegacyRecovery(projectRoot, manifest) {
   }
   const legacyStaging = [];
   const stagingBlockers = [];
-  const stagingRelative = path7.posix.join(manifest.paths.creation, "staging");
-  const stagingAbsolute = path7.resolve(projectRoot, stagingRelative);
+  const stagingRelative = path8.posix.join(manifest.paths.creation, "staging");
+  const stagingAbsolute = path8.resolve(projectRoot, stagingRelative);
   for (const entry of await entries(stagingAbsolute)) {
     if (!entry.isDirectory()) continue;
-    const batch = await readJson(path7.join(batchesAbsolute, `${entry.name}.json`));
+    const batch = await readJson(path8.join(batchesAbsolute, `${entry.name}.json`));
     if (TERMINAL_STAGING_STATUSES.has(batch?.status)) continue;
     const rejectionRequired = batch?.status === "rejected";
     if (rejectionRequired && await hasValidLegacyRejection(projectRoot, manifest, batch, entry.name)) {
@@ -10893,7 +11422,7 @@ async function inspectLegacyRecovery(projectRoot, manifest) {
     const record = {
       batch_id: entry.name,
       status: batch?.status ?? "unknown",
-      path: path7.posix.join(stagingRelative, entry.name),
+      path: path8.posix.join(stagingRelative, entry.name),
       rejection_required: rejectionRequired
     };
     legacyStaging.push(record);
@@ -10924,387 +11453,6 @@ var init_legacy_recovery = __esm({
     init_tracker();
     TERMINAL_COMMIT_STATUSES = /* @__PURE__ */ new Set(["committed", "restored"]);
     TERMINAL_STAGING_STATUSES = /* @__PURE__ */ new Set(["committed", "restored"]);
-  }
-});
-
-// scripts/lib/evaluation-contracts.mjs
-function artifactError(instancePath, message, keyword = "convergence-artifact") {
-  return { instancePath, keyword, message, params: {} };
-}
-function sameReference(left, right) {
-  return left?.path === right?.path && left?.sha256 === right?.sha256;
-}
-function samePassReference(left, right) {
-  return sameReference(left, right) && left?.pass_id === right?.pass_id && left?.pass_fingerprint === right?.pass_fingerprint;
-}
-function sameScopeReference(left, right) {
-  return left?.scope_id === right?.scope_id && left?.scope_fingerprint === right?.scope_fingerprint && left?.snapshot_path === right?.snapshot_path && left?.snapshot_sha256 === right?.snapshot_sha256;
-}
-function canonicalPassContent(pass) {
-  return {
-    target_scope: {
-      scope_id: pass.target_scope.scope_id,
-      scope_fingerprint: pass.target_scope.scope_fingerprint
-    },
-    required_operations: pass.required_operations,
-    paths: pass.paths,
-    language: pass.language,
-    dependencies: pass.dependencies,
-    inapplicability: pass.inapplicability,
-    narrowing: pass.narrowing ? { reason: pass.narrowing.reason, gaps: pass.narrowing.gaps } : null,
-    baseline_pass: pass.baseline_pass ? {
-      pass_id: pass.baseline_pass.pass_id,
-      pass_fingerprint: pass.baseline_pass.pass_fingerprint
-    } : null,
-    requested_subchecks: pass.requested_subchecks.map(({ operation, subcheck }) => ({
-      operation,
-      subcheck
-    }))
-  };
-}
-function computeRequestedPassFingerprint(pass) {
-  return sha256Bytes(JSON.stringify(canonicalPassContent(pass)));
-}
-function deriveRequestedPassBaseline(lastSatisfiedFullPass, newRequests = []) {
-  const operations = /* @__PURE__ */ new Map();
-  for (const requirement of lastSatisfiedFullPass?.required_operations ?? []) {
-    operations.set(requirement.operation, {
-      operation: requirement.operation,
-      paths: [...requirement.paths],
-      subchecks: new Set(requirement.subchecks)
-    });
-  }
-  for (const request of newRequests) {
-    if (!operations.has(request.operation)) {
-      operations.set(request.operation, {
-        operation: request.operation,
-        paths: [...request.paths ?? lastSatisfiedFullPass?.paths ?? []],
-        subchecks: /* @__PURE__ */ new Set()
-      });
-    }
-    operations.get(request.operation).subchecks.add(request.subcheck);
-  }
-  return [...operations.values()].map((requirement) => ({
-    operation: requirement.operation,
-    paths: requirement.paths,
-    subchecks: [...requirement.subchecks].sort()
-  }));
-}
-function validateRequestedPass(value) {
-  const schema = validateRequestedPassSchema(value);
-  const errors = [...schema.errors];
-  if (value?.target_scope && Array.isArray(value?.required_operations) && Array.isArray(value?.paths) && Array.isArray(value?.dependencies) && Array.isArray(value?.inapplicability) && Array.isArray(value?.requested_subchecks)) {
-    const expected = computeRequestedPassFingerprint(value);
-    if (value.pass_fingerprint !== expected) {
-      errors.push(artifactError(
-        "/pass_fingerprint",
-        `pass_fingerprint must match canonical requested-pass content: ${expected}`,
-        "requested-pass-fingerprint"
-      ));
-    }
-  }
-  const operations = /* @__PURE__ */ new Set();
-  for (const [index, requirement] of (value?.required_operations ?? []).entries()) {
-    if (operations.has(requirement.operation)) {
-      errors.push(artifactError(
-        `/required_operations/${index}/operation`,
-        `duplicate required operation: ${requirement.operation}`,
-        "requested-pass-operation"
-      ));
-    }
-    operations.add(requirement.operation);
-  }
-  const requested = /* @__PURE__ */ new Set();
-  for (const [index, request] of (value?.requested_subchecks ?? []).entries()) {
-    const key = `${request.operation}\0${request.subcheck}`;
-    if (requested.has(key)) {
-      errors.push(artifactError(
-        `/requested_subchecks/${index}`,
-        "a newly requested subcheck can appear only once",
-        "requested-pass-subcheck"
-      ));
-    }
-    requested.add(key);
-  }
-  const inapplicable = /* @__PURE__ */ new Set();
-  for (const [index, reason] of (value?.inapplicability ?? []).entries()) {
-    for (const filePath of reason.paths) {
-      const key = `${reason.operation}\0${reason.subcheck}\0${filePath}`;
-      if (inapplicable.has(key)) {
-        errors.push(artifactError(
-          `/inapplicability/${index}`,
-          `duplicate inapplicability record for ${reason.operation}/${reason.subcheck} at ${filePath}`,
-          "requested-pass-applicability"
-        ));
-      }
-      inapplicable.add(key);
-      const requirement = passRequirements(value, reason.operation);
-      if (requirement?.subchecks.includes(reason.subcheck) && requirement.paths.includes(filePath)) {
-        errors.push(artifactError(
-          `/inapplicability/${index}`,
-          `${reason.operation}/${reason.subcheck} cannot be required and inapplicable at ${filePath}`,
-          "requested-pass-applicability"
-        ));
-      }
-    }
-  }
-  return { valid: errors.length === 0, errors };
-}
-function validateNoEditSkip(value) {
-  const schema = validateNoEditSkipSchema(value);
-  const errors = [...schema.errors];
-  for (const operation of ["revision-plan", "chapter-revision"]) {
-    if (!value?.operations?.includes(operation)) {
-      errors.push(artifactError(
-        "/operations",
-        `a no-edit skip must record ${operation}`,
-        "no-edit-operations"
-      ));
-    }
-  }
-  return { valid: errors.length === 0, errors };
-}
-function validateReviewGroup(value) {
-  const schema = validateReviewGroupSchema(value);
-  const errors = [...schema.errors];
-  const perspectives = new Set((value?.jobs ?? []).map((entry) => entry.perspective));
-  for (const perspective of PERSPECTIVES) {
-    if (!perspectives.has(perspective)) {
-      errors.push(artifactError(
-        "/jobs",
-        `review group requires its ${perspective} perspective`,
-        "review-group-perspective"
-      ));
-    }
-  }
-  if (perspectives.size !== (value?.jobs ?? []).length) {
-    errors.push(artifactError(
-      "/jobs",
-      "review group perspectives must be unique",
-      "review-group-perspective"
-    ));
-  }
-  return { valid: errors.length === 0, errors };
-}
-function validateSemanticAttestation(value) {
-  const schema = validateSemanticAttestationSchema(value);
-  const errors = [...schema.errors];
-  const claims = /* @__PURE__ */ new Set();
-  for (const [index, claim] of (value?.claims ?? []).entries()) {
-    if (claims.has(claim.claim_type)) {
-      errors.push(artifactError(
-        `/claims/${index}/claim_type`,
-        "one attestation cannot repeat a claim type",
-        "semantic-attestation-claim"
-      ));
-    }
-    claims.add(claim.claim_type);
-  }
-  return { valid: errors.length === 0, errors };
-}
-function validateConvergenceEvaluation(value) {
-  const schema = validateConvergenceEvaluationSchema(value);
-  const errors = [...schema.errors];
-  if (value?.outcome === "satisfied" && value?.blockers?.length > 0) {
-    errors.push(artifactError(
-      "/blockers",
-      "a satisfied evaluation cannot retain blockers",
-      "convergence-evaluation-outcome"
-    ));
-  }
-  if (value?.outcome !== "satisfied" && value?.blockers?.length === 0) {
-    errors.push(artifactError(
-      "/blockers",
-      "a non-satisfied evaluation requires concrete blockers",
-      "convergence-evaluation-outcome"
-    ));
-  }
-  return { valid: errors.length === 0, errors };
-}
-function passRequirements(pass, operation) {
-  return pass?.required_operations?.find((requirement) => requirement.operation === operation) ?? null;
-}
-var COVERAGE_OPERATIONS, PERSPECTIVES, DEFAULT_ACTION;
-var init_evaluation_contracts = __esm({
-  "scripts/lib/evaluation-contracts.mjs"() {
-    init_schemas();
-    init_state_io();
-    COVERAGE_OPERATIONS = ["diagnostics", "characters", "prose", "ai-cleanup"];
-    PERSPECTIVES = ["intent", "standards", "fresh"];
-    DEFAULT_ACTION = Object.freeze({
-      strategy: "revise-draft",
-      operation: "intake",
-      command: "revise-draft"
-    });
-  }
-});
-
-// scripts/lib/evaluation-artifacts.mjs
-import { readdir as readdir4, readFile as readFile7 } from "node:fs/promises";
-import path8 from "node:path";
-async function readProject(projectRoot) {
-  const root = path8.resolve(projectRoot);
-  const manifestPath = path8.join(root, ".author-toolkit", "project.json");
-  const manifest = JSON.parse(await readFile7(manifestPath, "utf8"));
-  const validation = validateManifest(manifest);
-  if (!validation.valid) {
-    throw new Error(`Project validation failed: ${validation.errors.map((error) => error.message).join("; ")}`);
-  }
-  if (manifest.schema_version !== "3.2.0") {
-    throw new Error("Convergence evaluation requires a v3.2 project");
-  }
-  return { root, manifestPath, manifest };
-}
-async function readActiveCycle(project) {
-  const file = path8.resolve(project.root, project.manifest.paths.convergence, "active-cycle.json");
-  let value;
-  let text;
-  try {
-    text = await readFile7(file, "utf8");
-    value = JSON.parse(text);
-  } catch (error) {
-    if (error.code === "ENOENT") return null;
-    throw error;
-  }
-  const validation = validateConvergenceCycleSchema(value);
-  if (!validation.valid || value.status !== "active") {
-    throw new Error(`Living cycle is invalid: ${file}: ${formatErrors(validation.errors)}`);
-  }
-  return { value, file, text };
-}
-function operationTime(options = {}) {
-  const now = options.now instanceof Date ? options.now : /* @__PURE__ */ new Date();
-  if (Number.isNaN(now.getTime())) throw new Error("Invalid convergence operation time");
-  return now.toISOString();
-}
-function evaluationReference(evaluation, relativePath, text) {
-  return {
-    evaluation_id: evaluation.evaluation_id,
-    path: relativePath,
-    sha256: sha256Bytes(text)
-  };
-}
-async function publishImmutable(file, text) {
-  try {
-    await createNoClobberVerified(file, text);
-  } catch (error) {
-    if (error.code !== "EEXIST") throw error;
-    const existing = await readFile7(file, "utf8");
-    if (existing !== text) throw new Error(`Immutable artifact already differs: ${file}`);
-  }
-}
-function formatErrors(errors) {
-  return errors.map((error) => `${error.instancePath || "/"} ${error.message}`).join("; ");
-}
-async function completedCycles(project) {
-  const directory = path8.resolve(project.root, project.manifest.paths.convergence, "cycles");
-  let entries2;
-  try {
-    entries2 = await readdir4(directory, { withFileTypes: true });
-  } catch (error) {
-    if (error.code === "ENOENT") return [];
-    throw error;
-  }
-  const cycles = [];
-  for (const entry of entries2) {
-    if (!entry.isFile() || !entry.name.endsWith(".json")) continue;
-    const value = JSON.parse(await readFile7(path8.join(directory, entry.name), "utf8"));
-    const validation = validateConvergenceCycleSchema(value);
-    if (!validation.valid) {
-      throw new Error(`Completed cycle is invalid: ${entry.name}: ${formatErrors(validation.errors)}`);
-    }
-    if (value.status === "completed") cycles.push(value);
-  }
-  return cycles.sort(
-    (left, right) => String(left.completion?.completed_at ?? left.updated_at).localeCompare(
-      String(right.completion?.completed_at ?? right.updated_at)
-    ) || left.cycle_id.localeCompare(right.cycle_id)
-  );
-}
-async function readEvaluationReference(project, reference) {
-  const text = await readFile7(path8.resolve(project.root, reference.path), "utf8");
-  if (sha256Bytes(text) !== reference.sha256) {
-    throw new Error(`Evaluation content hash changed: ${reference.path}`);
-  }
-  const value = JSON.parse(text);
-  const validation = validateConvergenceEvaluation(value);
-  if (!validation.valid) throw new Error(formatErrors(validation.errors));
-  if (value.evaluation_id !== reference.evaluation_id) {
-    throw new Error(`Evaluation identity changed: ${reference.path}`);
-  }
-  return { value, text };
-}
-async function evaluationSources(project) {
-  const sources = (await completedCycles(project)).map((cycle) => ({
-    cycle,
-    evaluationReference: cycle.target_evaluation,
-    passReference: cycle.requested_pass,
-    sortAt: cycle.completion?.completed_at ?? cycle.updated_at
-  }));
-  const directory = path8.resolve(project.root, project.manifest.paths.convergence, "evaluations");
-  let entries2;
-  try {
-    entries2 = await readdir4(directory, { withFileTypes: true });
-  } catch (error) {
-    if (error.code === "ENOENT") return sources;
-    throw error;
-  }
-  for (const entry of entries2) {
-    if (!entry.isFile() || !entry.name.endsWith(".json")) continue;
-    const relative = path8.posix.join(
-      project.manifest.paths.convergence,
-      "evaluations",
-      entry.name
-    );
-    const text = await readFile7(path8.resolve(project.root, relative), "utf8");
-    const evaluationReference2 = {
-      evaluation_id: entry.name.slice(0, -".json".length),
-      path: relative,
-      sha256: sha256Bytes(text)
-    };
-    const { value: evaluation } = await readEvaluationReference(project, evaluationReference2);
-    if (evaluation.cycle_id !== null) continue;
-    sources.push({
-      cycle: null,
-      evaluationReference: evaluationReference2,
-      passReference: evaluation.requested_pass,
-      sortAt: evaluation.created_at
-    });
-  }
-  return sources.sort(
-    (left, right) => left.sortAt.localeCompare(right.sortAt) || left.evaluationReference.path.localeCompare(right.evaluationReference.path)
-  );
-}
-async function latestSatisfiedPass(project, excludeCycleId = null, excludeEvaluationId = null) {
-  for (const source of (await evaluationSources(project)).reverse()) {
-    if (source.cycle?.cycle_id === excludeCycleId || source.evaluationReference.evaluation_id === excludeEvaluationId || !source.passReference) continue;
-    try {
-      const { value: evaluation } = await readEvaluationReference(project, source.evaluationReference);
-      if (evaluation.outcome !== "satisfied") continue;
-      const passText = await readFile7(path8.resolve(project.root, source.passReference.path), "utf8");
-      if (sha256Bytes(passText) !== source.passReference.sha256) continue;
-      const pass = JSON.parse(passText);
-      if (!validateRequestedPass(pass).valid || pass.narrowing !== null) continue;
-      if (pass.pass_id !== source.passReference.pass_id || pass.pass_fingerprint !== source.passReference.pass_fingerprint) continue;
-      return {
-        cycle: source.cycle,
-        evaluation,
-        evaluationReference: source.evaluationReference,
-        pass,
-        passReference: source.passReference
-      };
-    } catch {
-      continue;
-    }
-  }
-  return null;
-}
-var init_evaluation_artifacts = __esm({
-  "scripts/lib/evaluation-artifacts.mjs"() {
-    init_manifest();
-    init_schemas();
-    init_state_io();
-    init_evaluation_contracts();
   }
 });
 
@@ -12460,12 +12608,12 @@ function reviewError(instancePath, keyword, message) {
 function objectArray(value) {
   return Array.isArray(value) ? value.filter((item) => item && typeof item === "object") : [];
 }
-function duplicateErrors(items, key, path22, keyword, errors) {
+function duplicateErrors(items, key, path23, keyword, errors) {
   const seen = /* @__PURE__ */ new Set();
   for (const [index, item] of items.entries()) {
     const value = item?.[key];
     if (seen.has(value)) {
-      errors.push(reviewError(`${path22}/${index}/${key}`, keyword, `duplicate ${key}: ${value}`));
+      errors.push(reviewError(`${path23}/${index}/${key}`, keyword, `duplicate ${key}: ${value}`));
     }
     seen.add(value);
   }
@@ -15027,7 +15175,7 @@ var init_evaluation_operations = __esm({
 import { readFile as readFile13 } from "node:fs/promises";
 import path14 from "node:path";
 function missingEvaluationStatus(cycle, pendingAction = null, requestCompletion = null) {
-  const requiredAction3 = cycle?.recovery_position ? {
+  const requiredAction4 = cycle?.recovery_position ? {
     strategy: cycle.recovery_position.required_strategy,
     operation: cycle.recovery_position.operation,
     command: cycle.recovery_position.required_strategy
@@ -15040,11 +15188,11 @@ function missingEvaluationStatus(cycle, pendingAction = null, requestCompletion 
     cycle: cycle ?? null,
     pending_action: pendingAction,
     request_completion: requestCompletion,
-    required_action: requiredAction3,
+    required_action: requiredAction4,
     blockers: [{
       code: "current-evaluation-unavailable",
       message: "No current satisfied full-manuscript evaluation is available.",
-      required_action: requiredAction3
+      required_action: requiredAction4
     }]
   };
 }
@@ -15145,7 +15293,7 @@ async function getConvergenceStatus(projectRoot) {
     project.manifest.paths
   );
   if (observedInventory.files.length === 0 && (reference || (active?.value.related_artifacts.reconciliations ?? []).length > 0)) {
-    const requiredAction3 = active?.value.recovery_position ? {
+    const requiredAction4 = active?.value.recovery_position ? {
       strategy: active.value.recovery_position.required_strategy,
       operation: active.value.recovery_position.operation,
       command: active.value.recovery_position.required_strategy
@@ -15163,11 +15311,11 @@ async function getConvergenceStatus(projectRoot) {
       cycle: active?.value ?? null,
       pending_action: project.manifest.pending_action ?? null,
       request_completion: requestCompletion,
-      required_action: requiredAction3,
+      required_action: requiredAction4,
       blockers: [{
         code: "empty-manuscript",
         message: "An empty manuscript cannot satisfy current-draft revision convergence; restore or import nonempty manuscript before full-manuscript revise-draft recovery.",
-        required_action: requiredAction3
+        required_action: requiredAction4
       }]
     };
   }
@@ -15234,7 +15382,7 @@ async function getConvergenceStatus(projectRoot) {
   }
   try {
     const result = await recomputeStoredEvaluation(project, cycle, reference);
-    const requiredAction3 = active?.value?.recovery_position ? {
+    const requiredAction4 = active?.value?.recovery_position ? {
       strategy: active.value.recovery_position.required_strategy,
       operation: active.value.recovery_position.operation,
       command: active.value.recovery_position.required_strategy
@@ -15249,7 +15397,7 @@ async function getConvergenceStatus(projectRoot) {
       cycle: active?.value ?? null,
       pending_action: project.manifest.pending_action ?? null,
       request_completion: requestCompletion,
-      required_action: requiredAction3,
+      required_action: requiredAction4,
       blockers: result.recomputed.blockers
     };
   } catch (error) {
@@ -16466,7 +16614,7 @@ __export(project_state_exports, {
   getFullProjectStatus: () => getFullProjectStatus,
   initializeProject: () => initializeProject
 });
-import { mkdir as mkdir2, readdir as readdir7, readFile as readFile16 } from "node:fs/promises";
+import { mkdir as mkdir3, readdir as readdir7, readFile as readFile16 } from "node:fs/promises";
 import path17 from "node:path";
 import { fileURLToPath as fileURLToPath2 } from "node:url";
 async function readTemplate(name) {
@@ -16599,7 +16747,7 @@ async function initializeProject(projectRoot, input = {}) {
     manifest.paths.creation,
     manifest.paths.convergence
   ]) {
-    await mkdir2(path17.resolve(root, directory), { recursive: true });
+    await mkdir3(path17.resolve(root, directory), { recursive: true });
   }
   const created = [...references.created];
   const tracker = (await readTemplate("audit-tracker-template.md")).replace("- Project root:", `- Project root: ${root}`).replace("- Manifest created at:", `- Manifest created at: ${timestamp2}`);
@@ -16889,14 +17037,14 @@ function action3(strategy, operation) {
   return { strategy, operation, command: strategy };
 }
 function failure2(code, message, cycle = null, details = {}) {
-  const requiredAction3 = cycle?.recovery_position ? action3(cycle.recovery_position.required_strategy, cycle.recovery_position.operation) : action3("write-fiction", "creation-import");
+  const requiredAction4 = cycle?.recovery_position ? action3(cycle.recovery_position.required_strategy, cycle.recovery_position.operation) : action3("write-fiction", "creation-import");
   return {
     valid: false,
     cycle,
     reconciliation: null,
     state_written: false,
-    required_action: requiredAction3,
-    blockers: [{ code, message, required_action: requiredAction3 }],
+    required_action: requiredAction4,
+    blockers: [{ code, message, required_action: requiredAction4 }],
     ...details
   };
 }
@@ -17394,13 +17542,393 @@ var init_reconciliation = __esm({
   }
 });
 
-// scripts/lib/cycle-recovery.mjs
+// scripts/lib/project-commands.mjs
 import { readFile as readFile18 } from "node:fs/promises";
 import path19 from "node:path";
+function requiredAction3(operation) {
+  return {
+    strategy: "author-project",
+    operation,
+    command: `author-project ${operation}`
+  };
+}
+function failure3(code, message, operation, details = {}) {
+  return {
+    valid: false,
+    state_written: false,
+    required_action: requiredAction3(operation),
+    blockers: [{ code, message, ...details, required_action: requiredAction3(operation) }],
+    ...details
+  };
+}
+function stateError(code, message, details = {}) {
+  const error = new Error(message);
+  error.projectCode = code;
+  error.projectDetails = details;
+  return error;
+}
+function operationTime4(options) {
+  const now = options.now instanceof Date ? options.now : /* @__PURE__ */ new Date();
+  if (Number.isNaN(now.getTime())) throw new Error("Invalid project operation time");
+  return now.toISOString();
+}
+function validatePendingRequest(request) {
+  const allowed = /* @__PURE__ */ new Set([
+    "operation",
+    "status",
+    "scope_id",
+    "scope_fingerprint",
+    "reason",
+    "artifacts",
+    "operation_id",
+    "expected_manifest_sha256",
+    "cycle_id",
+    "expected_revision"
+  ]);
+  for (const key of Object.keys(request)) {
+    if (!allowed.has(key)) throw new Error(`Unknown set-pending input field: ${key}`);
+  }
+  if (request.cycle_id === void 0 !== (request.expected_revision === void 0)) {
+    throw new Error("set-pending cycle identity requires both cycle_id and expected_revision");
+  }
+  if (request.expected_revision !== void 0 && !Number.isInteger(request.expected_revision)) {
+    throw new Error("set-pending expected_revision must be an integer");
+  }
+}
+async function recoveryState(project, active, operation) {
+  let manifest = null;
+  let manifestText = null;
+  try {
+    manifestText = await readFile18(project.manifestPath, "utf8");
+    manifest = JSON.parse(manifestText);
+  } catch {
+  }
+  return {
+    required_action: requiredAction3(operation),
+    manifest_path: project.manifestPath,
+    manifest_sha256: manifestText === null ? null : sha256Bytes(manifestText),
+    current_scope: manifest?.current_scope ?? null,
+    pending_action: manifest?.pending_action ?? null,
+    cycle_operation: manifest?.cycle_operation ?? null,
+    cycle_id: active?.value.cycle_id ?? null,
+    cycle_revision: active?.value.revision ?? null
+  };
+}
+async function setPendingAction(projectRoot, request, options = {}) {
+  validatePendingRequest(request);
+  const references = await validateDeployedReferences(projectRoot);
+  if (!references.valid) {
+    return {
+      ...failure3(
+        "reference-version-conflict",
+        "Shared references are missing or do not match the installed payload; run setup-author-toolkit.",
+        "set-pending"
+      ),
+      reference_errors: references.errors
+    };
+  }
+  const initial = await readProject(projectRoot);
+  const lock = await acquireDirectoryLock(
+    path19.resolve(initial.root, initial.manifest.paths.convergence, "active-cycle.lock"),
+    {
+      timeoutMs: options.lockTimeoutMs ?? 1e4,
+      retryMs: options.lockRetryMs ?? 20
+    }
+  );
+  if (!lock.acquired) {
+    return {
+      ...failure3(
+        lock.code === "timeout" ? "project-lock-timeout" : "project-lock-error",
+        `Cannot coordinate pending-action recording at ${lock.directory}: ${lock.error.message}`,
+        "set-pending",
+        { lock_path: lock.directory }
+      ),
+      pending_action: initial.manifest.pending_action ?? null
+    };
+  }
+  let outcome;
+  let operationError;
+  let manifestWritten = false;
+  let project = initial;
+  let active = null;
+  try {
+    await runCheckpoint(options, "lock-acquired");
+    project = await readProject(projectRoot);
+    active = await readActiveCycle(project);
+    const manifestText = await readFile18(project.manifestPath, "utf8");
+    if (request.expected_manifest_sha256 !== void 0 && sha256Bytes(manifestText) !== request.expected_manifest_sha256) {
+      throw stateError(
+        "manifest-hash-conflict",
+        "The project manifest changed after the pending-action input was prepared; reread it before retrying.",
+        { expected_sha256: request.expected_manifest_sha256, actual_sha256: sha256Bytes(manifestText) }
+      );
+    }
+    if (active && request.cycle_id !== void 0 && (active.value.cycle_id !== request.cycle_id || active.value.revision !== request.expected_revision)) {
+      throw stateError(
+        "cycle-revision-conflict",
+        `Expected cycle ${request.cycle_id} revision ${request.expected_revision}, but the active cycle is ${active.value.cycle_id} revision ${active.value.revision}.`
+      );
+    }
+    if (!active && request.cycle_id !== void 0) {
+      throw stateError("active-cycle-required", "The named active cycle is unavailable.");
+    }
+    const coordination = coordinationBlockers(project, active);
+    if (coordination.length > 0) {
+      outcome = {
+        ...failure3(
+          coordination[0].code,
+          coordination[0].message,
+          "set-pending"
+        ),
+        pending_action: project.manifest.pending_action ?? null,
+        recovery: await recoveryState(project, active, "reconcile-cycle")
+      };
+    } else {
+      const cycle = active?.value ?? null;
+      const trackedScope = cycle?.target_scope ?? project.manifest.current_scope ?? null;
+      if (request.scope_id !== void 0 && trackedScope && request.scope_id !== trackedScope.scope_id) {
+        throw stateError(
+          "pending-scope-conflict",
+          `Pending scope ${request.scope_id} does not match current scope ${trackedScope.scope_id}.`
+        );
+      }
+      if (request.scope_fingerprint !== void 0 && trackedScope && request.scope_fingerprint !== trackedScope.scope_fingerprint) {
+        throw stateError(
+          "pending-scope-conflict",
+          "The pending scope fingerprint does not match the current scope fingerprint."
+        );
+      }
+      if (request.operation_id !== void 0 && cycle && request.operation_id !== cycle.recovery_position?.operation_id) {
+        throw stateError(
+          "cycle-operation-id-mismatch",
+          "The pending operation ID does not match the active cycle recovery position."
+        );
+      }
+      if (cycle && request.operation !== cycle.recovery_position?.operation) {
+        throw stateError(
+          "cycle-operation-mismatch",
+          `Pending operation ${request.operation} does not match active recovery operation ${cycle.recovery_position?.operation ?? "null"}.`
+        );
+      }
+      const scopeId = trackedScope?.scope_id ?? request.scope_id;
+      const scopeFingerprint = trackedScope?.scope_fingerprint ?? request.scope_fingerprint;
+      const artifacts = [.../* @__PURE__ */ new Set([
+        ...project.manifest.pending_action?.artifacts ?? [],
+        ...request.artifacts ?? []
+      ])];
+      const pending = {
+        operation: request.operation,
+        status: request.status,
+        ...scopeId ? { scope_id: scopeId } : {},
+        ...scopeFingerprint ? { scope_fingerprint: scopeFingerprint } : {},
+        ...cycle ? {
+          cycle_id: cycle.cycle_id,
+          cycle_revision: cycle.revision,
+          ...cycle.recovery_position?.operation_id ? {
+            operation_id: cycle.recovery_position.operation_id
+          } : {}
+        } : request.operation_id ? { operation_id: request.operation_id } : {},
+        reason: request.reason,
+        ...artifacts.length > 0 ? { artifacts } : {},
+        updated_at: operationTime4(options)
+      };
+      const updated = {
+        ...project.manifest,
+        pending_action: pending,
+        updated_at: pending.updated_at
+      };
+      const manifestValidation = validateManifest(updated);
+      const fileValidation = manifestValidation.valid ? await validateProjectFiles(updated, project.manifestPath) : { valid: false, errors: [] };
+      if (!manifestValidation.valid || !fileValidation.valid) {
+        outcome = {
+          ...failure3(
+            "pending-action-invalid",
+            "The requested pending action does not satisfy the project contract.",
+            "set-pending"
+          ),
+          pending_action: project.manifest.pending_action ?? null,
+          validation_errors: [...manifestValidation.errors, ...fileValidation.errors]
+        };
+      } else {
+        await writeAtomicVerified(project.manifestPath, `${JSON.stringify(updated, null, 2)}
+`);
+        manifestWritten = true;
+        await runCheckpoint(options, "manifest-updated");
+        outcome = {
+          valid: true,
+          state_written: true,
+          pending_action: pending,
+          manifest_sha256: sha256Bytes(`${JSON.stringify(updated, null, 2)}
+`),
+          required_action: requiredAction3("set-pending"),
+          blockers: []
+        };
+      }
+    }
+  } catch (error) {
+    operationError = error;
+  }
+  const released = await releaseDirectoryLock(lock);
+  if (!released.released) {
+    return {
+      ...failure3(
+        "project-lock-release-error",
+        `Cannot release pending-action lock ${lock.directory}: ${released.error.message}`,
+        "set-pending",
+        { lock_path: lock.directory }
+      ),
+      state_written: manifestWritten,
+      recovery: await recoveryState(project, active, "set-pending")
+    };
+  }
+  if (operationError) {
+    return {
+      ...failure3(
+        operationError.projectCode ?? "pending-action-write-interrupted",
+        operationError.message,
+        "set-pending",
+        operationError.projectDetails
+      ),
+      state_written: manifestWritten,
+      pending_action: project.manifest.pending_action ?? null,
+      recovery: await recoveryState(project, active, "set-pending")
+    };
+  }
+  return outcome;
+}
+function validateScopeRequest(request) {
+  const allowed = /* @__PURE__ */ new Set([
+    "scope_id",
+    "description",
+    "status",
+    "files",
+    "excluded_files",
+    "created_at",
+    "scope_fingerprint",
+    "author_confirmation",
+    "expected_manifest_sha256",
+    "cycle_id",
+    "expected_revision"
+  ]);
+  for (const key of Object.keys(request)) {
+    if (!allowed.has(key)) throw new Error(`Unknown record-scope input field: ${key}`);
+  }
+  if (request.cycle_id === void 0 !== (request.expected_revision === void 0)) {
+    throw new Error("record-scope cycle identity requires both cycle_id and expected_revision");
+  }
+  if (request.expected_revision !== void 0 && !Number.isInteger(request.expected_revision)) {
+    throw new Error("record-scope expected_revision must be an integer");
+  }
+}
+function validationBlockers(errors) {
+  return errors.map((error) => ({
+    code: error.code ?? error.keyword ?? "scope-validation-failed",
+    instancePath: error.instancePath ?? null,
+    message: error.message
+  }));
+}
+async function recordProjectScope(projectRoot, request, options = {}) {
+  validateScopeRequest(request);
+  const references = await validateDeployedReferences(projectRoot);
+  if (!references.valid) {
+    return {
+      ...failure3(
+        "reference-version-conflict",
+        "Shared references are missing or do not match the installed payload; run setup-author-toolkit.",
+        "record-scope"
+      ),
+      reference_errors: references.errors
+    };
+  }
+  const initial = await readProject(projectRoot);
+  const scope = Object.fromEntries([
+    "scope_id",
+    "description",
+    "status",
+    "files",
+    "excluded_files",
+    "created_at",
+    "scope_fingerprint"
+  ].filter((key) => request[key] !== void 0).map((key) => [key, request[key]]));
+  const progress = {};
+  try {
+    const recorded = await recordScope(projectRoot, scope, {
+      authorConfirmation: request.author_confirmation,
+      expectedManifestSha256: request.expected_manifest_sha256,
+      cycleId: request.cycle_id,
+      expectedRevision: request.expected_revision,
+      now: options.now,
+      checkpoint: options.checkpoint,
+      lockTimeoutMs: options.lockTimeoutMs,
+      lockRetryMs: options.lockRetryMs,
+      progress
+    });
+    const manifestText = await readFile18(initial.manifestPath, "utf8");
+    const manifest = JSON.parse(manifestText);
+    const validation = await validateFullManuscriptScope(manifest, initial.manifestPath);
+    return {
+      valid: true,
+      state_written: true,
+      scope_id: recorded.scope_id,
+      scope_fingerprint: recorded.scope_fingerprint,
+      inventory_fingerprint: recorded.inventory_fingerprint,
+      current_scope: recorded.current_scope,
+      snapshot: recorded.snapshot_reference,
+      inventory: recorded.inventory_reference,
+      validation: {
+        valid: validation.valid,
+        full_manuscript: validation.full_manuscript,
+        scope_id: validation.scope_id,
+        scope_fingerprint: validation.scope_fingerprint,
+        inventory_fingerprint: validation.inventory_fingerprint,
+        snapshot_path: validation.snapshot_path,
+        blockers: validationBlockers(validation.errors)
+      },
+      manifest_sha256: sha256Bytes(manifestText),
+      required_action: requiredAction3("record-scope"),
+      blockers: []
+    };
+  } catch (error) {
+    return {
+      ...failure3(
+        error.projectCode ?? "scope-write-interrupted",
+        error.message,
+        "record-scope",
+        error.projectDetails
+      ),
+      state_written: Boolean(
+        progress.inventoryPublished || progress.snapshotPublished || progress.manifestWritten
+      ),
+      recovery: {
+        ...await recoveryState(initial, progress.active, "record-scope"),
+        inventory_published: progress.inventoryPublished === true,
+        snapshot_published: progress.snapshotPublished === true,
+        manifest_updated: progress.manifestWritten === true,
+        inventory_path: progress.inventoryPath ?? null,
+        snapshot_path: progress.snapshotPath ?? null
+      }
+    };
+  }
+}
+var init_project_commands = __esm({
+  "scripts/lib/project-commands.mjs"() {
+    init_cycle_coordination();
+    init_evaluation_artifacts();
+    init_manifest();
+    init_project_files();
+    init_scope();
+    init_shared_references();
+    init_state_io();
+  }
+});
+
+// scripts/lib/cycle-recovery.mjs
+import { readFile as readFile19 } from "node:fs/promises";
+import path20 from "node:path";
 async function readProject5(projectRoot) {
-  const root = path19.resolve(projectRoot);
-  const manifestPath = path19.join(root, ".author-toolkit", "project.json");
-  const manifest = JSON.parse(await readFile18(manifestPath, "utf8"));
+  const root = path20.resolve(projectRoot);
+  const manifestPath = path20.join(root, ".author-toolkit", "project.json");
+  const manifest = JSON.parse(await readFile19(manifestPath, "utf8"));
   const validation = validateManifest(manifest);
   if (!validation.valid || manifest.schema_version !== "3.2.0") {
     throw new Error("Cycle reconciliation requires a valid v3.2 project");
@@ -17441,7 +17969,7 @@ function formatErrors3(errors) {
 }
 async function readJsonIfPresent(file) {
   try {
-    return { text: await readFile18(file, "utf8"), file };
+    return { text: await readFile19(file, "utf8"), file };
   } catch (error) {
     if (error.code === "ENOENT") return null;
     throw error;
@@ -17455,12 +17983,12 @@ function parseCycle(record) {
   return { ...record, value };
 }
 function completedCyclePath(project, cycleId) {
-  const relative = path19.posix.join(
+  const relative = path20.posix.join(
     project.manifest.paths.convergence,
     "cycles",
     `${cycleId}.json`
   );
-  return { relative, absolute: path19.resolve(project.root, relative) };
+  return { relative, absolute: path20.resolve(project.root, relative) };
 }
 function sameScope(left, right) {
   return JSON.stringify(left ?? null) === JSON.stringify(right ?? null);
@@ -17474,7 +18002,7 @@ function activeArtifactReferences(project, cycle) {
       role,
       path: reference.snapshot_path,
       sha256: reference.snapshot_sha256,
-      expectedPath: path19.posix.join(
+      expectedPath: path20.posix.join(
         project.manifest.paths.convergence,
         "scopes",
         `${reference.scope_id}-${reference.scope_fingerprint}.json`
@@ -17534,7 +18062,7 @@ async function artifactDiagnostics(project, active) {
   for (const reference of activeArtifactReferences(project, active?.value)) {
     let contents;
     try {
-      contents = await readFile18(path19.resolve(project.root, reference.path));
+      contents = await readFile19(path20.resolve(project.root, reference.path));
     } catch (error) {
       blockers.push({
         code: "cycle-artifact-unavailable",
@@ -17616,7 +18144,7 @@ async function completionDiagnostic(project, active) {
     }]
   };
 }
-function failure3(code, message, cycle, details = {}) {
+function failure4(code, message, cycle, details = {}) {
   return {
     valid: false,
     diagnostic_only: false,
@@ -17664,7 +18192,7 @@ async function unsafeDiscardResult(project, active, operation, artifacts) {
   ];
   if (blockers.length === 0) return null;
   const directions = discardDirections(operation);
-  const requiredAction3 = directionAction(directions[0]);
+  const requiredAction4 = directionAction(directions[0]);
   return {
     valid: false,
     diagnostic_only: false,
@@ -17674,21 +18202,21 @@ async function unsafeDiscardResult(project, active, operation, artifacts) {
     available_directions: directions,
     blockers: blockers.map((blocker2) => ({
       ...blocker2,
-      required_action: requiredAction3
+      required_action: requiredAction4
     })),
-    required_action: requiredAction3
+    required_action: requiredAction4
   };
 }
 async function finishCompletion(project, active, completed, request) {
   if (!active || !completed) {
-    return failure3("cycle-completion-unavailable", "The active and completed records needed for completion recovery are not both present.", active?.value ?? completed?.value ?? null);
+    return failure4("cycle-completion-unavailable", "The active and completed records needed for completion recovery are not both present.", active?.value ?? completed?.value ?? null);
   }
   if (request.cycle_id !== active.value.cycle_id) {
-    return failure3("cycle-id-mismatch", "The reconciliation direction must name the interrupted cycle explicitly.", active.value);
+    return failure4("cycle-id-mismatch", "The reconciliation direction must name the interrupted cycle explicitly.", active.value);
   }
   const diagnostic = await completionDiagnostic(project, active);
   if (diagnostic.blockers[0]?.code !== "cycle-completion-reconcile-required") {
-    return failure3(
+    return failure4(
       diagnostic.blockers[0]?.code ?? "cycle-completion-unavailable",
       diagnostic.blockers[0]?.message ?? "The completed cycle cannot be reconciled.",
       active.value
@@ -17698,10 +18226,10 @@ async function finishCompletion(project, active, completed, request) {
   try {
     evaluation = await recomputeCompletedCycleForRecovery(project, completed.value);
   } catch (error) {
-    return failure3("completion-evaluation-unavailable", error.message, active.value);
+    return failure4("completion-evaluation-unavailable", error.message, active.value);
   }
   if (!evaluation.current || evaluation.recomputed.outcome !== "satisfied") {
-    return failure3(
+    return failure4(
       "completion-evaluation-not-satisfied",
       "The completed cycle's post-decision evaluation is not current and satisfied; active state was not removed.",
       active.value,
@@ -17718,7 +18246,7 @@ async function finishCompletion(project, active, completed, request) {
   const operation = project.manifest.cycle_operation;
   if (operation) {
     if (operation.kind !== "completion" || operation.cycle_id !== completed.value.cycle_id || operation.intended_revision !== completed.value.revision || request.operation_id && request.operation_id !== operation.operation_id) {
-      return failure3("cycle-operation-id-mismatch", "The completed history does not match the interrupted completion operation.", active.value);
+      return failure4("cycle-operation-id-mismatch", "The completed history does not match the interrupted completion operation.", active.value);
     }
     await finishCycleOperation(project, completed.value, operation.operation_id, {
       complete: true,
@@ -17736,7 +18264,7 @@ async function finishCompletion(project, active, completed, request) {
     }
     const manifestValidation = validateManifest(manifest);
     if (!manifestValidation.valid) {
-      return failure3("manifest-update-invalid", formatErrors3(manifestValidation.errors), active.value);
+      return failure4("manifest-update-invalid", formatErrors3(manifestValidation.errors), active.value);
     }
     await writeAtomicVerified(project.manifestPath, `${JSON.stringify(manifest, null, 2)}
 `);
@@ -17744,7 +18272,7 @@ async function finishCompletion(project, active, completed, request) {
   try {
     await removeVerified(active.file, sha256Bytes(active.text));
   } catch (error) {
-    return failure3(
+    return failure4(
       "cycle-active-content-changed",
       `The active record changed during reconciliation; active removal was refused after the manifest update: ${error.message}`,
       active.value,
@@ -17767,13 +18295,13 @@ async function reconcileCycle(projectRoot, request = {}, options = {}) {
     if (!allowed.has(key)) throw new Error(`Unknown reconcile-cycle input field: ${key}`);
   }
   const project = await readProject5(projectRoot);
-  const lockPath = path19.resolve(
+  const lockPath = path20.resolve(
     project.root,
     project.manifest.paths.convergence,
     "active-cycle.lock"
   );
   const inspected = await inspectDirectoryLock(lockPath);
-  const active = parseCycle(await readJsonIfPresent(path19.resolve(
+  const active = parseCycle(await readJsonIfPresent(path20.resolve(
     project.root,
     project.manifest.paths.convergence,
     "active-cycle.json"
@@ -17832,7 +18360,7 @@ async function reconcileCycle(projectRoot, request = {}, options = {}) {
       retryMs: options.lockRetryMs ?? 20
     });
     if (!recoveryLock.acquired) {
-      return failure3(
+      return failure4(
         recoveryLock.code === "timeout" ? "cycle-transition-lock-timeout" : "cycle-transition-lock-error",
         `Cannot serialize cycle reconciliation at ${lockPath}: ${recoveryLock.error.message}`,
         active?.value ?? null
@@ -17841,11 +18369,11 @@ async function reconcileCycle(projectRoot, request = {}, options = {}) {
     let currentManifest;
     let currentActiveText;
     try {
-      currentManifest = JSON.parse(await readFile18(project.manifestPath, "utf8"));
-      currentActiveText = active ? await readFile18(active.file, "utf8") : null;
+      currentManifest = JSON.parse(await readFile19(project.manifestPath, "utf8"));
+      currentActiveText = active ? await readFile19(active.file, "utf8") : null;
     } catch (error) {
       await releaseDirectoryLock(recoveryLock);
-      return failure3(
+      return failure4(
         "cycle-recovery-state-changed",
         `Cannot reconfirm cycle state after acquiring the recovery lock: ${error.message}`,
         active?.value ?? null
@@ -17853,7 +18381,7 @@ async function reconcileCycle(projectRoot, request = {}, options = {}) {
     }
     if (JSON.stringify(currentManifest) !== JSON.stringify(project.manifest) || currentActiveText !== (active?.text ?? null)) {
       await releaseDirectoryLock(recoveryLock);
-      return failure3(
+      return failure4(
         "cycle-recovery-state-changed",
         "Manifest or active cycle content changed after diagnosis; rerun reconcile-cycle before choosing a direction.",
         active?.value ?? null
@@ -17865,31 +18393,31 @@ async function reconcileCycle(projectRoot, request = {}, options = {}) {
     if (request.direction === "repair-completed-pointer") {
       const pointer = project.manifest.last_completed_cycle;
       if (!pointer || pointer.cycle_id !== request.cycle_id || active?.value.cycle_id === pointer.cycle_id) {
-        return failure3("cycle-completed-pointer-unavailable", "Pointer repair requires the mismatched completed cycle and no active record for that cycle.", active?.value ?? null);
+        return failure4("cycle-completed-pointer-unavailable", "Pointer repair requires the mismatched completed cycle and no active record for that cycle.", active?.value ?? null);
       }
       const completedPath = completedCyclePath(project, pointer.cycle_id);
       const completed = parseCycle(await readJsonIfPresent(completedPath.absolute));
       if (!completed || completed.value.status !== "completed") {
-        return failure3("cycle-completed-pointer-unavailable", `No valid completed cycle exists at ${completedPath.relative}.`, active?.value ?? null);
+        return failure4("cycle-completed-pointer-unavailable", `No valid completed cycle exists at ${completedPath.relative}.`, active?.value ?? null);
       }
       if (sha256Bytes(completed.text) !== pointer.sha256) {
-        return failure3(
+        return failure4(
           "cycle-completed-pointer-hash-mismatch",
           "Completed history bytes differ from the manifest pointer; recovery will not rehash or relabel potentially changed history.",
           completed.value
         );
       }
       if (request.operation_id && request.operation_id !== completed.value.target_evaluation?.evaluation_id) {
-        return failure3("cycle-operation-id-mismatch", "Pointer repair operation ID must name the completed target evaluation when supplied.", completed.value);
+        return failure4("cycle-operation-id-mismatch", "Pointer repair operation ID must name the completed target evaluation when supplied.", completed.value);
       }
       let evaluation;
       try {
         evaluation = await recomputeCompletedCycleForRecovery(project, completed.value);
       } catch (error) {
-        return failure3("completion-evaluation-unavailable", error.message, completed.value);
+        return failure4("completion-evaluation-unavailable", error.message, completed.value);
       }
       if (!evaluation.current || evaluation.recomputed.outcome !== "satisfied") {
-        return failure3("completion-evaluation-not-satisfied", "The completed history no longer has a current satisfied post-decision evaluation; its pointer was not changed.", completed.value);
+        return failure4("completion-evaluation-not-satisfied", "The completed history no longer has a current satisfied post-decision evaluation; its pointer was not changed.", completed.value);
       }
       const manifest = {
         ...project.manifest,
@@ -17916,22 +18444,22 @@ async function reconcileCycle(projectRoot, request = {}, options = {}) {
     if (request.direction === "resume-creation-publication") {
       const operation = project.manifest.cycle_operation;
       if (inspected.present || !active || operation && (operation.kind !== "creation-publication" || operation.operation_id !== request.operation_id || operation.cycle_id !== request.cycle_id || active.value.revision !== operation.expected_revision) || !operation && active.value.cycle_id !== request.cycle_id) {
-        return failure3("creation-publication-identity-mismatch", "Creation recovery requires the exact cycle, commit ID, pre-link active revision, and no leftover lock.", active?.value ?? null);
+        return failure4("creation-publication-identity-mismatch", "Creation recovery requires the exact cycle, commit ID, pre-link active revision, and no leftover lock.", active?.value ?? null);
       }
       try {
-        const commitRelative = path19.posix.join(
+        const commitRelative = path20.posix.join(
           project.manifest.paths.creation,
           "batches",
           `${request.operation_id}.json`
         );
-        const commitText = await readFile18(path19.resolve(project.root, commitRelative), "utf8");
+        const commitText = await readFile19(path20.resolve(project.root, commitRelative), "utf8");
         const commit = JSON.parse(commitText);
-        const batchRelative = path19.posix.join(
+        const batchRelative = path20.posix.join(
           project.manifest.paths.creation,
           "batches",
           `${commit.batch_id}.json`
         );
-        const batchText = await readFile18(path19.resolve(project.root, batchRelative), "utf8");
+        const batchText = await readFile19(path20.resolve(project.root, batchRelative), "utf8");
         const current = project.manifest.current_scope;
         if (!current?.snapshot_path) throw new Error("The confirmed publication scope is unavailable");
         const targetScope = {
@@ -17965,24 +18493,24 @@ async function reconcileCycle(projectRoot, request = {}, options = {}) {
           }
         }, { ...options, recoveryOperationId: request.operation_id });
       } catch (error) {
-        return failure3("creation-publication-evidence-unavailable", error.message, active.value);
+        return failure4("creation-publication-evidence-unavailable", error.message, active.value);
       }
     }
     if (request.direction === "resume-manuscript-reconciliation") {
       const operation = project.manifest.cycle_operation;
       if (inspected.present || !operation || operation.kind !== "manuscript-reconciliation" || operation.operation_id !== request.operation_id || operation.cycle_id !== request.cycle_id || active?.value.revision !== operation.expected_revision) {
-        return failure3("reconciliation-identity-mismatch", "Manuscript reconciliation recovery requires the exact interrupted record, active revision, and no leftover lock.", active?.value ?? null);
+        return failure4("reconciliation-identity-mismatch", "Manuscript reconciliation recovery requires the exact interrupted record, active revision, and no leftover lock.", active?.value ?? null);
       }
-      const relative = path19.posix.join(
+      const relative = path20.posix.join(
         project.manifest.paths.convergence,
         "reconciliations",
         `${operation.artifact_id ?? operation.operation_id}.json`
       );
       let reconciliation;
       try {
-        reconciliation = JSON.parse(await readFile18(path19.resolve(project.root, relative), "utf8"));
+        reconciliation = JSON.parse(await readFile19(path20.resolve(project.root, relative), "utf8"));
       } catch (error) {
-        return failure3("reconciliation-artifact-unavailable", error.message, active.value);
+        return failure4("reconciliation-artifact-unavailable", error.message, active.value);
       }
       return reconcileManuscript(projectRoot, {
         reconciliation_id: reconciliation.reconciliation_id,
@@ -17996,18 +18524,18 @@ async function reconcileCycle(projectRoot, request = {}, options = {}) {
     if (request.direction === "resume-revision-execution") {
       const operation = project.manifest.cycle_operation;
       if (inspected.present || !operation || !["revision-preparation", "revision-verification"].includes(operation.kind) || operation.operation_id !== request.operation_id || operation.cycle_id !== request.cycle_id || active?.value.revision !== operation.expected_revision) {
-        return failure3("revision-execution-identity-mismatch", "Revision recovery requires the exact interrupted execution, active revision, and no leftover lock.", active?.value ?? null);
+        return failure4("revision-execution-identity-mismatch", "Revision recovery requires the exact interrupted execution, active revision, and no leftover lock.", active?.value ?? null);
       }
-      const relative = path19.posix.join(
+      const relative = path20.posix.join(
         project.manifest.paths.convergence,
         "executions",
         `${operation.artifact_id ?? operation.operation_id}.json`
       );
       let execution;
       try {
-        execution = JSON.parse(await readFile18(path19.resolve(project.root, relative), "utf8"));
+        execution = JSON.parse(await readFile19(path20.resolve(project.root, relative), "utf8"));
       } catch (error) {
-        return failure3("revision-execution-unavailable", error.message, active.value);
+        return failure4("revision-execution-unavailable", error.message, active.value);
       }
       const recoveryOptions = { ...options, recoveryOperationId: operation.operation_id };
       if (operation.kind === "revision-verification") {
@@ -18037,7 +18565,7 @@ async function reconcileCycle(projectRoot, request = {}, options = {}) {
     if (request.direction === "resume-completion") {
       const operation = project.manifest.cycle_operation;
       if (inspected.present || !operation || operation.kind !== "completion" || operation.operation_id !== request.operation_id || operation.cycle_id !== request.cycle_id || active?.value.revision !== operation.expected_revision || completion.completed || !operation.artifact_id) {
-        return failure3(
+        return failure4(
           "cycle-operation-id-mismatch",
           "Completion recovery requires the exact unfinished completion operation, its evaluation ID, no completed history, and no leftover lock.",
           active?.value ?? null
@@ -18053,19 +18581,19 @@ async function reconcileCycle(projectRoot, request = {}, options = {}) {
     }
     if (request.direction === "attach-interrupted-evaluation") {
       if (inspected.present) {
-        return failure3("cycle-lock-owner-active", "Resolve the existing lock before linking the published evaluation.", active?.value ?? null);
+        return failure4("cycle-lock-owner-active", "Resolve the existing lock before linking the published evaluation.", active?.value ?? null);
       }
       const operation = project.manifest.cycle_operation;
       if (!operation || operation.kind !== "evaluation" || operation.operation_id !== request.operation_id || operation.cycle_id !== request.cycle_id || active?.value.revision !== operation.expected_revision) {
-        return failure3("evaluation-identity-mismatch", "The evaluation recovery direction does not match the interrupted evaluation and active revision.", active?.value ?? null);
+        return failure4("evaluation-identity-mismatch", "The evaluation recovery direction does not match the interrupted evaluation and active revision.", active?.value ?? null);
       }
       try {
-        const relative = path19.posix.join(
+        const relative = path20.posix.join(
           project.manifest.paths.convergence,
           "evaluations",
           `${operation.artifact_id ?? operation.operation_id}.json`
         );
-        const text = await readFile18(path19.resolve(project.root, relative), "utf8");
+        const text = await readFile19(path20.resolve(project.root, relative), "utf8");
         const reference = {
           evaluation_id: operation.artifact_id ?? operation.operation_id,
           path: relative,
@@ -18100,12 +18628,12 @@ async function reconcileCycle(projectRoot, request = {}, options = {}) {
           required_action: null
         };
       } catch (error) {
-        return failure3("evaluation-identity-mismatch", error.message, active.value);
+        return failure4("evaluation-identity-mismatch", error.message, active.value);
       }
     }
     if (["accept-active-cycle", "discard-interrupted-operation"].includes(request.direction)) {
       if (inspected.present) {
-        return failure3(
+        return failure4(
           inspected.running ? "cycle-lock-owner-active" : "cycle-lock-owner-not-running",
           "Resolve the existing lock through its owner-verified recovery before changing cycle state.",
           active?.value ?? null
@@ -18113,14 +18641,14 @@ async function reconcileCycle(projectRoot, request = {}, options = {}) {
       }
       const operation = project.manifest.cycle_operation;
       if (!active || active.value.cycle_id !== request.cycle_id) {
-        return failure3("cycle-id-mismatch", "The reconciliation direction must name the active cycle explicitly.", active?.value ?? null);
+        return failure4("cycle-id-mismatch", "The reconciliation direction must name the active cycle explicitly.", active?.value ?? null);
       }
       if (request.direction === "discard-interrupted-operation") {
         if (!operation || operation.operation_id !== request.operation_id || operation.cycle_id !== request.cycle_id) {
-          return failure3("cycle-operation-id-mismatch", "Discard requires the exact interrupted cycle and operation IDs.", active.value);
+          return failure4("cycle-operation-id-mismatch", "Discard requires the exact interrupted cycle and operation IDs.", active.value);
         }
         if (active.value.revision !== operation.expected_revision || completion.completed) {
-          return failure3(
+          return failure4(
             "cycle-operation-already-advanced",
             "The interrupted operation cannot be discarded after its cycle advanced or completed history was published.",
             active.value
@@ -18132,20 +18660,20 @@ async function reconcileCycle(projectRoot, request = {}, options = {}) {
       } else {
         if (artifacts.length > 0) {
           return {
-            ...failure3(artifacts[0].code, artifacts[0].message, active.value),
+            ...failure4(artifacts[0].code, artifacts[0].message, active.value),
             blockers: artifacts
           };
         }
         if (operation) {
           if (operation.operation_id !== request.operation_id || operation.cycle_id !== request.cycle_id || active.value.revision !== operation.intended_revision || active.value.recovery_position?.operation_id !== operation.operation_id) {
-            return failure3(
+            return failure4(
               "cycle-operation-revision-mismatch",
               "The active cycle has not advanced to the intended revision with the same operation ID; choose discard or another explicit recovery path.",
               active.value
             );
           }
         } else if (completion.completed || active.value.recovery_position?.operation_id !== request.operation_id) {
-          return failure3(
+          return failure4(
             "cycle-operation-id-mismatch",
             "Accepting active state without an interrupted operation record requires the current recovery operation ID and no completed history awaiting removal.",
             active.value
@@ -18174,7 +18702,7 @@ async function reconcileCycle(projectRoot, request = {}, options = {}) {
     }
     if (request.direction === "finish-completion") {
       if (inspected.present) {
-        return failure3(
+        return failure4(
           inspected.running ? "cycle-lock-owner-active" : "cycle-lock-owner-not-running",
           "Resolve the existing lock through its owner-verified recovery before changing completion state.",
           active?.value ?? null
@@ -18239,8 +18767,8 @@ var init_cycle_recovery = __esm({
 
 // scripts/lib/migration.mjs
 import { createHash as createHash5 } from "node:crypto";
-import { mkdir as mkdir3, readFile as readFile19 } from "node:fs/promises";
-import path20 from "node:path";
+import { mkdir as mkdir4, readFile as readFile20 } from "node:fs/promises";
+import path21 from "node:path";
 function validationError3(label, result) {
   const details = result.errors.map((error) => `${error.instancePath || "/"} ${error.message}`).join("\n");
   return new Error(`${label} failed:
@@ -18261,7 +18789,7 @@ async function createCurrentScope(projectRoot, manuscriptRoot, paths, timestamp2
   }
   const files = [];
   for (const entry of inventory.files) {
-    const contents = await readFile19(entry.absolute);
+    const contents = await readFile20(entry.absolute);
     files.push({
       path: entry.path,
       sha256: createHash5("sha256").update(contents).digest("hex")
@@ -18481,10 +19009,10 @@ function v32Manifest(legacy, timestamp2) {
 }
 async function createOperationalSkeleton(projectRoot, manifest) {
   for (const directory of ["state/chapters", "state/volumes", "batches", "staging"]) {
-    await mkdir3(path20.resolve(projectRoot, manifest.paths.creation, directory), { recursive: true });
+    await mkdir4(path21.resolve(projectRoot, manifest.paths.creation, directory), { recursive: true });
   }
   for (const directory of CONVERGENCE_DIRECTORIES) {
-    await mkdir3(path20.resolve(projectRoot, manifest.paths.convergence, directory), { recursive: true });
+    await mkdir4(path21.resolve(projectRoot, manifest.paths.convergence, directory), { recursive: true });
   }
 }
 async function migrationSummary({
@@ -18508,14 +19036,14 @@ async function migrationSummary({
       scopes: scopeSnapshots,
       inventories: inventorySnapshots
     },
-    recovery: await inspectLegacyRecovery(path20.dirname(path20.dirname(manifestPath)), manifest),
+    recovery: await inspectLegacyRecovery(path21.dirname(path21.dirname(manifestPath)), manifest),
     valid: true
   };
 }
 async function migrateProjectToV32(projectRoot, { now = /* @__PURE__ */ new Date() } = {}) {
-  const root = path20.resolve(projectRoot);
-  const manifestPath = path20.join(root, ".author-toolkit", "project.json");
-  const originalManifestText = await readFile19(manifestPath, "utf8");
+  const root = path21.resolve(projectRoot);
+  const manifestPath = path21.join(root, ".author-toolkit", "project.json");
+  const originalManifestText = await readFile20(manifestPath, "utf8");
   const legacy = JSON.parse(originalManifestText);
   if (legacy.schema_version === "3.2.0") {
     const validation2 = await validateOnDisk(legacy, manifestPath);
@@ -18529,7 +19057,7 @@ async function migrateProjectToV32(projectRoot, { now = /* @__PURE__ */ new Date
         scopeValidation
       ].flatMap((result) => result.errors)
     });
-    const tracker = await readFile19(path20.resolve(root, legacy.paths.audit_tracker), "utf8");
+    const tracker = await readFile20(path21.resolve(root, legacy.paths.audit_tracker), "utf8");
     return migrationSummary({
       manifestPath,
       snapshotPath: null,
@@ -18565,8 +19093,8 @@ async function migrateProjectToV32(projectRoot, { now = /* @__PURE__ */ new Date
     scope_fingerprint: computeScopeFingerprint(proposedScope)
   };
   const pendingAction = convertPendingAction(legacy.workflow, currentScope.scope_id, timestamp2);
-  const trackerPath = path20.resolve(root, legacy.paths.audit_tracker);
-  const originalTracker = await readFile19(trackerPath, "utf8");
+  const trackerPath = path21.resolve(root, legacy.paths.audit_tracker);
+  const originalTracker = await readFile20(trackerPath, "utf8");
   const existingApprovalIds = new Set(
     [...originalTracker.matchAll(/\|\s*`?(LEGACY-[0-9]{3,})`?\s*\|/g)].map(
       (match) => match[1]
@@ -18587,15 +19115,15 @@ async function migrateProjectToV32(projectRoot, { now = /* @__PURE__ */ new Date
   const updatedTracker = updateTracker(originalTracker, approvals);
   assertValid("v3.2 manifest preflight validation", validateManifest(manifest));
   assertValid("v3.2 tracker preflight validation", await validateTrackerV3Markdown(updatedTracker, root));
-  const migrationDirectory = path20.join(
+  const migrationDirectory = path21.join(
     root,
     ".author-toolkit",
     "migrations",
     `${utcStamp(migrationTime)}-v2-v3_2`
   );
-  const snapshotPath = path20.join(migrationDirectory, "project.json");
-  await mkdir3(path20.dirname(migrationDirectory), { recursive: true });
-  await mkdir3(migrationDirectory);
+  const snapshotPath = path21.join(migrationDirectory, "project.json");
+  await mkdir4(path21.dirname(migrationDirectory), { recursive: true });
+  await mkdir4(migrationDirectory);
   await createNoClobberVerified(snapshotPath, originalManifestText);
   await createOperationalSkeleton(root, manifest);
   assertValid("v3.2 project files preflight validation", await validateProjectFiles(manifest, manifestPath));
@@ -18620,7 +19148,7 @@ async function migrateProjectToV32(projectRoot, { now = /* @__PURE__ */ new Date
     created_snapshots: { scopes: [], inventories: [inventory.reference] }
   };
   await writeAtomicVerified(
-    path20.join(migrationDirectory, "migration.json"),
+    path21.join(migrationDirectory, "migration.json"),
     `${JSON.stringify(migrationRecord, null, 2)}
 `
   );
@@ -18640,7 +19168,7 @@ async function migrateProjectToV32(projectRoot, { now = /* @__PURE__ */ new Date
 }
 async function findLegacyScopeConfirmation(root, legacy) {
   if (legacy.current_scope?.status !== "confirmed") return null;
-  const tracker = await readFile19(path20.resolve(root, legacy.paths.audit_tracker), "utf8");
+  const tracker = await readFile20(path21.resolve(root, legacy.paths.audit_tracker), "utf8");
   const parsed = await parseTrackerState(tracker, root);
   if (!parsed.valid) return null;
   const scopeFingerprint = computeScopeFingerprint(legacy.current_scope);
@@ -18676,15 +19204,15 @@ async function migrateLegacyV3Project(root, manifestPath, originalManifestText, 
   }
   assertValid("v3.2 manifest preflight validation", validateManifest(manifest));
   const sourceTag = `v${sourceVersion.split(".").slice(0, 2).join("_")}`;
-  const migrationDirectory = path20.join(
+  const migrationDirectory = path21.join(
     root,
     ".author-toolkit",
     "migrations",
     `${utcStamp(migrationTime)}-${sourceTag}-v3_2`
   );
-  const snapshotPath = path20.join(migrationDirectory, "project.json");
-  await mkdir3(path20.dirname(migrationDirectory), { recursive: true });
-  await mkdir3(migrationDirectory);
+  const snapshotPath = path21.join(migrationDirectory, "project.json");
+  await mkdir4(path21.dirname(migrationDirectory), { recursive: true });
+  await mkdir4(migrationDirectory);
   await createNoClobberVerified(snapshotPath, originalManifestText);
   await createOperationalSkeleton(root, manifest);
   assertValid("v3.2 project files preflight validation", await validateProjectFiles(manifest, manifestPath));
@@ -18707,13 +19235,13 @@ async function migrateLegacyV3Project(root, manifestPath, originalManifestText, 
       inventory_fingerprint: recorded.inventory_fingerprint
     });
     const snapshot = JSON.parse(
-      await readFile19(path20.resolve(root, recorded.current_scope.snapshot_path), "utf8")
+      await readFile20(path21.resolve(root, recorded.current_scope.snapshot_path), "utf8")
     );
     inventory = { reference: snapshot.inventory };
   } else {
     inventory = await recordInventorySnapshot(root, migratedManifest, { now: migrationTime });
   }
-  const tracker = await readFile19(path20.resolve(root, legacy.paths.audit_tracker), "utf8");
+  const tracker = await readFile20(path21.resolve(root, legacy.paths.audit_tracker), "utf8");
   const migrationRecord = {
     migrated_at: timestamp2,
     source_schema_version: sourceVersion,
@@ -18727,7 +19255,7 @@ async function migrateLegacyV3Project(root, manifestPath, originalManifestText, 
     created_snapshots: { scopes: scopeSnapshots, inventories: [inventory.reference] }
   };
   await writeAtomicVerified(
-    path20.join(migrationDirectory, "migration.json"),
+    path21.join(migrationDirectory, "migration.json"),
     `${JSON.stringify(migrationRecord, null, 2)}
 `
   );
@@ -18824,7 +19352,9 @@ __export(lib_exports, {
   reconcileCycle: () => reconcileCycle,
   reconcileManuscript: () => reconcileManuscript,
   recordInventorySnapshot: () => recordInventorySnapshot,
+  recordProjectScope: () => recordProjectScope,
   recordScope: () => recordScope,
+  setPendingAction: () => setPendingAction,
   startCycle: () => startCycle,
   transitionCycle: () => transitionCycle,
   validateApprovalsMarkdown: () => validateApprovalsMarkdown,
@@ -18908,15 +19438,18 @@ var init_lib = __esm({
     init_schemas();
     init_scope();
     init_reconciliation();
+    init_project_commands();
     init_cycle_recovery();
     init_migration();
   }
 });
 
 // scripts/author-project.mjs
-import { readFile as readFile20 } from "node:fs/promises";
-import path21 from "node:path";
+import { readFile as readFile21 } from "node:fs/promises";
+import path22 from "node:path";
 var commands = /* @__PURE__ */ new Set([
+  "set-pending",
+  "record-scope",
   "start-cycle",
   "transition-cycle",
   "evaluate-cycle",
@@ -18940,6 +19473,8 @@ function usage() {
   node ${process.argv[1] ?? "author-project.mjs"} init --project-root ROOT [--language TAG] [--manuscript-root PATH]
   node ${process.argv[1] ?? "author-project.mjs"} read --project-root ROOT [--full]
   node ${process.argv[1] ?? "author-project.mjs"} status --project-root ROOT [--full]
+  node ${process.argv[1] ?? "author-project.mjs"} set-pending --project-root ROOT --input FILE
+  node ${process.argv[1] ?? "author-project.mjs"} record-scope --project-root ROOT --input FILE
   node ${process.argv[1] ?? "author-project.mjs"} start-cycle --project-root ROOT --input FILE
   node ${process.argv[1] ?? "author-project.mjs"} transition-cycle --project-root ROOT --input FILE
   node ${process.argv[1] ?? "author-project.mjs"} reconcile-cycle --project-root ROOT [--input FILE]
@@ -18963,7 +19498,9 @@ Every command response is JSON with response_contract_version=1.0, command, vali
 Success exits 0; project or operation validation failure exits 1; argument, input-file, or input-shape usage error exits 2.
 A valid status query exits 0 for satisfied, not_satisfied, and indeterminate outcomes. Gates exit 1 unless evidence is current and satisfied.
 Default read and status responses are compact. Explicit --full and dedicated cycle queries retain complete manifests, ordered hashes, evaluations, evidence graphs, and history.
-Transitions, reconciliation, revision execution, evaluations, and completions serialize independent processes with active-cycle.lock and recheck expected_revision in the lock.
+set-pending preserves current scope and active-cycle coordination and never infers approval; optional expected_manifest_sha256 and cycle revision inputs are rechecked under the shared lock.
+record-scope recomputes current manuscript hashes and exclusions for proposed or confirmed input; confirmation requires reading-order evidence and publishes immutable snapshots before coordinated manifest state.
+Pending-action, scope, transitions, reconciliation, revision execution, evaluations, and completions serialize independent processes with active-cycle.lock and recheck expected_revision in the lock.
 reconcile-cycle without --input only diagnoses; a direction requires exact cycle and operation identities and never rewrites historical artifacts or infers approval from pending action.
 Manuscript reconciliation verifies an existing creation-import decision, current inventory, scope, and story state; it never writes manuscript or accepts a confirmation boolean as replacement evidence.
 Independent evaluate-draft uses the same evaluator without creating an active cycle; an active cycle requires evaluate-cycle instead.
@@ -18986,13 +19523,13 @@ function parseArguments(args) {
     }
     const key = argument === "--project-root" ? "projectRoot" : argument.slice(2);
     if (selection[key] !== null) throw new Error(`Repeated argument: ${argument}`);
-    selection[key] = path21.resolve(rest[index + 1]);
+    selection[key] = path22.resolve(rest[index + 1]);
     index += 1;
   }
   if (Boolean(selection.projectRoot) === Boolean(selection.manifest)) {
     throw new Error("Select exactly one of --project-root or --manifest");
   }
-  if (["start-cycle", "transition-cycle", "evaluate-cycle", "evaluate-draft", "complete-cycle", "check-operation", "prepare-draft-revision-execution", "prepare-revision-execution", "verify-draft-revision-execution", "verify-revision-execution", "reconcile-manuscript"].includes(command) && !selection.input) {
+  if (["set-pending", "record-scope", "start-cycle", "transition-cycle", "evaluate-cycle", "evaluate-draft", "complete-cycle", "check-operation", "prepare-draft-revision-execution", "prepare-revision-execution", "verify-draft-revision-execution", "verify-revision-execution", "reconcile-manuscript"].includes(command) && !selection.input) {
     throw new Error(`${command} requires --input`);
   }
   if (["cycle-status", "cycle-gate", "convergence-status", "convergence-gate"].includes(command) && selection.input) {
@@ -19028,12 +19565,12 @@ async function runInitialization(args) {
   if (selection.input && (selection.language || selection.manuscriptRoot)) {
     throw new Error("--input cannot be combined with --language or --manuscript-root");
   }
-  const input = selection.input ? JSON.parse(await readFile20(path21.resolve(selection.input), "utf8")) : {};
+  const input = selection.input ? JSON.parse(await readFile21(path22.resolve(selection.input), "utf8")) : {};
   if (selection.language) input.language = selection.language;
   if (selection.manuscriptRoot) input.manuscript_root = selection.manuscriptRoot;
   const { projectRootFromManifest: projectRootFromManifest2 } = await Promise.resolve().then(() => (init_project_files(), project_files_exports));
   const { initializeProject: initializeProject2 } = await Promise.resolve().then(() => (init_project_state(), project_state_exports));
-  const projectRoot = selection.manifest ? projectRootFromManifest2(path21.resolve(selection.manifest)) : path21.resolve(selection.projectRoot);
+  const projectRoot = selection.manifest ? projectRootFromManifest2(path22.resolve(selection.manifest)) : path22.resolve(selection.projectRoot);
   const result = await initializeProject2(projectRoot, input);
   console.log(JSON.stringify({
     response_contract_version: "1.0",
@@ -19058,7 +19595,7 @@ async function runStateCommand(command, args) {
     }
     const key = argument === "--project-root" ? "projectRoot" : "manifest";
     if (selection[key] !== null) throw new Error(`Repeated argument: ${argument}`);
-    selection[key] = path21.resolve(args[index + 1]);
+    selection[key] = path22.resolve(args[index + 1]);
     index += 1;
   }
   if (Boolean(selection.projectRoot) === Boolean(selection.manifest)) {
@@ -19102,8 +19639,10 @@ async function main() {
     prepareDraftRevisionExecution: prepareDraftRevisionExecution2,
     prepareRevisionExecution: prepareRevisionExecution2,
     projectRootFromManifest: projectRootFromManifest2,
+    recordProjectScope: recordProjectScope2,
     reconcileCycle: reconcileCycle2,
     reconcileManuscript: reconcileManuscript2,
+    setPendingAction: setPendingAction2,
     startCycle: startCycle2,
     transitionCycle: transitionCycle2,
     validateManifest: validateManifest2,
@@ -19113,30 +19652,30 @@ async function main() {
   const projectRoot = selection.manifest ? projectRootFromManifest2(selection.manifest) : selection.projectRoot;
   if (!["cycle-status", "cycle-gate", "convergence-status", "convergence-gate"].includes(selection.command)) {
     let manifest;
-    let stateError;
+    let stateError2;
     try {
-      manifest = JSON.parse(await readFile20(
-        path21.join(projectRoot, ".author-toolkit", "project.json"),
+      manifest = JSON.parse(await readFile21(
+        path22.join(projectRoot, ".author-toolkit", "project.json"),
         "utf8"
       ));
       const validation = validateManifest2(manifest);
       if (!validation.valid || manifest.schema_version !== "3.2.0") {
-        stateError = {
+        stateError2 = {
           code: "project-state-invalid",
           message: manifest.schema_version === "3.2.0" ? "The project manifest does not satisfy the current schema." : "Current project operations require a valid v3.2 manifest.",
           details: validation.errors
         };
       }
     } catch (error) {
-      stateError = { code: "project-state-invalid", message: error.message, details: [] };
+      stateError2 = { code: "project-state-invalid", message: error.message, details: [] };
     }
-    if (stateError) {
+    if (stateError2) {
       console.log(JSON.stringify({
         response_contract_version: "1.0",
         command: selection.command,
         valid: false,
         result: null,
-        errors: [stateError]
+        errors: [stateError2]
       }, null, 2));
       process.exitCode = 1;
       return;
@@ -19150,7 +19689,9 @@ async function main() {
   } else if (selection.command === "reconcile-cycle" && !selection.input) {
     result = await reconcileCycle2(projectRoot);
   } else {
-    const input = JSON.parse(await readFile20(selection.input, "utf8"));
+    const input = JSON.parse(await readFile21(selection.input, "utf8"));
+    if (selection.command === "set-pending") result = await setPendingAction2(projectRoot, input);
+    if (selection.command === "record-scope") result = await recordProjectScope2(projectRoot, input);
     if (selection.command === "start-cycle") result = await startCycle2(projectRoot, input);
     if (selection.command === "transition-cycle") {
       result = await transitionCycle2(projectRoot, input);

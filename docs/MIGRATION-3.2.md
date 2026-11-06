@@ -44,7 +44,7 @@ A confirmed scope snapshot additionally needs an exact legacy scope confirmation
 - the reason contains whitespace-separated `scope_fingerprint=<computed-fingerprint>` and `reading_order_confirmed=true` tokens;
 - exactly one approval satisfies every condition.
 
-Its existing approval ID and update timestamp become the snapshot's `author_confirmation` reference. Migration does not add or modify that approval. The scope and inventory artifacts use the same fingerprint and no-clobber publication rules as a normal v3.2 `recordScope` confirmation.
+Its existing approval ID and update timestamp become the snapshot's `author_confirmation` reference. Migration does not add or modify that approval. The scope and inventory artifacts use the same fingerprint and no-clobber publication rules as a normal public `record-scope` confirmation (`recordScope` in the source module).
 
 Without that exact reference, a legacy confirmed scope becomes `proposed` in the v3.2 manifest so the author can reconfirm it. The original confirmed record remains unchanged in the migration's `project.json` snapshot, and the migration record uses `scope_disposition: "reconfirmation-required"` with `scope_confirmation: null`. No placeholder decision ID or approval is invented. A proposed scope never supplies `full_manuscript=true` or a satisfied evaluation.
 
