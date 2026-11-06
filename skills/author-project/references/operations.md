@@ -48,6 +48,18 @@ Approval statuses are `approved`, `deferred`, `cancelled`, and `superseded`. Rec
 
 A diagnostic proposes changes but does not create an approval. Creation acceptance records manuscript and resulting-scope approvals separately. A restore always needs a separate approval ID. Backup, commit, and restoration records cite the applicable approval, scope, and input hashes.
 
+## Timestamp
+
+Resolve `<setup-skill>` as the installed `setup-author-toolkit` directory and run the shared public command before manually authoring reports or artifacts:
+
+```bash
+node <setup-skill>/assets/runtime/author-project.mjs timestamp
+```
+
+The versioned project response contains `result.json` and `result.filename`, derived from the same UTC clock reading. Use `result.json` for `created_at`, `updated_at`, `confirmed_at`, `completed_at`, `verified_at`, and equivalent JSON timestamp fields, and for timestamp-based report or artifact IDs. Use `result.filename` for unique filenames and UTC-based directory names; it formats the same instant as `YYYYMMDDTHHMMSSmmmZ` without filename separators. Use one invocation for all fields that must share an instant, request a fresh value for a later update, and add a collision suffix when necessary. Runtime writes obtain the same values through the shared internal UTC source.
+
+Current contract validation checks timestamp values against current UTC time with a 60-second future allowance. Current-time and within-tolerance values pass; a later value fails with a concrete field diagnostic. Validation never infers evidence time from filename text. For deterministic tests, `timestamp --now <ISO-timestamp>` and validator `--now <ISO-timestamp>` inject the clock explicitly.
+
 ## Initialize
 
 Run the installed public command for a manuscript-only project:
@@ -387,7 +399,7 @@ Before a manuscript edit, resolve the backup root from `paths.backups`. The call
 3. Create `<paths.backups>/<backup-id>/manifest.json` containing the backup ID, UTC timestamp, operation, approval ID, scope ID, input hashes, approval summary, and source/backup path pairs.
 4. Append one record to `<paths.backups>/index.json` with the same identity fields, paths, and backup manifest path.
 
-For each create target, record that the file is expected absent with a null input hash; do not invent an original backup or backup ID. Recheck absence immediately before publication. Use a unique backup ID based on UTC time, operation, and a short scope slug, adding a suffix on collision. Complete and verify every required backup and absence check before the first manuscript write. A partial, unexpected, or hash-mismatched result blocks the write.
+For each create target, record that the file is expected absent with a null input hash; do not invent an original backup or backup ID. Recheck absence immediately before publication. Run the shared [Timestamp](#timestamp) command and use `result.filename` with the operation and a short scope slug for a unique backup ID, adding a suffix on collision; use `result.json` for the backup and index timestamp fields. Complete and verify every required backup and absence check before the first manuscript write. A partial, unexpected, or hash-mismatched result blocks the write.
 
 For `creation-commit`, follow [`../../write-fiction/references/creation-state.md`](../../write-fiction/references/creation-state.md). Write `<paths.creation>/batches/<commit-id>.json` before touching manuscript text, record every planned action and its pending state, and update the journal after every write and verification transition. An interrupted journal records exact completed and pending actions and stops publication pending an explicit author decision. Record backup IDs, approvals, scope IDs, commit ID, and paths in the session note. Backups and journals are text records; Git is not a substitute.
 

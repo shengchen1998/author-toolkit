@@ -1,4 +1,5 @@
 export { ACTIVE_STATUSES, STAGES } from "./constants.mjs";
+export { timestampResult, utcTimestamp } from "./time.mjs";
 export {
   canReuseCoverageUnit,
   validateCoverageIndex,

@@ -73,7 +73,7 @@ export function extractReportEnvelope(markdown) {
   }
 }
 
-export function validateMarkdownEnvelope(markdown, validate) {
+export function validateMarkdownEnvelope(markdown, validate, options = {}) {
   let envelope;
   try {
     envelope = extractReportEnvelope(markdown);
@@ -84,7 +84,7 @@ export function validateMarkdownEnvelope(markdown, validate) {
       errors: [{ instancePath: "", keyword: "markdown", message: error.message, params: {} }],
     };
   }
-  return { ...validate(envelope), envelope };
+  return { ...validate(envelope, options), envelope };
 }
 
 export function languageCoverageHeadingCount(markdown) {
@@ -97,7 +97,7 @@ export function languageCoverageHeadingCount(markdown) {
   return count;
 }
 
-export function validateMarkdownReport(markdown) {
+export function validateMarkdownReport(markdown, options = {}) {
   let envelope;
   try {
     envelope = extractReportEnvelope(markdown);
@@ -109,7 +109,7 @@ export function validateMarkdownReport(markdown) {
     };
   }
 
-  const result = validateReportEnvelope(envelope);
+  const result = validateReportEnvelope(envelope, options);
   const errors = [...result.errors];
   const coverageHeadings = languageCoverageHeadingCount(markdown);
   if (coverageHeadings !== 1) {
@@ -150,8 +150,8 @@ function evidenceValue(notes, name) {
   return notes.match(new RegExp(`(?:^|\\s)${name}=([^\\s]+)`))?.[1];
 }
 
-export function validateEvidenceReport(markdown) {
-  const result = validateMarkdownReport(markdown);
+export function validateEvidenceReport(markdown, options = {}) {
+  const result = validateMarkdownReport(markdown, options);
   if (!result.envelope) return result;
 
   const errors = [...result.errors];

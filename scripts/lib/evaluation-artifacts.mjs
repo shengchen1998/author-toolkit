@@ -4,6 +4,7 @@ import path from "node:path";
 import { validateManifest } from "./manifest.mjs";
 import { validateConvergenceCycleSchema } from "./schemas.mjs";
 import { createNoClobberVerified, sha256Bytes } from "./state-io.mjs";
+import { utcTimestamp } from "./time.mjs";
 import {
   samePassReference,
   validateConvergenceEvaluation,
@@ -43,9 +44,7 @@ export async function readActiveCycle(project) {
 }
 
 export function operationTime(options = {}) {
-  const now = options.now instanceof Date ? options.now : new Date();
-  if (Number.isNaN(now.getTime())) throw new Error("Invalid convergence operation time");
-  return now.toISOString();
+  return utcTimestamp(options);
 }
 
 export function evaluationReference(evaluation, relativePath, text) {

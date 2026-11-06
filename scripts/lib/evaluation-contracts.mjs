@@ -93,8 +93,8 @@ export function deriveRequestedPassBaseline(lastSatisfiedFullPass, newRequests =
   }));
 }
 
-export function validateRequestedPass(value) {
-  const schema = validateRequestedPassSchema(value);
+export function validateRequestedPass(value, options = {}) {
+  const schema = validateRequestedPassSchema(value, options);
   const errors = [...schema.errors];
   if (
     value?.target_scope &&
@@ -161,8 +161,8 @@ export function validateRequestedPass(value) {
   return { valid: errors.length === 0, errors };
 }
 
-export function validateNoEditSkip(value) {
-  const schema = validateNoEditSkipSchema(value);
+export function validateNoEditSkip(value, options = {}) {
+  const schema = validateNoEditSkipSchema(value, options);
   const errors = [...schema.errors];
   for (const operation of ["revision-plan", "chapter-revision"]) {
     if (!value?.operations?.includes(operation)) {
@@ -176,8 +176,8 @@ export function validateNoEditSkip(value) {
   return { valid: errors.length === 0, errors };
 }
 
-export function validateReviewGroup(value) {
-  const schema = validateReviewGroupSchema(value);
+export function validateReviewGroup(value, options = {}) {
+  const schema = validateReviewGroupSchema(value, options);
   const errors = [...schema.errors];
   const perspectives = new Set((value?.jobs ?? []).map((entry) => entry.perspective));
   for (const perspective of PERSPECTIVES) {
@@ -199,8 +199,8 @@ export function validateReviewGroup(value) {
   return { valid: errors.length === 0, errors };
 }
 
-export function validateSemanticAttestation(value) {
-  const schema = validateSemanticAttestationSchema(value);
+export function validateSemanticAttestation(value, options = {}) {
+  const schema = validateSemanticAttestationSchema(value, options);
   const errors = [...schema.errors];
   const claims = new Set();
   for (const [index, claim] of (value?.claims ?? []).entries()) {
@@ -216,8 +216,8 @@ export function validateSemanticAttestation(value) {
   return { valid: errors.length === 0, errors };
 }
 
-export function validateConvergenceEvaluation(value) {
-  const schema = validateConvergenceEvaluationSchema(value);
+export function validateConvergenceEvaluation(value, options = {}) {
+  const schema = validateConvergenceEvaluationSchema(value, options);
   const errors = [...schema.errors];
   if (value?.outcome === "satisfied" && value?.blockers?.length > 0) {
     errors.push(artifactError(

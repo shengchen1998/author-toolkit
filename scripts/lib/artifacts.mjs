@@ -8,8 +8,8 @@ import {
   validateStoryState,
 } from "./schemas.mjs";
 
-export function validateStoryStateMarkdown(markdown) {
-  return validateMarkdownEnvelope(markdown, validateStoryState);
+export function validateStoryStateMarkdown(markdown, options = {}) {
+  return validateMarkdownEnvelope(markdown, validateStoryState, options);
 }
 
 function validateFileHashes(file, index, errors, contract) {
@@ -91,8 +91,8 @@ export function sameApprovalPaths(actual, expected) {
   return JSON.stringify(actual) === JSON.stringify(expected);
 }
 
-export function validateCreationBatch(value) {
-  const result = validateCreationBatchSchema(value);
+export function validateCreationBatch(value, options = {}) {
+  const result = validateCreationBatchSchema(value, options);
   const errors = [...result.errors];
   for (const [index, file] of (value?.files ?? []).entries()) {
     validateFileHashes(file, index, errors, "creation");
@@ -133,8 +133,8 @@ export function validateCreationBatch(value) {
   return { ...result, valid: errors.length === 0, errors };
 }
 
-export function validateCreationCommit(value) {
-  const result = validateCreationCommitSchema(value);
+export function validateCreationCommit(value, options = {}) {
+  const result = validateCreationCommitSchema(value, options);
   const errors = [...result.errors];
   const files = Array.isArray(value?.files) ? value.files : [];
 
@@ -206,8 +206,8 @@ export function canReuseCoverageUnit(unit, requested) {
   );
 }
 
-export function validateCoverageIndex(value) {
-  const result = validateCoverageIndexSchema(value);
+export function validateCoverageIndex(value, options = {}) {
+  const result = validateCoverageIndexSchema(value, options);
   const errors = [...result.errors];
   const entries = Array.isArray(value?.entries) ? value.entries : [];
   const operations = new Set();

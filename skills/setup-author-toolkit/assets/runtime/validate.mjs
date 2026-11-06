@@ -60,6 +60,56 @@ var init_constants = __esm({
   }
 });
 
+// scripts/lib/time.mjs
+function utcDate(now) {
+  const value = now === void 0 ? /* @__PURE__ */ new Date() : new Date(now instanceof Date ? now.getTime() : now);
+  if (Number.isNaN(value.getTime())) throw new Error("Invalid UTC time");
+  return value;
+}
+function utcTimestamp(options = {}) {
+  return utcDate(options.now).toISOString();
+}
+function timestampResult(options = {}) {
+  const json = utcTimestamp(options);
+  return { json, filename: json.replace(/[-:.]/g, "") };
+}
+function pointerPart(value) {
+  return value.replaceAll("~", "~0").replaceAll("/", "~1");
+}
+function validateEvidenceTimestamps(value, options = {}) {
+  const current = utcDate(options.now);
+  const currentTime = current.toISOString();
+  const maximum = current.getTime() + 6e4;
+  const errors = [];
+  function visit(candidate, instancePath) {
+    if (!candidate || typeof candidate !== "object") return;
+    for (const [key, child] of Object.entries(candidate)) {
+      const childPath = `${instancePath}/${pointerPart(key)}`;
+      if (key.endsWith("_at") && typeof child === "string") {
+        const timestamp2 = Date.parse(child);
+        if (Number.isFinite(timestamp2) && timestamp2 > maximum) {
+          errors.push({
+            instancePath: childPath,
+            keyword: "future-timestamp",
+            message: `timestamp must not be more than 60 seconds after the current UTC time (${currentTime})`,
+            params: {
+              current_time: currentTime,
+              future_tolerance_seconds: 60
+            }
+          });
+        }
+      }
+      visit(child, childPath);
+    }
+  }
+  visit(value, "");
+  return errors;
+}
+var init_time = __esm({
+  "scripts/lib/time.mjs"() {
+  }
+});
+
 // node_modules/ajv/dist/compile/codegen/code.js
 var require_code = __commonJS({
   "node_modules/ajv/dist/compile/codegen/code.js"(exports) {
@@ -8112,87 +8162,88 @@ function readSchema(name) {
   const schemaUrl = packagedReferences ? new URL(name, packagedReferences) : new URL(`../../references/${name}`, import.meta.url);
   return JSON.parse(readFileSync(schemaUrl, "utf8"));
 }
-function evaluate(validator, value) {
-  const valid = validator(value);
-  return {
-    valid,
-    errors: valid ? [] : validator.errors.map((error) => ({ ...error }))
-  };
+function evaluate(validator, value, options = {}) {
+  const schemaValid = validator(value);
+  const errors = [
+    ...schemaValid ? [] : validator.errors.map((error) => ({ ...error })),
+    ...validateEvidenceTimestamps(value, options)
+  ];
+  return { valid: errors.length === 0, errors };
 }
-function validateFindingV1(value) {
-  return evaluate(findingV1Validator, value);
+function validateFindingV1(value, options = {}) {
+  return evaluate(findingV1Validator, value, options);
 }
-function validateFindingV2(value) {
-  return evaluate(findingV2Validator, value);
+function validateFindingV2(value, options = {}) {
+  return evaluate(findingV2Validator, value, options);
 }
-function validateProjectSchema(value) {
-  return evaluate(projectValidator, value);
+function validateProjectSchema(value, options = {}) {
+  return evaluate(projectValidator, value, options);
 }
-function validateProjectV3Schema(value) {
-  return evaluate(projectV3Validator, value);
+function validateProjectV3Schema(value, options = {}) {
+  return evaluate(projectV3Validator, value, options);
 }
-function validateProjectV31Schema(value) {
-  return evaluate(projectV31Validator, value);
+function validateProjectV31Schema(value, options = {}) {
+  return evaluate(projectV31Validator, value, options);
 }
-function validateProjectV32Schema(value) {
-  return evaluate(projectV32Validator, value);
+function validateProjectV32Schema(value, options = {}) {
+  return evaluate(projectV32Validator, value, options);
 }
-function validateScopeSnapshotSchema(value) {
-  return evaluate(scopeSnapshotValidator, value);
+function validateScopeSnapshotSchema(value, options = {}) {
+  return evaluate(scopeSnapshotValidator, value, options);
 }
-function validateInventorySnapshotSchema(value) {
-  return evaluate(inventorySnapshotValidator, value);
+function validateInventorySnapshotSchema(value, options = {}) {
+  return evaluate(inventorySnapshotValidator, value, options);
 }
-function validateConvergenceCycleSchema(value) {
-  return evaluate(convergenceCycleValidator, value);
+function validateConvergenceCycleSchema(value, options = {}) {
+  return evaluate(convergenceCycleValidator, value, options);
 }
-function validateRequestedPassSchema(value) {
-  return evaluate(requestedPassValidator, value);
+function validateRequestedPassSchema(value, options = {}) {
+  return evaluate(requestedPassValidator, value, options);
 }
-function validateNoEditSkipSchema(value) {
-  return evaluate(noEditSkipValidator, value);
+function validateNoEditSkipSchema(value, options = {}) {
+  return evaluate(noEditSkipValidator, value, options);
 }
-function validateReviewGroupSchema(value) {
-  return evaluate(reviewGroupValidator, value);
+function validateReviewGroupSchema(value, options = {}) {
+  return evaluate(reviewGroupValidator, value, options);
 }
-function validateSemanticAttestationSchema(value) {
-  return evaluate(semanticAttestationValidator, value);
+function validateSemanticAttestationSchema(value, options = {}) {
+  return evaluate(semanticAttestationValidator, value, options);
 }
-function validateConvergenceEvaluationSchema(value) {
-  return evaluate(convergenceEvaluationValidator, value);
+function validateConvergenceEvaluationSchema(value, options = {}) {
+  return evaluate(convergenceEvaluationValidator, value, options);
 }
-function validateRevisionExecutionSchema(value) {
-  return evaluate(revisionExecutionValidator, value);
+function validateRevisionExecutionSchema(value, options = {}) {
+  return evaluate(revisionExecutionValidator, value, options);
 }
-function validateManuscriptReconciliationSchema(value) {
-  return evaluate(manuscriptReconciliationValidator, value);
+function validateManuscriptReconciliationSchema(value, options = {}) {
+  return evaluate(manuscriptReconciliationValidator, value, options);
 }
-function validateReportEnvelope(value) {
-  return evaluate(reportValidator, value);
+function validateReportEnvelope(value, options = {}) {
+  return evaluate(reportValidator, value, options);
 }
-function validateRelativePath(value) {
-  return evaluate(relativePathValidator, value);
+function validateRelativePath(value, options = {}) {
+  return evaluate(relativePathValidator, value, options);
 }
-function validateStoryState(value) {
-  return evaluate(storyStateValidator, value);
+function validateStoryState(value, options = {}) {
+  return evaluate(storyStateValidator, value, options);
 }
-function validateCreationBatchSchema(value) {
-  return evaluate(creationBatchValidator, value);
+function validateCreationBatchSchema(value, options = {}) {
+  return evaluate(creationBatchValidator, value, options);
 }
-function validateCreationCommitSchema(value) {
-  return evaluate(creationCommitValidator, value);
+function validateCreationCommitSchema(value, options = {}) {
+  return evaluate(creationCommitValidator, value, options);
 }
-function validateCoverageUnitSchema(value) {
-  return evaluate(coverageUnitValidator, value);
+function validateCoverageUnitSchema(value, options = {}) {
+  return evaluate(coverageUnitValidator, value, options);
 }
-function validateCoverageIndexSchema(value) {
-  return evaluate(coverageIndexValidator, value);
+function validateCoverageIndexSchema(value, options = {}) {
+  return evaluate(coverageIndexValidator, value, options);
 }
-function validateReviewJobSchema(value) {
-  return evaluate(reviewJobValidator, value);
+function validateReviewJobSchema(value, options = {}) {
+  return evaluate(reviewJobValidator, value, options);
 }
-function validateReaderStateSchema(value) {
-  return evaluate(readerStateValidator, value);
+function validateReaderStateSchema(value, options = {}) {
+  return evaluate(readerStateValidator, value, options);
 }
 function validateSchemaDefinitions() {
   const errors = [];
@@ -8237,6 +8288,7 @@ var init_schemas = __esm({
   "scripts/lib/schemas.mjs"() {
     import__ = __toESM(require__(), 1);
     import_ajv_formats = __toESM(require_dist(), 1);
+    init_time();
     packagedReferences = globalThis[Symbol.for("author-toolkit.packaged-references")];
     findingV1Schema = readSchema("finding-schema.json");
     findingV2Schema = readSchema("finding-schema-v2.json");
@@ -8376,7 +8428,7 @@ function extractReportEnvelope(markdown) {
     throw new ReportEnvelopeError(`Report envelope is not valid JSON: ${error.message}`);
   }
 }
-function validateMarkdownEnvelope(markdown, validate) {
+function validateMarkdownEnvelope(markdown, validate, options = {}) {
   let envelope;
   try {
     envelope = extractReportEnvelope(markdown);
@@ -8387,7 +8439,7 @@ function validateMarkdownEnvelope(markdown, validate) {
       errors: [{ instancePath: "", keyword: "markdown", message: error.message, params: {} }]
     };
   }
-  return { ...validate(envelope), envelope };
+  return { ...validate(envelope, options), envelope };
 }
 function languageCoverageHeadingCount(markdown) {
   let count = 0;
@@ -8398,7 +8450,7 @@ function languageCoverageHeadingCount(markdown) {
   });
   return count;
 }
-function validateMarkdownReport(markdown) {
+function validateMarkdownReport(markdown, options = {}) {
   let envelope;
   try {
     envelope = extractReportEnvelope(markdown);
@@ -8409,7 +8461,7 @@ function validateMarkdownReport(markdown) {
       errors: [{ instancePath: "", keyword: "markdown", message: error.message, params: {} }]
     };
   }
-  const result = validateReportEnvelope(envelope);
+  const result = validateReportEnvelope(envelope, options);
   const errors = [...result.errors];
   const coverageHeadings = languageCoverageHeadingCount(markdown);
   if (coverageHeadings !== 1) {
@@ -8443,8 +8495,8 @@ function evidenceError(message) {
 function evidenceValue(notes, name) {
   return notes.match(new RegExp(`(?:^|\\s)${name}=([^\\s]+)`))?.[1];
 }
-function validateEvidenceReport(markdown) {
-  const result = validateMarkdownReport(markdown);
+function validateEvidenceReport(markdown, options = {}) {
+  const result = validateMarkdownReport(markdown, options);
   if (!result.envelope) return result;
   const errors = [...result.errors];
   const notes = result.envelope.engine?.notes ?? "";
@@ -8527,7 +8579,7 @@ async function removeVerified(file, expectedSha256) {
   }
   await unlink(file);
 }
-async function acquireDirectoryLock(directory, { timeoutMs = 1e4, retryMs = 20 } = {}) {
+async function acquireDirectoryLock(directory, { timeoutMs = 1e4, retryMs = 20, now } = {}) {
   const waitTimeout = Number.isFinite(timeoutMs) && timeoutMs >= 0 ? timeoutMs : 1e4;
   const retryDelay = Number.isFinite(retryMs) && retryMs >= 1 ? retryMs : 20;
   const startedAt = Date.now();
@@ -8540,7 +8592,7 @@ async function acquireDirectoryLock(directory, { timeoutMs = 1e4, retryMs = 20 }
       const owner = {
         pid: process.pid,
         token,
-        acquired_at: (/* @__PURE__ */ new Date()).toISOString()
+        acquired_at: utcTimestamp({ now })
       };
       await writeFile(
         path.join(directory, "owner.json"),
@@ -8652,12 +8704,13 @@ async function releaseAbandonedDirectoryLock(directory, expectedOwner) {
 }
 var init_state_io = __esm({
   "scripts/lib/state-io.mjs"() {
+    init_time();
   }
 });
 
 // scripts/lib/artifacts.mjs
-function validateStoryStateMarkdown(markdown) {
-  return validateMarkdownEnvelope(markdown, validateStoryState);
+function validateStoryStateMarkdown(markdown, options = {}) {
+  return validateMarkdownEnvelope(markdown, validateStoryState, options);
 }
 function validateFileHashes(file, index, errors, contract) {
   const creation = contract === "creation";
@@ -8722,8 +8775,8 @@ function creationApprovalBindingMatches(approval, batch, scopeFingerprint) {
 function sameApprovalPaths(actual, expected) {
   return JSON.stringify(actual) === JSON.stringify(expected);
 }
-function validateCreationBatch(value) {
-  const result = validateCreationBatchSchema(value);
+function validateCreationBatch(value, options = {}) {
+  const result = validateCreationBatchSchema(value, options);
   const errors = [...result.errors];
   for (const [index, file] of (value?.files ?? []).entries()) {
     validateFileHashes(file, index, errors, "creation");
@@ -8760,8 +8813,8 @@ function validateCreationBatch(value) {
   }
   return { ...result, valid: errors.length === 0, errors };
 }
-function validateCreationCommit(value) {
-  const result = validateCreationCommitSchema(value);
+function validateCreationCommit(value, options = {}) {
+  const result = validateCreationCommitSchema(value, options);
   const errors = [...result.errors];
   const files = Array.isArray(value?.files) ? value.files : [];
   for (const [index, file] of files.entries()) {
@@ -8820,8 +8873,8 @@ function canReuseCoverageUnit(unit, requested) {
   const requestedSubchecks = [...requested.subchecks].sort();
   return unitSubchecks.every((subcheck, index) => subcheck === requestedSubchecks[index]) && sameVersionedPaths(unit.dependencies, requested.dependencies, false);
 }
-function validateCoverageIndex(value) {
-  const result = validateCoverageIndexSchema(value);
+function validateCoverageIndex(value, options = {}) {
+  const result = validateCoverageIndexSchema(value, options);
   const errors = [...result.errors];
   const entries2 = Array.isArray(value?.entries) ? value.entries : [];
   const operations = /* @__PURE__ */ new Set();
@@ -9011,15 +9064,15 @@ var init_workflow = __esm({
 });
 
 // scripts/lib/manifest.mjs
-function validateManifest(value) {
+function validateManifest(value, options = {}) {
   if (value?.schema_version === "3.2.0") {
-    return validateProjectV32Schema(value);
+    return validateProjectV32Schema(value, options);
   }
   if (value?.schema_version === "3.1.0") {
-    return validateProjectV31Schema(value);
+    return validateProjectV31Schema(value, options);
   }
   if (value?.schema_version === "3.0.0") {
-    return validateProjectV3Schema(value);
+    return validateProjectV3Schema(value, options);
   }
   if (value?.schema_version !== "2.0.0") {
     return {
@@ -9034,7 +9087,7 @@ function validateManifest(value) {
       ]
     };
   }
-  const schemaResult = validateProjectSchema(value);
+  const schemaResult = validateProjectSchema(value, options);
   if (!schemaResult.valid) return schemaResult;
   const workflowResult = validateWorkflow(value);
   return {
@@ -9296,8 +9349,8 @@ function checkReviewCoverage(job) {
     book_complete: bookComplete
   };
 }
-function validateReviewJob(value) {
-  const result = validateReviewJobSchema(value);
+function validateReviewJob(value, options = {}) {
+  const result = validateReviewJobSchema(value, options);
   const errors = [...result.errors, ...structureErrors(value)];
   const coverage = checkReviewCoverage(value);
   if (value?.coverage === "full" && !coverage.complete) {
@@ -9338,8 +9391,8 @@ function validateReviewJob(value) {
   }
   return { ...result, valid: errors.length === 0, errors, coverage };
 }
-function validateReaderState(value) {
-  const result = validateReaderStateSchema(value);
+function validateReaderState(value, options = {}) {
+  const result = validateReaderStateSchema(value, options);
   const errors = [...result.errors];
   const chunks = objectArray(value?.chunks);
   duplicateErrors(chunks, "chunk_id", "/chunks", "reader-chunk", errors);
@@ -9387,8 +9440,8 @@ function validateReaderState(value) {
   }
   return { ...result, valid: errors.length === 0, errors };
 }
-function validateReaderStateForJob(value, job) {
-  const result = validateReaderState(value);
+function validateReaderStateForJob(value, job, options = {}) {
+  const result = validateReaderState(value, options);
   const errors = [...result.errors];
   for (const field of ["job_id", "scope_id", "perspective"]) {
     if (value?.[field] !== job?.[field]) {
@@ -9499,8 +9552,8 @@ function validateReaderStateForJob(value, job) {
   }
   return { ...result, valid: errors.length === 0, errors };
 }
-function validateReaderStateMarkdown(markdown) {
-  return validateMarkdownEnvelope(markdown, validateReaderState);
+function validateReaderStateMarkdown(markdown, options = {}) {
+  return validateMarkdownEnvelope(markdown, validateReaderState, options);
 }
 var init_review = __esm({
   "scripts/lib/review.mjs"() {
@@ -10365,12 +10418,10 @@ async function collectVersionedInventory(projectRoot, manifest) {
 }
 async function recordInventorySnapshot(projectRoot, manifest, options = {}) {
   const observed = await collectVersionedInventory(projectRoot, manifest);
-  const now = options.now instanceof Date ? options.now : /* @__PURE__ */ new Date();
-  if (Number.isNaN(now.getTime())) throw new Error("Invalid inventory recording time");
   const record = {
     schema_version: "1.0.0",
     ...observed,
-    created_at: now.toISOString()
+    created_at: utcTimestamp(options)
   };
   const validation = validateInventorySnapshot(record);
   if (!validation.valid) throw validationError(validation);
@@ -10454,9 +10505,7 @@ async function recordScope(projectRoot, scope, options = {}) {
   }
   const originalValidation = validateManifest(manifest);
   if (!originalValidation.valid) throw validationError(originalValidation);
-  const now = options.now instanceof Date ? options.now : /* @__PURE__ */ new Date();
-  if (Number.isNaN(now.getTime())) throw new Error("Invalid scope recording time");
-  const updatedAt = now.toISOString();
+  const updatedAt = utcTimestamp(options);
   const scopeFingerprint = computeScopeFingerprint(scope);
   const currentScope = {
     scope_id: scope.scope_id,
@@ -10856,8 +10905,8 @@ async function validateFullManuscriptScope(manifest, manifestPath) {
   result.full_manuscript = result.valid;
   return result;
 }
-function validateScopeSnapshot(value) {
-  const schema = validateScopeSnapshotSchema(value);
+function validateScopeSnapshot(value, options = {}) {
+  const schema = validateScopeSnapshotSchema(value, options);
   const errors = [...schema.errors];
   if (Array.isArray(value?.files) && Array.isArray(value?.excluded_files)) {
     const expected = computeScopeFingerprint(value);
@@ -10886,8 +10935,8 @@ function validateScopeSnapshot(value) {
   }
   return { valid: errors.length === 0, errors };
 }
-function validateInventorySnapshot(value) {
-  const schema = validateInventorySnapshotSchema(value);
+function validateInventorySnapshot(value, options = {}) {
+  const schema = validateInventorySnapshotSchema(value, options);
   const errors = [...schema.errors];
   if (typeof value?.manuscript_root === "string" && Array.isArray(value?.files) && Array.isArray(value?.excluded_files)) {
     const expected = computeInventoryFingerprint(value);
@@ -10923,6 +10972,7 @@ var init_scope = __esm({
     init_project_files();
     init_schemas();
     init_state_io();
+    init_time();
   }
 });
 
@@ -11049,9 +11099,7 @@ async function runCheckpoint(options, point) {
   if (typeof options.checkpoint === "function") await options.checkpoint(point);
 }
 function timestamp(options) {
-  const now = options.now instanceof Date ? options.now : /* @__PURE__ */ new Date();
-  if (Number.isNaN(now.getTime())) throw new Error("Invalid cycle coordination time");
-  return now.toISOString();
+  return utcTimestamp(options);
 }
 async function writeManifest(project, manifest) {
   const validation = validateManifest(manifest);
@@ -11222,6 +11270,7 @@ var init_cycle_coordination = __esm({
   "scripts/lib/cycle-coordination.mjs"() {
     init_manifest();
     init_state_io();
+    init_time();
   }
 });
 
@@ -11449,8 +11498,8 @@ function deriveRequestedPassBaseline(lastSatisfiedFullPass, newRequests = []) {
     subchecks: [...requirement.subchecks].sort()
   }));
 }
-function validateRequestedPass(value) {
-  const schema = validateRequestedPassSchema(value);
+function validateRequestedPass(value, options = {}) {
+  const schema = validateRequestedPassSchema(value, options);
   const errors = [...schema.errors];
   if (value?.target_scope && Array.isArray(value?.required_operations) && Array.isArray(value?.paths) && Array.isArray(value?.dependencies) && Array.isArray(value?.inapplicability) && Array.isArray(value?.requested_subchecks)) {
     const expected = computeRequestedPassFingerprint(value);
@@ -11509,8 +11558,8 @@ function validateRequestedPass(value) {
   }
   return { valid: errors.length === 0, errors };
 }
-function validateNoEditSkip(value) {
-  const schema = validateNoEditSkipSchema(value);
+function validateNoEditSkip(value, options = {}) {
+  const schema = validateNoEditSkipSchema(value, options);
   const errors = [...schema.errors];
   for (const operation of ["revision-plan", "chapter-revision"]) {
     if (!value?.operations?.includes(operation)) {
@@ -11523,8 +11572,8 @@ function validateNoEditSkip(value) {
   }
   return { valid: errors.length === 0, errors };
 }
-function validateReviewGroup(value) {
-  const schema = validateReviewGroupSchema(value);
+function validateReviewGroup(value, options = {}) {
+  const schema = validateReviewGroupSchema(value, options);
   const errors = [...schema.errors];
   const perspectives = new Set((value?.jobs ?? []).map((entry) => entry.perspective));
   for (const perspective of PERSPECTIVES) {
@@ -11545,8 +11594,8 @@ function validateReviewGroup(value) {
   }
   return { valid: errors.length === 0, errors };
 }
-function validateSemanticAttestation(value) {
-  const schema = validateSemanticAttestationSchema(value);
+function validateSemanticAttestation(value, options = {}) {
+  const schema = validateSemanticAttestationSchema(value, options);
   const errors = [...schema.errors];
   const claims = /* @__PURE__ */ new Set();
   for (const [index, claim] of (value?.claims ?? []).entries()) {
@@ -11561,8 +11610,8 @@ function validateSemanticAttestation(value) {
   }
   return { valid: errors.length === 0, errors };
 }
-function validateConvergenceEvaluation(value) {
-  const schema = validateConvergenceEvaluationSchema(value);
+function validateConvergenceEvaluation(value, options = {}) {
+  const schema = validateConvergenceEvaluationSchema(value, options);
   const errors = [...schema.errors];
   if (value?.outcome === "satisfied" && value?.blockers?.length > 0) {
     errors.push(artifactError(
@@ -11632,9 +11681,7 @@ async function readActiveCycle(project) {
   return { value, file, text };
 }
 function operationTime(options = {}) {
-  const now = options.now instanceof Date ? options.now : /* @__PURE__ */ new Date();
-  if (Number.isNaN(now.getTime())) throw new Error("Invalid convergence operation time");
-  return now.toISOString();
+  return utcTimestamp(options);
 }
 function evaluationReference(evaluation, relativePath, text) {
   return {
@@ -11763,6 +11810,7 @@ var init_evaluation_artifacts = __esm({
     init_manifest();
     init_schemas();
     init_state_io();
+    init_time();
     init_evaluation_contracts();
   }
 });
@@ -11792,8 +11840,8 @@ function pathWithin(root2, candidate) {
 function formatErrors2(errors) {
   return errors.map((error) => `${error.instancePath || "/"} ${error.message}`).join("; ");
 }
-function validateRevisionExecution(value) {
-  const schema = validateRevisionExecutionSchema(value);
+function validateRevisionExecution(value, options = {}) {
+  const schema = validateRevisionExecutionSchema(value, options);
   const errors = [...schema.errors];
   const files = /* @__PURE__ */ new Set();
   for (const [index, file] of (value?.files ?? []).entries()) {
@@ -12204,9 +12252,7 @@ async function validateRevisionExecutionAgainstDisk(projectRoot, execution, opti
   });
 }
 function operationTime2(options) {
-  const now = options.now instanceof Date ? options.now : /* @__PURE__ */ new Date();
-  if (Number.isNaN(now.getTime())) throw new Error("Invalid revision execution time");
-  return now.toISOString();
+  return utcTimestamp(options);
 }
 function executionReference(execution, relativePath, text) {
   return {
@@ -12266,7 +12312,8 @@ async function withCycleLock(project, options, operation) {
     path9.resolve(project.root, project.manifest.paths.convergence, "active-cycle.lock"),
     {
       timeoutMs: options.lockTimeoutMs ?? 1e4,
-      retryMs: options.lockRetryMs ?? 20
+      retryMs: options.lockRetryMs ?? 20,
+      now: options.now
     }
   );
   if (!lock.acquired) {
@@ -12909,6 +12956,7 @@ var init_revision_execution = __esm({
     init_scope();
     init_state_io();
     init_tracker();
+    init_time();
   }
 });
 
@@ -14714,7 +14762,8 @@ async function lockProjectCycle(project, options, operation) {
     path13.resolve(project.root, project.manifest.paths.convergence, "active-cycle.lock"),
     {
       timeoutMs: options.lockTimeoutMs ?? 1e4,
-      retryMs: options.lockRetryMs ?? 20
+      retryMs: options.lockRetryMs ?? 20,
+      now: options.now
     }
   );
   if (!lock.acquired) {
@@ -15489,8 +15538,8 @@ import path15 from "node:path";
 function cycleError(instancePath, message, keyword = "cycle-identity") {
   return { instancePath, keyword, message, params: {} };
 }
-function validateConvergenceCycle(value) {
-  const schema = validateConvergenceCycleSchema(value);
+function validateConvergenceCycle(value, options = {}) {
+  const schema = validateConvergenceCycleSchema(value, options);
   const errors = [...schema.errors];
   if (value?.completion && value?.target_evaluation && value.completion.target_evaluation_id !== value.target_evaluation.evaluation_id) {
     errors.push(
@@ -15641,9 +15690,7 @@ function emptyChangeSet() {
   };
 }
 function operationTime3(options) {
-  const now = options.now instanceof Date ? options.now : /* @__PURE__ */ new Date();
-  if (Number.isNaN(now.getTime())) throw new Error("Invalid cycle operation time");
-  return now.toISOString();
+  return utcTimestamp(options);
 }
 function validateStartRequest(request) {
   const allowed = /* @__PURE__ */ new Set(["cycle_id", "initiating_strategy", "bootstrap", "starting_scope"]);
@@ -16446,7 +16493,8 @@ async function transitionCycle(projectRoot, request, options = {}) {
     path15.resolve(project.root, project.manifest.paths.convergence, "active-cycle.lock"),
     {
       timeoutMs: options.lockTimeoutMs ?? 1e4,
-      retryMs: options.lockRetryMs ?? 20
+      retryMs: options.lockRetryMs ?? 20,
+      now: options.now
     }
   );
   if (!lock.acquired) {
@@ -16500,6 +16548,7 @@ var init_cycles = __esm({
     init_scope();
     init_state_io();
     init_tracker();
+    init_time();
     STRATEGIES = /* @__PURE__ */ new Set([
       "write-fiction",
       "revise-fiction",
@@ -16746,7 +16795,8 @@ async function reconcileManuscript(projectRoot, request, options = {}) {
     path16.resolve(project.root, project.manifest.paths.convergence, "active-cycle.lock"),
     {
       timeoutMs: options.lockTimeoutMs ?? 1e4,
-      retryMs: options.lockRetryMs ?? 20
+      retryMs: options.lockRetryMs ?? 20,
+      now: options.now
     }
   );
   if (!lock.acquired) {
@@ -16811,7 +16861,7 @@ async function reconcileManuscript(projectRoot, request, options = {}) {
       }
       const targetReference = request.target_scope;
       const target = targetReference ? await readScope(project, targetReference) : null;
-      let createdAt = options.now instanceof Date ? options.now.toISOString() : (/* @__PURE__ */ new Date()).toISOString();
+      let createdAt = utcTimestamp(options);
       let inventoryEvidence;
       let observedInventory = null;
       if (target) {
@@ -16828,7 +16878,7 @@ async function reconcileManuscript(projectRoot, request, options = {}) {
           throw new Error("A null reconciliation target requires an actually empty manuscript inventory");
         }
         inventoryEvidence = (await recordInventorySnapshot(project.root, project.manifest, {
-          now: new Date(createdAt)
+          now: createdAt
         })).reference;
       }
       try {
@@ -17022,6 +17072,7 @@ var init_reconciliation = __esm({
     init_scope();
     init_state_io();
     init_tracker();
+    init_time();
     RECOVERY_OPERATIONS = [
       "intake",
       "draft-baseline",
@@ -17469,7 +17520,8 @@ async function reconcileCycle(projectRoot, request = {}, options = {}) {
   if (needsLock) {
     recoveryLock = await acquireDirectoryLock(lockPath, {
       timeoutMs: options.lockTimeoutMs ?? 1e4,
-      retryMs: options.lockRetryMs ?? 20
+      retryMs: options.lockRetryMs ?? 20,
+      now: options.now
     });
     if (!recoveryLock.acquired) {
       return failure3(
@@ -17725,7 +17777,7 @@ async function reconcileCycle(projectRoot, request = {}, options = {}) {
             ...active.value.recovery_position,
             operation_id: operation.operation_id
           },
-          updated_at: options.now instanceof Date ? options.now.toISOString() : (/* @__PURE__ */ new Date()).toISOString()
+          updated_at: utcTimestamp(options)
         };
         await writeAtomicVerified(active.file, `${JSON.stringify(updated, null, 2)}
 `);
@@ -17873,6 +17925,7 @@ var init_cycle_recovery = __esm({
     init_revision_execution();
     init_reconciliation();
     init_schemas();
+    init_time();
     init_state_io();
   }
 });
@@ -18094,13 +18147,11 @@ async function validateOnDisk(manifest, manifestPath) {
     tracker: trackerResult
   };
 }
-async function migrateProjectToV3(projectRoot, { now = /* @__PURE__ */ new Date() } = {}) {
+async function migrateProjectToV3(projectRoot, { now } = {}) {
   return migrateProjectToV32(projectRoot, { now });
 }
 function migrationTimestamp(now) {
-  const value = now instanceof Date ? now : new Date(now);
-  if (Number.isNaN(value.getTime())) throw new Error("Invalid migration time");
-  return value;
+  return utcDate(now);
 }
 function v32Manifest(legacy, timestamp2) {
   const manifest = {
@@ -18152,7 +18203,7 @@ async function migrationSummary({
     valid: true
   };
 }
-async function migrateProjectToV32(projectRoot, { now = /* @__PURE__ */ new Date() } = {}) {
+async function migrateProjectToV32(projectRoot, { now } = {}) {
   const root2 = path18.resolve(projectRoot);
   const manifestPath = path18.join(root2, ".author-toolkit", "project.json");
   const originalManifestText = await readFile17(manifestPath, "utf8");
@@ -18401,6 +18452,7 @@ var init_migration = __esm({
     init_tracker();
     init_scope();
     init_state_io();
+    init_time();
     APPROVAL_HEADERS = [
       "Approval ID",
       "Type",
@@ -18466,7 +18518,9 @@ __export(lib_exports, {
   recordInventorySnapshot: () => recordInventorySnapshot,
   recordScope: () => recordScope,
   startCycle: () => startCycle,
+  timestampResult: () => timestampResult,
   transitionCycle: () => transitionCycle,
+  utcTimestamp: () => utcTimestamp,
   validateApprovalsMarkdown: () => validateApprovalsMarkdown,
   validateConvergenceCycle: () => validateConvergenceCycle,
   validateConvergenceCycleSchema: () => validateConvergenceCycleSchema,
@@ -18530,6 +18584,7 @@ __export(lib_exports, {
 var init_lib = __esm({
   "scripts/lib/index.mjs"() {
     init_constants();
+    init_time();
     init_artifacts();
     init_manifest();
     init_review();
@@ -18710,7 +18765,8 @@ function usage() {
 With no options, print this help without inspecting state.
 Repository mode checks all schemas, example manifests, reports, and workflow fixtures.
 Project-root mode checks deployed shared-reference hashes, then the selected project's manifest, files, and tracker.
-Repository and project-root modes cannot be combined with each other or individual checks.`);
+Repository and project-root modes cannot be combined with each other or individual checks.
+--now ISO_TIMESTAMP injects the UTC validation clock; current timestamps may be at most 60 seconds in the future.`);
 }
 async function readJson2(file) {
   return JSON.parse(await readFile19(file, "utf8"));
@@ -18734,6 +18790,7 @@ function parseArguments(args, artifactTypes) {
     ...Object.fromEntries(artifactTypes.map(({ key }) => [key, []])),
     repository: false,
     projectRoot: null,
+    now: null,
     help: args.length === 0
   };
   const destinations = {
@@ -18756,6 +18813,12 @@ function parseArguments(args, artifactTypes) {
     }
     if (argument === "--project-root" && args[index + 1]) {
       selection.projectRoot = path20.resolve(args[index + 1]);
+      index += 1;
+      continue;
+    }
+    if (argument === "--now" && args[index + 1]) {
+      if (selection.now !== null) throw new Error("Repeated argument: --now");
+      selection.now = args[index + 1];
       index += 1;
       continue;
     }
@@ -18859,7 +18922,7 @@ async function main() {
   for (const file of selection.manifests) {
     try {
       const manifest = await readJson2(file);
-      const result = validateManifest2(manifest);
+      const result = validateManifest2(manifest, { now: selection.now ?? void 0 });
       check(path20.relative(root, file), result);
       if (result.valid) {
         check(`${path20.relative(root, file)}#files`, await validateProjectFiles2(manifest, file));
@@ -18888,11 +18951,15 @@ async function main() {
   for (const file of selection.reports) {
     try {
       const markdown = await readFile19(file, "utf8");
-      const parsed = validateMarkdownReport2(markdown);
+      const options = { now: selection.now ?? void 0 };
+      const parsed = validateMarkdownReport2(markdown, options);
       const needsEvidence = ["draft-baseline", "diagnostics", "current-scope-review"].includes(
         parsed.envelope?.stage
       );
-      check(path20.relative(root, file), needsEvidence ? validateEvidenceReport2(markdown) : parsed);
+      check(
+        path20.relative(root, file),
+        needsEvidence ? validateEvidenceReport2(markdown, options) : parsed
+      );
     } catch (error) {
       check(path20.relative(root, file), {
         valid: false,
@@ -18938,7 +19005,8 @@ async function main() {
     for (const file of selection[type.key]) {
       try {
         const isMarkdown = type.validateMarkdown && /\.(?:md|markdown)$/i.test(file);
-        const result = isMarkdown ? type.validateMarkdown(await readFile19(file, "utf8")) : type.validate(await readJson2(file));
+        const options = { now: selection.now ?? void 0 };
+        const result = isMarkdown ? type.validateMarkdown(await readFile19(file, "utf8"), options) : type.validate(await readJson2(file), options);
         check(path20.relative(root, file), result);
       } catch (error) {
         check(path20.relative(root, file), {

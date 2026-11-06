@@ -13,7 +13,7 @@ Resolve `paths.creation` against the project root. The default is `.author-toolk
 - `batches/<commit-id>.json`: recovery journals;
 - `staging/<batch-id>/`: proposed, rejected, and superseded text outside the manuscript inventory.
 
-Story state uses `story-state-schema.json`, batches use `creation-batch-schema.json`, and commits use `creation-commit-schema.json`. Validate the JSON envelope and human-readable story-state Markdown after every write. The registered creation root is operational and excluded from manuscript inventory.
+Story state uses `story-state-schema.json`, batches use `creation-batch-schema.json`, and commits use `creation-commit-schema.json`. Validate the JSON envelope and human-readable story-state Markdown after every write. Before manually assigning creation timestamps or UTC-based IDs and filenames, run the shared [Timestamp](../../author-project/references/operations.md#timestamp) command once for the coherent write batch. Use `result.json` for `created_at`, `updated_at`, and equivalent JSON fields and `result.filename` for UTC-based filenames; never infer a new write time from an existing artifact's filename. The registered creation root is operational and excluded from manuscript inventory.
 
 ## State identity
 

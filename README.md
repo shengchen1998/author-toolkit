@@ -152,9 +152,10 @@ node <setup-skill>/assets/runtime/author-project.mjs init --project-root <projec
 node <setup-skill>/assets/runtime/author-project.mjs read --project-root <project-root>
 node <setup-skill>/assets/runtime/author-project.mjs status --project-root <project-root>
 node <setup-skill>/assets/runtime/author-project.mjs status --project-root <project-root> --full
+node <setup-skill>/assets/runtime/author-project.mjs timestamp
 ```
 
-`init` deploys matching shared references and creates a neutral manifest, empty tracker and backup index, and operational directories without importing findings, approvals, evaluations, or current-draft revision convergence claims. Reentry validates an existing project without resetting its state. Use `--input <initialization.json>` for custom operational paths, or `--manuscript-root <path>` for a different manuscript location.
+`init` deploys matching shared references and creates a neutral manifest, empty tracker and backup index, and operational directories without importing findings, approvals, evaluations, or current-draft revision convergence claims. Reentry validates an existing project without resetting its state. Use `--input <initialization.json>` for custom operational paths, or `--manuscript-root <path>` for a different manuscript location. The `timestamp` response returns `result.json` for JSON timestamps and timestamp-based IDs and `result.filename` for unique filenames, both from one UTC clock reading. Current artifact validation rejects timestamps more than 60 seconds in the future with concrete field diagnostics and never infers time from filenames.
 
 Every public project command, including cycle, reconciliation, execution, evaluation, and completion operations, returns one JSON envelope with `response_contract_version: "1.0"`, `command`, boolean `valid`, command-specific `result`, and structured `errors`. The previous operation result lives under `result`; errors are JSON on stdout rather than parallel human text. Successful commands and valid read-only status queries exit 0, including `not_satisfied` and `indeterminate` lifecycle states. Project, operation, evidence, or gate validation failures exit 1. Argument, input-file, and input-shape usage errors exit 2.
 

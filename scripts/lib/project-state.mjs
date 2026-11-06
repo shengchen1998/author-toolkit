@@ -8,6 +8,7 @@ import { validateProjectFiles, validateScopeCurrency } from "./project-files.mjs
 import { validateFullManuscriptScope } from "./scope.mjs";
 import { packagedReferences, validateDeployedReferences } from "./shared-references.mjs";
 import { createNoClobberVerified } from "./state-io.mjs";
+import { utcTimestamp } from "./time.mjs";
 import { parseTrackerState, validateTracker } from "./tracker.mjs";
 
 const packagedReferenceUrl = globalThis[Symbol.for("author-toolkit.packaged-references")];
@@ -65,7 +66,7 @@ async function createFile(projectRoot, relativePath, contents, created) {
   created.push(relativePath);
 }
 
-export async function initializeProject(projectRoot, input = {}) {
+export async function initializeProject(projectRoot, input = {}, options = {}) {
   const root = path.resolve(projectRoot);
   const manifestPath = path.join(root, ".author-toolkit", "project.json");
   try {
@@ -117,7 +118,7 @@ export async function initializeProject(projectRoot, input = {}) {
   }
 
   const template = JSON.parse(await readTemplate("project-template.json"));
-  const timestamp = new Date().toISOString();
+  const timestamp = utcTimestamp(options);
   const manifest = {
     ...template,
     language: input.language ?? template.language,
