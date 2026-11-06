@@ -262,6 +262,7 @@ function coverageUnit() {
     paths: [{ path: "manuscript/chapter-001.md", sha256: hash }],
     subchecks: ["scene-causality", "chapter-transitions"],
     dependencies: [{ path: "story-bible.md", sha256: "b".repeat(64) }],
+    dependency_exception: null,
     coverage: "full",
     created_at: timestamp,
   };

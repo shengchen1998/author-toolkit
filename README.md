@@ -325,7 +325,8 @@ state:
 2. Update the draft-baseline for the full target scope and run diagnostics,
    character checks, prose, and AI cleanup on the work set. Reuse unchanged full
    local coverage units only when their operation, source report, paths and
-   hashes, subchecks, and dependencies match. Missing reusable units add the
+   hashes, subchecks, and dependencies match, or when a dependency exception
+   covers an attested baseline or plan copyedit. Missing reusable units add the
    affected old paths to the work set.
 3. Plan and apply only approved work-set edits with backups, then compose new
    operation coverage and full-target syntheses for the target scope.
@@ -620,13 +621,23 @@ to null, and omitting the field is a usage error before any write.
 
 ### Coverage units and chunked review
 
-A full local coverage unit can be reused only when its source-report identity,
-operation, exact paths and hashes, requested subchecks, and dependencies match.
+A full local coverage unit ordinarily reuses only when its source-report
+identity, operation, exact paths and hashes, requested subchecks, and
+dependencies match. A dependency exception also permits one attested copyedit
+without a meaning change to a draft-baseline or revision-plan dependency. It binds
+the unit, requested pass, dependency path, old and new SHA-256, operation,
+reason, and host semantic attestation, and publishes a new unit version plus a
+living-index update without rewriting historical evaluations. Manuscript and
+other evidence identities, further changes, and exception chaining remain
+blocked. See the shared [dependency exception
+rules](skills/revise-fiction/references/state-and-findings.md#dependency-exceptions).
+
 Its original scope remains bound to the source report; the composed index and new
 synthesis use the target scope. Partial, skipped, or stale coverage units and
 synthesis units cannot be reused. Unchanged local units can survive unrelated
 edits, but every affected volume, phase, current-scope, or whole-book synthesis
-must be reevaluated for current inputs.
+must be reevaluated for current inputs. Current-index evaluation does not require
+unrelated historical units to match current dependencies.
 
 For large manuscripts, `author-review` reads actual manuscript chunks, then
 synthesizes volume or story-phase results, and finally the book. Intent and

@@ -158,10 +158,9 @@ test("shared evidence opens with quick routes to decisions, reuse, and convergen
   assert.match(directory, /approvals/i);
   assert.match(directory, /evidence reuse/i);
   assert.match(directory, /dependency exception/i);
-  assert.match(
-    directory,
-    /https:\/\/github\.com\/shengchen1998\/author-toolkit\/issues\/14/,
-    "dependency exception index links the approved spec until its contract lands",
+  assert.ok(
+    directory.includes("](#dependency-exceptions)"),
+    "dependency exception index links the implemented local contract",
   );
   assert.match(directory, /exact dependenc/i);
 });

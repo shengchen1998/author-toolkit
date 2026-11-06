@@ -327,7 +327,7 @@ export async function createNoEditEvidence(projectRoot, options = {}) {
     path: filePath,
     sha256,
   }));
-  const dependency = await artifactAt(projectRoot, "story-bible.md");
+  const dependency = await artifactAt(projectRoot, options.dependencyPath ?? "story-bible.md");
   const requestedSubchecks = options.requestedSubchecks ?? [];
   let baselinePass = null;
   let baselinePassRecord = null;
@@ -562,6 +562,7 @@ export async function createNoEditEvidence(projectRoot, options = {}) {
         paths: localPaths,
         subchecks: requirement.subchecks,
         dependencies: [dependency],
+        dependency_exception: null,
         coverage: "full",
         created_at: timestamp,
       };

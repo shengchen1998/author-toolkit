@@ -53,6 +53,10 @@ The explicitly requested operations, paths, language, subchecks, dependencies, a
 **Requested-pass fingerprint**:
 The deterministic content identity of a requested pass, independent of its record ID, decisions, and timestamps.
 
+**Dependency exception**:
+A recorded allowance to reuse one full local coverage unit when a draft-baseline or revision-plan dependency's content hash changed through copy editing without a meaning change, bound to one requested pass, exact old and new dependency versions, and host semantic attestation. It never applies to manuscript or other evidence identity changes.
+_Avoid_: Carry-forward, baseline pass, no-edit skip
+
 **Change set**:
 The observed created, modified, deleted, reordered, evidence-affected, and dependency-affected paths between two manuscript states.
 _Avoid_: Author intent, required work
