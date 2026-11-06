@@ -58,7 +58,7 @@ The migration summary's `recovery` object reports unresolved legacy work without
 
 - `interrupted_commits` identifies nonterminal commit journals;
 - `interrupted_pending_actions` identifies legacy `in_progress` pending work;
-- `legacy_staging` identifies staging whose batch is not committed, rejected, or restored;
+- `legacy_staging` identifies unresolved staging, including a batch marked `rejected` without a verified rejection decision;
 - `pending_decision_required` records whether any pending action remains;
 - `blockers` and `required_action` identify the next recovery boundary.
 
@@ -74,10 +74,10 @@ A nonterminal journal produces `legacy-commit-recovery-required`; an in-progress
 
 Migration never publishes staging or treats an old acceptance as a v3.2 creation acceptance. Preserve the staged bytes and choose one explicit route:
 
-1. **Reject:** Record the author's exact `creation-rejection` decision for the batch and preserve the rejected staging outside manuscript inventory. Do not create a commit journal. An actually empty project may then use the normal bootstrap rules; rejection alone does not make an empty manuscript satisfied.
+1. **Reject:** Record the author's exact `creation-rejection` decision for the batch and preserve the rejected staging outside manuscript inventory. Do not create a commit journal. The batch must be schema-valid, have `status: "rejected"` and `commit: null`, and name exactly one rejection approval ID in `batch.approvals`. The valid tracker must contain that exact ID with `type: "creation-rejection"`, `operation: "chapter-review"`, and `status: "approved"`. Its ordered paths must equal the batch paths, and its reason must bind the same batch ID, the dependency fingerprint recomputed from the plan, file actions and input versions, and the current scope fingerprint. A nonempty legacy scope also requires the same scope ID in the batch, approval, and current scope. With no current scope, the batch must have `scope_id: null` and use the empty scope fingerprint. A status label or caller-supplied boolean never substitutes for this decision.
 2. **Reapprove:** First complete a current full-manuscript `revise-draft` recovery and obtain a satisfied starting evaluation. Then start one new `write-fiction` cycle and recheck the exact staged bytes, context versions, dependency fingerprint, story-state differences, and complete publication scope. Record new exact `creation-manuscript` and `creation-scope` approvals bound to that batch, dependency fingerprint, and scope fingerprint before any commit. Legacy approvals and pending action do not substitute for these decisions.
 
-Unresolved legacy staging produces `legacy-staging-decision-required` during recovery diagnosis. It blocks bootstrap because an empty manuscript cannot establish the satisfied starting point required for reapproval. It does not prevent an independent full-manuscript `revise-draft` recovery or a later ordinary cycle that has valid satisfied starting evidence.
+A batch marked `rejected` without that exact decision remains blocked by `legacy-staging-decision-required`, for bootstrap and for an ordinary cycle even when satisfied starting evidence exists. A valid rejection permits an empty project to use the normal bootstrap rules; it does not make the empty manuscript satisfied. A valid nonempty rejection still requires the satisfied starting evaluation before an ordinary cycle. Other unresolved staging retains the reapproval route above after that evaluation. No route publishes during migration, diagnosis, rejection, or cycle start.
 
 ## Legacy revision evidence
 

@@ -1,7 +1,12 @@
 import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 
-import { validateCreationBatch, validateCreationCommit } from "./artifacts.mjs";
+import {
+  creationApprovalBindingMatches,
+  sameApprovalPaths,
+  validateCreationBatch,
+  validateCreationCommit,
+} from "./artifacts.mjs";
 import {
   beginCycleOperation,
   completedPointerBlocker,
@@ -292,7 +297,9 @@ export async function startCycle(projectRoot, request, options = {}) {
   if (coordination) return coordination;
   const legacyRecovery = await inspectLegacyRecovery(root, manifest);
   const legacyBlockers = legacyRecovery.blockers.filter((blocker) =>
-    blocker.code !== "legacy-staging-decision-required" || request.bootstrap
+    blocker.code !== "legacy-staging-decision-required" ||
+    request.bootstrap ||
+    blocker.rejection_required
   );
   if (legacyBlockers.length > 0) {
     return {
@@ -740,40 +747,6 @@ function creationFileIdentity(file) {
     output_sha256: file.output_sha256,
     status: file.status,
   };
-}
-
-function compareCreationText(left, right) {
-  return left < right ? -1 : left > right ? 1 : 0;
-}
-
-function creationDependencyFingerprint(batch) {
-  const context = batch.plan.context.map(({ path: filePath, version, version_type }) => ({
-    path: filePath,
-    version,
-    version_type,
-  })).sort((left, right) =>
-    compareCreationText(left.path, right.path) ||
-    compareCreationText(left.version_type, right.version_type) ||
-    compareCreationText(left.version, right.version)
-  );
-  const files = batch.files.map(({ path: filePath, action, input_sha256 }) => ({
-    path: filePath,
-    action,
-    input_sha256,
-  })).sort((left, right) => compareCreationText(left.path, right.path));
-  return sha256Bytes(JSON.stringify({ plan: batch.plan.summary, context, files }));
-}
-
-function creationApprovalBindingMatches(approval, batch, scopeFingerprint) {
-  if (batch.plan.dependency_fingerprint !== creationDependencyFingerprint(batch)) return false;
-  const tokens = new Set(approval.reason.split(/\s+/));
-  return tokens.has(`batch_id=${batch.batch_id}`) &&
-    tokens.has(`dependency_fingerprint=${batch.plan.dependency_fingerprint}`) &&
-    tokens.has(`scope_fingerprint=${scopeFingerprint}`);
-}
-
-function sameApprovalPaths(actual, expected) {
-  return JSON.stringify(actual) === JSON.stringify(expected);
 }
 
 export async function deriveCreationChangeSet(project, cycle, candidate, request) {

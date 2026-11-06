@@ -14,7 +14,11 @@ import {
 import path from "node:path";
 import test from "node:test";
 
-import { migrateProjectToV3, recordScope } from "../scripts/lib/index.mjs";
+import {
+  computeScopeFingerprint,
+  migrateProjectToV3,
+  recordScope,
+} from "../scripts/lib/index.mjs";
 import {
   createNoEditEvidence,
   currentScopeReference,
@@ -620,20 +624,8 @@ test("legacy staging remains unpublished until explicit rejection permits bootst
     blocker.code === "legacy-staging-decision-required"
   ));
 
-  const batchPath = path.join(
-    projectRoot,
-    ".author-toolkit",
-    "creation",
-    "batches",
-    "batch-legacy.json",
-  );
-  const batch = JSON.parse(await readFile(batchPath, "utf8"));
-  await writeJson(batchPath, { ...batch, status: "rejected" });
-  const trackerPath = path.join(projectRoot, "audit-tracker.md");
-  const separator = "|---|---|---|---|---|---|---|---|\n";
-  const insertion = tracker.indexOf(separator, tracker.indexOf("## Approvals")) + separator.length;
-  const rejection = `| REJECT-001 | creation-rejection | chapter-review | scope-legacy | \`.author-toolkit/creation/staging/batch-legacy/chapter-002.md\` | approved | batch_id=batch-legacy Explicitly reject the migrated staging without publication. | 2026-11-06T02:00:00.000Z |\n`;
-  await writeFile(trackerPath, tracker.slice(0, insertion) + rejection + tracker.slice(insertion), "utf8");
+  const batch = await createLegacyBatch(projectRoot, { scopeId: null });
+  await writeLegacyRejection(projectRoot, batch, tracker);
 
   const diagnosis = runAuthorProject(["reconcile-cycle", "--project-root", projectRoot]);
   assert.equal(diagnosis.status, 0, `${diagnosis.stdout}\n${diagnosis.stderr}`);
@@ -667,6 +659,7 @@ test("legacy staging can enter a new cycle only after real satisfied starting ev
   assert.equal(migratedResult.status, 0, migratedResult.stderr);
   assert.equal(JSON.parse(migratedResult.stdout).approval_count, 0);
   assert.equal(await readFile(path.join(projectRoot, "audit-tracker.md"), "utf8"), tracker);
+  await createLegacyBatch(projectRoot, { scopeId: "scope-legacy", status: "awaiting_author" });
 
   const migrated = JSON.parse(await readFile(manifestPath, "utf8"));
   await recordScope(projectRoot, { ...migrated.current_scope, status: "confirmed" }, {
@@ -877,4 +870,269 @@ test("legacy findings and deferred approvals remain byte-preserved and create no
     await readdir(path.join(projectRoot, ".author-toolkit", "convergence", "evaluations")),
     [],
   );
+});
+
+
+async function createLegacyBatch(projectRoot, { scopeId, status = "rejected" }) {
+  const stagedContents = "Legacy staged text\n";
+  const planSummary = "Reject or reapprove the exact legacy staging batch.";
+  const context = [];
+  const files = [{
+    path: "manuscript/chapter-002.md",
+    action: "create",
+    input_sha256: null,
+    output_sha256: createHash("sha256").update(stagedContents).digest("hex"),
+    status: "staged",
+  }];
+  const dependencyFingerprint = createHash("sha256").update(JSON.stringify({
+    plan: planSummary,
+    context,
+    files: files.map(({ path: filePath, action, input_sha256 }) => ({
+      path: filePath,
+      action,
+      input_sha256,
+    })),
+  })).digest("hex");
+  const batch = {
+    schema_version: "1.0.0",
+    batch_id: "batch-legacy",
+    operation: "chapter-review",
+    source_mode: "author",
+    status,
+    scope_id: scopeId,
+    plan: {
+      summary: planSummary,
+      context,
+      dependency_fingerprint: dependencyFingerprint,
+    },
+    files,
+    story_state: [],
+    approvals: [],
+    commit: null,
+    next_action: "Require an exact author decision before any cycle work.",
+    created_at: legacyTimestamp,
+    updated_at: legacyTimestamp,
+  };
+  await writeJson(
+    path.join(projectRoot, ".author-toolkit", "creation", "batches", "batch-legacy.json"),
+    batch,
+  );
+  return batch;
+}
+
+async function writeLegacyRejection(projectRoot, batch, baseTracker, overrides = {}) {
+  const approvalId = overrides.approvalId ?? "REJECT-001";
+  const manifest = JSON.parse(
+    await readFile(path.join(projectRoot, ".author-toolkit", "project.json"), "utf8"),
+  );
+  const scopeFingerprint = overrides.scopeFingerprint ?? (batch.scope_id === null
+    ? computeScopeFingerprint({ files: [], excluded_files: [] })
+    : computeScopeFingerprint(manifest.current_scope));
+  const scopeId = overrides.scopeId ?? batch.scope_id ?? "scope-rejected-bootstrap";
+  const batchId = overrides.batchId ?? batch.batch_id;
+  const dependencyFingerprint = overrides.dependencyFingerprint ?? batch.plan.dependency_fingerprint;
+  const paths = overrides.paths ?? batch.files.map((file) => file.path);
+  const type = overrides.type ?? "creation-rejection";
+  const reason = `Explicitly reject the exact legacy batch. batch_id=${batchId} dependency_fingerprint=${dependencyFingerprint} scope_fingerprint=${scopeFingerprint}`;
+  const separator = "|---|---|---|---|---|---|---|---|\n";
+  const insertion = baseTracker.indexOf(separator, baseTracker.indexOf("## Approvals")) + separator.length;
+  const row = `| ${approvalId} | ${type} | chapter-review | ${scopeId} | ${paths.map((value) => `\`${value}\``).join(", ")} | approved | ${reason} | 2026-11-06T02:00:00.000Z |\n`;
+  await writeFile(
+    path.join(projectRoot, "audit-tracker.md"),
+    baseTracker.slice(0, insertion) + row + baseTracker.slice(insertion),
+    "utf8",
+  );
+  const decidedBatch = { ...batch, approvals: [approvalId] };
+  await writeJson(
+    path.join(projectRoot, ".author-toolkit", "creation", "batches", "batch-legacy.json"),
+    decidedBatch,
+  );
+  return decidedBatch;
+}
+
+async function prepareEmptyLegacyProject(t) {
+  const fixture = await createLegacyV3Project(t);
+  delete fixture.manifest.current_scope;
+  delete fixture.manifest.pending_action;
+  await writeJson(fixture.manifestPath, fixture.manifest);
+  await rm(path.join(fixture.projectRoot, "manuscript", "chapter-001.md"));
+  return fixture;
+}
+
+function startCycleInput(projectRoot, { bootstrap, startingScope = null }) {
+  return writeJson(path.join(projectRoot, "start-cycle.json"), {
+    cycle_id: bootstrap ? "cycle-legacy-rejection-bootstrap" : "cycle-legacy-rejection-ordinary",
+    initiating_strategy: "write-fiction",
+    bootstrap,
+    starting_scope: startingScope,
+  }).then((input) => runAuthorProject([
+    "start-cycle",
+    "--project-root",
+    projectRoot,
+    "--input",
+    input,
+  ]));
+}
+
+async function establishSatisfiedStart(projectRoot) {
+  const manifestPath = path.join(projectRoot, ".author-toolkit", "project.json");
+  const migrated = JSON.parse(await readFile(manifestPath, "utf8"));
+  await recordScope(projectRoot, { ...migrated.current_scope, status: "confirmed" }, {
+    authorConfirmation: {
+      decision_id: "SCOPE-100",
+      confirmed_at: "2026-11-06T02:00:00.000Z",
+      reading_order_confirmed: true,
+    },
+    now: new Date("2026-11-06T02:00:00.000Z"),
+  });
+  const startingScope = await currentScopeReference(projectRoot);
+  const evidence = await createNoEditEvidence(projectRoot);
+  const evaluationInput = await writeJson(path.join(projectRoot, "evaluate-draft.json"), {
+    evaluation_id: "evaluation-legacy-rejection",
+    requested_pass: evidence.passReference,
+    target_scope: evidence.scopeReference,
+    coverage_index: evidence.coverageIndexReference,
+    reports: evidence.reports,
+    review_group: evidence.reviewGroupReference,
+    no_edit_skips: [evidence.noEditReference],
+    semantic_attestations: [evidence.hostAttestationReference, evidence.freshAttestationReference],
+  });
+  const evaluated = runAuthorProject([
+    "evaluate-draft",
+    "--project-root",
+    projectRoot,
+    "--input",
+    evaluationInput,
+  ]);
+  assert.equal(evaluated.status, 0, `${evaluated.stdout}\n${evaluated.stderr}`);
+  assert.equal(JSON.parse(evaluated.stdout).evaluation.outcome, "satisfied");
+  return startingScope;
+}
+
+const invalidRejectionVariants = [
+  ["wrong approval type", { type: "creation-manuscript" }],
+  ["wrong batch ID", { batchId: "batch-other" }],
+  ["wrong dependency fingerprint", { dependencyFingerprint: "0".repeat(64) }],
+  ["wrong scope fingerprint", { scopeFingerprint: "0".repeat(64) }],
+  ["wrong paths", { paths: ["manuscript/other.md"] }],
+];
+
+test("empty legacy rejection requires an exact tracker decision before bootstrap", async (t) => {
+  const variants = [null, ...invalidRejectionVariants];
+  for (const variant of variants) {
+    await t.test(variant?.[0] ?? "missing decision", async (t) => {
+      const { projectRoot, tracker } = await prepareEmptyLegacyProject(t);
+      const batch = await createLegacyBatch(projectRoot, { scopeId: null });
+      const migrated = runMigration(projectRoot);
+      assert.equal(migrated.status, 0, migrated.stderr);
+      if (variant) await writeLegacyRejection(projectRoot, batch, tracker, variant[1]);
+
+      const diagnosis = runAuthorProject(["reconcile-cycle", "--project-root", projectRoot]);
+      assert.equal(diagnosis.status, 1, diagnosis.stderr);
+      assert.ok(JSON.parse(diagnosis.stdout).blockers.some((blocker) =>
+        blocker.code === "legacy-staging-decision-required"
+      ));
+      const started = await startCycleInput(projectRoot, { bootstrap: true });
+      assert.equal(started.status, 1, started.stderr);
+      assert.ok(JSON.parse(started.stdout).blockers.some((blocker) =>
+        blocker.code === "legacy-staging-decision-required"
+      ));
+      await assert.rejects(
+        readFile(path.join(projectRoot, ".author-toolkit", "convergence", "active-cycle.json"), "utf8"),
+        { code: "ENOENT" },
+      );
+    });
+  }
+
+  await t.test("exact decision permits bootstrap without publication", async (t) => {
+    const { projectRoot, tracker } = await prepareEmptyLegacyProject(t);
+    const batch = await createLegacyBatch(projectRoot, { scopeId: null });
+    assert.equal(runMigration(projectRoot).status, 0);
+    await writeLegacyRejection(projectRoot, batch, tracker);
+    const diagnosis = runAuthorProject(["reconcile-cycle", "--project-root", projectRoot]);
+    assert.equal(diagnosis.status, 0, `${diagnosis.stdout}\n${diagnosis.stderr}`);
+    const started = await startCycleInput(projectRoot, { bootstrap: true });
+    assert.equal(started.status, 0, `${started.stdout}\n${started.stderr}`);
+    assert.equal(
+      await readFile(
+        path.join(projectRoot, ".author-toolkit", "creation", "staging", "batch-legacy", "chapter-002.md"),
+        "utf8",
+      ),
+      "Legacy staged text\n",
+    );
+    await assert.rejects(readFile(path.join(projectRoot, "manuscript", "chapter-002.md"), "utf8"), {
+      code: "ENOENT",
+    });
+  });
+});
+
+test("nonempty legacy rejection cannot bypass cycle gates with missing or wrong decisions", async (t) => {
+  const variants = [
+    null,
+    ...invalidRejectionVariants,
+    ["wrong scope ID", { scopeId: "scope-other" }],
+  ];
+  for (const variant of variants) {
+    await t.test(variant?.[0] ?? "missing decision", async (t) => {
+      const { projectRoot, tracker } = await createLegacyV3Project(t);
+      const batch = await createLegacyBatch(projectRoot, { scopeId: "scope-legacy" });
+      assert.equal(runMigration(projectRoot).status, 0);
+      const startingScope = await establishSatisfiedStart(projectRoot);
+      if (variant) {
+        const currentTracker = await readFile(path.join(projectRoot, "audit-tracker.md"), "utf8");
+        await writeLegacyRejection(projectRoot, batch, currentTracker, variant[1]);
+      } else {
+        assert.equal(
+          await readFile(path.join(projectRoot, "audit-tracker.md"), "utf8") === tracker,
+          false,
+        );
+      }
+
+      const diagnosis = runAuthorProject(["reconcile-cycle", "--project-root", projectRoot]);
+      assert.equal(diagnosis.status, 1, diagnosis.stderr);
+      assert.ok(JSON.parse(diagnosis.stdout).blockers.some((blocker) =>
+        blocker.code === "legacy-staging-decision-required"
+      ));
+      const started = await startCycleInput(projectRoot, { bootstrap: false, startingScope });
+      assert.equal(started.status, 1, started.stderr);
+      assert.ok(JSON.parse(started.stdout).blockers.some((blocker) =>
+        blocker.code === "legacy-staging-decision-required"
+      ));
+      await assert.rejects(readFile(path.join(projectRoot, "manuscript", "chapter-002.md"), "utf8"), {
+        code: "ENOENT",
+      });
+    });
+  }
+});
+
+test("a valid nonempty rejection still requires satisfied starting evidence and never publishes", async (t) => {
+  const { projectRoot, tracker } = await createLegacyV3Project(t);
+  const batch = await createLegacyBatch(projectRoot, { scopeId: "scope-legacy" });
+  assert.equal(runMigration(projectRoot).status, 0);
+  await writeLegacyRejection(projectRoot, batch, tracker);
+  const manifest = JSON.parse(
+    await readFile(path.join(projectRoot, ".author-toolkit", "project.json"), "utf8"),
+  );
+  const proposedStart = {
+    scope_id: manifest.current_scope.scope_id,
+    scope_fingerprint: manifest.current_scope.scope_fingerprint,
+    snapshot_path: ".author-toolkit/convergence/scopes/unconfirmed.json",
+    snapshot_sha256: "0".repeat(64),
+  };
+  const blocked = await startCycleInput(projectRoot, { bootstrap: false, startingScope: proposedStart });
+  assert.equal(blocked.status, 1, blocked.stderr);
+  assert.ok(JSON.parse(blocked.stdout).blockers.some((blocker) =>
+    blocker.code === "starting-scope-indeterminate" || blocker.code === "starting-evaluation-indeterminate"
+  ));
+
+  const startingScope = await establishSatisfiedStart(projectRoot);
+  const started = await startCycleInput(projectRoot, { bootstrap: false, startingScope });
+  assert.equal(started.status, 0, `${started.stdout}\n${started.stderr}`);
+  assert.equal(
+    JSON.parse(started.stdout).cycle.starting_evaluation.evaluation_id,
+    "evaluation-legacy-rejection",
+  );
+  await assert.rejects(readFile(path.join(projectRoot, "manuscript", "chapter-002.md"), "utf8"), {
+    code: "ENOENT",
+  });
 });

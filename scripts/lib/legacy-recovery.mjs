@@ -1,8 +1,16 @@
 import { readdir, readFile, stat } from "node:fs/promises";
 import path from "node:path";
 
+import {
+  creationApprovalBindingMatches,
+  sameApprovalPaths,
+  validateCreationBatch,
+} from "./artifacts.mjs";
+import { computeScopeFingerprint } from "./scope.mjs";
+import { parseTrackerState } from "./tracker.mjs";
+
 const TERMINAL_COMMIT_STATUSES = new Set(["committed", "restored"]);
-const TERMINAL_STAGING_STATUSES = new Set(["committed", "rejected", "restored"]);
+const TERMINAL_STAGING_STATUSES = new Set(["committed", "restored"]);
 
 async function exists(file) {
   try {
@@ -47,6 +55,43 @@ function emptyRecovery(pendingAction = null) {
     blockers: [],
     required_action: null,
   };
+}
+
+async function hasValidLegacyRejection(projectRoot, manifest, batch, batchId) {
+  if (
+    batch.status !== "rejected" ||
+    batch.batch_id !== batchId ||
+    batch.commit !== null ||
+    !validateCreationBatch(batch).valid
+  ) {
+    return false;
+  }
+  const tracker = await parseTrackerState(
+    await readFile(path.resolve(projectRoot, manifest.paths.audit_tracker), "utf8"),
+    projectRoot,
+  );
+  const rejectionApprovals = batch.approvals
+    .map((approvalId) => tracker.approvals.find((approval) => approval.id === approvalId))
+    .filter((approval) => approval?.type === "creation-rejection");
+  if (!tracker.valid || rejectionApprovals.length !== 1) return false;
+  const approval = rejectionApprovals[0];
+
+  let scopeFingerprint;
+  let scopeIdentityMatches;
+  if (manifest.current_scope) {
+    scopeFingerprint = computeScopeFingerprint(manifest.current_scope);
+    scopeIdentityMatches = manifest.current_scope.scope_fingerprint === scopeFingerprint &&
+      batch.scope_id === manifest.current_scope.scope_id &&
+      approval.scopeId === manifest.current_scope.scope_id;
+  } else {
+    scopeFingerprint = computeScopeFingerprint({ files: [], excluded_files: [] });
+    scopeIdentityMatches = batch.scope_id === null;
+  }
+  return scopeIdentityMatches &&
+    approval.status === "approved" &&
+    approval.operation === "chapter-review" &&
+    sameApprovalPaths(approval.paths, batch.files.map((file) => file.path)) &&
+    creationApprovalBindingMatches(approval, batch, scopeFingerprint);
 }
 
 export async function inspectLegacyRecovery(projectRoot, manifest) {
@@ -113,10 +158,15 @@ export async function inspectLegacyRecovery(projectRoot, manifest) {
     if (!entry.isDirectory()) continue;
     const batch = await readJson(path.join(batchesAbsolute, `${entry.name}.json`));
     if (TERMINAL_STAGING_STATUSES.has(batch?.status)) continue;
+    const rejectionRequired = batch?.status === "rejected";
+    if (rejectionRequired && await hasValidLegacyRejection(projectRoot, manifest, batch, entry.name)) {
+      continue;
+    }
     const record = {
       batch_id: entry.name,
       status: batch?.status ?? "unknown",
       path: path.posix.join(stagingRelative, entry.name),
+      rejection_required: rejectionRequired,
     };
     legacyStaging.push(record);
     stagingBlockers.push({
