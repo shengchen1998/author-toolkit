@@ -3,24 +3,6 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 
-import {
-  assertCycleAllowsOperation,
-  checkConvergenceGate,
-  completeCycle,
-  evaluateCycle,
-  evaluateDraft,
-  getCycleStatus,
-  prepareDraftRevisionExecution,
-  prepareRevisionExecution,
-  projectRootFromManifest,
-  reconcileCycle,
-  reconcileManuscript,
-  startCycle,
-  transitionCycle,
-  verifyDraftRevisionExecution,
-  verifyRevisionExecution,
-} from "./lib/index.mjs";
-
 const commands = new Set([
   "start-cycle",
   "transition-cycle",
@@ -42,22 +24,22 @@ const commands = new Set([
 
 function usage() {
   console.log(`Usage:
-  node scripts/author-project.mjs start-cycle --project-root ROOT --input FILE
-  node scripts/author-project.mjs transition-cycle --project-root ROOT --input FILE
-  node scripts/author-project.mjs reconcile-cycle --project-root ROOT [--input FILE]
-  node scripts/author-project.mjs reconcile-manuscript --project-root ROOT --input FILE
-  node scripts/author-project.mjs prepare-draft-revision-execution --project-root ROOT --input FILE
-  node scripts/author-project.mjs prepare-revision-execution --project-root ROOT --input FILE
-  node scripts/author-project.mjs verify-draft-revision-execution --project-root ROOT --input FILE
-  node scripts/author-project.mjs verify-revision-execution --project-root ROOT --input FILE
-  node scripts/author-project.mjs evaluate-cycle --project-root ROOT --input FILE
-  node scripts/author-project.mjs evaluate-draft --project-root ROOT --input FILE
-  node scripts/author-project.mjs complete-cycle --project-root ROOT --input FILE
-  node scripts/author-project.mjs cycle-status --project-root ROOT
-  node scripts/author-project.mjs cycle-gate --project-root ROOT
-  node scripts/author-project.mjs convergence-status --project-root ROOT
-  node scripts/author-project.mjs convergence-gate --project-root ROOT
-  node scripts/author-project.mjs check-operation --project-root ROOT --input FILE
+  node ${process.argv[1] ?? "author-project.mjs"} start-cycle --project-root ROOT --input FILE
+  node ${process.argv[1] ?? "author-project.mjs"} transition-cycle --project-root ROOT --input FILE
+  node ${process.argv[1] ?? "author-project.mjs"} reconcile-cycle --project-root ROOT [--input FILE]
+  node ${process.argv[1] ?? "author-project.mjs"} reconcile-manuscript --project-root ROOT --input FILE
+  node ${process.argv[1] ?? "author-project.mjs"} prepare-draft-revision-execution --project-root ROOT --input FILE
+  node ${process.argv[1] ?? "author-project.mjs"} prepare-revision-execution --project-root ROOT --input FILE
+  node ${process.argv[1] ?? "author-project.mjs"} verify-draft-revision-execution --project-root ROOT --input FILE
+  node ${process.argv[1] ?? "author-project.mjs"} verify-revision-execution --project-root ROOT --input FILE
+  node ${process.argv[1] ?? "author-project.mjs"} evaluate-cycle --project-root ROOT --input FILE
+  node ${process.argv[1] ?? "author-project.mjs"} evaluate-draft --project-root ROOT --input FILE
+  node ${process.argv[1] ?? "author-project.mjs"} complete-cycle --project-root ROOT --input FILE
+  node ${process.argv[1] ?? "author-project.mjs"} cycle-status --project-root ROOT
+  node ${process.argv[1] ?? "author-project.mjs"} cycle-gate --project-root ROOT
+  node ${process.argv[1] ?? "author-project.mjs"} convergence-status --project-root ROOT
+  node ${process.argv[1] ?? "author-project.mjs"} convergence-gate --project-root ROOT
+  node ${process.argv[1] ?? "author-project.mjs"} check-operation --project-root ROOT --input FILE
 
 Use --manifest FILE instead of --project-root ROOT when addressing the manifest directly.
 Transitions, reconciliation, revision execution, evaluations, and completions serialize independent processes with active-cycle.lock and recheck expected_revision in the lock.
@@ -71,7 +53,10 @@ These are author-project operations; they do not invoke a writing strategy.`);
 }
 
 function parseArguments(args) {
-  if (args.length === 1 && (args[0] === "--help" || args[0] === "-h")) {
+  if (
+    args.length === 0 ||
+    (args.length === 1 && (args[0] === "--help" || args[0] === "-h"))
+  ) {
     return { help: true };
   }
   const [command, ...rest] = args;
@@ -100,11 +85,29 @@ function parseArguments(args) {
 }
 
 async function main() {
-  const selection = parseArguments(process.argv.slice(2));
-  if (selection.help) {
+  const args = process.argv.slice(2);
+  if (args.length === 0 || args.includes("--help") || args.includes("-h")) {
     usage();
     return;
   }
+  const selection = parseArguments(args);
+  const {
+    assertCycleAllowsOperation,
+    checkConvergenceGate,
+    completeCycle,
+    evaluateCycle,
+    evaluateDraft,
+    getCycleStatus,
+    prepareDraftRevisionExecution,
+    prepareRevisionExecution,
+    projectRootFromManifest,
+    reconcileCycle,
+    reconcileManuscript,
+    startCycle,
+    transitionCycle,
+    verifyDraftRevisionExecution,
+    verifyRevisionExecution,
+  } = await import("./lib/index.mjs");
   const projectRoot = selection.manifest
     ? projectRootFromManifest(selection.manifest)
     : selection.projectRoot;

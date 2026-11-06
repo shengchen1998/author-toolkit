@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import test from "node:test";
 
 import { extractReportEnvelope } from "../scripts/lib/index.mjs";
@@ -16,12 +17,112 @@ function runValidator(args = []) {
   });
 }
 
-test("the default CLI validates every shipped schema and example", () => {
-  const result = runValidator();
+test("the CLI prints help without implicit state and validates the repository only in explicit mode", () => {
+  const help = runValidator();
+  assert.equal(help.status, 0, help.stderr);
+  assert.match(help.stdout, /Usage:/);
+  assert.doesNotMatch(help.stdout, /checks, [0-9]+ failures/);
+
+  const result = runValidator(["--repository"]);
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /19 checks, 0 failures/);
   assert.match(result.stdout, /fiction-revision-en\/reports\/structure/);
   assert.match(result.stdout, /fiction-revision-zh\/reports\/structure/);
+});
+
+test("the CLI rejects ambiguous validation-mode combinations as usage errors", () => {
+  for (const args of [
+    ["--repository", "--project-root", root],
+    ["--repository", "--manifest", path.join(root, "package.json")],
+    ["--project-root", root, "--manifest", path.join(root, "package.json")],
+  ]) {
+    const result = runValidator(args);
+    assert.equal(result.status, 2, args.join(" "));
+    assert.match(result.stdout, /Usage:/);
+    assert.doesNotMatch(result.stdout, /checks, [0-9]+ failures/);
+  }
+});
+
+test("project-root mode validates only the selected project", async (t) => {
+  const output = path.join(root, ".test-output");
+  await mkdir(output, { recursive: true });
+  const temporary = await mkdtemp(path.join(output, "project-cli-"));
+  t.after(async () => {
+    await rm(temporary, { recursive: true, force: true });
+  });
+
+  const projectRoot = path.join(temporary, "project");
+  await cp(path.join(root, "examples", "fiction-revision-en"), projectRoot, {
+    recursive: true,
+  });
+  await cp(
+    path.join(root, "skills", "setup-author-toolkit", "assets", "references"),
+    path.join(projectRoot, ".author-toolkit", "references"),
+    { recursive: true },
+  );
+  const result = runValidator(["--project-root", projectRoot]);
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /\.author-toolkit\/project\.json#files/);
+  assert.doesNotMatch(result.stdout, /fiction-revision-zh/);
+});
+
+test("project-root mode reports missing deployed shared references", async (t) => {
+  const output = path.join(root, ".test-output");
+  await mkdir(output, { recursive: true });
+  const temporary = await mkdtemp(path.join(output, "references-cli-"));
+  t.after(async () => {
+    await rm(temporary, { recursive: true, force: true });
+  });
+
+  const projectRoot = path.join(temporary, "project");
+  await cp(path.join(root, "examples", "fiction-revision-en"), projectRoot, {
+    recursive: true,
+  });
+  const result = runValidator(["--project-root", projectRoot]);
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /missing shared reference/i);
+  assert.match(result.stderr, /terminology\.md/);
+  assert.match(result.stderr, /setup-author-toolkit/);
+});
+
+test("project-root mode reports shared-reference hash conflicts with both hashes", async (t) => {
+  const output = path.join(root, ".test-output");
+  await mkdir(output, { recursive: true });
+  const temporary = await mkdtemp(path.join(output, "reference-conflict-cli-"));
+  t.after(async () => {
+    await rm(temporary, { recursive: true, force: true });
+  });
+
+  const projectRoot = path.join(temporary, "project");
+  const packagedReferences = path.join(
+    root,
+    "skills",
+    "setup-author-toolkit",
+    "assets",
+    "references",
+  );
+  await cp(path.join(root, "examples", "fiction-revision-en"), projectRoot, {
+    recursive: true,
+  });
+  await cp(packagedReferences, path.join(projectRoot, ".author-toolkit", "references"), {
+    recursive: true,
+  });
+  const changed = "locally changed reference\n";
+  await writeFile(
+    path.join(projectRoot, ".author-toolkit", "references", "terminology.md"),
+    changed,
+    "utf8",
+  );
+
+  const result = runValidator(["--project-root", projectRoot]);
+  const expected = createHash("sha256")
+    .update(await readFile(path.join(packagedReferences, "terminology.md")))
+    .digest("hex");
+  const actual = createHash("sha256").update(changed).digest("hex");
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /reference-version-conflict/);
+  assert.ok(result.stderr.includes(expected), "diagnostic includes the packaged hash");
+  assert.ok(result.stderr.includes(actual), "diagnostic includes the deployed hash");
 });
 
 test("the CLI exits nonzero for an invalid manifest and invalid Markdown", async (t) => {

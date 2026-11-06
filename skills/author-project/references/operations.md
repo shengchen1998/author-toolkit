@@ -75,23 +75,23 @@ For a legacy batch marked `rejected`, require a schema-valid batch with `commit:
 
 ## Read and validate
 
-Before a shared workflow `read`, `validate`, or `status`, resolve the installed `setup-author-toolkit` skill's `assets/references/` payload and compare every packaged file with its corresponding file beneath `<project-root>/.author-toolkit/references/`. A valid v3 manifest alone does not prove that these shared runtime contracts are deployed.
+Before a shared workflow `read`, `validate`, or `status`, resolve `<setup-skill>` as the installed `setup-author-toolkit` skill directory and run `node <setup-skill>/assets/runtime/validate.mjs --project-root <project-root>`. Use it to compare every packaged file in `assets/references/` with its corresponding file beneath `<project-root>/.author-toolkit/references/` before reading project state. A valid v3 manifest alone does not prove that these shared runtime contracts are deployed.
 
-- If a packaged file is missing from the project, stop and return the missing project-relative paths. Instruct the caller to display the exact user-invoked `setup-author-toolkit` command and wait for the author. Do not continue shared work or write project state.
-- If an existing file's SHA-256 hash differs from the packaged file, stop and report `reference-version-conflict` with both hashes. Instruct the caller to display the setup command and wait. Only setup may replace the file through its separate exact-file approval and backup procedure.
+- If a packaged file is missing from the project, the command exits with validation failure and returns the missing project-relative paths. Instruct the caller to display the exact user-invoked `setup-author-toolkit` command and wait for the author. Do not continue shared work or write project state.
+- If an existing file's SHA-256 hash differs from the packaged file, the command exits with validation failure and reports `reference-version-conflict` with both hashes. Instruct the caller to display the setup command and wait. Only setup may replace the file through its separate exact-file approval and backup procedure.
 
 Return shared state as ready only after every packaged reference exists with a matching hash. Setup deploys the payload before initialization or migration, so its later validation continues through these same checks without another deployment.
 
 For every read, parse JSON and check `schema_version`. Apply the installed schema and operation rules for the declared v3.0, v3.1, or v3.2 version, including required fields, additional-property restrictions, current scope, pending action, timestamps, safe relative paths, and registered operational roots. Use `<project-root>/.author-toolkit/references/project-schema.json` only to recognize legacy v2 state before migration. Return v2 as requiring migration through setup; do not reinterpret it as v3.
 
-When the installed toolkit contains `scripts/validate.mjs`, run:
+Project-root mode runs the real Ajv JSON Schema validators, then checks the manifest, registered files, and tracker. Validate individual artifacts with the same installed CLI:
 
 ```bash
-node <toolkit-root>/scripts/validate.mjs --manifest <manifest-path>
-node <toolkit-root>/scripts/validate.mjs --scope-snapshot <snapshot-path> --inventory-snapshot <inventory-path>
+node <setup-skill>/assets/runtime/validate.mjs --manifest <manifest-path>
+node <setup-skill>/assets/runtime/validate.mjs --scope-snapshot <snapshot-path> --inventory-snapshot <inventory-path>
 ```
 
-Use the documented Node environment. Report the command, exit status, and diagnostics. For v3.0 and v3.1 with a current scope, manifest validation recomputes manuscript hashes under `#scope`. For v3.2, `#scope` additionally returns `scope_id`, `scope_fingerprint`, and `full_manuscript=true|false` after the checks below. Treat a `scope-currency` or failed full-manuscript diagnostic as changed or incomplete input: mark dependent evidence stale and reconcile the scope with the author before relying on it or writing. Do not refresh hashes silently. Script validation is authoritative. Without the script, perform the schema and hash checks above and label the result `manual-checks-only`; do not claim full JSON Schema validation. On read or status, report validation failures, changed inputs, and missing registered paths without repairing them implicitly. A read returns the full parsed manifest plus the shared state view below; status returns that compact view.
+Use the documented Node environment; the installed runtime includes its dependencies and requires no npm installation. Report the command, exit status, and diagnostics. Success exits 0, validation failure exits 1, and argument or usage errors exit 2. Running with no arguments prints help without inspecting state. Repository mode is explicit with `--repository` and belongs to source development; project mode is explicit with `--project-root`. Do not combine either mode with the other or with individual checks. For v3.0 and v3.1 with a current scope, manifest validation recomputes manuscript hashes under `#scope`. For v3.2, `#scope` additionally returns `scope_id`, `scope_fingerprint`, and `full_manuscript=true|false` after the checks below. Treat a `scope-currency` or failed full-manuscript diagnostic as changed or incomplete input: mark dependent evidence stale and reconcile the scope with the author before relying on it or writing. Do not refresh hashes silently. Script validation is authoritative; do not substitute `manual-checks-only` or claim JSON Schema validation without running the installed CLI. On read or status, report validation failures, changed inputs, and missing registered paths without repairing them implicitly. A read returns the full parsed manifest plus the shared state view below; status returns that compact view.
 
 A v3.2 full-manuscript result is true only when all of these conditions hold:
 
@@ -133,11 +133,11 @@ Every non-bootstrap start requires a full-manuscript starting scope whose immuta
 Use the public facade for starts and optimistic transitions:
 
 ```bash
-node <toolkit-root>/scripts/author-project.mjs start-cycle --project-root <project-root> --input <request.json>
-node <toolkit-root>/scripts/author-project.mjs transition-cycle --project-root <project-root> --input <transition.json>
-node <toolkit-root>/scripts/author-project.mjs cycle-status --project-root <project-root>
-node <toolkit-root>/scripts/author-project.mjs cycle-gate --project-root <project-root>
-node <toolkit-root>/scripts/author-project.mjs check-operation --project-root <project-root> --input <operation.json>
+node <setup-skill>/assets/runtime/author-project.mjs start-cycle --project-root <project-root> --input <request.json>
+node <setup-skill>/assets/runtime/author-project.mjs transition-cycle --project-root <project-root> --input <transition.json>
+node <setup-skill>/assets/runtime/author-project.mjs cycle-status --project-root <project-root>
+node <setup-skill>/assets/runtime/author-project.mjs cycle-gate --project-root <project-root>
+node <setup-skill>/assets/runtime/author-project.mjs check-operation --project-root <project-root> --input <operation.json>
 ```
 
 The transition input names `cycle_id` and `expected_revision`. It may change current strategy, recovery position, target scope, requested pass, related artifacts, change set, and work set. It cannot change cycle ID, initiating strategy, bootstrap, starting scope, status, evaluation references, or completion. A newly assigned target scope must be the current confirmed full-manuscript scope. An existing starting or target snapshot remains valid historical evidence after expected edits. Recompute every referenced artifact hash before the write. A stale revision, ID mismatch, unsafe reference, missing artifact, or changed hash stops the transition without replacing active state.
@@ -178,8 +178,8 @@ Completion instead writes `cycle_operation`, records the explicit completion dec
 Run the public operation without an input for diagnosis only:
 
 ```bash
-node <toolkit-root>/scripts/author-project.mjs reconcile-cycle --project-root <project-root>
-node <toolkit-root>/scripts/author-project.mjs reconcile-cycle --project-root <project-root> --input <direction.json>
+node <setup-skill>/assets/runtime/author-project.mjs reconcile-cycle --project-root <project-root>
+node <setup-skill>/assets/runtime/author-project.mjs reconcile-cycle --project-root <project-root> --input <direction.json>
 ```
 
 Without `direction`, the operation rechecks the manifest, active and completed cycles, linked pending references, referenced artifact identities and hashes, and lock owner without writing any file. It returns `diagnostic_only: true`, `state_written: false`, the interrupted operation when present, and concrete blockers. A direction is an explicit author choice of recovery metadata; it is not manuscript, publication, restore, or completion approval. Directions that change cycle or manifest state acquire the same active-cycle lock and reconfirm the diagnosed bytes before writing. Directions that resume a public operation reuse that operation's lock and full validation.
@@ -205,8 +205,8 @@ The completed-cycle pointer is checked before dependent starts, transitions, exe
 For independent read-only checks, use:
 
 ```bash
-node <toolkit-root>/scripts/validate.mjs --convergence-status <manifest-path>
-node <toolkit-root>/scripts/validate.mjs --convergence-gate <manifest-path>
+node <setup-skill>/assets/runtime/validate.mjs --convergence-status <manifest-path>
+node <setup-skill>/assets/runtime/validate.mjs --convergence-gate <manifest-path>
 ```
 
 Convergence status exits successfully when the query itself is valid, including an `indeterminate` outcome. Convergence gate exits nonzero for `not_satisfied`, `indeterminate`, stale evidence, or malformed state. Usage errors retain the validator's exit status 2. Both commands are read-only. Evaluation and completion require their dedicated evidence operations; `transition-cycle` never substitutes for them.
@@ -218,8 +218,8 @@ Before manuscript-changing `check-operation`, `start-cycle`, `transition-cycle`,
 Run the public operation after the author has approved the actual external text and proposed story-state differences:
 
 ```bash
-node <toolkit-root>/scripts/author-project.mjs reconcile-manuscript --project-root <project-root> --input <reconciliation.json>
-node <toolkit-root>/scripts/validate.mjs --manuscript-reconciliation <reconciliation.json>
+node <setup-skill>/assets/runtime/author-project.mjs reconcile-manuscript --project-root <project-root> --input <reconciliation.json>
+node <setup-skill>/assets/runtime/validate.mjs --manuscript-reconciliation <reconciliation.json>
 ```
 
 The closed input names `reconciliation_id`, `author_decision_id`, `target_scope`, and hashed `story_state` references. An active reconciliation also names its `cycle_id` and `expected_revision`; without an active cycle, it names `previous_scope` and creates no cycle. The field is mandatory for every cycle-external reconciliation, including recovery from empty. It may be explicitly null only when the latest verified reconciliation has a null target, in which case `recovery_from_empty` is required. Omitting the field is a usage error before any reconciliation or manifest write; an empty manifest pointer never makes omission valid. A nonempty target must be manifest `current_scope`, pass full-manuscript validation, and have a snapshot author-confirmation decision equal to the import decision. A null target requires actual empty inventory and creates an immutable empty inventory snapshot, not an empty scope. The manifest's optional `manuscript_reconciliation` points to the latest immutable record beneath `reconciliations/`.
@@ -255,8 +255,8 @@ Semantic attestations identify the attester, pass and scope fingerprints, claim 
 Run the public operations with exact cycle ID and expected revision:
 
 ```bash
-node <toolkit-root>/scripts/author-project.mjs evaluate-cycle --project-root <project-root> --input <evaluation-request.json>
-node <toolkit-root>/scripts/author-project.mjs complete-cycle --project-root <project-root> --input <completion.json>
+node <setup-skill>/assets/runtime/author-project.mjs evaluate-cycle --project-root <project-root> --input <evaluation-request.json>
+node <setup-skill>/assets/runtime/author-project.mjs complete-cycle --project-root <project-root> --input <completion.json>
 ```
 
 The evaluation request supplies `evaluation_id`, the coverage-index reference, intake and draft-baseline report references, review-group reference, and semantic-attestation references. Evaluation and completion acquire the same `active-cycle.lock/` used for transitions and recheck the expected revision inside the lock. Only one writer can win a revision race. The evaluation request does not accept an outcome: the evaluator derives `satisfied`, `not_satisfied`, or `indeterminate` from current evidence and returns concrete blockers.
@@ -264,7 +264,7 @@ The evaluation request supplies `evaluation_id`, the coverage-index reference, i
 For a full-manuscript independent `revise-draft` pass with no active cycle, run:
 
 ```bash
-node <toolkit-root>/scripts/author-project.mjs evaluate-draft --project-root <project-root> --input <independent-evaluation.json>
+node <setup-skill>/assets/runtime/author-project.mjs evaluate-draft --project-root <project-root> --input <independent-evaluation.json>
 ```
 
 The independent request supplies `evaluation_id`, requested-pass and target-scope references, the same evidence roots, and the no-edit-skip and verified revision-execution references that a cycle would otherwise link. It uses the same evaluator and immutable `evaluations/` storage without creating an active cycle. `cycle_id` is null for an independent `revise-draft` evaluation. The evaluator rereads every execution and rechecks its actual output bytes; a `prepared` record or caller-supplied `verified` claim alone is insufficient. An active cycle rejects this operation with `active-cycle-exists`; recovery must use `evaluate-cycle` and link that cycle instead. A narrowed independent pass records `not_satisfied` and does not supply or reduce the satisfied baseline. A current satisfied independent evaluation supports status, gate, and later starting-evaluation checks without a cycle completion decision; `complete-cycle` remains exclusive to an active cycle.
@@ -289,11 +289,11 @@ These coordinated writes do not claim a multi-file filesystem transaction. A lef
 Validate the artifacts through the public CLI:
 
 ```bash
-node <toolkit-root>/scripts/validate.mjs --requested-pass <pass.json>
-node <toolkit-root>/scripts/validate.mjs --no-edit-skip <skip.json>
-node <toolkit-root>/scripts/validate.mjs --review-group <review-group.json>
-node <toolkit-root>/scripts/validate.mjs --semantic-attestation <attestation.json>
-node <toolkit-root>/scripts/validate.mjs --convergence-evaluation <evaluation.json>
+node <setup-skill>/assets/runtime/validate.mjs --requested-pass <pass.json>
+node <setup-skill>/assets/runtime/validate.mjs --no-edit-skip <skip.json>
+node <setup-skill>/assets/runtime/validate.mjs --review-group <review-group.json>
+node <setup-skill>/assets/runtime/validate.mjs --semantic-attestation <attestation.json>
+node <setup-skill>/assets/runtime/validate.mjs --convergence-evaluation <evaluation.json>
 ```
 
 ## Revision execution and request completion
@@ -307,9 +307,9 @@ Compute `revision_approval` as SHA-256 over UTF-8 `JSON.stringify` of an operati
 Run the public operations with exact cycle ID and expected revision:
 
 ```bash
-node <toolkit-root>/scripts/author-project.mjs prepare-revision-execution --project-root <project-root> --input <preparation.json>
-node <toolkit-root>/scripts/author-project.mjs verify-revision-execution --project-root <project-root> --input <verification.json>
-node <toolkit-root>/scripts/validate.mjs --revision-execution <execution.json>
+node <setup-skill>/assets/runtime/author-project.mjs prepare-revision-execution --project-root <project-root> --input <preparation.json>
+node <setup-skill>/assets/runtime/author-project.mjs verify-revision-execution --project-root <project-root> --input <verification.json>
+node <setup-skill>/assets/runtime/validate.mjs --revision-execution <execution.json>
 ```
 
 Preparation requires the active `chapter-revision` recovery position, the active requested pass and full-manuscript input scope, an existing exact author plan decision and chapter-revision approval, and every required backup. It validates tracker decisions and approval paths, backup manifest identity and raw backup hashes, referenced plan and batch hashes, and current input hashes. It writes only a `prepared` execution and its cycle reference. It does not create an author decision or approval, write manuscript, infer a backup, or mark execution complete.
@@ -321,8 +321,8 @@ Both operations acquire the same `active-cycle.lock/` used by transitions and ev
 For independent `revise-draft` edits with no active cycle, use:
 
 ```bash
-node <toolkit-root>/scripts/author-project.mjs prepare-draft-revision-execution --project-root <project-root> --input <independent-preparation.json>
-node <toolkit-root>/scripts/author-project.mjs verify-draft-revision-execution --project-root <project-root> --input <independent-verification.json>
+node <setup-skill>/assets/runtime/author-project.mjs prepare-draft-revision-execution --project-root <project-root> --input <independent-preparation.json>
+node <setup-skill>/assets/runtime/author-project.mjs verify-draft-revision-execution --project-root <project-root> --input <independent-verification.json>
 ```
 
 The independent preparation has the same plan, batch, pass, input scope, finding, decision, approval, backup, file action, and hash fields as cycle preparation, but accepts no cycle ID or expected revision. It acquires the same lock, rejects any active cycle with `active-cycle-exists`, rechecks current inputs, and publishes one `prepared` record with `cycle_id: null` through no-clobber creation. A duplicate ID returns `revision-execution-already-exists` without replacement. Independent verification accepts only the execution ID, final pass, and final target, requires the stored independent `prepared` record, and rereads actual output bytes against the approved output and full-manuscript target. Output mismatch returns `revision-output-mismatch` with `state_written: false` and preserves the prepared record; repeated verification returns `revision-execution-identity-mismatch`. Supply the resulting reference through `revision_executions` to `evaluate-draft`, which repeats the contract and disk checks instead of trusting a claimed status. An active cycle always uses the cycle-bound operations and never this independent path.

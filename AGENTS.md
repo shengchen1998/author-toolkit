@@ -28,11 +28,11 @@ Shared workflows support one single-book fiction project per manifest with Markd
 
 - Development requires Node.js 22 or newer and npm. The generic skills installer documented in `README.md` requires Node.js 22.20 or newer.
 - The package uses native ECMAScript modules (`"type": "module"`) and Node's built-in `node:test` runner.
-- `ajv` and `ajv-formats` are the only direct development dependencies. Schemas use JSON Schema draft 2020-12; Ajv runs with `allErrors` and `strict` enabled.
+- `ajv` and `ajv-formats` are runtime validation dependencies and development dependencies. Schemas use JSON Schema draft 2020-12; Ajv runs with `allErrors` and `strict` enabled. The pinned `esbuild` development dependency bundles them and their transitive dependencies into the checked-in installed runtime.
 - `package.json` defines the development scripts and Node engine. `package-lock.json` is the npm lockfile.
 - `kimi.plugin.json` exposes `./skills/` to Kimi Code. `.claude-plugin/plugin.json` and `.claude-plugin/marketplace.json` contain Claude Code plugin metadata.
 - Release metadata is not generated from one source. When changing versions, inspect `package.json`, `kimi.plugin.json`, and both `.claude-plugin` JSON files; all four currently say `3.2.0`. `tests/release.test.mjs` checks those four locations, both lockfile root-version fields, and the neutral project template.
-- There is no build, lint, formatter, coverage-threshold, environment-variable, or secrets configuration. There are no repository CI workflows or automated deployment scripts.
+- There is no application compilation, lint, formatter, coverage-threshold, environment-variable, or secrets configuration. `scripts/build-runtime.mjs` generates the self-contained ESM CLI artifacts under `skills/setup-author-toolkit/assets/runtime/`; keep them checked in and current. There are no repository CI workflows or automated deployment scripts.
 
 ## Repository layout and module boundaries
 
@@ -43,6 +43,9 @@ Shared workflows support one single-book fiction project per manifest with Markd
 | `skills/*/assets/` | Project, agent-instruction, report, tracker, handoff, baseline, writing-plan, creation-batch, and story-state templates. |
 | `scripts/validate.mjs` | CLI for schemas, manifests, on-disk project state, Markdown reports and story state, scope, inventory, cycle, requested-pass, revision-execution, no-edit, review-group, attestation and evaluation artifacts, convergence status and gate queries, creation and coverage artifacts, review jobs, and legacy workflow fixtures. |
 | `scripts/author-project.mjs` | Executable facade for cycle start, optimistic transition, cross-file cycle reconciliation, external manuscript reconciliation, cycle-bound and independent draft revision execution preparation and verification, cycle-bound and independent revise-draft evaluation, completion, operation checks, convergence status, and convergence gate operations; it does not invoke strategies. |
+| `scripts/build-runtime.mjs` | Pinned-esbuild generator and consistency checker for the checked-in self-contained validator and project-operation ESM artifacts. |
+| `scripts/smoke-installed-runtime.mjs` | Real generic-installer smoke in an isolated temporary deployment, followed by installed CLI help, project validation, exit-code, and shared-reference checks without development dependencies. |
+| `skills/setup-author-toolkit/assets/runtime/` | Checked-in generated `validate.mjs` and `author-project.mjs` bundles with Ajv and all transitive runtime dependencies; schemas resolve from the sibling `assets/references/` payload. |
 | `scripts/migrate-v32.mjs` | CLI for direct v2, v3.0, or v3.1 to v3.2 migration and idempotent v3.2 validation; `scripts/migrate-v3.mjs` is the compatibility wrapper. |
 | `scripts/lib/` | Validation, scope recording, cycle lifecycle and coordinated recovery, revision execution, convergence evaluation, verified state writes, and migration implementation, exported through `index.mjs`. |
 | `references/` | Canonical shared JSON Schemas, controlled terminology, reporting rules, and AI-writing integration documents. |
@@ -114,14 +117,16 @@ Install locked development dependencies from the repository root:
 npm ci
 ```
 
-There is no compilation or build output. Run the complete repository checks with:
+Regenerate the checked-in installed runtime after changing runtime source, then run the complete repository checks:
 
 ```bash
+npm run build:runtime
+npm run check:runtime
 npm test
 npm run validate
 ```
 
-`npm test` runs every `tests/*.test.mjs` file using `node:test`. `npm run validate` checks all schema definitions, both localized legacy examples, their reports and on-disk state, and workflow fixtures. Run both commands before finishing changes to scripts, schemas, skills, templates, or fixtures.
+`npm test` runs every `tests/*.test.mjs` file using `node:test`, including generated-runtime consistency and real generic-installer isolation smoke. `npm run validate` explicitly selects `--repository` and checks all schema definitions, both localized legacy examples, their reports and on-disk state, and workflow fixtures. Run the complete commands before finishing changes to scripts, schemas, skills, templates, or fixtures. Use `npm run smoke:installed` for a standalone installer smoke and `node scripts/build-runtime.mjs --check /path/to/runtime` to check an installed artifact directory.
 
 During development, run a focused test file or test-name pattern:
 
@@ -130,10 +135,12 @@ node --test tests/v31.test.mjs
 node --test --test-name-pattern="migration" tests/migration.test.mjs
 ```
 
-Validate individual artifacts with the installed CLI:
+Validate repository or project state explicitly, or select individual artifacts with the source CLI. In an installed skill, replace `scripts/validate.mjs` and `scripts/author-project.mjs` with `<setup-skill>/assets/runtime/validate.mjs` and `<setup-skill>/assets/runtime/author-project.mjs`:
 
 ```bash
 node scripts/validate.mjs --help
+node scripts/validate.mjs --repository
+node scripts/validate.mjs --project-root /path/to/writing-project
 node scripts/validate.mjs --manifest /path/to/.author-toolkit/project.json
 node scripts/validate.mjs --scope-snapshot /path/to/scope.json
 node scripts/validate.mjs --inventory-snapshot /path/to/inventory.json
@@ -160,7 +167,7 @@ node scripts/author-project.mjs evaluate-draft --project-root /path/to/writing-p
 node scripts/author-project.mjs complete-cycle --project-root /path/to/writing-project --input /path/to/completion.json
 ```
 
-The help output is the source for scope-snapshot, inventory-snapshot, cycle-artifact, requested-pass, revision-execution, manuscript-reconciliation, no-edit-skip, review-group, semantic-attestation, convergence-evaluation, convergence-status, convergence-gate, creation-batch, commit-journal, story-state, coverage, review-job, and reader-state option names. Options may be repeated or combined where documented. Manifest validation also checks registered files and the tracker; for v3 with `current_scope`, it checks current manuscript hashes. V3.2 also checks full-manuscript evidence and reports scope identity. Convergence status is read-only and exits successfully for a valid query with any outcome; convergence gate succeeds only for current `satisfied` evidence. Validation failures exit nonzero, and argument or usage errors exit with status 2.
+The help output is the source for scope-snapshot, inventory-snapshot, cycle-artifact, requested-pass, revision-execution, manuscript-reconciliation, no-edit-skip, review-group, semantic-attestation, convergence-evaluation, convergence-status, convergence-gate, creation-batch, commit-journal, story-state, coverage, review-job, and reader-state option names. No-argument invocation prints help without inspecting implicit state. `--repository` and `--project-root` are explicit, mutually exclusive modes and cannot be combined with individual checks. Project-root validation verifies all deployed shared-reference hashes before using the real schema validators, manifest, registered files, and tracker. Other options may be repeated or combined where documented. Manifest validation also checks registered files and the tracker; for v3 with `current_scope`, it checks current manuscript hashes. V3.2 also checks full-manuscript evidence and reports scope identity. Convergence status is read-only and exits successfully for a valid query with any outcome; convergence gate succeeds only for current `satisfied` evidence. Validation failures exit 1, and argument or usage errors exit with status 2.
 
 Migrate an actual writing project only when migration is intended:
 
@@ -178,6 +185,7 @@ The suite divides into these contract areas:
 
 - Finding, report, manifest, path, tracker, and Markdown contracts, including v2 compatibility, v3.0/v3.1 scopes, v3.2 scope fingerprints and immutable snapshots, approvals, evidence semantics, creation operations, and additive upgrades.
 - Creation state, interrupted commits, coverage reuse, review jobs, fresh-reader ordering, on-disk files, scope currency, full-manuscript validation, migration, and validator CLI behavior.
+- Installed-runtime tests execute checked-in bundles outside the repository, detect stale and missing generated artifacts, and run the real generic installer in an isolated temporary deployment. The installed smoke covers no-argument help, real schema success and failure, usage errors, and missing or mismatched shared references without development dependencies; it is packaging evidence, not host or creative-quality evidence.
 - Migration CLI tests in `tests/migration-v32.test.mjs` cover direct v2, v3.0, and v3.1 sources, exact legacy scope confirmation, byte-preserved evidence, idempotent v3.2 reruns, pending and staging decisions, batch-bound legacy rejection approval checks against missing and mismatched decisions, interrupted journal and write recovery through public operations, full-manuscript `revise-draft` routing, and the absence of inferred current-draft revision convergence or cycle ownership.
 - Current-draft convergence cycle bootstrap, staged-to-committed batch-reference replacement, optimistic resume, pending-action boundaries, historical scope references, parallel-change blocking, independent-process transition/preparation/evaluation/completion serialization and lock timeouts, read-only inspection, and truthful gate results through public project operations and disposable projects. No-edit tests establish real satisfied evidence, baseline inheritance and local-unit reuse, all three outcomes, evidence invalidation, deferred and dismissed decisions, fresh reader-chain completeness, and post-decision reevaluation. Request-driven tests cover verified edited executions, approved-unexecuted batches, output tampering, historical base preservation, cumulative change sets, accepted review-finding rework, eligible evidence reuse, no-change requests, independent request completion, and target invalidation without treating fixture reports as creative-quality evidence. Ordinary creation/increment tests cover satisfied entry, one multi-chapter commit, blocked continuation, full-target recovery and local-unit reuse, verified review rework, missing or mistyped approvals and commit evidence, batch/action/input binding, pure insertion before and between retained paths, retained reorder consistency, and rejected no-change completion. Draft and whole-book boundary tests cover independent narrowed evaluation, satisfied baseline preservation, protected-entry blocking, active-cycle recovery, read-only whole-book work, and verified revise-fiction execution through completion. Independent draft execution tests cover real accepted edits, prepared and verified `cycle_id: null` records, duplicate preparation and verification, changed inputs, output tampering, resolved-finding recovery, subsequent cycle starts, and active-cycle rejection. External reconciliation tests use real manuscript changes and public operations before and during cycles, covering additions, modifications, deletions, retained reorder, exact import decisions, story-state checks, preserved starting snapshots, historical evidence invalidation, empty-manuscript blocking, nonempty full-draft recovery, and reconciliation/story-state evidence-graph invalidation.
 - Additional evaluator regression tests cover latest independent outcome precedence, requested-pass identity invalidation after satisfaction, prepared-check extension, exact revision-approval reuse rejection, full Story Bible, structure, and final-review evidence, request→fiction and draft→fiction execution, blocked post-execution strategy switches, and retained insertion, deletion, and reorder behavior. Shared evaluator test helpers own CLI input and tracker fixture writes.
@@ -214,7 +222,7 @@ The suite divides into these contract areas:
 
 ## Distribution and deployment
 
-The repository is installed directly as source; there is no release bundle to build. Installation methods are documented in `README.md`:
+The repository and its checked-in generated runtime are installed directly as source; there is no separate release package. Installation methods are documented in `README.md`:
 
 - Claude Code uses the `shengchen1998/author-toolkit` marketplace and the `author-toolkit@author-toolkit` plugin.
 - Kimi Code uses `/plugins install https://github.com/shengchen1998/author-toolkit`, followed by `/reload` or a new session.
@@ -222,7 +230,7 @@ The repository is installed directly as source; there is no release bundle to bu
 
 Updates are manual through the host or `npx skills check` and `npx skills update`. No CI/CD or publishing workflow is present.
 
-The generic installer deploys each skill directory, including the setup skill's shared-reference payload and each independent skill's local contracts. The repository-root `references/` directory is the canonical development source, not a runtime dependency of installed skills. Keep it byte-identical to `skills/setup-author-toolkit/assets/references/`; keep standalone finding schemas and the `prose-mechanics` AI-writing adapter mirrors synchronized as well. Setup deploys the shared payload into each writing project. `tests/deployment.test.mjs` checks these mirrors, repository-root reference independence, project-local reference coverage, and safe replacement rules.
+The generic installer deploys each skill directory, including the setup skill's shared-reference payload, self-contained validation and project-operation runtime, and each independent skill's local contracts. The installed runtime bundles Ajv and all transitive dependencies, resolves schemas from `skills/setup-author-toolkit/assets/references/`, and requires no repository checkout or project-local dependency installation. The repository-root `references/` directory is the canonical development source, not a runtime dependency of installed skills. Keep it byte-identical to `skills/setup-author-toolkit/assets/references/`; keep standalone finding schemas and the `prose-mechanics` AI-writing adapter mirrors synchronized as well. Setup deploys the shared payload into each writing project but does not copy runtime code or dependencies into that project. `tests/deployment.test.mjs` checks the reference mirrors, repository-root reference independence, project-local reference coverage, and safe replacement rules; `tests/packaged-runtime.test.mjs` and `tests/installed-runtime.test.mjs` check generated artifacts and real installation behavior.
 
 ## Agent skills
 

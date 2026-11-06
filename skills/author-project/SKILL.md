@@ -38,21 +38,21 @@ Accept one operation per invocation:
 
 For every operation, read [`references/operations.md`](references/operations.md) and follow its state, evidence, approval, and record rules. Use [`assets/project-template.json`](assets/project-template.json) only for a new v3.2 manifest.
 
-When the installed toolkit provides `scripts/lib/index.mjs`, its public `migrateProjectToV32`, `migrateProjectToV3`, `recordScope`, `validateFullManuscriptScope`, `startCycle`, `transitionCycle`, `reconcileCycle`, `reconcileManuscript`, `diffManuscriptInventories`, `prepareRevisionExecution`, `verifyRevisionExecution`, `evaluateCycle`, `completeCycle`, `getCycleStatus`, `getRequestCompletion`, `checkConvergenceGate`, and `assertCycleAllowsOperation` functions are the executable project-operation seam. Host procedures and disposable-project tests use these same functions or the executable facade:
+In a source checkout, `scripts/lib/index.mjs` exports the public `migrateProjectToV32`, `migrateProjectToV3`, `recordScope`, `validateFullManuscriptScope`, `startCycle`, `transitionCycle`, `reconcileCycle`, `reconcileManuscript`, `diffManuscriptInventories`, `prepareRevisionExecution`, `verifyRevisionExecution`, `evaluateCycle`, `completeCycle`, `getCycleStatus`, `getRequestCompletion`, `checkConvergenceGate`, and `assertCycleAllowsOperation` functions. Generic and plugin installations provide the same project operations through the self-contained ESM facade in the setup skill; it bundles Ajv and all runtime dependencies and needs no project-local npm installation. Resolve `<setup-skill>` as the installed `setup-author-toolkit` skill directory. The legacy migration command uses the source checkout; the other commands run directly from the installed payload:
 
 ```bash
 node <toolkit-root>/scripts/migrate-v32.mjs --project-root <project-root>
-node <toolkit-root>/scripts/author-project.mjs start-cycle --project-root <project-root> --input <request.json>
-node <toolkit-root>/scripts/author-project.mjs transition-cycle --project-root <project-root> --input <transition.json>
-node <toolkit-root>/scripts/author-project.mjs reconcile-cycle --project-root <project-root> [--input <direction.json>]
-node <toolkit-root>/scripts/author-project.mjs reconcile-manuscript --project-root <project-root> --input <reconciliation.json>
-node <toolkit-root>/scripts/author-project.mjs prepare-revision-execution --project-root <project-root> --input <preparation.json>
-node <toolkit-root>/scripts/author-project.mjs verify-revision-execution --project-root <project-root> --input <verification.json>
-node <toolkit-root>/scripts/author-project.mjs evaluate-cycle --project-root <project-root> --input <evaluation-request.json>
-node <toolkit-root>/scripts/author-project.mjs complete-cycle --project-root <project-root> --input <completion.json>
-node <toolkit-root>/scripts/author-project.mjs cycle-status --project-root <project-root>
-node <toolkit-root>/scripts/author-project.mjs cycle-gate --project-root <project-root>
-node <toolkit-root>/scripts/author-project.mjs check-operation --project-root <project-root> --input <operation.json>
+node <setup-skill>/assets/runtime/author-project.mjs start-cycle --project-root <project-root> --input <request.json>
+node <setup-skill>/assets/runtime/author-project.mjs transition-cycle --project-root <project-root> --input <transition.json>
+node <setup-skill>/assets/runtime/author-project.mjs reconcile-cycle --project-root <project-root> [--input <direction.json>]
+node <setup-skill>/assets/runtime/author-project.mjs reconcile-manuscript --project-root <project-root> --input <reconciliation.json>
+node <setup-skill>/assets/runtime/author-project.mjs prepare-revision-execution --project-root <project-root> --input <preparation.json>
+node <setup-skill>/assets/runtime/author-project.mjs verify-revision-execution --project-root <project-root> --input <verification.json>
+node <setup-skill>/assets/runtime/author-project.mjs evaluate-cycle --project-root <project-root> --input <evaluation-request.json>
+node <setup-skill>/assets/runtime/author-project.mjs complete-cycle --project-root <project-root> --input <completion.json>
+node <setup-skill>/assets/runtime/author-project.mjs cycle-status --project-root <project-root>
+node <setup-skill>/assets/runtime/author-project.mjs cycle-gate --project-root <project-root>
+node <setup-skill>/assets/runtime/author-project.mjs check-operation --project-root <project-root> --input <operation.json>
 ```
 
 Use the public validator CLI for independent artifact, manifest, and read-only cycle checks. These project operations never invoke a strategy.
