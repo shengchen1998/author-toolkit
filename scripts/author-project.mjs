@@ -13,6 +13,7 @@ import {
   prepareDraftRevisionExecution,
   prepareRevisionExecution,
   projectRootFromManifest,
+  reconcileCycle,
   reconcileManuscript,
   startCycle,
   transitionCycle,
@@ -36,12 +37,14 @@ const commands = new Set([
   "verify-draft-revision-execution",
   "verify-revision-execution",
   "reconcile-manuscript",
+  "reconcile-cycle",
 ]);
 
 function usage() {
   console.log(`Usage:
   node scripts/author-project.mjs start-cycle --project-root ROOT --input FILE
   node scripts/author-project.mjs transition-cycle --project-root ROOT --input FILE
+  node scripts/author-project.mjs reconcile-cycle --project-root ROOT [--input FILE]
   node scripts/author-project.mjs reconcile-manuscript --project-root ROOT --input FILE
   node scripts/author-project.mjs prepare-draft-revision-execution --project-root ROOT --input FILE
   node scripts/author-project.mjs prepare-revision-execution --project-root ROOT --input FILE
@@ -58,11 +61,12 @@ function usage() {
 
 Use --manifest FILE instead of --project-root ROOT when addressing the manifest directly.
 Transitions, reconciliation, revision execution, evaluations, and completions serialize independent processes with active-cycle.lock and recheck expected_revision in the lock.
-Reconciliation verifies an existing creation-import decision, current inventory, scope, and story state; it never writes manuscript or accepts a confirmation boolean as replacement evidence.
+reconcile-cycle without --input only diagnoses; a direction requires exact cycle and operation identities and never rewrites historical artifacts or infers approval from pending action.
+Manuscript reconciliation verifies an existing creation-import decision, current inventory, scope, and story state; it never writes manuscript or accepts a confirmation boolean as replacement evidence.
 Independent evaluate-draft uses the same evaluator without creating an active cycle; an active cycle requires evaluate-cycle instead.
 Independent draft preparation and verification use cycle_id=null and the same lock; an active cycle requires the cycle-bound operations.
 Preparation checks existing approvals, backups, and inputs without writing manuscript or creating author approval. Verification rereads actual output hashes.
-Completion records the author decision, reevaluates the changed tracker evidence, and completes only a still-satisfied cycle.
+Completion records the author decision, reevaluates the changed tracker evidence, publishes completed history and the completed-cycle pointer before verified active removal, and completes only a still-satisfied cycle.
 These are author-project operations; they do not invoke a writing strategy.`);
 }
 
@@ -109,11 +113,16 @@ async function main() {
     result = await getCycleStatus(projectRoot);
   } else if (["cycle-gate", "convergence-gate"].includes(selection.command)) {
     result = await checkConvergenceGate(projectRoot);
+  } else if (selection.command === "reconcile-cycle" && !selection.input) {
+    result = await reconcileCycle(projectRoot);
   } else {
     const input = JSON.parse(await readFile(selection.input, "utf8"));
     if (selection.command === "start-cycle") result = await startCycle(projectRoot, input);
     if (selection.command === "transition-cycle") {
       result = await transitionCycle(projectRoot, input);
+    }
+    if (selection.command === "reconcile-cycle") {
+      result = await reconcileCycle(projectRoot, input);
     }
     if (selection.command === "reconcile-manuscript") {
       result = await reconcileManuscript(projectRoot, input);

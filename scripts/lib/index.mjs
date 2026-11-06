@@ -119,3 +119,4 @@ export {
   recordInventorySnapshot,
 } from "./scope.mjs";
 export { reconcileManuscript } from "./reconciliation.mjs";
+export { reconcileCycle } from "./cycle-recovery.mjs";

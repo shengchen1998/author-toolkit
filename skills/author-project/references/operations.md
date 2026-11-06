@@ -148,7 +148,47 @@ Create the first active record through a verified temporary sibling and no-clobb
 
 With an active cycle, manuscript-changing work requires its cycle ID, current strategy, and exact recovery-position operation. Other manuscript-changing work returns `active-cycle-exists` or `cycle-operation-mismatch` with `required_action.strategy`, `required_action.operation`, and `required_action.command`. The command is the exact registered strategy name; render the host's command prefix without changing that name and wait for the author. This operation gate does not replace exact manuscript approval, backups, or input-hash checks.
 
-Pending action continues to describe only the current operation and author gate through `in_progress`, `awaiting_author`, or `blocked`. It has no cycle ownership field and does not supply cycle history, resume permission, evaluation evidence, or completion. Starting or transitioning a cycle does not infer or advance pending action.
+Pending action continues to describe only the current operation and author gate through `in_progress`, `awaiting_author`, or `blocked`. Optional `cycle_id`, `cycle_revision`, `operation_id`, and `scope_fingerprint` fields are coordination references, not cycle ownership, history, resume permission, evaluation evidence, or approval. Cycle operations do not create a pending action or infer its operation. When an existing pending action links the active cycle, a successful coordinated transition synchronizes those references to the cycle's recovery position. Pending action alone never authorizes a manuscript write, publication, restore, or cycle completion.
+
+## Coordinated cycle recovery
+
+Living active-cycle and manifest JSON uses a verified temporary sibling, atomic rename, and a final content-hash check. Completed cycles, scope and inventory snapshots, evaluations, approvals, commit journals, backups, and verified execution records remain immutable; recovery never rewrites them to make state agree. `last_completed_cycle` is a manifest pointer to immutable completed history, not a stored flag for current-draft revision convergence.
+
+A dependent operation records `cycle_operation` in the manifest before changing cycle state. It contains the operation `kind`, exact `operation_id`, cycle ID, expected and intended revisions, an optional artifact ID, and its creation time. The recovery position carries the same operation ID. The write order is:
+
+1. Write manifest `cycle_operation` through a verified atomic replacement.
+2. Publish the immutable evaluation, reconciliation, or execution record when the operation has one. Creation manuscript publication and its journal instead follow the creation-state protocol before cycle linking.
+3. Replace the active cycle with its intended revision and operation ID.
+4. Write the final manifest, removing `cycle_operation`, synchronizing an already linked pending action, and updating the manuscript-reconciliation pointer when applicable.
+
+Completion instead writes `cycle_operation`, records the explicit completion decision, publishes the post-decision evaluation, publishes completed history, writes `last_completed_cycle` and the final manifest, and only then removes the active record after verifying its expected bytes. These are coordinated recoverable writes, not a multi-file filesystem transaction. An interruption before or after any of these writes leaves a diagnosable intermediate state. Dependent work returns `cycle-reconciliation-required` or a more specific cycle, revision, pending, scope, operation-ID, artifact-path, or artifact-hash blocker. Read-only status remains available and reports `indeterminate` instead of treating an old evaluation as current.
+
+Run the public operation without an input for diagnosis only:
+
+```bash
+node <toolkit-root>/scripts/author-project.mjs reconcile-cycle --project-root <project-root>
+node <toolkit-root>/scripts/author-project.mjs reconcile-cycle --project-root <project-root> --input <direction.json>
+```
+
+Without `direction`, the operation rechecks the manifest, active and completed cycles, linked pending references, referenced artifact identities and hashes, and lock owner without writing any file. It returns `diagnostic_only: true`, `state_written: false`, the interrupted operation when present, and concrete blockers. A direction is an explicit author choice of recovery metadata; it is not manuscript, publication, restore, or completion approval. Directions that change cycle or manifest state acquire the same active-cycle lock and reconfirm the diagnosed bytes before writing. Directions that resume a public operation reuse that operation's lock and full validation.
+
+Use exactly one applicable direction with `cycle_id` and `operation_id`:
+
+| Direction | Recovery behavior |
+| --- | --- |
+| `discard-interrupted-operation` | Clear only the recorded intent while the active cycle is still at its expected revision and removing that intent would leave consistent state. If an artifact identity/hash, pending, reconciliation, or completed-pointer contradiction remains, return `valid: false`, preserve `cycle_operation` and every historical byte, and expose `available_directions` such as `resume-revision-execution`. Never discard the only usable recovery handle or roll back a verified execution. |
+| `accept-active-cycle` | Accept an active cycle already at the intended revision with the same operation ID, then finish its manifest and pending coordination. Without `cycle_operation`, this is also the explicit way to accept the current recovery position for a pending or manuscript-reconciliation mismatch; every active artifact must first match its path, hash, and internal identity. |
+| `attach-interrupted-evaluation` | Recompute and attach an already published evaluation whose cycle, pass, target, outcome, and evidence graph are current, then finish manifest coordination. Do not rewrite the evaluation. |
+| `resume-revision-execution` | Reuse the recorded prepared or verified execution, rerun preparation or actual-output verification, and link it to the same cycle. Verified bytes and backups are not rewritten. |
+| `resume-creation-publication` | Read the named existing commit and batch, then run the normal creation-publication transition against current approvals, journal transitions, and confirmed scope. This writes no manuscript and cannot derive approval from pending action. |
+| `resume-manuscript-reconciliation` | Revalidate and reuse the named immutable manuscript reconciliation, then complete the same cycle and manifest pointer through the existing event-chain rules. |
+| `resume-completion` | Resume the same unfinished completion decision and evaluation ID. Reuse an already published current evaluation instead of creating a different record with a new timestamp. |
+| `finish-completion` | When completed history and active state coexist, reverify the post-decision satisfied evaluation and completion decision, write the completed pointer and final manifest, then remove only the expected active bytes. |
+| `repair-completed-pointer` | When the manifest pointer has the wrong path or metadata but the expected completed file retains the exact recorded bytes, reverify its satisfied post-decision evaluation and repair only the pointer. A completed-history hash mismatch remains blocked; never rehash or relabel altered history. |
+
+The completed-cycle pointer is checked before dependent starts, transitions, execution, evaluation, external reconciliation, and status or gate queries. Its path, SHA-256, cycle ID, and revision must match the immutable history. `repair-completed-pointer` uses the completed target evaluation ID as `operation_id`.
+
+`release-stale-lock` is separate and requires `lock_owner: {pid, token}` exactly as recorded in `owner.json`. Diagnosis reports whether that PID is running. Recovery refuses a running owner, malformed owner, changed token, unexpected directory contents, or an unverifiable lock; it never steals a lock silently. A verified abandoned lock may be removed without changing cycle or manuscript state. `cycle-recovery-state-changed` means another writer changed state after diagnosis and requires a fresh diagnosis.
 
 For independent read-only checks, use:
 
@@ -226,9 +266,9 @@ The completion input supplies a new `evaluation_id`, `decision_id`, and `author_
 1. Recompute the current target evaluation and reject completion if it is not current and satisfied. Author confirmation cannot override `not_satisfied`, `indeterminate`, or stale evidence.
 2. Append the explicit decision to the tracker's `## Cycle completions` table with its cycle ID, target fingerprint, approved status, reason, and UTC time. Older trackers without this optional table remain valid; the operation adds it before `## Open questions` when needed.
 3. Recompute and publish a new immutable evaluation using the changed tracker hash. Never exclude the tracker hash, accept the pre-decision evaluation, or add the evaluation's own hash to its graph.
-4. Only when the new evaluation is satisfied, publish the completed cycle with the new evaluation and decision IDs, then remove the active record. Preserve the prior evaluation and every referenced artifact. A non-satisfied post-decision evaluation leaves the cycle active and retains the recorded decision as history.
+4. Only when the new evaluation is satisfied, publish the completed cycle with the new evaluation and decision IDs, write `last_completed_cycle` and the final manifest, and then remove the expected active bytes. Preserve the prior evaluation and every referenced artifact. A non-satisfied post-decision evaluation leaves the cycle active and retains the recorded decision as history.
 
-These coordinated writes do not claim a multi-file filesystem transaction or comprehensive crash reconciliation. A leftover lock, identity mismatch, or partially coordinated state stops dependent work for explicit recovery. Read-only status remains available.
+These coordinated writes do not claim a multi-file filesystem transaction. A leftover lock, identity mismatch, or partially coordinated state stops dependent work and uses the explicit `reconcile-cycle` directions above. Read-only status remains available.
 
 Validate the artifacts through the public CLI:
 
@@ -273,7 +313,7 @@ Every resolved finding maps to a current verified execution whose finding dispos
 
 ## Set pending
 
-Read the manifest immediately before each write. Write the requested `pending_action` values: `operation`, `status`, `scope_id`, `reason`, and `artifacts`. Status is `in_progress`, `awaiting_author`, or `blocked`; reason is always nonempty and identifies the decision, interruption, or dependency. Preserve `current_scope` and all historical records. Append unique artifact paths and set both `pending_action.updated_at` and top-level `updated_at` to the current UTC timestamp.
+Read the manifest immediately before each write. Write the requested `pending_action` values: `operation`, `status`, `scope_id`, `reason`, and `artifacts`. When the work is already linked to an active cycle, also record its `cycle_id`, `cycle_revision`, `operation_id`, and `scope_fingerprint` as coordination references. Status is `in_progress`, `awaiting_author`, or `blocked`; reason is always nonempty and identifies the decision, interruption, or dependency. Preserve `current_scope` and all historical records. Append unique artifact paths and set both `pending_action.updated_at` and top-level `updated_at` to the current UTC timestamp. These references never authorize a write or completion.
 
 `pending_action` describes requested or interrupted work, not linear operation progress. Do not mark an operation complete, choose a following operation, or resume a write because another skill was invoked. The calling strategy supplies each explicit transition. If a write fails after the manifest was read, reread before retrying.
 

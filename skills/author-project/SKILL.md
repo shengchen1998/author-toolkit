@@ -1,6 +1,6 @@
 ---
 name: author-project
-description: Use when initializing, reading, validating, or updating a neutral author-toolkit v3 project, recording its current scope or pending action, starting, evaluating, completing, or checking a current-draft convergence cycle, reconciling external manuscript changes, and recording manuscript backups and restores.
+description: Use when initializing, reading, validating, or updating a neutral author-toolkit v3 project, recording its current scope or pending action, starting, evaluating, completing, checking, or reconciling a current-draft convergence cycle, reconciling external manuscript changes, and recording manuscript backups and restores.
 ---
 
 # Author Project
@@ -23,7 +23,8 @@ Accept one operation per invocation:
 | `set-pending` | Operation, status, scope ID, reason, and artifacts | Write the requested pending action without stage progression or cycle ownership |
 | `record-scope` | Scope ID, description, ordered files with SHA-256 hashes, excluded files, and `proposed` or `confirmed` status; for confirmation, an author-confirmation reference with reading-order confirmation | Record the current scope; on v3.2, compute its scope fingerprint and preserve immutable inventory and scope snapshots after confirmation |
 | `start-cycle` | Cycle ID, initiating strategy, explicit bootstrap marker, and starting scope reference | Start one active current-draft convergence cycle after validating the bootstrap exception or current satisfied starting evaluation |
-| `transition-cycle` | Cycle ID, expected revision, and requested strategy, recovery position, target, pass, change set, work set, or related-artifact changes | Resume the same active cycle through an optimistic, content-checked transition |
+| `transition-cycle` | Cycle ID, expected revision, operation ID, and requested strategy, recovery position, target, pass, change set, work set, or related-artifact changes | Resume the same active cycle through an optimistic, content-checked transition with coordinated manifest state |
+| `reconcile-cycle` | Project root for diagnosis, or exact cycle and operation IDs with an explicit direction | Diagnose interrupted cross-file state without writes, or recover it without rewriting history; never infer approval from pending action |
 | `reconcile-manuscript` | Reconciliation ID, exact import decision, previous and target scope evidence, current story-state references, and active cycle identity when present | Preserve an immutable manuscript reconciliation and route the same cycle or later start through increment, full-draft recovery, or nonempty import |
 | `prepare-revision-execution` | Cycle ID, expected revision, execution ID, hashed plan and batch, pass and input scope, finding decisions, edit approvals, backups, file actions, and input/output hashes | Validate existing author decisions, approvals, backup manifests and bytes, and current inputs; write a `prepared` record without approving or editing manuscript |
 | `verify-revision-execution` | Cycle ID, expected revision, execution ID, final requested pass, and full-manuscript target scope | Reread actual output bytes against the prepared hashes, verify the approved target change set, and link a `verified` record to the cycle |
@@ -37,11 +38,12 @@ Accept one operation per invocation:
 
 For every operation, read [`references/operations.md`](references/operations.md) and follow its state, evidence, approval, and record rules. Use [`assets/project-template.json`](assets/project-template.json) only for a new v3.2 manifest.
 
-When the installed toolkit provides `scripts/lib/index.mjs`, its public `recordScope`, `validateFullManuscriptScope`, `startCycle`, `transitionCycle`, `reconcileManuscript`, `diffManuscriptInventories`, `prepareRevisionExecution`, `verifyRevisionExecution`, `evaluateCycle`, `completeCycle`, `getCycleStatus`, `getRequestCompletion`, `checkConvergenceGate`, and `assertCycleAllowsOperation` functions are the executable project-operation seam. Host procedures and disposable-project tests use these same functions or the executable facade:
+When the installed toolkit provides `scripts/lib/index.mjs`, its public `recordScope`, `validateFullManuscriptScope`, `startCycle`, `transitionCycle`, `reconcileCycle`, `reconcileManuscript`, `diffManuscriptInventories`, `prepareRevisionExecution`, `verifyRevisionExecution`, `evaluateCycle`, `completeCycle`, `getCycleStatus`, `getRequestCompletion`, `checkConvergenceGate`, and `assertCycleAllowsOperation` functions are the executable project-operation seam. Host procedures and disposable-project tests use these same functions or the executable facade:
 
 ```bash
 node <toolkit-root>/scripts/author-project.mjs start-cycle --project-root <project-root> --input <request.json>
 node <toolkit-root>/scripts/author-project.mjs transition-cycle --project-root <project-root> --input <transition.json>
+node <toolkit-root>/scripts/author-project.mjs reconcile-cycle --project-root <project-root> [--input <direction.json>]
 node <toolkit-root>/scripts/author-project.mjs reconcile-manuscript --project-root <project-root> --input <reconciliation.json>
 node <toolkit-root>/scripts/author-project.mjs prepare-revision-execution --project-root <project-root> --input <preparation.json>
 node <toolkit-root>/scripts/author-project.mjs verify-revision-execution --project-root <project-root> --input <verification.json>

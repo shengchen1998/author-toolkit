@@ -3,6 +3,13 @@ import path from "node:path";
 
 import { validateStoryStateMarkdown } from "./artifacts.mjs";
 import { findHistoricalSatisfiedEvaluation } from "./convergence.mjs";
+import {
+  beginCycleOperation,
+  completedPointerBlocker,
+  coordinationBlockers,
+  finishCycleOperation,
+  runCheckpoint,
+} from "./cycle-coordination.mjs";
 import { validateManifest } from "./manifest.mjs";
 import {
   validateManuscriptReconciliationSchema,
@@ -322,7 +329,23 @@ export async function reconcileManuscript(projectRoot, request, options = {}) {
     } catch (error) {
       if (error.code !== "ENOENT") throw error;
     }
-    if (cycle && (cycle.cycle_id !== request.cycle_id || cycle.revision !== request.expected_revision)) {
+    const completedPointer = await completedPointerBlocker(project);
+    const coordination = coordinationBlockers(project, active, {
+      allowOperationId: options.recoveryOperationId ?? null,
+    });
+    if (completedPointer) {
+      outcome = {
+        ...failure(completedPointer.code, completedPointer.message, cycle),
+        blockers: [completedPointer],
+        required_action: completedPointer.required_action,
+      };
+    } else if (coordination.length > 0) {
+      outcome = {
+        ...failure("cycle-reconciliation-required", coordination[0].message, cycle),
+        blockers: coordination,
+        required_action: coordination[0].required_action,
+      };
+    } else if (cycle && (cycle.cycle_id !== request.cycle_id || cycle.revision !== request.expected_revision)) {
       outcome = failure("cycle-revision-conflict", "The reconciliation cycle ID or expected revision is not current.", cycle);
     } else if (!cycle && request.cycle_id) {
       outcome = failure("active-cycle-required", "The named active cycle is unavailable; do not open a parallel recovery cycle.");
@@ -358,7 +381,7 @@ export async function reconcileManuscript(projectRoot, request, options = {}) {
       }
       const targetReference = request.target_scope;
       const target = targetReference ? await readScope(project, targetReference) : null;
-      const createdAt = options.now instanceof Date ? options.now.toISOString() : new Date().toISOString();
+      let createdAt = options.now instanceof Date ? options.now.toISOString() : new Date().toISOString();
       let inventoryEvidence;
       let observedInventory = null;
       if (target) {
@@ -442,7 +465,7 @@ export async function reconcileManuscript(projectRoot, request, options = {}) {
         code: "previous-evaluation-unproven",
         message: "The previous full-manuscript scope or its required satisfied evidence can no longer be proven; revise-draft is required.",
       }];
-      const reconciliation = {
+      let reconciliation = {
         schema_version: "1.0.0",
         reconciliation_id: request.reconciliation_id,
         cycle_id: cycle?.cycle_id ?? null,
@@ -476,8 +499,31 @@ export async function reconcileManuscript(projectRoot, request, options = {}) {
         `${reconciliation.reconciliation_id}.json`,
       );
       const absolute = path.resolve(project.root, relative);
-      const text = `${JSON.stringify(reconciliation, null, 2)}\n`;
-      await createNoClobberVerified(absolute, text);
+      if (cycle) {
+        await beginCycleOperation(project, active, {
+          kind: "manuscript-reconciliation",
+          operationId: reconciliation.reconciliation_id,
+          artifactId: reconciliation.reconciliation_id,
+        }, options);
+      }
+      let text = `${JSON.stringify(reconciliation, null, 2)}\n`;
+      try {
+        await createNoClobberVerified(absolute, text);
+      } catch (error) {
+        if (error.code !== "EEXIST" || options.recoveryOperationId !== reconciliation.reconciliation_id) {
+          throw error;
+        }
+        const existingText = await readFile(absolute, "utf8");
+        const existing = JSON.parse(existingText);
+        const expected = { ...reconciliation, created_at: existing.created_at };
+        if (JSON.stringify(expected) !== JSON.stringify(existing)) {
+          throw new Error("Stored manuscript reconciliation differs from the interrupted operation");
+        }
+        createdAt = existing.created_at;
+        reconciliation = existing;
+        text = existingText;
+      }
+      await runCheckpoint(options, "reconciliation-published");
       const reference = {
         reconciliation_id: reconciliation.reconciliation_id,
         path: relative,
@@ -504,6 +550,7 @@ export async function reconcileManuscript(projectRoot, request, options = {}) {
                     ? "The author-confirmed external manuscript and story state require affected evidence and full-target review."
                     : "The previous satisfied full-manuscript proof is unavailable; the complete target requires revise-draft recovery.",
             required_strategy: requiredStrategy,
+            operation_id: reconciliation.reconciliation_id,
           },
           related_artifacts: {
             ...cycle.related_artifacts,
@@ -518,14 +565,22 @@ export async function reconcileManuscript(projectRoot, request, options = {}) {
           throw new Error(`Generated reconciled cycle is invalid: ${cycleValidation.errors.map((error) => error.message).join("; ")}`);
         }
         await writeAtomicVerified(active.file, `${JSON.stringify(updated, null, 2)}\n`);
+        await runCheckpoint(options, "cycle-written");
+        await finishCycleOperation(project, updated, reconciliation.reconciliation_id, {
+          ...options,
+          manifestChanges: { manuscript_reconciliation: reference },
+          removeManifestFields: target ? [] : ["current_scope"],
+        });
+      } else {
+        const updatedManifest = {
+          ...project.manifest,
+          manuscript_reconciliation: reference,
+          updated_at: createdAt,
+        };
+        if (!target) delete updatedManifest.current_scope;
+        await writeAtomicVerified(project.manifestPath, `${JSON.stringify(updatedManifest, null, 2)}\n`);
+        await runCheckpoint(options, "manifest-updated");
       }
-      const updatedManifest = {
-        ...project.manifest,
-        manuscript_reconciliation: reference,
-        updated_at: createdAt,
-      };
-      if (!target) delete updatedManifest.current_scope;
-      await writeAtomicVerified(project.manifestPath, `${JSON.stringify(updatedManifest, null, 2)}\n`);
       outcome = {
         valid: true,
         cycle: updated,
