@@ -3,6 +3,8 @@ import { readFileSync } from "node:fs";
 import Ajv2020 from "ajv/dist/2020.js";
 import addFormats from "ajv-formats";
 
+import { validateEvidenceTimestamps } from "./time.mjs";
+
 const packagedReferences = globalThis[Symbol.for("author-toolkit.packaged-references")];
 
 function readSchema(name) {
@@ -92,112 +94,113 @@ const coverageIndexValidator = ajv.getSchema("coverage-index-schema.json");
 const reviewJobValidator = ajv.getSchema("review-job-schema.json");
 const readerStateValidator = ajv.getSchema("reader-state-schema.json");
 
-function evaluate(validator, value) {
-  const valid = validator(value);
-  return {
-    valid,
-    errors: valid ? [] : validator.errors.map((error) => ({ ...error })),
-  };
+function evaluate(validator, value, options = {}) {
+  const schemaValid = validator(value);
+  const errors = [
+    ...(schemaValid ? [] : validator.errors.map((error) => ({ ...error }))),
+    ...validateEvidenceTimestamps(value, options),
+  ];
+  return { valid: errors.length === 0, errors };
 }
 
-export function validateFindingV1(value) {
-  return evaluate(findingV1Validator, value);
+export function validateFindingV1(value, options = {}) {
+  return evaluate(findingV1Validator, value, options);
 }
 
-export function validateFindingV2(value) {
-  return evaluate(findingV2Validator, value);
+export function validateFindingV2(value, options = {}) {
+  return evaluate(findingV2Validator, value, options);
 }
 
-export function validateProjectSchema(value) {
-  return evaluate(projectValidator, value);
+export function validateProjectSchema(value, options = {}) {
+  return evaluate(projectValidator, value, options);
 }
 
-export function validateProjectV3Schema(value) {
-  return evaluate(projectV3Validator, value);
+export function validateProjectV3Schema(value, options = {}) {
+  return evaluate(projectV3Validator, value, options);
 }
 
-export function validateProjectV31Schema(value) {
-  return evaluate(projectV31Validator, value);
+export function validateProjectV31Schema(value, options = {}) {
+  return evaluate(projectV31Validator, value, options);
 }
 
-export function validateProjectV32Schema(value) {
-  return evaluate(projectV32Validator, value);
+export function validateProjectV32Schema(value, options = {}) {
+  return evaluate(projectV32Validator, value, options);
 }
 
-export function validateScopeSnapshotSchema(value) {
-  return evaluate(scopeSnapshotValidator, value);
+export function validateScopeSnapshotSchema(value, options = {}) {
+  return evaluate(scopeSnapshotValidator, value, options);
 }
 
-export function validateInventorySnapshotSchema(value) {
-  return evaluate(inventorySnapshotValidator, value);
+export function validateInventorySnapshotSchema(value, options = {}) {
+  return evaluate(inventorySnapshotValidator, value, options);
 }
 
-export function validateConvergenceCycleSchema(value) {
-  return evaluate(convergenceCycleValidator, value);
+export function validateConvergenceCycleSchema(value, options = {}) {
+  return evaluate(convergenceCycleValidator, value, options);
 }
 
-export function validateRequestedPassSchema(value) {
-  return evaluate(requestedPassValidator, value);
+export function validateRequestedPassSchema(value, options = {}) {
+  return evaluate(requestedPassValidator, value, options);
 }
 
-export function validateNoEditSkipSchema(value) {
-  return evaluate(noEditSkipValidator, value);
+export function validateNoEditSkipSchema(value, options = {}) {
+  return evaluate(noEditSkipValidator, value, options);
 }
 
-export function validateReviewGroupSchema(value) {
-  return evaluate(reviewGroupValidator, value);
+export function validateReviewGroupSchema(value, options = {}) {
+  return evaluate(reviewGroupValidator, value, options);
 }
 
-export function validateSemanticAttestationSchema(value) {
-  return evaluate(semanticAttestationValidator, value);
+export function validateSemanticAttestationSchema(value, options = {}) {
+  return evaluate(semanticAttestationValidator, value, options);
 }
 
-export function validateConvergenceEvaluationSchema(value) {
-  return evaluate(convergenceEvaluationValidator, value);
+export function validateConvergenceEvaluationSchema(value, options = {}) {
+  return evaluate(convergenceEvaluationValidator, value, options);
 }
 
-export function validateRevisionExecutionSchema(value) {
-  return evaluate(revisionExecutionValidator, value);
+export function validateRevisionExecutionSchema(value, options = {}) {
+  return evaluate(revisionExecutionValidator, value, options);
 }
 
-export function validateManuscriptReconciliationSchema(value) {
-  return evaluate(manuscriptReconciliationValidator, value);
+export function validateManuscriptReconciliationSchema(value, options = {}) {
+  return evaluate(manuscriptReconciliationValidator, value, options);
 }
 
-export function validateReportEnvelope(value) {
-  return evaluate(reportValidator, value);
+export function validateReportEnvelope(value, options = {}) {
+  return evaluate(reportValidator, value, options);
 }
 
-export function validateRelativePath(value) {
-  return evaluate(relativePathValidator, value);
+export function validateRelativePath(value, options = {}) {
+  return evaluate(relativePathValidator, value, options);
 }
 
-export function validateStoryState(value) {
-  return evaluate(storyStateValidator, value);
+export function validateStoryState(value, options = {}) {
+  return evaluate(storyStateValidator, value, options);
 }
 
-export function validateCreationBatchSchema(value) {
-  return evaluate(creationBatchValidator, value);
+export function validateCreationBatchSchema(value, options = {}) {
+  return evaluate(creationBatchValidator, value, options);
 }
 
-export function validateCreationCommitSchema(value) {
-  return evaluate(creationCommitValidator, value);
+export function validateCreationCommitSchema(value, options = {}) {
+  return evaluate(creationCommitValidator, value, options);
 }
 
-export function validateCoverageUnitSchema(value) {
-  return evaluate(coverageUnitValidator, value);
+export function validateCoverageUnitSchema(value, options = {}) {
+  return evaluate(coverageUnitValidator, value, options);
 }
 
-export function validateCoverageIndexSchema(value) {
-  return evaluate(coverageIndexValidator, value);
+export function validateCoverageIndexSchema(value, options = {}) {
+  return evaluate(coverageIndexValidator, value, options);
 }
 
-export function validateReviewJobSchema(value) {
-  return evaluate(reviewJobValidator, value);
+export function validateReviewJobSchema(value, options = {}) {
+  return evaluate(reviewJobValidator, value, options);
 }
 
-export function validateReaderStateSchema(value) {
-  return evaluate(readerStateValidator, value);
+export function validateReaderStateSchema(value, options = {}) {
+  return evaluate(readerStateValidator, value, options);
 }
 
 export function validateSchemaDefinitions() {

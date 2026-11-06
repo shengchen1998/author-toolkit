@@ -49,6 +49,25 @@ function envelope(processResult, command) {
   return response;
 }
 
+test("installed timestamp returns JSON and filename values from one UTC clock", async (t) => {
+  const { run } = await installedProject(t);
+  const result = run([
+    "timestamp",
+    "--now",
+    "2026-11-06T01:02:03.456Z",
+  ]);
+
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
+  const response = envelope(result, "timestamp");
+  assert.equal(response.valid, true);
+  assert.deepEqual(response.errors, []);
+  assert.deepEqual(response.result, {
+    json: "2026-11-06T01:02:03.456Z",
+    filename: "20261106T010203456Z",
+  });
+  assert.equal(result.stderr, "");
+});
+
 test("installed init creates fresh operational state from manuscript only", async (t) => {
   const { projectRoot, run } = await installedProject(t);
   const initialized = run(["init", "--project-root", projectRoot, "--language", "en"]);

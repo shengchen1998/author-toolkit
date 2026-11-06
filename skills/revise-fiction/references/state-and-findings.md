@@ -19,7 +19,7 @@ Use the controlled workflow terminology in `<project-root>/.author-toolkit/refer
 
 Use `<project-root>/.author-toolkit/references/report-schema-v2.json` as the authoritative envelope contract and resolve its reference to `finding-schema-v2.json`. Read both schemas before writing. Do not infer v2 from the legacy `finding-schema.json`.
 
-Write each report beneath the registered shared `reports/` path using an operation directory and a unique UTC-stamped filename. Include human-readable context, a `Language coverage` heading, and exactly one fenced `json` block containing one report v2 object.
+Write each report beneath the registered shared `reports/` path using an operation directory and a unique UTC-stamped filename. Before assigning the report ID, filename, and `created_at`, run `node <setup-skill>/assets/runtime/author-project.mjs timestamp` once as documented in [Timestamp](../../author-project/references/operations.md#timestamp). Use `result.json` for the ID and JSON field and `result.filename` for the filename so all three describe one UTC instant. Include human-readable context, a `Language coverage` heading, and exactly one fenced `json` block containing one report v2 object.
 
 Populate the actual v2 fields:
 
@@ -57,7 +57,7 @@ Use only these finding statuses:
 | `dismissed` | The author judged it inapplicable or intentional; record the reason |
 | `stale` | Its input or scope changed, or an equivalent rerun no longer observes it without verified resolution |
 
-For each status change, update the tracker row with UTC time, current report path, and reason. Keep historical report paths in the audit-run table. Unknown future plot, an unwritten ending, and other open creative choices belong in baseline open questions; they become findings only when they cause a concrete problem in existing text.
+For each status change, use the shared [Timestamp](../../author-project/references/operations.md#timestamp) command's `result.json` for the tracker row's UTC time, then update its current report path and reason. Keep historical report paths in the audit-run table. Unknown future plot, an unwritten ending, and other open creative choices belong in baseline open questions; they become findings only when they cause a concrete problem in existing text.
 
 ## Author decision loop
 

@@ -6,17 +6,17 @@ import {
 } from "./schemas.mjs";
 import { validateWorkflow } from "./workflow.mjs";
 
-export function validateManifest(value) {
+export function validateManifest(value, options = {}) {
   if (value?.schema_version === "3.2.0") {
-    return validateProjectV32Schema(value);
+    return validateProjectV32Schema(value, options);
   }
 
   if (value?.schema_version === "3.1.0") {
-    return validateProjectV31Schema(value);
+    return validateProjectV31Schema(value, options);
   }
 
   if (value?.schema_version === "3.0.0") {
-    return validateProjectV3Schema(value);
+    return validateProjectV3Schema(value, options);
   }
 
   if (value?.schema_version !== "2.0.0") {
@@ -33,7 +33,7 @@ export function validateManifest(value) {
     };
   }
 
-  const schemaResult = validateProjectSchema(value);
+  const schemaResult = validateProjectSchema(value, options);
   if (!schemaResult.valid) return schemaResult;
 
   const workflowResult = validateWorkflow(value);
