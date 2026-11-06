@@ -2,7 +2,9 @@
 
 - Plan ID:
 - Created or revised at:
-- Scope ID and input versions:
+- Scope ID, fingerprint, and input versions:
+- Active cycle ID and revision, or independent `cycle_id: null`:
+- Requested pass ID and fingerprint:
 - Source structure or diagnostics reports:
 - Source character reports:
 - Relevant Story Bible or draft-baseline versions:

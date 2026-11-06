@@ -680,7 +680,12 @@ function mergeRelatedArtifacts(current, requested) {
     if (!Object.hasOwn(current, role) || !Array.isArray(references)) {
       throw new Error(`Unknown related_artifacts role: ${role}`);
     }
-    merged[role] = [...current[role], ...references];
+    const retained = role === "creation_batches"
+      ? current[role].filter((existing) =>
+        references.every((reference) => reference.batch_id !== existing.batch_id)
+      )
+      : current[role];
+    merged[role] = [...retained, ...references];
   }
   return merged;
 }

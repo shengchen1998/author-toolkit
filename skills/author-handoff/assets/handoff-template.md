@@ -5,10 +5,14 @@
 - Manifest created at:
 - Generated at:
 - Source host:
-- Current scope ID and confirmation status:
-- Pending operation and status:
+- Current scope ID, fingerprint, and confirmation status:
+- Active cycle ID, revision, and current strategy:
+- Recovery position and operation ID:
+- Current evaluation reference and outcome:
+- Interrupted cycle operation or recovery diagnostic:
+- Pending action and status:
 - Pending scope ID, reason, and artifacts:
-- Next action from tracker or latest session:
+- Next action from the active cycle, tracker, or latest session:
 - Last explicitly invoked skill, if known:
 - Active creation batch ID and status:
 - Creation commit ID and journal status:
@@ -47,6 +51,13 @@ Include only explicit author approvals. Link finding IDs and report paths rather
 - Audit tracker:
 - Revision or writing plan:
 - Current reports and coverage index:
+- Convergence state root:
+- Active or completed cycle:
+- Requested pass:
+- Revision execution records:
+- Review group:
+- Convergence evaluation:
+- Manuscript reconciliation:
 - Creation root:
 - Creation batch:
 - Staging directory:

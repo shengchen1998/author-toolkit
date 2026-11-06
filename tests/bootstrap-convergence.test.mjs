@@ -991,3 +991,65 @@ test("a rejected empty bootstrap cannot complete before its first approved impor
   assert.equal(completedCycle.related_artifacts.reconciliations.length, 1);
   assert.equal(completedCycle.completion.decision_id, "COMPLETE-901");
 });
+
+test("publication replaces a staged batch reference with its committed identity", async (t) => {
+  const { projectRoot } = await createConvergenceProject(t);
+  const started = await runInput(projectRoot, "start-cycle", {
+    cycle_id: "cycle-bootstrap-staged-reference",
+    initiating_strategy: "write-fiction",
+    bootstrap: true,
+    starting_scope: null,
+  });
+  assert.equal(started.status, 0, `${started.stdout}\n${started.stderr}`);
+  const publication = await publishFirstCreation(projectRoot);
+  const batchPath = path.join(projectRoot, publication.batchReference.path);
+  const committedBatch = JSON.parse(await readFile(batchPath, "utf8"));
+  await writeJson(batchPath, {
+    ...committedBatch,
+    status: "awaiting_author",
+    files: committedBatch.files.map((file) => ({ ...file, status: "staged" })),
+    story_state: [],
+    approvals: ["PLAN-001"],
+    commit: null,
+  });
+  const stagedReference = {
+    batch_id: committedBatch.batch_id,
+    ...(await artifactAt(projectRoot, publication.batchReference.path)),
+  };
+  const staged = await runInput(projectRoot, "transition-cycle", {
+    cycle_id: "cycle-bootstrap-staged-reference",
+    expected_revision: 1,
+    current_strategy: "write-fiction",
+    recovery_position: {
+      operation: "chapter-review",
+      reason: "The staged batch awaits author review.",
+    },
+    target_scope: publication.targetScope,
+    related_artifacts: {
+      creation_batches: [stagedReference],
+    },
+  });
+  assert.equal(staged.status, 0, `${staged.stdout}\n${staged.stderr}`);
+
+  await writeJson(batchPath, committedBatch);
+  const published = await runInput(projectRoot, "transition-cycle", {
+    cycle_id: "cycle-bootstrap-staged-reference",
+    expected_revision: 2,
+    current_strategy: "revise-draft",
+    recovery_position: {
+      operation: "intake",
+      reason: "The committed batch awaits initial full-manuscript revision.",
+    },
+    target_scope: publication.targetScope,
+    related_artifacts: {
+      creation_batches: [publication.batchReference],
+      creation_commits: [publication.commitReference],
+    },
+  });
+  assert.equal(published.status, 0, `${published.stdout}\n${published.stderr}`);
+  const cycle = JSON.parse(published.stdout).cycle;
+  assert.equal(cycle.revision, 3);
+  assert.equal(cycle.current_strategy, "revise-draft");
+  assert.deepEqual(cycle.related_artifacts.creation_batches, [publication.batchReference]);
+  assert.deepEqual(cycle.related_artifacts.creation_commits, [publication.commitReference]);
+});
