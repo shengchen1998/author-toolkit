@@ -15,11 +15,11 @@ Accept one operation per invocation:
 
 | Operation | Required input | Result |
 |---|---|---|
-| `initialize` | Project root, project metadata, paths, and BCP 47 language | Create a neutral v3.2 manifest, validate an existing v3.2 manifest, or migrate v2, v3.0, and v3.1 directly to v3.2 without resetting work |
+| `initialize` | Project root, project metadata, paths, and BCP 47 language | Run public `init` to create fresh neutral v3.2 operational state without importing evidence, or validate an existing v3.2 project without resetting work; migrate legacy state through setup first |
 | `upgrade-v31` | Project root, confirmed additive upgrade, and optional creation path | Add v3.1 creation registration to a valid v3.0 manifest while preserving all work |
-| `read` | Project root or manifest path | Return the parsed manifest, resolved paths, current scope and scope fingerprint, pending action, active cycle, shared stale or blocked evidence, and next action |
+| `read` | Project root or manifest path; optional `--full` | Return compact project status by default, or the complete manifest and convergence status only when explicitly requested |
 | `validate` | Project root or manifest path | Run the installed project schema validator and report diagnostics, including the v3.2 full-manuscript result and cycle contract |
-| `status` | Project root or manifest path | Return current scope identity and validation, pending action, active cycle, recovery position, evaluation outcome, shared stale or blocked evidence, approvals, and next action |
+| `status` | Project root or manifest path; optional `--full` | Return project and reference validation, scope identity and file count, pending action, active cycle and recovery position, evaluation outcome and blockers, decision counts, and exact next action |
 | `set-pending` | Operation, status, scope ID, reason, and artifacts | Write the requested pending action without stage progression or cycle ownership |
 | `record-scope` | Scope ID, description, ordered files with SHA-256 hashes, excluded files, and `proposed` or `confirmed` status; for confirmation, an author-confirmation reference with reading-order confirmation | Record the current scope; on v3.2, compute its scope fingerprint and preserve immutable inventory and scope snapshots after confirmation |
 | `start-cycle` | Cycle ID, initiating strategy, explicit bootstrap marker, and starting scope reference | Start one active current-draft convergence cycle after validating the bootstrap exception or current satisfied starting evaluation |
@@ -38,10 +38,15 @@ Accept one operation per invocation:
 
 For every operation, read [`references/operations.md`](references/operations.md) and follow its state, evidence, approval, and record rules. Use [`assets/project-template.json`](assets/project-template.json) only for a new v3.2 manifest.
 
+Every public project CLI command returns one JSON project response envelope: `response_contract_version: "1.0"`, `command`, boolean `valid`, command-specific `result`, and structured `errors`. Read the operation payload from `result`. Success and valid read-only queries exit 0, including an unfinished `indeterminate` status; project, operation, evidence, or gate validation failures exit 1; argument, input-file, or input-shape usage errors exit 2. No-argument help is the only non-envelope invocation. Default `read` and `status` responses are compact. Use explicit `--full` or dedicated cycle and artifact queries for complete manifests, ordered path hashes, evaluation identities, evidence graphs, and history.
+
 In a source checkout, `scripts/lib/index.mjs` exports the public `migrateProjectToV32`, `migrateProjectToV3`, `recordScope`, `validateFullManuscriptScope`, `startCycle`, `transitionCycle`, `reconcileCycle`, `reconcileManuscript`, `diffManuscriptInventories`, `prepareRevisionExecution`, `verifyRevisionExecution`, `evaluateCycle`, `completeCycle`, `getCycleStatus`, `getRequestCompletion`, `checkConvergenceGate`, and `assertCycleAllowsOperation` functions. Generic and plugin installations provide the same project operations through the self-contained ESM facade in the setup skill; it bundles Ajv and all runtime dependencies and needs no project-local npm installation. Resolve `<setup-skill>` as the installed `setup-author-toolkit` skill directory. The legacy migration command uses the source checkout; the other commands run directly from the installed payload:
 
 ```bash
 node <toolkit-root>/scripts/migrate-v32.mjs --project-root <project-root>
+node <setup-skill>/assets/runtime/author-project.mjs init --project-root <project-root> --input <initialization.json>
+node <setup-skill>/assets/runtime/author-project.mjs read --project-root <project-root>
+node <setup-skill>/assets/runtime/author-project.mjs status --project-root <project-root> [--full]
 node <setup-skill>/assets/runtime/author-project.mjs start-cycle --project-root <project-root> --input <request.json>
 node <setup-skill>/assets/runtime/author-project.mjs transition-cycle --project-root <project-root> --input <transition.json>
 node <setup-skill>/assets/runtime/author-project.mjs reconcile-cycle --project-root <project-root> [--input <direction.json>]

@@ -4,7 +4,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const packagedReferenceUrl = globalThis[Symbol.for("author-toolkit.packaged-references")];
-const packagedReferences = fileURLToPath(
+export const packagedReferences = fileURLToPath(
   packagedReferenceUrl ??
     new URL("../../skills/setup-author-toolkit/assets/references/", import.meta.url),
 );

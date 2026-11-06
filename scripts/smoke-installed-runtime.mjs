@@ -85,6 +85,60 @@ try {
     assert.ok(!artifact.includes(root), `${entryPoint} contains no development-root path`);
   }
 
+  function projectResponse(processResult, command) {
+    const response = JSON.parse(processResult.stdout);
+    assert.equal(response.response_contract_version, "1.0");
+    assert.equal(response.command, command);
+    assert.equal(typeof response.valid, "boolean");
+    assert.ok(Object.hasOwn(response, "result"));
+    assert.ok(Array.isArray(response.errors));
+    return response;
+  }
+
+  const freshProject = path.join(temporary, "manuscript-only-project");
+  await mkdir(path.join(freshProject, "manuscript"), { recursive: true });
+  await writeFile(
+    path.join(freshProject, "manuscript", "chapter-001.md"),
+    "# Chapter One\n\nThe ferry leaves at dusk.\n",
+    "utf8",
+  );
+  const initialized = runInstalled("author-project.mjs", [
+    "init",
+    "--project-root",
+    freshProject,
+    "--language",
+    "en",
+  ]);
+  assert.equal(initialized.status, 0, `${initialized.stdout}\n${initialized.stderr}`);
+  const initializationResponse = projectResponse(initialized, "init");
+  assert.equal(initializationResponse.valid, true);
+  assert.equal(initializationResponse.result.initialized, true);
+
+  const compact = runInstalled("author-project.mjs", ["status", "--project-root", freshProject]);
+  assert.equal(compact.status, 0, compact.stdout);
+  const compactResponse = projectResponse(compact, "status");
+  assert.equal(compactResponse.valid, true);
+  assert.equal(compactResponse.result.view, "compact");
+  assert.equal(compactResponse.result.project.valid, true);
+  assert.equal(compactResponse.result.references.valid, true);
+  assert.equal(compactResponse.result.scope, null);
+  assert.equal(compactResponse.result.evaluation.outcome, "indeterminate");
+  assert.equal(compactResponse.result.decisions.findings.total, 0);
+  assert.equal(compactResponse.result.next_action.command, "revise-draft");
+  assert.equal(Object.hasOwn(compactResponse.result, "manifest"), false);
+
+  const full = runInstalled("author-project.mjs", ["read", "--project-root", freshProject, "--full"]);
+  assert.equal(full.status, 0, full.stdout);
+  const fullResponse = projectResponse(full, "read");
+  assert.equal(fullResponse.result.view, "full");
+  assert.equal(fullResponse.result.manifest.schema_version, "3.2.0");
+  assert.equal(fullResponse.result.status.query_valid, true);
+
+  const projectUsage = runInstalled("author-project.mjs", ["unknown-command"]);
+  assert.equal(projectUsage.status, 2);
+  assert.equal(projectUsage.stderr, "");
+  assert.equal(projectResponse(projectUsage, "unknown-command").errors[0].code, "usage-error");
+
   const valid = runInstalled("validate.mjs", ["--project-root", projectRoot]);
   assert.equal(valid.status, 0, `${valid.stdout}\n${valid.stderr}`);
   assert.match(valid.stdout, /4 checks, 0 failures/);
@@ -123,7 +177,7 @@ try {
   assert.match(missing.stderr, /terminology\.md/);
 
   console.log(
-    "Installed runtime smoke passed: generic installer, isolated help, real schema validation, exit codes, and shared-reference diagnostics.",
+    "Installed runtime smoke passed: generic installer, isolated help, manuscript-only init, compact and full project views, unified responses, real schema validation, exit codes, and shared-reference diagnostics.",
   );
 } finally {
   await rm(temporary, { recursive: true, force: true });

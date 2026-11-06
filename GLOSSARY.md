@@ -4,6 +4,12 @@ Author Toolkit coordinates fiction creation and revision over shared evidence fo
 
 ## Language
 
+**Project response envelope**:
+The versioned JSON response used by every public project operation, containing `response_contract_version`, `command`, `valid`, `result`, and structured `errors`. No-argument help is not an operation response.
+
+**Compact project status**:
+The default `read` and `status` view containing project and reference validation, scope identity and file count, pending action, active cycle and recovery position, evaluation outcome and blockers, decision counts, and exact next action. Full identities and evidence require an explicit full or dedicated query.
+
 **Current-draft revision convergence**:
 The derived state in which all shared evidence, decision, coverage, execution, and review conditions hold for a confirmed target scope after the latest manuscript change.
 _Avoid_: Publication, request completion, a stored convergence flag

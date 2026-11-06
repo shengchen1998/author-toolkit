@@ -1355,7 +1355,7 @@ test("reconciliation rejects unsafe artifact paths before reading them", async (
     story_state: [{ path: "../outside.md", sha256: "0".repeat(64) }],
   });
   assert.equal(reconciled.status, 2);
-  assert.match(reconciled.stderr, /safe project-relative artifact paths/);
+  assert.match(reconciled.response.errors[0].message, /safe project-relative artifact paths/);
   await assert.rejects(
     readFile(path.join(
       projectRoot,

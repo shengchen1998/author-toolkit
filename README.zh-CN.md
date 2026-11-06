@@ -57,7 +57,7 @@ npx skills@latest add shengchen1998/author-toolkit -a claude-code -a kimi-code-c
 npx skills@latest add shengchen1998/author-toolkit -a claude-code -a kimi-code-cli -g
 ```
 
-安装后的 setup 技能包含自包含的 ESM 校验和项目操作 CLI. 它们已打包 Ajv 及全部运行时依赖, 只从该技能的 `assets/references/` 载荷加载 schema, 使用时不需要仓库检出, 项目内运行时副本, npm 安装或网络. 将 `<setup-skill>` 解析为已安装的 `setup-author-toolkit` 目录后运行:
+安装后的 setup 技能包含自包含的 ESM 校验和项目操作 CLI. 它们已打包 Ajv 及全部运行时依赖, 从该技能的 `assets/references/` 载荷加载 schema, 从 assets 载荷加载初始化模板, 使用时不需要仓库检出, 项目内运行时副本, npm 安装或网络. 将 `<setup-skill>` 解析为已安装的 `setup-author-toolkit` 目录后运行:
 
 ```bash
 node <setup-skill>/assets/runtime/validate.mjs --project-root <project-root>
@@ -65,6 +65,21 @@ node <setup-skill>/assets/runtime/author-project.mjs --help
 ```
 
 项目根目录校验先用真实 JSON Schema 校验器检查所选项目, 并在读取项目状态前核对所有已部署共享引用的哈希. 两个 CLI 无参数时都显示帮助. 校验成功退出码为 0, 校验失败为 1, 参数或用法错误为 2.
+
+项目 CLI 还可以直接从 manuscript-only 状态初始化并恢复项目, 无需手写 manifest:
+
+```bash
+node <setup-skill>/assets/runtime/author-project.mjs init --project-root <project-root> --language en
+node <setup-skill>/assets/runtime/author-project.mjs read --project-root <project-root>
+node <setup-skill>/assets/runtime/author-project.mjs status --project-root <project-root>
+node <setup-skill>/assets/runtime/author-project.mjs status --project-root <project-root> --full
+```
+
+`init` 部署匹配的共享引用并创建中性 manifest, 空 tracker 和备份索引以及操作目录, 不导入发现项, 批准, 评估或当前草稿修订收敛声明. 重入时只校验已有项目, 不重置状态. 自定义操作路径使用 `--input <initialization.json>`, 自定义正文位置使用 `--manuscript-root <path>`.
+
+所有公共项目命令, 包括 cycle, reconciliation, execution, evaluation 和 completion, 都返回统一 JSON 项目响应信封: `response_contract_version: "1.0"`, `command`, 布尔值 `valid`, 命令对应的 `result` 和结构化 `errors`. 原操作结果位于 `result` 内, 错误以 stdout 上的 JSON 返回, 不再提供并行文本错误契约. 成功命令和有效的只读状态查询退出码为 0, 包括 `not_satisfied` 和 `indeterminate` 生命周期状态. 项目, 操作, 证据或门禁校验失败退出码为 1. 参数, 输入文件或输入结构用法错误退出码为 2.
+
+默认 `read` 和 `status` 返回精简项目状态, 包含项目与引用校验, 范围标识与文件数, 待处理操作, 活跃周期与恢复位置, 评估结果与阻断项, 决定计数和准确的下一操作. 完整 manifest, 有序路径哈希, 评估标识, 证据图和历史只在显式 `--full` 或专用 cycle 和产物查询中返回.
 
 更新需要手动执行:
 

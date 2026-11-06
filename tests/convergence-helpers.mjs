@@ -68,11 +68,27 @@ export async function createConvergenceProject(t, { manuscripts = [] } = {}) {
   return { projectRoot, manifestPath };
 }
 
+export function unwrapProjectResponse(processResult) {
+  let response;
+  try {
+    response = JSON.parse(processResult.stdout);
+  } catch {
+    return processResult;
+  }
+  if (response?.response_contract_version !== "1.0") return processResult;
+  return {
+    ...processResult,
+    response,
+    rawStdout: processResult.stdout,
+    stdout: JSON.stringify(response.result),
+  };
+}
+
 export function runAuthorProject(args) {
-  return spawnSync(process.execPath, [authorProjectCli, ...args], {
+  return unwrapProjectResponse(spawnSync(process.execPath, [authorProjectCli, ...args], {
     cwd: root,
     encoding: "utf8",
-  });
+  }));
 }
 
 export async function runInput(projectRoot, command, input) {
@@ -112,7 +128,7 @@ export async function runAuthorProjectAsync(args) {
     });
     child.once("error", reject);
     child.once("close", (status, signal) => {
-      resolve({ status, signal, stdout, stderr });
+      resolve(unwrapProjectResponse({ status, signal, stdout, stderr }));
     });
   });
 }
