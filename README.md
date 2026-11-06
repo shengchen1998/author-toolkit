@@ -534,11 +534,12 @@ lets the first approved nonempty import supply initial publication evidence
 without a creation commit; it still requires initial full-manuscript
 `revise-draft` evaluation and completion. A rejected empty bootstrap cannot
 complete before such an import or publication establishes that evidence.
-Later bootstrap imports preserve the null cumulative origin and link each
-previous target. Evaluation checks the complete chain and approvals; after a
-verified edit, the reconciliation target must match the execution input and the
-final execution target must be current. Missing links and forged targets remain
-blockers.
+Later bootstrap imports and edits preserve the null cumulative origin and form
+one ordered event chain. Every reconciliation previous scope or execution input
+scope follows the preceding target or output scope, every event is verified
+once, and the final target equals current scope. Empty reconciliation is a legal
+intermediate state awaiting nonempty recovery, never a completed target. Missing
+links, skipped empty predecessors, and forged targets remain blockers.
 
 ### Coverage units and chunked review
 

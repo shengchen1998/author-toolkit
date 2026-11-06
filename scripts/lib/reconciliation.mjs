@@ -327,10 +327,20 @@ export async function reconcileManuscript(projectRoot, request, options = {}) {
     } else if (!cycle && request.cycle_id) {
       outcome = failure("active-cycle-required", "The named active cycle is unavailable; do not open a parallel recovery cycle.");
     } else {
+      let previousEmptyReconciliation = false;
+      if (project.manifest.manuscript_reconciliation) {
+        const previousReconciliation = JSON.parse((await readArtifact(
+          project,
+          project.manifest.manuscript_reconciliation,
+        )).toString("utf8"));
+        previousEmptyReconciliation = previousReconciliation.target_scope === null;
+      }
       const previousReference = cycle
-        ? cycle.target_scope ?? cycle.starting_scope
+        ? previousEmptyReconciliation && !cycle.target_scope
+          ? null
+          : cycle.target_scope ?? cycle.starting_scope
         : request.previous_scope ?? null;
-      if (!previousReference && !cycle?.bootstrap) {
+      if (!previousReference && !cycle?.bootstrap && !previousEmptyReconciliation) {
         throw new Error("An explicit previous_scope is required for reconciliation without an active cycle");
       }
       let previous = { files: [], excluded_files: [] };
@@ -386,14 +396,6 @@ export async function reconcileManuscript(projectRoot, request, options = {}) {
         previousReference,
         preferredEvaluation,
       );
-      let previousEmptyReconciliation = false;
-      if (project.manifest.manuscript_reconciliation) {
-        const previousReconciliation = JSON.parse((await readArtifact(
-          project,
-          project.manifest.manuscript_reconciliation,
-        )).toString("utf8"));
-        previousEmptyReconciliation = previousReconciliation.target_scope === null;
-      }
       const recoveringFromEmpty = previousEmptyReconciliation || Boolean(
         cycle &&
         !cycle.target_scope &&

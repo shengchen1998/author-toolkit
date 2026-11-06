@@ -35,6 +35,7 @@ import {
   validateSemanticAttestationSchema,
 } from "./schemas.mjs";
 import {
+  diffManuscriptInventories,
   validateFullManuscriptScope,
   validateInventorySnapshot,
   validateScopeSnapshot,
@@ -665,54 +666,84 @@ async function loadReport(computation, reference, { currentPass = true, inputFil
   return { report, reference: { ...reference, report_id: report.report_id }, markdown };
 }
 
-function reconciliationTargetMatchesExecutionChain(reconciliation, roots, executionChain) {
-  if (executionChain.length === 0) {
-    return sameScopeReference(reconciliation.target_scope, roots.target_scope);
-  }
-  if (!sameScopeReference(reconciliation.target_scope, executionChain[0].input_scope)) {
-    return false;
-  }
-  for (let index = 1; index < executionChain.length; index += 1) {
-    if (!sameScopeReference(executionChain[index - 1].target_scope, executionChain[index].input_scope)) {
-      return false;
-    }
-  }
-  return sameScopeReference(executionChain.at(-1).target_scope, roots.target_scope);
+function scopeEventIdentity(reference) {
+  return reference === null || reference === undefined
+    ? null
+    : JSON.stringify([
+        reference.scope_id,
+        reference.scope_fingerprint,
+        reference.snapshot_path,
+        reference.snapshot_sha256,
+      ]);
 }
 
-function bootstrapImportChain(cycle, reconciliations, reconciliationScopes, roots, executionChain) {
-  if (!cycle?.bootstrap || reconciliations.length === 0) return null;
-  let previousTarget = null;
-  for (const reconciliation of reconciliations) {
-    const targetScope = reconciliationScopes.get(reconciliation.reconciliation_id);
-    if (
-      reconciliation.cycle_id !== cycle.cycle_id ||
-      reconciliation.recovery_from_empty ||
-      reconciliation.required_strategy !== "revise-draft" ||
-      reconciliation.proof_blockers.length > 0 ||
-      !sameScopeReference(reconciliation.previous_scope, previousTarget) ||
-      reconciliation.change_set.from_scope !== null ||
-      !sameScopeReference(reconciliation.change_set.to_scope, reconciliation.target_scope) ||
-      !targetScope ||
-      targetScope.scope_id !== reconciliation.target_scope.scope_id ||
-      targetScope.scope_fingerprint !== reconciliation.target_scope.scope_fingerprint ||
-      JSON.stringify(reconciliation.change_set.created) !== JSON.stringify(targetScope.files) ||
-      reconciliation.change_set.modified.length > 0 ||
-      reconciliation.change_set.deleted.length > 0 ||
-      reconciliation.change_set.reordered.length > 0
-    ) {
-      return null;
+function buildScopeEventChain(cycle, roots, reconciliations, executionChain) {
+  const events = [
+    ...reconciliations.map((value) => ({
+      type: "reconciliation",
+      value,
+      input: value.previous_scope,
+      output: value.target_scope,
+    })),
+    ...executionChain.map((value) => ({
+      type: "execution",
+      value,
+      input: value.input_scope,
+      output: value.target_scope,
+    })),
+  ];
+  if (events.length === 0) return null;
+  const startingIdentity = cycle?.bootstrap ? null : scopeEventIdentity(cycle?.starting_scope);
+  const targetIdentity = scopeEventIdentity(roots.target_scope);
+  const used = new Set();
+  const chain = [];
+  const failed = new Set();
+
+  function visit(currentIdentity, emptyPending) {
+    if (used.size === events.length) {
+      return !emptyPending && currentIdentity === targetIdentity ? [...chain] : null;
     }
-    previousTarget = reconciliation.target_scope;
+    const memoKey = `${currentIdentity ?? "null"}|${emptyPending}|${[...used].sort((left, right) => left - right).join(",")}`;
+    if (failed.has(memoKey)) return null;
+    for (const [index, event] of events.entries()) {
+      if (used.has(index) || scopeEventIdentity(event.input) !== currentIdentity) continue;
+      let nextEmptyPending = false;
+      if (event.type === "reconciliation") {
+        const reconciliation = event.value;
+        if (currentIdentity === null) {
+          if (emptyPending) {
+            if (
+              !reconciliation.recovery_from_empty ||
+              !reconciliation.target_scope ||
+              reconciliation.required_strategy !== "revise-draft"
+            ) continue;
+          } else if (
+            used.size > 0 ||
+            reconciliation.recovery_from_empty ||
+            !reconciliation.target_scope
+          ) continue;
+        } else if (reconciliation.recovery_from_empty) continue;
+        if (reconciliation.target_scope === null) {
+          if (currentIdentity === null) continue;
+          nextEmptyPending = true;
+        }
+      } else if (currentIdentity === null) continue;
+
+      used.add(index);
+      chain.push(event);
+      const result = visit(scopeEventIdentity(event.output), nextEmptyPending);
+      if (result) return result;
+      chain.pop();
+      used.delete(index);
+    }
+    failed.add(memoKey);
+    return null;
   }
-  return reconciliationTargetMatchesExecutionChain(
-    { target_scope: previousTarget },
-    roots,
-    executionChain,
-  ) ? reconciliations : null;
+
+  return visit(startingIdentity, false);
 }
 
-async function validateBootstrapImportDecision(project, reconciliation, scope) {
+async function validateImportDecision(project, reconciliation, previousScope, targetScope, inventory) {
   const trackerText = await readFile(
     path.resolve(project.root, project.manifest.paths.audit_tracker),
     "utf8",
@@ -723,20 +754,106 @@ async function validateBootstrapImportDecision(project, reconciliation, scope) {
   );
   const decision = decisions.length === 1 ? decisions[0] : null;
   const tokens = new Set(decision?.reason.split(/\s+/) ?? []);
+  const scopeForDecision = targetScope ?? previousScope;
   return Boolean(
     tracker.valid &&
     decision &&
+    scopeForDecision &&
     decision.status === "approved" &&
     decision.type === "creation-import" &&
     decision.operation === "creation-import" &&
-    decision.scopeId === scope.scope_id &&
-    JSON.stringify(decision.paths) === JSON.stringify(scope.files.map((file) => file.path)) &&
-    scope.author_confirmation?.decision_id === reconciliation.author_decision_id &&
-    scope.author_confirmation?.reading_order_confirmed === true &&
+    decision.scopeId === scopeForDecision.scope_id &&
+    JSON.stringify(decision.paths) === JSON.stringify(scopeForDecision.files.map((file) => file.path)) &&
+    (!targetScope || (
+      targetScope.author_confirmation?.decision_id === reconciliation.author_decision_id &&
+      targetScope.author_confirmation?.reading_order_confirmed === true
+    )) &&
     tokens.has(`reconciliation_id=${reconciliation.reconciliation_id}`) &&
     tokens.has(`inventory_fingerprint=${reconciliation.inventory.inventory_fingerprint}`) &&
-    tokens.has(`scope_fingerprint=${scope.scope_fingerprint}`)
+    tokens.has(`scope_fingerprint=${targetScope?.scope_fingerprint ?? "null"}`)
   );
+}
+
+async function validateScopeEventChain(
+  project,
+  computation,
+  cycle,
+  roots,
+  reconciliations,
+  reconciliationScopes,
+  reconciliationInventories,
+  executionChain,
+  executionScopes,
+) {
+  const chain = buildScopeEventChain(cycle, roots, reconciliations, executionChain);
+  if (!chain) return null;
+  let origin = { files: [], excluded_files: [] };
+  if (!cycle?.bootstrap) {
+    origin = await computation.json(
+      {
+        path: cycle.starting_scope.snapshot_path,
+        sha256: cycle.starting_scope.snapshot_sha256,
+      },
+      "starting-scope",
+      cycle.starting_scope.scope_id,
+      validateScopeSnapshot,
+    );
+    if (!origin) return null;
+  }
+  let previousScope = origin;
+  let approvalsValid = true;
+  for (const event of chain) {
+    if (event.type === "execution") {
+      const scopes = executionScopes.get(event.value.execution_id);
+      if (!scopes?.input || !scopes.target) return null;
+      previousScope = scopes.target;
+      continue;
+    }
+    const reconciliation = event.value;
+    const targetScope = reconciliation.target_scope
+      ? reconciliationScopes.get(reconciliation.reconciliation_id)
+      : null;
+    const inventory = reconciliationInventories.get(reconciliation.reconciliation_id);
+    if (
+      (reconciliation.cycle_id !== null && reconciliation.cycle_id !== roots.cycle_id) ||
+      !sameScopeReference(
+        reconciliation.change_set.from_scope,
+        cycle?.bootstrap ? null : cycle.starting_scope,
+      ) ||
+      !sameScopeReference(reconciliation.change_set.to_scope, reconciliation.target_scope) ||
+      (reconciliation.target_scope && !targetScope) ||
+      !inventory
+    ) {
+      return null;
+    }
+    const expected = diffManuscriptInventories(origin, targetScope ?? inventory);
+    for (const field of [
+      "created",
+      "modified",
+      "deleted",
+      "reordered",
+      "evidence_affected",
+      "dependency_affected",
+    ]) {
+      if (JSON.stringify(expected[field]) !== JSON.stringify(reconciliation.change_set[field])) {
+        return null;
+      }
+    }
+    try {
+      const approved = await validateImportDecision(
+        project,
+        reconciliation,
+        previousScope,
+        targetScope,
+        inventory,
+      );
+      if (!approved) approvalsValid = false;
+    } catch {
+      approvalsValid = false;
+    }
+    previousScope = targetScope;
+  }
+  return { chain, approvalsValid };
 }
 
 async function computeEvaluation(project, cycle, roots, evaluationId, createdAt) {
@@ -874,6 +991,7 @@ async function computeEvaluation(project, cycle, roots, evaluationId, createdAt)
   }
   const reconciliations = [];
   const reconciliationScopes = new Map();
+  const reconciliationInventories = new Map();
   const reconciliationReferences = relatedArtifacts.reconciliations ?? [];
   for (const [index, reference] of reconciliationReferences.entries()) {
     const isLatest = index === reconciliationReferences.length - 1;
@@ -921,12 +1039,13 @@ async function computeEvaluation(project, cycle, roots, evaluationId, createdAt)
         block(proof.code, proof.message);
       }
     }
-    await computation.json(
+    const inventory = await computation.json(
       reconciliation.inventory,
       "reconciliation-inventory",
       reconciliation.inventory.inventory_fingerprint,
       validateInventorySnapshot,
     );
+    if (inventory) reconciliationInventories.set(reconciliation.reconciliation_id, inventory);
     if (isLatest) {
       for (const storyReference of reconciliation.story_state) {
         const contents = await computation.bytes(storyReference, "story-state", storyReference.path);
@@ -984,6 +1103,7 @@ async function computeEvaluation(project, cycle, roots, evaluationId, createdAt)
     }
   }
   const executionChain = [];
+  const executionScopes = new Map();
   for (const reference of relatedArtifacts.revision_executions ?? []) {
     const execution = await computation.json(
       reference,
@@ -993,49 +1113,67 @@ async function computeEvaluation(project, cycle, roots, evaluationId, createdAt)
     );
     if (execution?.status === "verified" && execution.cycle_id === roots.cycle_id) {
       executionChain.push(execution);
+      const inputScope = await computation.json(
+        {
+          path: execution.input_scope.snapshot_path,
+          sha256: execution.input_scope.snapshot_sha256,
+        },
+        "execution-input-scope",
+        execution.input_scope.scope_id,
+        validateScopeSnapshot,
+      );
+      const targetScope = await computation.json(
+        {
+          path: execution.target_scope.snapshot_path,
+          sha256: execution.target_scope.snapshot_sha256,
+        },
+        "execution-target-scope",
+        execution.execution_id,
+        validateScopeSnapshot,
+      );
+      executionScopes.set(execution.execution_id, {
+        input: inputScope,
+        target: targetScope,
+      });
     }
   }
-  const latestReconciliation = reconciliations.at(-1) ?? null;
-  if (
-    latestReconciliation &&
-    !reconciliationTargetMatchesExecutionChain(latestReconciliation, roots, executionChain)
-  ) {
+  const eventValidation = await validateScopeEventChain(
+    project,
+    computation,
+    cycle,
+    roots,
+    reconciliations,
+    reconciliationScopes,
+    reconciliationInventories,
+    executionChain,
+    executionScopes,
+  );
+  if (reconciliations.length > 0 && !eventValidation) {
     block(
       "reconciliation-target-mismatch",
-      "Reconciliation target does not match the current target or its verified execution input chain.",
+      "Reconciliation and execution events do not form a complete chain to the current target.",
+    );
+    block(
+      "reconciliation-chain-mismatch",
+      "The reconciliation and execution event chain has a missing, inconsistent, or non-current link.",
     );
   }
   if (cycle?.initiating_strategy === "write-fiction") {
     const changedTarget = cycle.bootstrap || !sameScopeReference(roots.target_scope, cycle.starting_scope);
-    const importChain = creationCommits.length === 0
-      ? bootstrapImportChain(cycle, reconciliations, reconciliationScopes, roots, executionChain)
-      : null;
+    const importChain = creationCommits.length === 0 ? eventValidation?.chain ?? null : null;
     let approvedBootstrapImport = false;
     if (importChain) {
-      approvedBootstrapImport = true;
-      for (const reconciliation of importChain) {
-        try {
-          const approved = await validateBootstrapImportDecision(
-            project,
-            reconciliation,
-            reconciliationScopes.get(reconciliation.reconciliation_id),
-          );
-          if (!approved) approvedBootstrapImport = false;
-        } catch {
-          approvedBootstrapImport = false;
-        }
-      }
-      if (!approvedBootstrapImport) {
+      const first = importChain[0];
+      approvedBootstrapImport = eventValidation.approvalsValid &&
+        first.type === "reconciliation" &&
+        first.value.required_strategy === "revise-draft" &&
+        !first.value.recovery_from_empty;
+      if (!eventValidation.approvalsValid) {
         block(
           "creation-import-approval-missing",
           "The bootstrap import chain no longer has every exact approved creation-import decision.",
         );
       }
-    } else if (cycle.bootstrap && reconciliations.length > 0) {
-      block(
-        "reconciliation-chain-mismatch",
-        "The bootstrap reconciliation chain has a missing, inconsistent, or non-current target link.",
-      );
     }
     if (changedTarget && creationCommits.length === 0 && !approvedBootstrapImport) {
       block(
