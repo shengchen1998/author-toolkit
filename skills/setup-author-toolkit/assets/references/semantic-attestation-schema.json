@@ -41,7 +41,7 @@
         "additionalProperties": false,
         "properties": {
           "claim_type": {
-            "enum": ["coverage-semantics", "review-semantics", "fresh-reader-continuity"]
+            "enum": ["coverage-semantics", "review-semantics", "fresh-reader-continuity", "dependency-copyedit"]
           },
           "subject": { "type": "string", "minLength": 1 },
           "verdict": { "enum": ["confirmed", "refuted"] },
