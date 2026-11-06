@@ -202,7 +202,9 @@ AI, 作者和混合创作使用相同门禁. 每本书只保留一个活动创�
 ## 共享项目产物与证据
 
 五个策略共用中性的 `.author-toolkit/project.json` 和同一组登记路径. 新项目使用
-schema 3.2.0; v3.0 和 v3.1 manifest 仍可读取. 现有迁移命令仍以其文档记载的 3.1 为目标.
+schema 3.2.0; v3.0 和 v3.1 manifest 仍可读取. `scripts/migrate-v32.mjs` 将 v2, v3.0 和
+v3.1 项目直接迁移到 v3.2. 现有 `scripts/migrate-v3.mjs` 命令和 `migrateProjectToV3`
+函数是具有相同目标的兼容包装.
 
 - `project.json`: 项目登记, 产物路径, 以及可选的 `current_scope` 和 `pending_action`.
   不包含 `workflow.name`, `current_stage` 或 `stages`.
@@ -219,6 +221,13 @@ schema 3.2.0; v3.0 和 v3.1 manifest 仍可读取. 现有迁移命令仍以其�
   `state/current.md`, `state/chapters/`, `state/volumes/`, `batches/` 和 `staging/`.
 - v3.2 的收敛状态根目录默认为 `.author-toolkit/convergence/`. 确认范围后在此保存不可变
   范围快照和正文清单快照. 范围指纹覆盖有序路径/哈希对和排序后的排除项, 不覆盖记录元数据和时间戳.
+
+项目迁移保留正文稿件, 报告, 发现项, 批准, 范围, session, 暂存稿, 备份, 创作批次,
+提交日志和待处理操作. 只有精确的旧范围确认才能支持已确认范围快照; 其他旧已确认范围转为
+待重新确认的 proposed 范围. 旧报告和待处理操作不会生成 satisfied 评估或已激活的当前草稿收敛周期.
+依赖周期的工作必须先协调中断的提交日志和写入. 旧暂存稿只能明确拒绝, 或在当前 satisfied
+起始评估存在后进入新周期并精确重新批准. 无法重新验证的旧修订基准通过当前全稿 `revise-draft`
+恢复, 覆盖证据仅按正常复用规则处理. 迁移矩阵和恢复规程见 [3.2 迁移指南](docs/MIGRATION-3.2.md).
 
 章节和卷故事状态从已验收正文和有版本的来源派生, 用于续写; 它不能替代故事圣经的意图或正文事实.
 被拒绝的暂存稿不会进入故事状态或正文范围.
@@ -360,11 +369,11 @@ Finding v2 和 report v2 的版本保持不变, 创作操作不加入封闭的�
 创作批次, 提交日志, 故事状态, 覆盖单元和覆盖索引, 复核任务和读者状态使用独立产物契约.
 外部变化使用封闭的 `references/manuscript-reconciliation-schema.json` 产物契约,
 manifest 的可选 `manuscript_reconciliation` 字段指向最新不可变正文协调记录.
-项目登记的源契约为 `references/project-schema-v3.1.json`, setup 将其与其他共享契约一起部署到写作项目;
-v3.0 schema 保留用于读取和升级旧项目.
+项目登记的源契约为 `references/project-schema-v3.2.json`, setup 将其与其他共享契约一起部署到写作项目;
+v3.0 和 v3.1 schema 保留用于读取和升级旧项目.
 
-迁移说明见 [docs/MIGRATION-3.1.md](docs/MIGRATION-3.1.md). 历史说明保留在
-[docs/MIGRATION-3.0.md](docs/MIGRATION-3.0.md) 和
+迁移说明见 [docs/MIGRATION-3.2.md](docs/MIGRATION-3.2.md). 历史说明保留在
+[docs/MIGRATION-3.1.md](docs/MIGRATION-3.1.md), [docs/MIGRATION-3.0.md](docs/MIGRATION-3.0.md) 和
 [docs/MIGRATION-2.0.md](docs/MIGRATION-2.0.md).
 
 随仓库提供的中英文 examples 有意保留 legacy v2 manifests 和 workflow fixtures 用于兼容性测试,
@@ -423,7 +432,7 @@ AI 关联发现只描述文本模式, 不能证明文本由 AI 生成.
 
 ## 验证状态
 
-3.1.0 工作树的仓库检查已通过: 136 项协议测试和 19 项默认校验, 详见
+当前 3.2 周期工作树的仓库检查已通过: 301 项协议测试和 19 项默认校验, 详见
 [docs/VALIDATION.md](docs/VALIDATION.md). 通用本地源安装已发现全部 16 个技能, setup 共享载荷,
 项目内 schema 和独立技能本地契约均已验证. Kimi Code 已完成有限范围的创作提交和双向切换验证;
 完整宿主流程, `revise-increment` 与 `revise-request` 端到端运行和百万字稿件的创作质量仍未验证.

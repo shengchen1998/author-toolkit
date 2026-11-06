@@ -10,6 +10,7 @@ import {
   runCheckpoint,
 } from "./cycle-coordination.mjs";
 import { collectManuscriptInventory } from "./manuscript.mjs";
+import { inspectLegacyRecovery } from "./legacy-recovery.mjs";
 import { validateManifest } from "./manifest.mjs";
 import {
   validateConvergenceCycleSchema,
@@ -173,7 +174,7 @@ const EXTERNAL_RECONCILIATION_ACTION = {
 };
 
 export async function externalReconciliationBlock(project, reference, cycle = null) {
-  if (!reference) return null;
+  if (!reference?.snapshot_path) return null;
   const previous = JSON.parse(
     await readFile(path.resolve(project.root, reference.snapshot_path), "utf8"),
   );
@@ -289,6 +290,19 @@ export async function startCycle(projectRoot, request, options = {}) {
   if (completedProblem) return completedProblem;
   const coordination = coordinationFailure(project, active);
   if (coordination) return coordination;
+  const legacyRecovery = await inspectLegacyRecovery(root, manifest);
+  const legacyBlockers = legacyRecovery.blockers.filter((blocker) =>
+    blocker.code !== "legacy-staging-decision-required" || request.bootstrap
+  );
+  if (legacyBlockers.length > 0) {
+    return {
+      valid: false,
+      cycle: null,
+      required_action: legacyBlockers[0].required_action,
+      blockers: legacyBlockers,
+      state_written: false,
+    };
+  }
   const currentScope = manifest.current_scope;
   const external = await externalReconciliationBlock(
     project,
@@ -514,6 +528,22 @@ export async function assertCycleAllowsOperation(projectRoot, request) {
   if (completedProblem) return { ...completedProblem, read_only: false };
   const coordination = coordinationFailure(project, active);
   if (coordination) return { ...coordination, read_only: false };
+  if (!active) {
+    const legacyRecovery = await inspectLegacyRecovery(root, manifest);
+    const legacyBlockers = legacyRecovery.blockers.filter(
+      (blocker) => blocker.code !== "legacy-staging-decision-required",
+    );
+    if (legacyBlockers.length > 0) {
+      return {
+        valid: false,
+        read_only: false,
+        cycle: null,
+        required_action: legacyBlockers[0].required_action,
+        blockers: legacyBlockers,
+        state_written: false,
+      };
+    }
+  }
   const currentScope = manifest.current_scope;
   const trackedReference = active?.value.target_scope ?? active?.value.starting_scope ??
     (currentScope ? {

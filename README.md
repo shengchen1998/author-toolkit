@@ -5,7 +5,8 @@ project evidence model, plus six independent writing skills for Claude Code and
 Kimi Code.
 
 [Chinese quick start](README.zh-CN.md) | [Controlled terminology](references/terminology.md) |
-[3.1 migration](docs/MIGRATION-3.1.md) |
+[3.2 migration](docs/MIGRATION-3.2.md) |
+[3.1 migration history](docs/MIGRATION-3.1.md) |
 [3.0 migration history](docs/MIGRATION-3.0.md) |
 [2.0 migration history](docs/MIGRATION-2.0.md) |
 [Validation status](docs/VALIDATION.md)
@@ -344,7 +345,9 @@ The skill definitions contain the full gates and audit rules.
 
 All five strategies use the same neutral `.author-toolkit/project.json` and
 artifact paths. New projects use schema 3.2.0; v3.0 and v3.1 manifests remain
-readable. The existing migration command retains its documented 3.1 target.
+readable. `scripts/migrate-v32.mjs` migrates v2, v3.0, and v3.1 projects directly
+to v3.2. The existing `scripts/migrate-v3.mjs` command and
+`migrateProjectToV3` function are compatibility wrappers with the same target.
 
 - `project.json` records project registration, artifact locations, and optional
   `current_scope` and `pending_action`. It has no `workflow.name`,
@@ -374,6 +377,18 @@ readable. The existing migration command retains its documented 3.1 target.
   Confirming a scope preserves an immutable scope snapshot and inventory snapshot
   there. The scope fingerprint covers ordered path/hash pairs and sorted
   exclusions; record metadata and timestamps are excluded.
+
+Project migration preserves manuscripts, reports, findings, approvals, scopes,
+sessions, staging, backups, batches, journals, and pending work. Only an exact
+legacy scope confirmation supports a confirmed scope snapshot; other legacy
+confirmed scopes become proposed for reconfirmation. Legacy reports and pending
+actions create no satisfied evaluation or active cycle. Reconcile interrupted
+journals and writes before dependent cycle work. Explicitly reject legacy
+staging, or reapprove its exact content in a new cycle only after a current
+satisfied starting evaluation. An unproven legacy revision base uses current
+full-manuscript `revise-draft` recovery with the normal coverage-reuse rules.
+See [Migrating to 3.2](docs/MIGRATION-3.2.md) for the migration matrix and
+recovery procedure.
 
 Chapter and volume story state is derived from accepted manuscript text and
 versioned source artifacts. It supports continuation; it does not replace the
@@ -593,13 +608,14 @@ masquerading as revision reports. External changes use the closed
 `references/manuscript-reconciliation-schema.json` artifact and the optional
 manifest `manuscript_reconciliation` reference to its latest immutable record.
 The canonical project registration schema is
-`references/project-schema-v3.1.json`; setup deploys it with the other shared
-contracts into the writing project. The v3.0 schema remains available for
-reading and upgrading existing projects.
+`references/project-schema-v3.2.json`; setup deploys it with the other shared
+contracts into the writing project. The v3.0 and v3.1 schemas remain available
+for reading and upgrading existing projects.
 
 Existing reports are not automatically rewritten. See
-[Migrating to 3.1](docs/MIGRATION-3.1.md). The
-[3.0 migration guide](docs/MIGRATION-3.0.md) and
+[Migrating to 3.2](docs/MIGRATION-3.2.md). The
+[3.1 migration guide](docs/MIGRATION-3.1.md),
+[3.0 migration guide](docs/MIGRATION-3.0.md), and
 [2.0 migration guide](docs/MIGRATION-2.0.md) remain available as historical
 documentation.
 

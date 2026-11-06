@@ -15,7 +15,7 @@ Accept one operation per invocation:
 
 | Operation | Required input | Result |
 |---|---|---|
-| `initialize` | Project root, project metadata, paths, and BCP 47 language | Create a neutral v3.2 manifest, validate an existing v3 manifest, or migrate v2 without resetting work |
+| `initialize` | Project root, project metadata, paths, and BCP 47 language | Create a neutral v3.2 manifest, validate an existing v3.2 manifest, or migrate v2, v3.0, and v3.1 directly to v3.2 without resetting work |
 | `upgrade-v31` | Project root, confirmed additive upgrade, and optional creation path | Add v3.1 creation registration to a valid v3.0 manifest while preserving all work |
 | `read` | Project root or manifest path | Return the parsed manifest, resolved paths, current scope and scope fingerprint, pending action, active cycle, shared stale or blocked evidence, and next action |
 | `validate` | Project root or manifest path | Run the installed project schema validator and report diagnostics, including the v3.2 full-manuscript result and cycle contract |
@@ -38,9 +38,10 @@ Accept one operation per invocation:
 
 For every operation, read [`references/operations.md`](references/operations.md) and follow its state, evidence, approval, and record rules. Use [`assets/project-template.json`](assets/project-template.json) only for a new v3.2 manifest.
 
-When the installed toolkit provides `scripts/lib/index.mjs`, its public `recordScope`, `validateFullManuscriptScope`, `startCycle`, `transitionCycle`, `reconcileCycle`, `reconcileManuscript`, `diffManuscriptInventories`, `prepareRevisionExecution`, `verifyRevisionExecution`, `evaluateCycle`, `completeCycle`, `getCycleStatus`, `getRequestCompletion`, `checkConvergenceGate`, and `assertCycleAllowsOperation` functions are the executable project-operation seam. Host procedures and disposable-project tests use these same functions or the executable facade:
+When the installed toolkit provides `scripts/lib/index.mjs`, its public `migrateProjectToV32`, `migrateProjectToV3`, `recordScope`, `validateFullManuscriptScope`, `startCycle`, `transitionCycle`, `reconcileCycle`, `reconcileManuscript`, `diffManuscriptInventories`, `prepareRevisionExecution`, `verifyRevisionExecution`, `evaluateCycle`, `completeCycle`, `getCycleStatus`, `getRequestCompletion`, `checkConvergenceGate`, and `assertCycleAllowsOperation` functions are the executable project-operation seam. Host procedures and disposable-project tests use these same functions or the executable facade:
 
 ```bash
+node <toolkit-root>/scripts/migrate-v32.mjs --project-root <project-root>
 node <toolkit-root>/scripts/author-project.mjs start-cycle --project-root <project-root> --input <request.json>
 node <toolkit-root>/scripts/author-project.mjs transition-cycle --project-root <project-root> --input <transition.json>
 node <toolkit-root>/scripts/author-project.mjs reconcile-cycle --project-root <project-root> [--input <direction.json>]
