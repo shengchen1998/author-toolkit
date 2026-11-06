@@ -1,4 +1,5 @@
 import { validateMarkdownEnvelope } from "./markdown.mjs";
+import { sha256Bytes } from "./state-io.mjs";
 import {
   validateCreationBatchSchema,
   validateCreationCommitSchema,
@@ -54,6 +55,40 @@ function validateFileHashes(file, index, errors, contract) {
       params: {},
     });
   }
+}
+
+function compareCreationText(left, right) {
+  return left < right ? -1 : left > right ? 1 : 0;
+}
+
+export function creationDependencyFingerprint(batch) {
+  const context = batch.plan.context.map(({ path: filePath, version, version_type }) => ({
+    path: filePath,
+    version,
+    version_type,
+  })).sort((left, right) =>
+    compareCreationText(left.path, right.path) ||
+    compareCreationText(left.version_type, right.version_type) ||
+    compareCreationText(left.version, right.version)
+  );
+  const files = batch.files.map(({ path: filePath, action, input_sha256 }) => ({
+    path: filePath,
+    action,
+    input_sha256,
+  })).sort((left, right) => compareCreationText(left.path, right.path));
+  return sha256Bytes(JSON.stringify({ plan: batch.plan.summary, context, files }));
+}
+
+export function creationApprovalBindingMatches(approval, batch, scopeFingerprint) {
+  if (batch.plan.dependency_fingerprint !== creationDependencyFingerprint(batch)) return false;
+  const tokens = new Set(approval.reason.split(/\s+/));
+  return tokens.has(`batch_id=${batch.batch_id}`) &&
+    tokens.has(`dependency_fingerprint=${batch.plan.dependency_fingerprint}`) &&
+    tokens.has(`scope_fingerprint=${scopeFingerprint}`);
+}
+
+export function sameApprovalPaths(actual, expected) {
+  return JSON.stringify(actual) === JSON.stringify(expected);
 }
 
 export function validateCreationBatch(value) {

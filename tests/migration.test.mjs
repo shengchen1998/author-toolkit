@@ -74,14 +74,16 @@ test("migration inventories manuscripts and converts pending work and overrides"
   assert.deepEqual(JSON.parse(snapshot).workflow, legacy.workflow);
 
   const migrated = JSON.parse(await readFile(manifestPath, "utf8"));
-  assert.equal(migrated.schema_version, "3.1.0");
+  assert.equal(migrated.schema_version, "3.2.0");
   assert.equal("workflow" in migrated, false);
-  assert.match(migrated.$schema, /project-schema-v3\.1\.json$/);
+  assert.match(migrated.$schema, /project-schema-v3\.2\.json$/);
   assert.equal(migrated.created_at, legacy.created_at);
   assert.deepEqual(migrated.paths, {
     ...legacy.paths,
     creation: ".author-toolkit/creation/",
+    convergence: ".author-toolkit/convergence/",
   });
+  assert.match(migrated.current_scope.scope_fingerprint, /^[0-9a-f]{64}$/);
   assert.equal(migrated.current_scope.status, "proposed");
   assert.match(migrated.current_scope.description, /author confirmation/i);
   assert.equal(migrated.current_scope.files.length, 4);
@@ -105,7 +107,7 @@ test("migration inventories manuscripts and converts pending work and overrides"
     await readFile(path.join(path.dirname(summary.snapshot), "migration.json"), "utf8"),
   );
   assert.equal(migrationRecord.source_schema_version, "2.0.0");
-  assert.equal(migrationRecord.target_schema_version, "3.1.0");
+  assert.equal(migrationRecord.target_schema_version, "3.2.0");
   assert.deepEqual(migrationRecord.pending_action, migrated.pending_action);
   assert.equal(migrationRecord.overrides.length, 2);
   assert.deepEqual(
@@ -129,19 +131,25 @@ test("migration inventories manuscripts and converts pending work and overrides"
     cwd: root,
     encoding: "utf8",
   });
-  assert.equal(cli.status, 0, cli.stderr);
-  assert.match(cli.stdout, /4 checks, 0 failures/);
+  assert.equal(cli.status, 1, cli.stderr);
+  assert.match(cli.stdout, /4 checks, 1 failure/);
   assert.match(cli.stdout, /#files/);
-  assert.match(cli.stdout, /#scope/);
+  assert.match(cli.stderr, /#scope/);
   assert.match(cli.stdout, /#tracker/);
+  assert.match(cli.stdout, /full_manuscript=false/);
+  assert.match(cli.stderr, /full-manuscript validation requires a confirmed scope/);
 
   await writeFile(path.join(projectRoot, "manuscript", "chapter-01.md"), "Changed outside migration", "utf8");
+  const staleScope = await validateScopeCurrency(migrated, manifestPath);
+  assert.equal(staleScope.valid, false);
+  assert.ok(staleScope.errors.some((error) =>
+    error.message.includes("manuscript content changed since the scope was recorded")
+  ));
   const stale = spawnSync(process.execPath, [validatorCli, "--manifest", manifestPath], {
     cwd: root,
     encoding: "utf8",
   });
   assert.equal(stale.status, 1);
-  assert.match(stale.stderr, /manuscript content changed since the scope was recorded/);
 });
 
 test("migration is idempotent and leaves an existing v3 manifest and tracker untouched", async (t) => {

@@ -13,6 +13,7 @@ import {
   finishCycleOperation,
 } from "./cycle-coordination.mjs";
 import { transitionCycle } from "./cycles.mjs";
+import { inspectLegacyRecovery } from "./legacy-recovery.mjs";
 import { validateManifest } from "./manifest.mjs";
 import {
   prepareRevisionExecution,
@@ -458,6 +459,8 @@ export async function reconcileCycle(projectRoot, request = {}, options = {}) {
   ];
   const completedPointer = await completedPointerBlocker(project);
   if (completedPointer) blockers.push(completedPointer);
+  const legacyRecovery = active ? null : await inspectLegacyRecovery(project.root, project.manifest);
+  if (legacyRecovery) blockers.push(...legacyRecovery.blockers);
   const lockDiagnostic = lockBlocker(inspected);
   if (lockDiagnostic) blockers.push(lockDiagnostic);
 
@@ -471,7 +474,20 @@ export async function reconcileCycle(projectRoot, request = {}, options = {}) {
       interrupted_operation: project.manifest.cycle_operation ?? null,
       lock: inspected.present ? inspected : null,
       blockers,
-      required_action: blockers.length > 0 ? recoveryAction() : null,
+      required_action: blockers.length > 0
+        ? blockers[0].required_action ?? recoveryAction()
+        : null,
+    };
+  }
+  if (legacyRecovery?.recovery_required) {
+    return {
+      valid: false,
+      diagnostic_only: false,
+      state_written: false,
+      cycle: null,
+      blockers,
+      available_directions: [],
+      required_action: legacyRecovery.required_action,
     };
   }
   const needsLock = [

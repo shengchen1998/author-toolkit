@@ -120,3 +120,4 @@ export {
 } from "./scope.mjs";
 export { reconcileManuscript } from "./reconciliation.mjs";
 export { reconcileCycle } from "./cycle-recovery.mjs";
+export { migrateProjectToV3, migrateProjectToV32 } from "./migration.mjs";

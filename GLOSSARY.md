@@ -97,3 +97,15 @@ The read-only description of evaluation outcome, currency, active lifecycle, pen
 
 **Convergence gate**:
 The read-only check that permits dependent work only when a current evaluation is satisfied.
+
+**Project migration**:
+The direct, preserved conversion of a v2, v3.0, or v3.1 project to v3.2, including historical evidence and pending work. Migration creates no satisfied evaluation, active cycle, or author decision.
+_Avoid_: Historical convergence inference, intermediate v3.1 migration state
+
+**Legacy recovery**:
+The explicit diagnosis and author-directed reconciliation of interrupted or awaiting work retained by project migration, without inferring cycle ownership, approval, publication, or convergence.
+_Avoid_: Pending-action approval, automatic staging publication
+
+**Legacy scope confirmation**:
+An existing approved tracker row with type `scope-confirmation`, operation `intake`, exact scope ID and ordered paths, and matching scope-fingerprint and reading-order tokens. Migration may reference it but never creates it.
+_Avoid_: Placeholder approval, inferred reading-order confirmation

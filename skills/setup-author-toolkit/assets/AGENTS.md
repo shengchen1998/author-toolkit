@@ -10,7 +10,7 @@ Match the author's language. Resolve every skill in the host's current skill lis
 
 For shared fiction creation or revision, locate the project root and `.author-toolkit/project.json`:
 
-- If the manifest is missing or v2, show the `setup-author-toolkit` command and stop shared work. Setup registers existing paths, deploys shared contracts to `.author-toolkit/references/`, and migrates v2 without resetting project artifacts.
+- If the manifest is missing, v2, v3.0, or v3.1, show the `setup-author-toolkit` command and stop shared work. Setup registers existing paths, deploys shared contracts to `.author-toolkit/references/`, and migrates legacy projects directly to v3.2 without resetting project artifacts.
 - If `author-project` reports missing or mismatched shared references during `read`, `validate`, or `status`, show the `setup-author-toolkit` command and stop shared work. A valid v3 manifest alone does not prove reference deployment.
 - To create fiction from scratch or continue shared creation, show the `write-fiction` command.
 - For whole-book Story Bible, macro-structure, complete character-arc, or final-review work, show the `revise-fiction` command.
@@ -47,6 +47,8 @@ Reuse evidence only when its operation, `scope_id`, input versions, requested co
 A pending action records interrupted or awaiting work. Its cycle, revision, operation, and scope fields are coordination references only. Recheck current evidence and approvals before acting on it; it does not authorize a manuscript write, publication, restore, or cycle completion.
 
 When status reports an interrupted `cycle_operation`, a completed/active conflict, a pending identity mismatch, or a leftover active-cycle lock, stop dependent work and run `author-project reconcile-cycle` without a direction first. Apply only the documented direction for the exact cycle and operation after reviewing current artifacts. A direction never rewrites evaluations, approvals, journals, backups, or verified executions and never replaces their independent author gates. Do not remove a lock unless its recorded PID is not running and its exact owner token is supplied.
+
+After project migration, the same diagnostic reports `legacy-commit-recovery-required` and `legacy-pending-recovery-required` without inventing an active cycle. Complete the explicit legacy recovery before dependent cycle work. A staged draft from a legacy project requires exact rejection, or a current satisfied starting evaluation followed by exact reapproval in a new `write-fiction` cycle; migration never publishes it or infers approval. An unproven legacy revision base uses current full-manuscript `revise-draft` recovery with the normal coverage-reuse rules.
 
 ## Keep author decisions explicit
 

@@ -1,5 +1,7 @@
 # Migrating to Author Toolkit 3.0
 
+> **Historical guide:** This page records the 3.0 migration behavior. For the current direct migration path, see [Migrating to Author Toolkit 3.2](MIGRATION-3.2.md).
+
 Author Toolkit 3.0.0 replaces stage-specific orchestration state with one
 neutral project evidence model shared by `revise-fiction` and `revise-draft`.
 Both entry points require the same `setup-author-toolkit`. Setup accepts no
