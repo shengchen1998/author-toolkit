@@ -26,6 +26,7 @@ import {
   writeAtomicVerified,
 } from "./state-io.mjs";
 import { parseTrackerState } from "./tracker.mjs";
+import { utcTimestamp } from "./time.mjs";
 
 function executionError(instancePath, message, keyword = "revision-execution") {
   return { instancePath, keyword, message, params: {} };
@@ -61,8 +62,8 @@ function formatErrors(errors) {
   return errors.map((error) => `${error.instancePath || "/"} ${error.message}`).join("; ");
 }
 
-export function validateRevisionExecution(value) {
-  const schema = validateRevisionExecutionSchema(value);
+export function validateRevisionExecution(value, options = {}) {
+  const schema = validateRevisionExecutionSchema(value, options);
   const errors = [...schema.errors];
   const files = new Set();
   for (const [index, file] of (value?.files ?? []).entries()) {
@@ -521,9 +522,7 @@ export async function validateRevisionExecutionAgainstDisk(projectRoot, executio
 }
 
 function operationTime(options) {
-  const now = options.now instanceof Date ? options.now : new Date();
-  if (Number.isNaN(now.getTime())) throw new Error("Invalid revision execution time");
-  return now.toISOString();
+  return utcTimestamp(options);
 }
 
 function executionReference(execution, relativePath, text) {
@@ -590,6 +589,7 @@ async function withCycleLock(project, options, operation) {
     {
       timeoutMs: options.lockTimeoutMs ?? 10000,
       retryMs: options.lockRetryMs ?? 20,
+      now: options.now,
     },
   );
   if (!lock.acquired) {

@@ -16,6 +16,7 @@ Accept one operation per invocation:
 | Operation | Required input | Result |
 |---|---|---|
 | `initialize` | Project root, project metadata, paths, and BCP 47 language | Run public `init` to create fresh neutral v3.2 operational state without importing evidence, or validate an existing v3.2 project without resetting work; migrate legacy state through setup first |
+| `timestamp` | Optional injectable UTC time for deterministic tests | Return one versioned response whose `result.json` and `result.filename` values share one UTC clock reading |
 | `upgrade-v31` | Project root, confirmed additive upgrade, and optional creation path | Add v3.1 creation registration to a valid v3.0 manifest while preserving all work |
 | `read` | Project root or manifest path; optional `--full` | Return compact project status by default, or the complete manifest and convergence status only when explicitly requested |
 | `validate` | Project root or manifest path | Run the installed project schema validator and report diagnostics, including the v3.2 full-manuscript result and cycle contract |
@@ -44,6 +45,7 @@ In a source checkout, `scripts/lib/index.mjs` exports the public `migrateProject
 
 ```bash
 node <toolkit-root>/scripts/migrate-v32.mjs --project-root <project-root>
+node <setup-skill>/assets/runtime/author-project.mjs timestamp
 node <setup-skill>/assets/runtime/author-project.mjs init --project-root <project-root> --input <initialization.json>
 node <setup-skill>/assets/runtime/author-project.mjs read --project-root <project-root>
 node <setup-skill>/assets/runtime/author-project.mjs status --project-root <project-root> [--full]

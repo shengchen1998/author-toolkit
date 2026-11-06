@@ -26,6 +26,7 @@ const commands = new Set([
 
 function usage() {
   console.log(`Usage:
+  node ${process.argv[1] ?? "author-project.mjs"} timestamp [--now ISO_TIMESTAMP]
   node ${process.argv[1] ?? "author-project.mjs"} init --project-root ROOT [--input FILE]
   node ${process.argv[1] ?? "author-project.mjs"} init --project-root ROOT [--language TAG] [--manuscript-root PATH]
   node ${process.argv[1] ?? "author-project.mjs"} read --project-root ROOT [--full]
@@ -186,8 +187,27 @@ async function runStateCommand(command, args) {
   if (!status.valid) process.exitCode = 1;
 }
 
+async function runTimestamp(args) {
+  if (args.length !== 0 && (args.length !== 2 || args[0] !== "--now" || !args[1])) {
+    throw new Error("timestamp accepts only an optional --now ISO timestamp");
+  }
+  const { timestampResult } = await import("./lib/time.mjs");
+  const result = timestampResult({ now: args[1] });
+  console.log(JSON.stringify({
+    response_contract_version: "1.0",
+    command: "timestamp",
+    valid: true,
+    result,
+    errors: [],
+  }, null, 2));
+}
+
 async function main() {
   const args = process.argv.slice(2);
+  if (args[0] === "timestamp") {
+    await runTimestamp(args.slice(1));
+    return;
+  }
   if (args[0] === "init") {
     await runInitialization(args.slice(1));
     return;

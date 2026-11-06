@@ -2,6 +2,8 @@ import { createHash, randomUUID } from "node:crypto";
 import { link, mkdir, readFile, readdir, rename, rm, rmdir, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 
+import { utcTimestamp } from "./time.mjs";
+
 export function sha256Bytes(contents) {
   return createHash("sha256").update(contents).digest("hex");
 }
@@ -54,7 +56,7 @@ export async function removeVerified(file, expectedSha256) {
 }
 
 
-export async function acquireDirectoryLock(directory, { timeoutMs = 10000, retryMs = 20 } = {}) {
+export async function acquireDirectoryLock(directory, { timeoutMs = 10000, retryMs = 20, now } = {}) {
   const waitTimeout = Number.isFinite(timeoutMs) && timeoutMs >= 0 ? timeoutMs : 10000;
   const retryDelay = Number.isFinite(retryMs) && retryMs >= 1 ? retryMs : 20;
   const startedAt = Date.now();
@@ -67,7 +69,7 @@ export async function acquireDirectoryLock(directory, { timeoutMs = 10000, retry
       const owner = {
         pid: process.pid,
         token,
-        acquired_at: new Date().toISOString(),
+        acquired_at: utcTimestamp({ now }),
       };
       await writeFile(
         path.join(directory, "owner.json"),

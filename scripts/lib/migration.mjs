@@ -22,6 +22,7 @@ import {
   createNoClobberVerified,
   writeAtomicVerified,
 } from "./state-io.mjs";
+import { utcDate } from "./time.mjs";
 
 const APPROVAL_HEADERS = [
   "Approval ID",
@@ -277,7 +278,7 @@ async function validateOnDisk(manifest, manifestPath) {
   };
 }
 
-export async function migrateProjectToV3(projectRoot, { now = new Date() } = {}) {
+export async function migrateProjectToV3(projectRoot, { now } = {}) {
   return migrateProjectToV32(projectRoot, { now });
 }
 
@@ -296,9 +297,7 @@ const CONVERGENCE_DIRECTORIES = [
 ];
 
 function migrationTimestamp(now) {
-  const value = now instanceof Date ? now : new Date(now);
-  if (Number.isNaN(value.getTime())) throw new Error("Invalid migration time");
-  return value;
+  return utcDate(now);
 }
 
 function v32Manifest(legacy, timestamp) {
@@ -354,7 +353,7 @@ async function migrationSummary({
   };
 }
 
-export async function migrateProjectToV32(projectRoot, { now = new Date() } = {}) {
+export async function migrateProjectToV32(projectRoot, { now } = {}) {
   const root = path.resolve(projectRoot);
   const manifestPath = path.join(root, ".author-toolkit", "project.json");
   const originalManifestText = await readFile(manifestPath, "utf8");

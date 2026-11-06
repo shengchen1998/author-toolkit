@@ -298,7 +298,7 @@ test("record-scope confirms exact reading-order evidence with immutable snapshot
   const proposedScope = proposedManifest.current_scope;
   const confirmation = {
     decision_id: "SCOPE-001",
-    confirmed_at: "2026-11-07T00:00:00.000Z",
+    confirmed_at: proposedManifest.updated_at,
     reading_order_confirmed: true,
   };
   const confirmedPath = path.join(project.projectRoot, "confirmed.json");
@@ -428,16 +428,17 @@ test("state commands honor custom operational paths", async (t) => {
       convergence: "state/convergence/",
     },
   });
+  const operationTime = JSON.parse(await readFile(project.manifestPath, "utf8")).updated_at;
   const scopePath = path.join(project.projectRoot, "scope.json");
   await writeJson(scopePath, {
     scope_id: "scope-custom-001",
     description: "The complete manuscript using registered custom operational paths.",
     status: "confirmed",
     files: ["manuscript/chapter-001.md"],
-    created_at: "2026-11-07T00:00:00.000Z",
+    created_at: operationTime,
     author_confirmation: {
       decision_id: "SCOPE-CUSTOM-001",
-      confirmed_at: "2026-11-07T00:00:00.000Z",
+      confirmed_at: operationTime,
       reading_order_confirmed: true,
     },
   });
@@ -492,7 +493,7 @@ test("state commands honor custom operational paths", async (t) => {
 test("confirmed scope interruption preserves snapshots and supports an exact retry", async (t) => {
   const project = await installedProject(t);
   await project.initialize({ language: "en" });
-  const now = new Date("2026-11-07T00:00:00.000Z");
+  const now = new Date();
   const request = {
     scope_id: "scope-interrupted-001",
     description: "The exact confirmed scope resumed after an interrupted publication.",
@@ -539,7 +540,7 @@ test("confirmed scope interruption preserves snapshots and supports an exact ret
 test("pending-action interruption reports the actual published recovery state", async (t) => {
   const project = await installedProject(t);
   await project.initialize({ language: "en" });
-  const now = new Date("2026-11-07T00:00:00.000Z");
+  const now = new Date();
   const request = {
     operation: "intake",
     status: "blocked",
@@ -720,5 +721,38 @@ test("set-pending returns a structured validation failure for an invalid operati
   assert.equal(response.errors[0].code, "pending-action-invalid");
   assert.equal(response.result.state_written, false);
   assert.ok(response.result.validation_errors.length > 0);
+  assert.equal(await readFile(project.manifestPath, "utf8"), before);
+});
+
+test("record-scope distinguishes evidence validation failures from write interruptions", async (t) => {
+  const project = await installedProject(t);
+  await project.initialize({ language: "en" });
+  const before = await readFile(project.manifestPath, "utf8");
+  const inputPath = path.join(project.projectRoot, "future-scope.json");
+  await writeJson(inputPath, {
+    scope_id: "scope-future-001",
+    description: "Future confirmation evidence must fail validation without a write interruption.",
+    status: "confirmed",
+    files: ["manuscript/chapter-001.md"],
+    created_at: JSON.parse(before).updated_at,
+    author_confirmation: {
+      decision_id: "SCOPE-FUTURE-001",
+      confirmed_at: new Date(Date.now() + 120000).toISOString(),
+      reading_order_confirmed: true,
+    },
+  });
+  const recorded = project.run([
+    "record-scope",
+    "--project-root",
+    project.projectRoot,
+    "--input",
+    inputPath,
+  ]);
+  assert.equal(recorded.status, 1, `${recorded.stdout}\n${recorded.stderr}`);
+  const response = envelope(recorded, "record-scope");
+  assert.equal(response.valid, false);
+  assert.equal(response.errors[0].code, "scope-recording-failed");
+  assert.match(response.errors[0].message, /60 seconds/);
+  assert.equal(response.result.state_written, false);
   assert.equal(await readFile(project.manifestPath, "utf8"), before);
 });

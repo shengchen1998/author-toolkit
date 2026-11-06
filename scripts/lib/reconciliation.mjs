@@ -31,6 +31,7 @@ import {
   writeAtomicVerified,
 } from "./state-io.mjs";
 import { parseTrackerState } from "./tracker.mjs";
+import { utcTimestamp } from "./time.mjs";
 
 const RECOVERY_OPERATIONS = [
   "intake",
@@ -313,6 +314,7 @@ export async function reconcileManuscript(projectRoot, request, options = {}) {
     {
       timeoutMs: options.lockTimeoutMs ?? 10000,
       retryMs: options.lockRetryMs ?? 20,
+      now: options.now,
     },
   );
   if (!lock.acquired) {
@@ -381,7 +383,7 @@ export async function reconcileManuscript(projectRoot, request, options = {}) {
       }
       const targetReference = request.target_scope;
       const target = targetReference ? await readScope(project, targetReference) : null;
-      let createdAt = options.now instanceof Date ? options.now.toISOString() : new Date().toISOString();
+      let createdAt = utcTimestamp(options);
       let inventoryEvidence;
       let observedInventory = null;
       if (target) {
@@ -403,7 +405,7 @@ export async function reconcileManuscript(projectRoot, request, options = {}) {
           throw new Error("A null reconciliation target requires an actually empty manuscript inventory");
         }
         inventoryEvidence = (await recordInventorySnapshot(project.root, project.manifest, {
-          now: new Date(createdAt),
+          now: createdAt,
         })).reference;
       }
       try {

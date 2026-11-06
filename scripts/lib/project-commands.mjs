@@ -13,6 +13,7 @@ import {
   sha256Bytes,
   writeAtomicVerified,
 } from "./state-io.mjs";
+import { utcTimestamp } from "./time.mjs";
 
 function requiredAction(operation) {
   return {
@@ -40,9 +41,7 @@ function stateError(code, message, details = {}) {
 }
 
 function operationTime(options) {
-  const now = options.now instanceof Date ? options.now : new Date();
-  if (Number.isNaN(now.getTime())) throw new Error("Invalid project operation time");
-  return now.toISOString();
+  return utcTimestamp(options);
 }
 
 function validatePendingRequest(request) {
@@ -111,6 +110,7 @@ export async function setPendingAction(projectRoot, request, options = {}) {
     {
       timeoutMs: options.lockTimeoutMs ?? 10000,
       retryMs: options.lockRetryMs ?? 20,
+      now: options.now,
     },
   );
   if (!lock.acquired) {
@@ -350,7 +350,15 @@ export async function recordProjectScope(projectRoot, request, options = {}) {
       cycleId: request.cycle_id,
       expectedRevision: request.expected_revision,
       now: options.now,
-      checkpoint: options.checkpoint,
+      checkpoint: options.checkpoint ? async (point) => {
+        try {
+          await options.checkpoint(point);
+        } catch (error) {
+          error.projectCode ??= "scope-write-interrupted";
+          error.projectDetails ??= { checkpoint: point };
+          throw error;
+        }
+      } : undefined,
       lockTimeoutMs: options.lockTimeoutMs,
       lockRetryMs: options.lockRetryMs,
       progress,
@@ -383,7 +391,7 @@ export async function recordProjectScope(projectRoot, request, options = {}) {
   } catch (error) {
     return {
       ...failure(
-        error.projectCode ?? "scope-write-interrupted",
+        error.projectCode ?? "scope-recording-failed",
         error.message,
         "record-scope",
         error.projectDetails,

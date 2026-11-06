@@ -20,6 +20,7 @@ import {
   releaseDirectoryLock,
   writeAtomicVerified,
 } from "./state-io.mjs";
+import { utcTimestamp } from "./time.mjs";
 
 function sha256(contents) {
   return createHash("sha256").update(contents).digest("hex");
@@ -128,12 +129,10 @@ export async function collectVersionedInventory(projectRoot, manifest) {
 
 export async function recordInventorySnapshot(projectRoot, manifest, options = {}) {
   const observed = await collectVersionedInventory(projectRoot, manifest);
-  const now = options.now instanceof Date ? options.now : new Date();
-  if (Number.isNaN(now.getTime())) throw new Error("Invalid inventory recording time");
   const record = {
     schema_version: "1.0.0",
     ...observed,
-    created_at: now.toISOString(),
+    created_at: utcTimestamp(options),
   };
   const validation = validateInventorySnapshot(record);
   if (!validation.valid) throw validationError(validation);
@@ -260,9 +259,7 @@ async function recordScopeLocked(root, manifestPath, initialConvergence, scope, 
   }
   progress.active = active;
 
-  const now = options.now instanceof Date ? options.now : new Date();
-  if (Number.isNaN(now.getTime())) throw new Error("Invalid scope recording time");
-  const updatedAt = now.toISOString();
+  const updatedAt = utcTimestamp(options);
   if (!["proposed", "confirmed"].includes(scope.status)) {
     throw new Error(`Unsupported scope status: ${scope.status}`);
   }
@@ -454,6 +451,7 @@ export async function recordScope(projectRoot, scope, options = {}) {
     {
       timeoutMs: options.lockTimeoutMs ?? 10000,
       retryMs: options.lockRetryMs ?? 20,
+      now: options.now,
     },
   );
   if (!lock.acquired) {
@@ -800,8 +798,8 @@ export async function validateFullManuscriptScope(manifest, manifestPath) {
   return result;
 }
 
-export function validateScopeSnapshot(value) {
-  const schema = validateScopeSnapshotSchema(value);
+export function validateScopeSnapshot(value, options = {}) {
+  const schema = validateScopeSnapshotSchema(value, options);
   const errors = [...schema.errors];
   if (Array.isArray(value?.files) && Array.isArray(value?.excluded_files)) {
     const expected = computeScopeFingerprint(value);
@@ -831,8 +829,8 @@ export function validateScopeSnapshot(value) {
   return { valid: errors.length === 0, errors };
 }
 
-export function validateInventorySnapshot(value) {
-  const schema = validateInventorySnapshotSchema(value);
+export function validateInventorySnapshot(value, options = {}) {
+  const schema = validateInventorySnapshotSchema(value, options);
   const errors = [...schema.errors];
   if (
     typeof value?.manuscript_root === "string" &&
