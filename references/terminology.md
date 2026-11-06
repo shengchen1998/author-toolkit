@@ -4,6 +4,25 @@ Apply this vocabulary to shared creation and revision documentation, reports, tr
 
 Independent skills keep their craft vocabularies. Register a craft term here before giving it a shared workflow meaning. Historical migration documents and legacy fixtures retain their historical wording; new instructions and artifacts use this vocabulary.
 
+## Directory
+
+- [Writing rules](#writing-rules): vocabulary, identifiers, qualifiers, and new-term registration.
+- [Core terms](#core-terms): approved English and Chinese terms with operational boundaries.
+- [Operation identifiers](#operation-identifiers): every shared operation identifier and its boundary.
+- [Contract values](#contract-values): closed statuses, types, actions, roles, and other machine values.
+
+### High-frequency index
+
+| Need | Quick route |
+| --- | --- |
+| Finding tracker `Status`: `open`, `resolved`, `deferred`, `dismissed`, `stale` | [Contract values](#contract-values) |
+| Approval `Status`: `approved`, `deferred`, `cancelled`, `superseded` | [Contract values](#contract-values) |
+| Pending action `status`: `in_progress`, `awaiting_author`, `blocked` | [Contract values](#contract-values) |
+| Convergence evaluation `outcome`: `satisfied`, `not_satisfied`, `indeterminate` | [Contract values](#contract-values) |
+| Common operation identifiers, including `intake`, `diagnostics`, `revision-plan`, `chapter-revision`, `current-scope-review`, and `final-review` | [Operation identifiers](#operation-identifiers) |
+| Revision and Story Bible approval types: `revision-plan`, `edit`, `story-bible` | [Contract values](#contract-values) |
+| Creation and import approval types: `creation-manuscript`, `creation-scope`, `creation-rejection`, `creation-import` | [Contract values](#contract-values) |
+
 ## Writing rules
 
 1. Use the approved English term or its fixed Chinese equivalent for the intended concept. Use one language form consistently within a sentence; machine identifiers remain English.
