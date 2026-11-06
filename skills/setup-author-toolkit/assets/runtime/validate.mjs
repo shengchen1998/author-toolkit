@@ -14057,6 +14057,7 @@ async function computeEvaluation(project, cycle, roots, evaluationId, createdAt)
     validateCoverageIndex
   );
   const coverageClaimPaths = /* @__PURE__ */ new Set([roots.coverage_index.path, ...wholeBookReportPaths]);
+  const dependencyExceptions = [];
   if (coverageIndex && pass && scope) {
     if (coverageIndex.scope_id !== roots.target_scope.scope_id || coverageIndex.scope_fingerprint !== roots.target_scope.scope_fingerprint || !samePassReference(coverageIndex.requested_pass, roots.requested_pass)) {
       block("coverage-index-scope-mismatch", "Coverage index is not bound to the evaluated pass and target fingerprint.");
@@ -14118,24 +14119,34 @@ async function computeEvaluation(project, cycle, roots, evaluationId, createdAt)
           block("coverage-source-hash-missing", `Coverage unit ${unit.unit_id} has no source report hash.`);
           continue;
         }
-        const reuse = canReuseCoverageUnit(unit, {
+        const requestedWork = {
           source_report: unit.source_report,
           operation,
           paths: unit.paths,
-          subchecks: requirement.subchecks,
+          subchecks: requirement.subchecks
+        };
+        const reuse = canReuseCoverageUnit(unit, {
+          ...requestedWork,
           dependencies: pass.dependencies
+        });
+        const exceptionCandidate = unit.dependency_exception && canReuseCoverageUnit(unit, {
+          ...requestedWork,
+          dependencies: unit.dependencies
         });
         const requiredByPath = new Map(requiredFiles.map((file) => [file.path, file.sha256]));
         const pathsMatch = unit.paths.every(
           (file, index) => requiredByPath.get(file.path) === file.sha256 && requirement.paths.indexOf(file.path) >= 0 && (index === 0 || requirement.paths.indexOf(unit.paths[index - 1].path) < requirement.paths.indexOf(file.path))
         );
-        if (!reuse || !pathsMatch) {
+        if (!reuse && !exceptionCandidate || !pathsMatch) {
           block(
             "coverage-unit-not-current",
             `Coverage unit ${unit.unit_id} does not match requested paths, subchecks, dependencies, or full local coverage.`,
             unit.coverage === "full" ? "indeterminate" : "not_satisfied"
           );
           continue;
+        }
+        if (unit.dependency_exception) {
+          dependencyExceptions.push({ unit, unitReference });
         }
         for (const file of unit.paths) covered.add(file.path);
         const sourceReference = {
@@ -14476,6 +14487,110 @@ async function computeEvaluation(project, cycle, roots, evaluationId, createdAt)
     if (attestation.attestation_id !== reference.attestation_id || attestation.pass_id !== roots.requested_pass.pass_id || attestation.pass_fingerprint !== roots.requested_pass.pass_fingerprint || attestation.scope_id !== roots.target_scope.scope_id || attestation.scope_fingerprint !== roots.target_scope.scope_fingerprint) {
       block("semantic-attestation-identity-mismatch", `Semantic attestation ${reference.attestation_id} is not bound to this pass and target.`);
     }
+  }
+  for (const { unit, unitReference } of dependencyExceptions) {
+    const exception = unit.dependency_exception;
+    const exceptionBlock = (code, message) => block(code, message, "indeterminate", {
+      path: unitReference.path,
+      artifact_id: unit.unit_id
+    });
+    const dependencyPath = exception.dependency_path;
+    const within = (root2) => dependencyPath === root2 || dependencyPath.startsWith(`${root2}/`);
+    const operationalRoots2 = [
+      project.manifest.manuscript_root,
+      project.manifest.paths.backups,
+      project.manifest.paths.handoffs,
+      project.manifest.paths.creation,
+      project.manifest.paths.convergence
+    ];
+    const otherEvidenceRoles = [...computation.artifacts.values()].filter(
+      (artifact) => artifact.path === dependencyPath && !["dependency", "attested-artifact"].includes(artifact.role)
+    );
+    const ineligibleReport = within(project.manifest.paths.reports) && !within(`${project.manifest.paths.reports}/${exception.operation}`);
+    if (dependencyPath === project.manifest.paths.story_bible || dependencyPath === project.manifest.paths.audit_tracker || operationalRoots2.some(within) || otherEvidenceRoles.length > 0 || ineligibleReport) {
+      exceptionBlock(
+        "dependency-exception-ineligible",
+        `Dependency exception ${unit.unit_id} cannot apply to ${dependencyPath}; only a draft-baseline or revision-plan dependency is eligible.`
+      );
+    }
+    if (unit.unit_id !== unitReference.unit_id || exception.unit_id !== unit.unit_id || !samePassReference(exception.requested_pass, roots.requested_pass)) {
+      exceptionBlock(
+        "dependency-exception-identity-mismatch",
+        `Dependency exception ${unit.unit_id} is not bound to this unit version and requested pass.`
+      );
+    }
+    const oldDependency = unit.dependencies.find(
+      (dependency) => dependency.path === exception.dependency_path
+    );
+    const newDependency = pass.dependencies.find(
+      (dependency) => dependency.path === exception.dependency_path
+    );
+    const unitDependencyPaths = unit.dependencies.map((dependency) => dependency.path).sort();
+    const passDependencyPaths = pass.dependencies.map((dependency) => dependency.path).sort();
+    const changedDependencies = unitDependencyPaths.filter(
+      (dependencyPath2, index) => dependencyPath2 === passDependencyPaths[index] && unit.dependencies.find((dependency) => dependency.path === dependencyPath2)?.sha256 !== pass.dependencies.find((dependency) => dependency.path === dependencyPath2)?.sha256
+    );
+    if (!oldDependency || !newDependency || oldDependency.sha256 !== exception.old_sha256 || newDependency.sha256 !== exception.new_sha256 || exception.old_sha256 === exception.new_sha256 || JSON.stringify(unitDependencyPaths) !== JSON.stringify(passDependencyPaths) || changedDependencies.length !== 1) {
+      exceptionBlock(
+        "dependency-exception-hash-mismatch",
+        `Dependency exception ${unit.unit_id} must bind exactly one old and new dependency hash.`
+      );
+    }
+    const matchingAttestations = attestationRecords.filter(
+      ({ attestation: attestation2, reference }) => attestation2.attestation_id === exception.semantic_attestation.attestation_id && reference.attestation_id === exception.semantic_attestation.attestation_id && sameReference(reference, exception.semantic_attestation)
+    );
+    if (matchingAttestations.length !== 1) {
+      exceptionBlock(
+        "dependency-exception-attestation-missing",
+        `Dependency exception ${unit.unit_id} has no exact semantic-attestation input.`
+      );
+      continue;
+    }
+    const [{ attestation }] = matchingAttestations;
+    const claims = attestation.claims.filter(
+      (claim) => claim.claim_type === "dependency-copyedit" && claim.subject === unit.unit_id
+    );
+    if (attestation.attester.role !== "host" || claims.length !== 1 || claims[0].verdict !== "confirmed") {
+      exceptionBlock(
+        "dependency-exception-attestation-mismatch",
+        `Dependency exception ${unit.unit_id} requires one confirmed host dependency-copyedit claim.`
+      );
+      continue;
+    }
+    const sourceReferences = claims[0].artifacts.filter(
+      (artifact) => artifact.path !== roots.requested_pass.path && artifact.path !== exception.dependency_path
+    );
+    if (sourceReferences.length !== 1) {
+      exceptionBlock(
+        "dependency-exception-attestation-mismatch",
+        `Dependency exception ${unit.unit_id} must attest one source unit, the requested pass, and the current dependency.`
+      );
+      continue;
+    }
+    const sourceUnit = await computation.json(
+      sourceReferences[0],
+      "dependency-exception-source-unit",
+      unit.unit_id,
+      validateCoverageUnitSchema
+    );
+    if (!sourceUnit) continue;
+    if (sourceUnit.dependency_exception !== null) {
+      exceptionBlock(
+        "dependency-exception-chain",
+        `Dependency exception ${unit.unit_id} cannot use another exception-bearing unit as its source.`
+      );
+    }
+    const sourceDependency = sourceUnit.dependencies?.find(
+      (dependency) => dependency.path === exception.dependency_path
+    );
+    if (sourceUnit.unit_id !== unit.unit_id || sourceUnit.source_report !== unit.source_report || sourceUnit.source_report_sha256 !== unit.source_report_sha256 || sourceUnit.scope_id !== unit.scope_id || sourceUnit.operation !== unit.operation || sourceUnit.kind !== unit.kind || sourceUnit.coverage !== unit.coverage || !sameVersionedFiles(sourceUnit.paths, unit.paths) || !sameVersionedFiles(sourceUnit.dependencies, unit.dependencies, false) || JSON.stringify([...sourceUnit.subchecks].sort()) !== JSON.stringify([...unit.subchecks].sort()) || sourceDependency?.sha256 !== exception.old_sha256) {
+      exceptionBlock(
+        "dependency-exception-source-mismatch",
+        `Dependency exception ${unit.unit_id} does not preserve its source unit evidence and old dependency hash.`
+      );
+    }
+  }
+  for (const { attestation } of attestationRecords) {
     for (const claim of attestation.claims) {
       for (const artifact of claim.artifacts) {
         const current = await computation.bytes(artifact, "attested-artifact", artifact.path);

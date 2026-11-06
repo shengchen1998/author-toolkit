@@ -78,6 +78,7 @@ function artifacts() {
       paths: [source],
       subchecks: ["scene-causality"],
       dependencies: [],
+      dependency_exception: null,
       coverage: "full",
       created_at: timestamp,
     },
