@@ -57,6 +57,15 @@ npx skills@latest add shengchen1998/author-toolkit -a claude-code -a kimi-code-c
 npx skills@latest add shengchen1998/author-toolkit -a claude-code -a kimi-code-cli -g
 ```
 
+安装后的 setup 技能包含自包含的 ESM 校验和项目操作 CLI. 它们已打包 Ajv 及全部运行时依赖, 只从该技能的 `assets/references/` 载荷加载 schema, 使用时不需要仓库检出, 项目内运行时副本, npm 安装或网络. 将 `<setup-skill>` 解析为已安装的 `setup-author-toolkit` 目录后运行:
+
+```bash
+node <setup-skill>/assets/runtime/validate.mjs --project-root <project-root>
+node <setup-skill>/assets/runtime/author-project.mjs --help
+```
+
+项目根目录校验先用真实 JSON Schema 校验器检查所选项目, 并在读取项目状态前核对所有已部署共享引用的哈希. 两个 CLI 无参数时都显示帮助. 校验成功退出码为 0, 校验失败为 1, 参数或用法错误为 2.
+
 更新需要手动执行:
 
 ```bash
@@ -259,18 +268,18 @@ v3.2 在 `<convergence-state-root>/active-cycle.json` 中至多保存一个已�
 通过可执行 `author-project` 门面运行周期操作:
 
 ```bash
-node scripts/author-project.mjs start-cycle --project-root <project-root> --input <request.json>
-node scripts/author-project.mjs transition-cycle --project-root <project-root> --input <transition.json>
-node scripts/author-project.mjs reconcile-cycle --project-root <project-root> [--input <direction.json>]
-node scripts/author-project.mjs prepare-draft-revision-execution --project-root <project-root> --input <independent-preparation.json>
-node scripts/author-project.mjs verify-draft-revision-execution --project-root <project-root> --input <independent-verification.json>
-node scripts/author-project.mjs prepare-revision-execution --project-root <project-root> --input <preparation.json>
-node scripts/author-project.mjs verify-revision-execution --project-root <project-root> --input <verification.json>
-node scripts/author-project.mjs evaluate-cycle --project-root <project-root> --input <evaluation-request.json>
-node scripts/author-project.mjs evaluate-draft --project-root <project-root> --input <independent-evaluation.json>
-node scripts/author-project.mjs complete-cycle --project-root <project-root> --input <completion.json>
-node scripts/author-project.mjs cycle-status --project-root <project-root>
-node scripts/author-project.mjs cycle-gate --project-root <project-root>
+node <setup-skill>/assets/runtime/author-project.mjs start-cycle --project-root <project-root> --input <request.json>
+node <setup-skill>/assets/runtime/author-project.mjs transition-cycle --project-root <project-root> --input <transition.json>
+node <setup-skill>/assets/runtime/author-project.mjs reconcile-cycle --project-root <project-root> [--input <direction.json>]
+node <setup-skill>/assets/runtime/author-project.mjs prepare-draft-revision-execution --project-root <project-root> --input <independent-preparation.json>
+node <setup-skill>/assets/runtime/author-project.mjs verify-draft-revision-execution --project-root <project-root> --input <independent-verification.json>
+node <setup-skill>/assets/runtime/author-project.mjs prepare-revision-execution --project-root <project-root> --input <preparation.json>
+node <setup-skill>/assets/runtime/author-project.mjs verify-revision-execution --project-root <project-root> --input <verification.json>
+node <setup-skill>/assets/runtime/author-project.mjs evaluate-cycle --project-root <project-root> --input <evaluation-request.json>
+node <setup-skill>/assets/runtime/author-project.mjs evaluate-draft --project-root <project-root> --input <independent-evaluation.json>
+node <setup-skill>/assets/runtime/author-project.mjs complete-cycle --project-root <project-root> --input <completion.json>
+node <setup-skill>/assets/runtime/author-project.mjs cycle-status --project-root <project-root>
+node <setup-skill>/assets/runtime/author-project.mjs cycle-gate --project-root <project-root>
 ```
 
 第二个正文变更周期返回 `active-cycle-exists`, 并给出当前周期要求的策略, 操作和命令.
@@ -310,8 +319,8 @@ revision, 操作, 范围或产物错配阻断依赖工作, 只读状态查询仍
 独立收敛状态和收敛门禁查询均为只读:
 
 ```bash
-node scripts/validate.mjs --convergence-status <manifest-path>
-node scripts/validate.mjs --convergence-gate <manifest-path>
+node <setup-skill>/assets/runtime/validate.mjs --convergence-status <manifest-path>
+node <setup-skill>/assets/runtime/validate.mjs --convergence-gate <manifest-path>
 ```
 
 有效状态查询对 `satisfied`, `not_satisfied` 或 `indeterminate` 都正常退出. 门禁只有当前证据为
@@ -440,7 +449,7 @@ AI 关联发现只描述文本模式, 不能证明文本由 AI 生成.
 
 ## 验证状态
 
-当前 3.2.0 的仓库检查已通过: 320 项协议测试和 19 项默认校验, 详见
+当前 3.2.0 的仓库检查已通过: 336 项协议测试和 19 项默认校验, 详见
 [docs/VALIDATION.md](docs/VALIDATION.md). 通用本地源安装已发现并复制全部 16 个技能, setup 共享载荷,
 项目内 schema 和独立技能本地契约均已验证. Kimi Code 2.4.1 已在一次性项目验证 setup, 首次创作基线,
 写作计划, staging, 章节复核, 首次发布与中断提交恢复, 普通创作基线, 发布后阻断, 增量与当前草稿 intake, 请求修订 intake 和迁移路由;
@@ -450,18 +459,24 @@ AI 关联发现只描述文本模式, 不能证明文本由 AI 生成.
 
 ## 开发与产物校验
 
-开发包需要 Node.js >= 22, 通用技能安装器需要 Node.js >= 22.20. 安装依赖后在仓库根目录运行:
+开发包需要 Node.js >= 22, 通用技能安装器需要 Node.js >= 22.20. 安装依赖后, 在源码变更时重新生成已纳入版本控制的运行时, 检查生成结果是否最新, 运行真实安装器 smoke, 再执行完整协议测试和仓库校验:
 
 ```bash
+npm run build:runtime
+npm run check:runtime
+npm run smoke:installed
 npm test
 npm run validate
 ```
 
-可用对应 CLI 参数直接校验 manifest, report 和新产物. 新参数包括范围快照, 正文清单快照,
-创作批次, 提交日志, 故事状态, 覆盖产物和复核任务; 准确参数名以当前安装的 `--help` 为准:
+`npm test` 已包含生成运行时一致性检查和隔离真实安装器 smoke. smoke 在一次性目录中运行通用安装器, 删除临时源副本后不依赖仓库依赖执行安装后的 CLI; 它不证明宿主技能发现或创作质量.
+
+仓库校验必须显式使用 `--repository`, 项目校验必须显式使用 `--project-root`. 无参数调用只显示帮助, 不检查隐式状态; 两种模式不能互相组合, 也不能与单项检查组合. 可用对应 CLI 参数直接校验 manifest, report 和新产物. 新参数包括范围快照, 正文清单快照, 创作批次, 提交日志, 故事状态, 覆盖产物和复核任务; 准确参数名以 `--help` 为准:
 
 ```bash
 node scripts/validate.mjs --help
+node scripts/validate.mjs --repository
+node scripts/validate.mjs --project-root /path/to/writing-project
 node scripts/validate.mjs --manifest /path/to/.author-toolkit/project.json
 node scripts/validate.mjs --scope-snapshot /path/to/scope.json
 node scripts/validate.mjs --inventory-snapshot /path/to/inventory.json

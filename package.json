@@ -5,12 +5,16 @@
   "type": "module",
   "description": "Incremental fiction creation and four revision strategies sharing one project evidence model, plus six independent writing skills for Claude Code and Kimi Code.",
   "scripts": {
+    "build:runtime": "node scripts/build-runtime.mjs",
+    "check:runtime": "node scripts/build-runtime.mjs --check",
+    "smoke:installed": "node scripts/smoke-installed-runtime.mjs",
     "test": "node --test tests/*.test.mjs",
-    "validate": "node scripts/validate.mjs"
+    "validate": "node scripts/validate.mjs --repository"
   },
   "devDependencies": {
     "ajv": "^8.17.1",
-    "ajv-formats": "^3.0.1"
+    "ajv-formats": "^3.0.1",
+    "esbuild": "0.25.10"
   },
   "engines": {
     "node": ">=22"

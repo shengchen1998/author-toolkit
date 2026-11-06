@@ -3,8 +3,13 @@ import { readFileSync } from "node:fs";
 import Ajv2020 from "ajv/dist/2020.js";
 import addFormats from "ajv-formats";
 
+const packagedReferences = globalThis[Symbol.for("author-toolkit.packaged-references")];
+
 function readSchema(name) {
-  return JSON.parse(readFileSync(new URL(`../../references/${name}`, import.meta.url), "utf8"));
+  const schemaUrl = packagedReferences
+    ? new URL(name, packagedReferences)
+    : new URL(`../../references/${name}`, import.meta.url);
+  return JSON.parse(readFileSync(schemaUrl, "utf8"));
 }
 
 const findingV1Schema = readSchema("finding-schema.json");

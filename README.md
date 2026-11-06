@@ -136,6 +136,15 @@ Add `-g` to install at user level instead:
 npx skills@latest add shengchen1998/author-toolkit -a claude-code -a kimi-code-cli -g
 ```
 
+The installed setup skill contains self-contained ESM validation and project-operation CLIs. They bundle Ajv and all runtime dependencies, load schemas from the setup skill's `assets/references/` payload, and require no repository checkout, project-local runtime copy, npm installation, or network access during use. Resolve `<setup-skill>` as the installed `setup-author-toolkit` directory, then run:
+
+```bash
+node <setup-skill>/assets/runtime/validate.mjs --project-root <project-root>
+node <setup-skill>/assets/runtime/author-project.mjs --help
+```
+
+Project-root validation verifies every deployed shared-reference hash before using the real JSON Schema validators on the selected project. Both CLIs print help when invoked without arguments. Validation success exits 0, validation failure exits 1, and usage errors exit 2.
+
 Updates are manual. Check and apply them with:
 
 ```bash
@@ -438,18 +447,18 @@ satisfied record. A later current satisfied evaluation restores the ordinary sta
 Use the executable `author-project` facade for lifecycle operations:
 
 ```bash
-node scripts/author-project.mjs start-cycle --project-root <project-root> --input <request.json>
-node scripts/author-project.mjs transition-cycle --project-root <project-root> --input <transition.json>
-node scripts/author-project.mjs reconcile-cycle --project-root <project-root> [--input <direction.json>]
-node scripts/author-project.mjs prepare-draft-revision-execution --project-root <project-root> --input <independent-preparation.json>
-node scripts/author-project.mjs verify-draft-revision-execution --project-root <project-root> --input <independent-verification.json>
-node scripts/author-project.mjs prepare-revision-execution --project-root <project-root> --input <preparation.json>
-node scripts/author-project.mjs verify-revision-execution --project-root <project-root> --input <verification.json>
-node scripts/author-project.mjs evaluate-cycle --project-root <project-root> --input <evaluation-request.json>
-node scripts/author-project.mjs evaluate-draft --project-root <project-root> --input <independent-evaluation.json>
-node scripts/author-project.mjs complete-cycle --project-root <project-root> --input <completion.json>
-node scripts/author-project.mjs cycle-status --project-root <project-root>
-node scripts/author-project.mjs cycle-gate --project-root <project-root>
+node <setup-skill>/assets/runtime/author-project.mjs start-cycle --project-root <project-root> --input <request.json>
+node <setup-skill>/assets/runtime/author-project.mjs transition-cycle --project-root <project-root> --input <transition.json>
+node <setup-skill>/assets/runtime/author-project.mjs reconcile-cycle --project-root <project-root> [--input <direction.json>]
+node <setup-skill>/assets/runtime/author-project.mjs prepare-draft-revision-execution --project-root <project-root> --input <independent-preparation.json>
+node <setup-skill>/assets/runtime/author-project.mjs verify-draft-revision-execution --project-root <project-root> --input <independent-verification.json>
+node <setup-skill>/assets/runtime/author-project.mjs prepare-revision-execution --project-root <project-root> --input <preparation.json>
+node <setup-skill>/assets/runtime/author-project.mjs verify-revision-execution --project-root <project-root> --input <verification.json>
+node <setup-skill>/assets/runtime/author-project.mjs evaluate-cycle --project-root <project-root> --input <evaluation-request.json>
+node <setup-skill>/assets/runtime/author-project.mjs evaluate-draft --project-root <project-root> --input <independent-evaluation.json>
+node <setup-skill>/assets/runtime/author-project.mjs complete-cycle --project-root <project-root> --input <completion.json>
+node <setup-skill>/assets/runtime/author-project.mjs cycle-status --project-root <project-root>
+node <setup-skill>/assets/runtime/author-project.mjs cycle-gate --project-root <project-root>
 ```
 
 A second manuscript-changing cycle returns `active-cycle-exists` with the active
@@ -518,8 +527,8 @@ can be complete while full-manuscript evidence is not yet satisfied.
 Independent convergence status and convergence gate queries are read-only:
 
 ```bash
-node scripts/validate.mjs --convergence-status <manifest-path>
-node scripts/validate.mjs --convergence-gate <manifest-path>
+node <setup-skill>/assets/runtime/validate.mjs --convergence-status <manifest-path>
+node <setup-skill>/assets/runtime/validate.mjs --convergence-gate <manifest-path>
 ```
 
 A valid status query exits successfully for `satisfied`, `not_satisfied`, or
@@ -679,21 +688,35 @@ implicitly restore a backup.
 ## Development
 
 The development package requires Node.js >= 22. The generic skills installer
-requires Node.js >= 22.20. After installing dependencies, run the protocol tests
-and validation from the repository root:
+requires Node.js >= 22.20. After installing dependencies, regenerate the checked-in
+runtime after source changes, verify that it is current, run the real-installer
+smoke, and run the complete protocol tests and repository validation:
 
 ```bash
+npm run build:runtime
+npm run check:runtime
+npm run smoke:installed
 npm test
 npm run validate
 ```
 
-Validate a manifest or report directly with the corresponding CLI option. The
-validator also provides options for scope snapshots, inventory snapshots,
-creation batches, commit journals, story state, coverage artifacts, and review
-jobs; use the installed CLI as the source for their exact names:
+`npm test` includes the generated-runtime consistency and isolated real-installer
+smoke tests. The smoke uses the generic installer in a disposable directory,
+removes the temporary source copy, and runs the installed CLIs without repository
+dependencies. It does not prove host skill discovery or creative quality.
+
+Repository validation is explicit with `--repository`; project validation is
+explicit with `--project-root`. No-argument invocation prints help without
+inspecting implicit state, and the two modes cannot be combined with each other
+or individual checks. Validate a manifest or report directly with the
+corresponding CLI option. The validator also provides options for scope
+snapshots, inventory snapshots, creation batches, commit journals, story state,
+coverage artifacts, and review jobs; use the CLI as the source for exact names:
 
 ```bash
 node scripts/validate.mjs --help
+node scripts/validate.mjs --repository
+node scripts/validate.mjs --project-root /path/to/writing-project
 node scripts/validate.mjs --manifest /path/to/.author-toolkit/project.json
 node scripts/validate.mjs --scope-snapshot /path/to/scope.json
 node scripts/validate.mjs --inventory-snapshot /path/to/inventory.json

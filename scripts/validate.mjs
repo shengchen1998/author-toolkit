@@ -4,10 +4,10 @@ import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import {
-  checkConvergenceGate,
-  getCycleStatus,
-  projectRootFromManifest,
+const root = fileURLToPath(new URL("../", import.meta.url));
+const examples = ["fiction-revision-en", "fiction-revision-zh"];
+
+function createArtifactTypes({
   validateConvergenceCycle,
   validateConvergenceEvaluation,
   validateNoEditSkip,
@@ -19,94 +19,91 @@ import {
   validateCoverageUnit,
   validateCreationBatch,
   validateCreationCommit,
-  validateEvidenceReport,
-  validateFullManuscriptScope,
   validateInventorySnapshot,
-  validateManifest,
   validateManuscriptReconciliationSchema,
-  validateMarkdownReport,
-  validateProjectFiles,
   validateReaderState,
   validateReaderStateMarkdown,
   validateReviewJob,
-  validateSchemaDefinitions,
-  validateScopeCurrency,
   validateScopeSnapshot,
   validateStoryState,
   validateStoryStateMarkdown,
-  validateTracker,
-  validateWorkflowSequence,
-} from "./lib/index.mjs";
-import { V3_SCHEMA_VERSIONS } from "./lib/constants.mjs";
-
-const root = fileURLToPath(new URL("../", import.meta.url));
-const examples = ["fiction-revision-en", "fiction-revision-zh"];
-const artifactTypes = [
-  { key: "scopeSnapshots", option: "--scope-snapshot", validate: validateScopeSnapshot },
-  {
-    key: "inventorySnapshots",
-    option: "--inventory-snapshot",
-    validate: validateInventorySnapshot,
-  },
-  {
-    key: "convergenceCycles",
-    option: "--convergence-cycle",
-    validate: validateConvergenceCycle,
-  },
-  { key: "requestedPasses", option: "--requested-pass", validate: validateRequestedPass },
-  { key: "revisionExecutions", option: "--revision-execution", validate: validateRevisionExecution },
-  {
-    key: "manuscriptReconciliations",
-    option: "--manuscript-reconciliation",
-    validate: validateManuscriptReconciliationSchema,
-  },
-  { key: "noEditSkips", option: "--no-edit-skip", validate: validateNoEditSkip },
-  { key: "reviewGroups", option: "--review-group", validate: validateReviewGroup },
-  {
-    key: "semanticAttestations",
-    option: "--semantic-attestation",
-    validate: validateSemanticAttestation,
-  },
-  {
-    key: "convergenceEvaluations",
-    option: "--convergence-evaluation",
-    validate: validateConvergenceEvaluation,
-  },
-  { key: "creationBatches", option: "--creation-batch", validate: validateCreationBatch },
-  { key: "creationCommits", option: "--creation-commit", validate: validateCreationCommit },
-  { key: "coverageUnits", option: "--coverage-unit", validate: validateCoverageUnit },
-  { key: "coverageIndexes", option: "--coverage-index", validate: validateCoverageIndex },
-  { key: "reviewJobs", option: "--review-job", validate: validateReviewJob },
-  {
-    key: "readerStates",
-    option: "--reader-state",
-    validate: validateReaderState,
-    validateMarkdown: validateReaderStateMarkdown,
-  },
-  {
-    key: "storyStates",
-    option: "--story-state",
-    validate: validateStoryState,
-    validateMarkdown: validateStoryStateMarkdown,
-  },
-];
+}) {
+  return [
+    { key: "scopeSnapshots", option: "--scope-snapshot", validate: validateScopeSnapshot },
+    {
+      key: "inventorySnapshots",
+      option: "--inventory-snapshot",
+      validate: validateInventorySnapshot,
+    },
+    {
+      key: "convergenceCycles",
+      option: "--convergence-cycle",
+      validate: validateConvergenceCycle,
+    },
+    { key: "requestedPasses", option: "--requested-pass", validate: validateRequestedPass },
+    {
+      key: "revisionExecutions",
+      option: "--revision-execution",
+      validate: validateRevisionExecution,
+    },
+    {
+      key: "manuscriptReconciliations",
+      option: "--manuscript-reconciliation",
+      validate: validateManuscriptReconciliationSchema,
+    },
+    { key: "noEditSkips", option: "--no-edit-skip", validate: validateNoEditSkip },
+    { key: "reviewGroups", option: "--review-group", validate: validateReviewGroup },
+    {
+      key: "semanticAttestations",
+      option: "--semantic-attestation",
+      validate: validateSemanticAttestation,
+    },
+    {
+      key: "convergenceEvaluations",
+      option: "--convergence-evaluation",
+      validate: validateConvergenceEvaluation,
+    },
+    { key: "creationBatches", option: "--creation-batch", validate: validateCreationBatch },
+    { key: "creationCommits", option: "--creation-commit", validate: validateCreationCommit },
+    { key: "coverageUnits", option: "--coverage-unit", validate: validateCoverageUnit },
+    { key: "coverageIndexes", option: "--coverage-index", validate: validateCoverageIndex },
+    { key: "reviewJobs", option: "--review-job", validate: validateReviewJob },
+    {
+      key: "readerStates",
+      option: "--reader-state",
+      validate: validateReaderState,
+      validateMarkdown: validateReaderStateMarkdown,
+    },
+    {
+      key: "storyStates",
+      option: "--story-state",
+      validate: validateStoryState,
+      validateMarkdown: validateStoryStateMarkdown,
+    },
+  ];
+}
 
 function usage() {
   console.log(`Usage:
-  node scripts/validate.mjs
-  node scripts/validate.mjs [--manifest FILE] [--report FILE] [--workflow-fixture FILE]...
-  node scripts/validate.mjs [--scope-snapshot FILE] [--inventory-snapshot FILE]...
-  node scripts/validate.mjs [--convergence-cycle FILE] [--requested-pass FILE]...
-  node scripts/validate.mjs [--revision-execution FILE] [--manuscript-reconciliation FILE]...
-  node scripts/validate.mjs [--no-edit-skip FILE] [--review-group FILE]...
-  node scripts/validate.mjs [--semantic-attestation FILE] [--convergence-evaluation FILE]...
-  node scripts/validate.mjs --convergence-status MANIFEST
-  node scripts/validate.mjs --convergence-gate MANIFEST
-  node scripts/validate.mjs [--creation-batch FILE] [--creation-commit FILE]...
-  node scripts/validate.mjs [--coverage-unit FILE] [--coverage-index FILE]...
-  node scripts/validate.mjs [--review-job FILE] [--reader-state FILE] [--story-state FILE]...
+  node ${process.argv[1] ?? "validate.mjs"}
+  node ${process.argv[1] ?? "validate.mjs"} --repository
+  node ${process.argv[1] ?? "validate.mjs"} --project-root ROOT
+  node ${process.argv[1] ?? "validate.mjs"} [--manifest FILE] [--report FILE] [--workflow-fixture FILE]...
+  node ${process.argv[1] ?? "validate.mjs"} [--scope-snapshot FILE] [--inventory-snapshot FILE]...
+  node ${process.argv[1] ?? "validate.mjs"} [--convergence-cycle FILE] [--requested-pass FILE]...
+  node ${process.argv[1] ?? "validate.mjs"} [--revision-execution FILE] [--manuscript-reconciliation FILE]...
+  node ${process.argv[1] ?? "validate.mjs"} [--no-edit-skip FILE] [--review-group FILE]...
+  node ${process.argv[1] ?? "validate.mjs"} [--semantic-attestation FILE] [--convergence-evaluation FILE]...
+  node ${process.argv[1] ?? "validate.mjs"} --convergence-status MANIFEST
+  node ${process.argv[1] ?? "validate.mjs"} --convergence-gate MANIFEST
+  node ${process.argv[1] ?? "validate.mjs"} [--creation-batch FILE] [--creation-commit FILE]...
+  node ${process.argv[1] ?? "validate.mjs"} [--coverage-unit FILE] [--coverage-index FILE]...
+  node ${process.argv[1] ?? "validate.mjs"} [--review-job FILE] [--reader-state FILE] [--story-state FILE]...
 
-With no options, all schemas, example manifests, reports, and workflow fixtures are checked.`);
+With no options, print this help without inspecting state.
+Repository mode checks all schemas, example manifests, reports, and workflow fixtures.
+Project-root mode checks deployed shared-reference hashes, then the selected project's manifest, files, and tracker.
+Repository and project-root modes cannot be combined with each other or individual checks.`);
 }
 
 async function readJson(file) {
@@ -123,7 +120,7 @@ async function markdownFiles(directory) {
   return files.sort();
 }
 
-function parseArguments(args) {
+function parseArguments(args, artifactTypes) {
   const selection = {
     manifests: [],
     reports: [],
@@ -131,7 +128,9 @@ function parseArguments(args) {
     convergenceStatus: [],
     convergenceGate: [],
     ...Object.fromEntries(artifactTypes.map(({ key }) => [key, []])),
-    help: false,
+    repository: false,
+    projectRoot: null,
+    help: args.length === 0,
   };
   const destinations = {
     "--manifest": "manifests",
@@ -148,6 +147,15 @@ function parseArguments(args) {
       selection.help = true;
       continue;
     }
+    if (argument === "--repository") {
+      selection.repository = true;
+      continue;
+    }
+    if (argument === "--project-root" && args[index + 1]) {
+      selection.projectRoot = path.resolve(args[index + 1]);
+      index += 1;
+      continue;
+    }
     const destination = destinations[argument];
     if (!destination || !args[index + 1]) {
       throw new Error(`Unknown or incomplete argument: ${argument}`);
@@ -155,20 +163,52 @@ function parseArguments(args) {
     selection[destination].push(path.resolve(args[index + 1]));
     index += 1;
   }
+  const individualChecks = Object.values(selection).reduce(
+    (count, value) => count + (Array.isArray(value) ? value.length : 0),
+    0,
+  );
+  if (
+    (selection.repository && selection.projectRoot) ||
+    ((selection.repository || selection.projectRoot) && individualChecks > 0)
+  ) {
+    throw new Error(
+      "Repository and project-root modes cannot be combined with each other or individual checks",
+    );
+  }
   return selection;
 }
 
 async function main() {
-  const selection = parseArguments(process.argv.slice(2));
-  if (selection.help) {
+  const args = process.argv.slice(2);
+  if (args.length === 0 || args.includes("--help") || args.includes("-h")) {
     usage();
     return;
   }
-
+  const [runtime, { V3_SCHEMA_VERSIONS }, { validateDeployedReferences }] = await Promise.all([
+    import("./lib/index.mjs"),
+    import("./lib/constants.mjs"),
+    import("./lib/shared-references.mjs"),
+  ]);
+  const {
+    checkConvergenceGate,
+    getCycleStatus,
+    projectRootFromManifest,
+    validateEvidenceReport,
+    validateFullManuscriptScope,
+    validateManifest,
+    validateMarkdownReport,
+    validateProjectFiles,
+    validateSchemaDefinitions,
+    validateScopeCurrency,
+    validateTracker,
+    validateWorkflowSequence,
+  } = runtime;
+  const artifactTypes = createArtifactTypes(runtime);
+  const selection = parseArguments(args, artifactTypes);
   const queryRequested = selection.convergenceStatus.length > 0 || selection.convergenceGate.length > 0;
   if (queryRequested) {
-    const selectedCount = Object.entries(selection).reduce(
-      (count, [key, files]) => count + (key === "help" ? 0 : files.length),
+    const selectedCount = Object.values(selection).reduce(
+      (count, value) => count + (Array.isArray(value) ? value.length : 0),
       0,
     );
     if (selectedCount !== 1) {
@@ -184,10 +224,6 @@ async function main() {
     if (isStatus ? !result.query_valid : !result.valid) process.exitCode = 1;
     return;
   }
-
-  const useDefaults = Object.entries(selection).every(
-    ([key, files]) => key === "help" || files.length === 0,
-  );
 
   let checks = 0;
   let failures = 0;
@@ -205,7 +241,17 @@ async function main() {
     }
   }
 
-  if (useDefaults) {
+  if (selection.projectRoot) {
+    const references = await validateDeployedReferences(selection.projectRoot);
+    check(".author-toolkit/references", references);
+    if (references.valid) {
+      selection.manifests.push(
+        path.join(selection.projectRoot, ".author-toolkit", "project.json"),
+      );
+    }
+  }
+
+  if (selection.repository) {
     check("JSON Schema definitions", validateSchemaDefinitions());
     for (const example of examples) {
       const directory = path.join(root, "examples", example);
