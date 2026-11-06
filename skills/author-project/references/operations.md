@@ -50,12 +50,22 @@ A diagnostic proposes changes but does not create an approval. Creation acceptan
 
 ## Initialize
 
-1. For a new project, start with `../assets/project-template.json`. Replace sentinel timestamps with the current UTC timestamp and `und` with the detected or author-supplied BCP 47 language. Register supplied project metadata and paths, retaining template defaults for omitted paths, including `paths.creation` and the convergence state root. Do not add a workflow, entry operation, or strategy owner.
-2. For an existing v3.2 manifest, validate and return it without resetting current scope, pending action, paths, artifacts, decisions, snapshots, or external backup records. Do not infer a scope snapshot or author confirmation.
-3. For an existing v2, v3.0, or v3.1 manifest, preserve it and run `node <toolkit-root>/scripts/migrate-v32.mjs --project-root <project-root>`. The `migrate-v3.mjs` command and `migrateProjectToV3` function are compatibility wrappers with the same target. Migrate directly to v3.2 without writing v3.1 first. Retain the script's snapshot and migrate current scope, pending action, and legacy overrides as documented. Report the snapshot path, created scope and inventory snapshots, and legacy recovery diagnostics. Never silently replace or reset a legacy project.
-4. Resolve `paths.backups` and create `<paths.backups>/index.json` from `../assets/backup-index-template.json` when absent. Keep backup records in this index rather than adding undeclared manifest properties.
+Run the installed public command for a manuscript-only project:
 
-The caller creates directories and empty creative templates. Initialization does not populate manuscript or Story Bible creative content, establish an entry operation, or invoke a strategy.
+```bash
+node <setup-skill>/assets/runtime/author-project.mjs init --project-root <project-root> --language <bcp47-tag>
+node <setup-skill>/assets/runtime/author-project.mjs init --project-root <project-root> --input <initialization.json>
+```
+
+Use the direct `--manuscript-root <path>` option or input `manuscript_root` for an existing manuscript location. The input may also supply `paths` overrides and `project_title`; omitted paths retain the neutral template defaults, including `paths.creation` and the convergence state root. Do not combine `--input` with the direct language or manuscript-root options.
+
+For a new project, `init` deploys missing matching shared references, creates a neutral v3.2 manifest with fresh timestamps, creates only missing neutral Story Bible, tracker, backup-index, and project-instruction skeletons, and creates the registered operational directories. It leaves current scope and pending action unset and creates no scope or inventory snapshot, active cycle, completed-cycle pointer, evaluation, finding, approval, or current-draft revision convergence claim. Existing manuscript bytes remain unchanged. It does not import operational evidence from another project or populate creative content.
+
+For an existing v3.2 manifest, `init` validates the manifest, deployed references, registered files, tracker, and current scope without resetting current scope, pending action, paths, artifacts, decisions, snapshots, active or completed cycles, or backup records. Missing matching references are deployed; a mismatched reference returns `reference-version-conflict` without replacement. Existing operational files are never replaced to manufacture a fresh project.
+
+For an existing v2, v3.0, or v3.1 manifest, preserve it and run `node <toolkit-root>/scripts/migrate-v32.mjs --project-root <project-root>` through setup before rerunning `init`. The `migrate-v3.mjs` command and `migrateProjectToV3` function are compatibility wrappers with the same target. Migrate directly to v3.2 without writing v3.1 first. Retain the script's snapshot and migrate current scope, pending action, and legacy overrides as documented. Report the snapshot path, created scope and inventory snapshots, and legacy recovery diagnostics. Never silently replace or reset a legacy project.
+
+Initialization does not establish an entry operation or invoke a strategy.
 
 ## Upgrade v3.1
 
@@ -75,7 +85,7 @@ For a legacy batch marked `rejected`, require a schema-valid batch with `commit:
 
 ## Read and validate
 
-Before a shared workflow `read`, `validate`, or `status`, resolve `<setup-skill>` as the installed `setup-author-toolkit` skill directory and run `node <setup-skill>/assets/runtime/validate.mjs --project-root <project-root>`. Use it to compare every packaged file in `assets/references/` with its corresponding file beneath `<project-root>/.author-toolkit/references/` before reading project state. A valid v3 manifest alone does not prove that these shared runtime contracts are deployed.
+Before a shared workflow `read`, `validate`, or `status`, resolve `<setup-skill>` as the installed `setup-author-toolkit` skill directory and use its public project or validator CLI. The project `read` and `status` commands and `node <setup-skill>/assets/runtime/validate.mjs --project-root <project-root>` compare every packaged file in `assets/references/` with its corresponding file beneath `<project-root>/.author-toolkit/references/` before reading project state. A valid v3 manifest alone does not prove that these shared runtime contracts are deployed.
 
 - If a packaged file is missing from the project, the command exits with validation failure and returns the missing project-relative paths. Instruct the caller to display the exact user-invoked `setup-author-toolkit` command and wait for the author. Do not continue shared work or write project state.
 - If an existing file's SHA-256 hash differs from the packaged file, the command exits with validation failure and reports `reference-version-conflict` with both hashes. Instruct the caller to display the setup command and wait. Only setup may replace the file through its separate exact-file approval and backup procedure.
@@ -91,7 +101,9 @@ node <setup-skill>/assets/runtime/validate.mjs --manifest <manifest-path>
 node <setup-skill>/assets/runtime/validate.mjs --scope-snapshot <snapshot-path> --inventory-snapshot <inventory-path>
 ```
 
-Use the documented Node environment; the installed runtime includes its dependencies and requires no npm installation. Report the command, exit status, and diagnostics. Success exits 0, validation failure exits 1, and argument or usage errors exit 2. Running with no arguments prints help without inspecting state. Repository mode is explicit with `--repository` and belongs to source development; project mode is explicit with `--project-root`. Do not combine either mode with the other or with individual checks. For v3.0 and v3.1 with a current scope, manifest validation recomputes manuscript hashes under `#scope`. For v3.2, `#scope` additionally returns `scope_id`, `scope_fingerprint`, and `full_manuscript=true|false` after the checks below. Treat a `scope-currency` or failed full-manuscript diagnostic as changed or incomplete input: mark dependent evidence stale and reconcile the scope with the author before relying on it or writing. Do not refresh hashes silently. Script validation is authoritative; do not substitute `manual-checks-only` or claim JSON Schema validation without running the installed CLI. On read or status, report validation failures, changed inputs, and missing registered paths without repairing them implicitly. A read returns the full parsed manifest plus the shared state view below; status returns that compact view.
+Use the documented Node environment; the installed runtime includes its dependencies and requires no npm installation. Report the command, exit status, and diagnostics. Success exits 0, validation failure exits 1, and argument or usage errors exit 2. Running with no arguments prints help without inspecting state. Repository mode is explicit with `--repository` and belongs to source development; project mode is explicit with `--project-root`. Do not combine either mode with the other or with individual checks. For v3.0 and v3.1 with a current scope, manifest validation recomputes manuscript hashes under `#scope`. For v3.2, `#scope` additionally returns `scope_id`, `scope_fingerprint`, and `full_manuscript=true|false` after the checks below. Treat a `scope-currency` or failed full-manuscript diagnostic as changed or incomplete input: mark dependent evidence stale and reconcile the scope with the author before relying on it or writing. Do not refresh hashes silently. Script validation is authoritative; do not substitute `manual-checks-only` or claim JSON Schema validation without running the installed CLI. On read or status, report validation failures, changed inputs, and missing registered paths without repairing them implicitly.
+
+Every public project operation returns `response_contract_version: "1.0"`, `command`, boolean `valid`, command-specific `result`, and structured `errors`. Read the existing cycle, reconciliation, execution, evaluation, or completion payload from `result`; the previous operation-specific object is not duplicated at the top level. Success and valid read-only status queries exit 0, project or operation validation failures exit 1, and argument, input-file, or input-shape usage errors exit 2. Errors are JSON on stdout, with no parallel human-text error contract. No-argument help prints usage without inspecting state. `read` and `status` return compact project status by default; only explicit `--full` returns the full parsed manifest and original convergence status. Dedicated cycle and artifact queries remain available for complete identities and evidence.
 
 A v3.2 full-manuscript result is true only when all of these conditions hold:
 
@@ -107,16 +119,18 @@ Operational-file additions do not by themselves change scope exclusions. A non-o
 
 ## Status
 
-Return a compact shared state view containing:
+Run `node <setup-skill>/assets/runtime/author-project.mjs status --project-root <project-root>` for compact project status, or `read` with the same selection for the identical default view. The compact `result` contains:
 
-- project root, manifest schema and creation timestamps, project type, language, and manuscript root;
-- current scope ID, scope fingerprint when available, confirmation status, ordered paths and hashes, exclusions, snapshot paths, and the v3.2 full-manuscript result;
-- the active current-draft convergence cycle, its revision, current strategy, recovery position, and related references, or its absence;
-- pending action, status, scope ID, reason, and artifacts, or its absence;
-- convergence status with `query_valid`, `outcome`, `current`, `evaluation`, `cycle`, `blockers`, and `required_action`;
-- every stale or blocked evidence item with its operation, scope, dependency reason, and source report or tracker row;
-- the active cycle's exact next action, or the next action recorded in the tracker or latest session note when no cycle is active;
-- validation errors, missing paths, and unresolved approval, backup, commit, or restore requirements.
+- project root, manifest path, schema and creation timestamps, project type, language, manuscript root, and project validation errors;
+- shared-reference validity and concrete missing or mismatched-reference errors;
+- current scope ID, scope fingerprint when available, confirmation status, file count, and the v3.2 full-manuscript result, without ordered file hashes, exclusions, or snapshot identities;
+- pending action, status, scope ID, reason, artifacts, and cycle coordination fields, or its absence;
+- active cycle ID, revision, current strategy, recovery position, and interrupted operation coordination, without starting or target references, related artifacts, evaluations, or completed history;
+- evaluation outcome, currency, compact blockers, and request-completion summary, without the stored evaluation or its evidence graph;
+- finding, approval, and cycle-completion decision counts by controlled status;
+- the exact next action from the active recovery position or current convergence status query.
+
+Use `read --full` or `status --full` only when the complete manifest, ordered path hashes, stored evaluation, evidence graph, and selected cycle history are required. Dedicated `cycle-status`, `convergence-status`, gate, reconciliation, and artifact queries retain their complete result objects within the same response envelope.
 
 Status does not infer operation completion, select a strategy, advance pending action, or claim current-draft revision convergence from a full-manuscript result alone. A valid convergence status query reports `satisfied`, `not_satisfied`, or `indeterminate` without changing state. With no active cycle, select the latest completed-cycle target evaluation or independent `revise-draft` evaluation; a newer narrowed or otherwise unsatisfied independent result therefore prevents an older satisfied evaluation from passing the gate. When no evaluation or trustworthy proof is available, report `indeterminate`, `current: false`, and the missing-proof blocker; report a known unmet condition as `not_satisfied` with its concrete blocker. The separate convergence gate succeeds only for `satisfied` with current evidence; both other outcomes and stale evidence fail with structured blockers. Neither query treats an ordinary unfinished lifecycle as a malformed file.
 

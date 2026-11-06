@@ -22,6 +22,7 @@ import {
 import {
   createNoEditEvidence,
   currentScopeReference,
+  unwrapProjectResponse,
 } from "./convergence-helpers.mjs";
 import { exampleRoot, root } from "./helpers.mjs";
 
@@ -477,10 +478,10 @@ test("the migrateProjectToV3 public wrapper retains its name and targets v3.2", 
 
 
 function runAuthorProject(args) {
-  return spawnSync(process.execPath, [authorProjectCli, ...args], {
+  return unwrapProjectResponse(spawnSync(process.execPath, [authorProjectCli, ...args], {
     cwd: root,
     encoding: "utf8",
-  });
+  }));
 }
 
 test("an interrupted legacy commit requires public recovery before a dependent cycle", async (t) => {

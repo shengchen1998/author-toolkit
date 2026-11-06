@@ -19,6 +19,7 @@ Independent skills keep their craft vocabularies. Register a craft term here bef
 | Approval `Status`: `approved`, `deferred`, `cancelled`, `superseded` | [Contract values](#contract-values) |
 | Pending action `status`: `in_progress`, `awaiting_author`, `blocked` | [Contract values](#contract-values) |
 | Convergence evaluation `outcome`: `satisfied`, `not_satisfied`, `indeterminate` | [Contract values](#contract-values) |
+| Project response envelope fields and exit statuses `0`, `1`, `2` | [Contract values](#contract-values) |
 | Common operation identifiers, including `intake`, `diagnostics`, `revision-plan`, `chapter-revision`, `current-scope-review`, and `final-review` | [Operation identifiers](#operation-identifiers) |
 | Revision and Story Bible approval types: `revision-plan`, `edit`, `story-bible` | [Contract values](#contract-values) |
 | Creation and import approval types: `creation-manuscript`, `creation-scope`, `creation-rejection`, `creation-import` | [Contract values](#contract-values) |
@@ -42,6 +43,8 @@ Independent skills keep their craft vocabularies. Register a craft term here bef
 | `user entry` | 用户入口 | Noun | A skill that the author invokes explicitly. The five strategies and the setup and routing skills are user entries. | |
 | `operation` | 操作 | Noun | One named unit of work in an operation sequence, pending action, or revision report. Use the exact operation identifier; one invocation runs one operation. | |
 | `shared project state` | 共享项目状态 | Noun | The manifest and registered artifacts shared by all five strategies. It is not owned by one strategy. | `workflow state` |
+| `project response envelope` | 项目响应信封 | Noun | The versioned JSON response used by every public project operation, containing `response_contract_version`, `command`, `valid`, `result`, and structured `errors`. No-argument help is not an operation response. | |
+| `compact project status` | 精简项目状态 | Noun | The default `read` and `status` view containing project and reference validation, scope identity and file count, pending action, active cycle and recovery position, evaluation outcome and blockers, decision counts, and exact next action. Complete manifests, ordered path hashes, evidence graphs, and history require an explicit full or dedicated query. | |
 | `manuscript` | 正文稿件 | Noun | Creative Markdown or plain-text files included by manuscript inventory. Operational artifacts and staging are not manuscript. | |
 | `current manuscript` | 当前正文稿件 | Noun | The complete manuscript inventory at the time of evaluation, including every included path in reading order. | `full current draft`<br>`full current manuscript`<br>`current draft` |
 | `manuscript inventory` | 正文清单 | Noun | The observed ordered manuscript paths, SHA-256 hashes, and exclusions. It is evidence about manuscript, not a scope confirmation. | |
@@ -160,6 +163,8 @@ Machine values remain English and case-sensitive. Qualify a value by its artifac
 
 | Artifact and field | Approved values and meanings |
 | --- | --- |
+| Project response `response_contract_version` | `1.0`: the envelope contains `command`, boolean `valid`, command-specific `result`, and structured `errors`. A valid status query may report `not_satisfied` or `indeterminate`; these outcomes do not by themselves make the response invalid. |
+| Project command exit status | `0`: the command or read-only query was valid; `1`: project, operation, evidence, or gate validation failed; `2`: argument, input-file, or input-shape usage failed. All three outcomes use the same JSON envelope except no-argument help. |
 | Scope `status` | `proposed`: recorded and awaiting confirmation; `confirmed`: the author confirmed the exact scope record. |
 | Convergence cycle `status` | `active`: cross-entry restoration is incomplete and parallel manuscript-changing cycles are blocked; `completed`: the target evaluation was satisfied and the author recorded the completion decision. |
 | Cycle operation record `kind` | `cycle-transition`: coordinated cycle transition; `revision-preparation`: prepared execution linking; `revision-verification`: verified execution linking; `creation-publication`: existing batch and journal linking; `manuscript-reconciliation`: immutable external-import coordination; `evaluation`: immutable evaluation linking; `completion`: explicit completion coordination. |

@@ -136,14 +136,29 @@ Add `-g` to install at user level instead:
 npx skills@latest add shengchen1998/author-toolkit -a claude-code -a kimi-code-cli -g
 ```
 
-The installed setup skill contains self-contained ESM validation and project-operation CLIs. They bundle Ajv and all runtime dependencies, load schemas from the setup skill's `assets/references/` payload, and require no repository checkout, project-local runtime copy, npm installation, or network access during use. Resolve `<setup-skill>` as the installed `setup-author-toolkit` directory, then run:
+The installed setup skill contains self-contained ESM validation and project-operation CLIs. They bundle Ajv and all runtime dependencies, load schemas from the setup skill's `assets/references/` payload and initialization templates from its assets payload, and require no repository checkout, project-local runtime copy, npm installation, or network access during use. Resolve `<setup-skill>` as the installed `setup-author-toolkit` directory, then run:
 
 ```bash
 node <setup-skill>/assets/runtime/validate.mjs --project-root <project-root>
 node <setup-skill>/assets/runtime/author-project.mjs --help
 ```
 
-Project-root validation verifies every deployed shared-reference hash before using the real JSON Schema validators on the selected project. Both CLIs print help when invoked without arguments. Validation success exits 0, validation failure exits 1, and usage errors exit 2.
+Project-root validation verifies every deployed shared-reference hash before using the real JSON Schema validators on the selected project. Both CLIs print help when invoked without arguments. Validator success exits 0, validation failure exits 1, and usage errors exit 2.
+
+The project CLI also initializes manuscript-only projects and resumes state without handwritten manifests:
+
+```bash
+node <setup-skill>/assets/runtime/author-project.mjs init --project-root <project-root> --language en
+node <setup-skill>/assets/runtime/author-project.mjs read --project-root <project-root>
+node <setup-skill>/assets/runtime/author-project.mjs status --project-root <project-root>
+node <setup-skill>/assets/runtime/author-project.mjs status --project-root <project-root> --full
+```
+
+`init` deploys matching shared references and creates a neutral manifest, empty tracker and backup index, and operational directories without importing findings, approvals, evaluations, or current-draft revision convergence claims. Reentry validates an existing project without resetting its state. Use `--input <initialization.json>` for custom operational paths, or `--manuscript-root <path>` for a different manuscript location.
+
+Every public project command, including cycle, reconciliation, execution, evaluation, and completion operations, returns one JSON envelope with `response_contract_version: "1.0"`, `command`, boolean `valid`, command-specific `result`, and structured `errors`. The previous operation result lives under `result`; errors are JSON on stdout rather than parallel human text. Successful commands and valid read-only status queries exit 0, including `not_satisfied` and `indeterminate` lifecycle states. Project, operation, evidence, or gate validation failures exit 1. Argument, input-file, and input-shape usage errors exit 2.
+
+Default `read` and `status` responses are compact. They include project and reference validation, scope identity and file count, pending action, active cycle and recovery position, evaluation outcome and blockers, decision counts, and exact next action. Complete manifests, ordered path hashes, evaluation identities, evidence graphs, and history require explicit `--full` or dedicated cycle and artifact queries.
 
 Updates are manual. Check and apply them with:
 

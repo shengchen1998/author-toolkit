@@ -751,7 +751,7 @@ test("artifact contracts are closed and evaluation roots reject unsafe paths", a
   };
   const unsafe = await runInput(projectRoot, "evaluate-cycle", unsafeInput);
   assert.equal(unsafe.status, 2);
-  assert.match(unsafe.stderr, /safe paths/);
+  assert.match(unsafe.response.errors[0].message, /safe paths/);
   const active = JSON.parse(await readFile(
     path.join(projectRoot, ".author-toolkit", "convergence", "active-cycle.json"),
     "utf8",

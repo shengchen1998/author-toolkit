@@ -52,6 +52,21 @@ test("setup carries a byte-identical copy of every shared reference", async () =
   }
 });
 
+test("setup carries byte-identical initialization templates", async () => {
+  for (const file of [
+    "project-template.json",
+    "audit-tracker-template.md",
+    "story-bible-template.md",
+    "backup-index-template.json",
+  ]) {
+    const [canonical, deployed] = await Promise.all([
+      readFile(path.join(root, "skills", "author-project", "assets", file), "utf8"),
+      readFile(path.join(root, "skills", "setup-author-toolkit", "assets", file), "utf8"),
+    ]);
+    assert.equal(deployed, canonical, `${file} matches the author-project template`);
+  }
+});
+
 test("standalone skills carry byte-identical copies of their local contracts", async () => {
   for (const skill of independentSkills) {
     const [canonical, deployed] = await Promise.all([

@@ -54,6 +54,69 @@ var init_constants = __esm({
   }
 });
 
+// scripts/lib/manuscript.mjs
+import { readdir, stat } from "node:fs/promises";
+import path from "node:path";
+function portablePath(value) {
+  return value.split(path.sep).join("/");
+}
+function operationalRoots(paths) {
+  return [
+    ...ALWAYS_OPERATIONAL,
+    ...Object.values(paths).filter((value) => typeof value === "string")
+  ].map((value) => value.replace(/\/$/, "")).filter(Boolean);
+}
+function isOperational(relativePath, roots) {
+  return roots.some(
+    (root) => root === "." || relativePath === root || relativePath.startsWith(`${root}/`)
+  );
+}
+function isOperationalManuscriptPath(relativePath, paths = {}) {
+  return isOperational(relativePath, operationalRoots(paths));
+}
+async function collectManuscriptInventory(projectRoot, manuscriptRoot, paths = {}) {
+  const absoluteRoot = path.resolve(projectRoot, manuscriptRoot);
+  const roots = operationalRoots(paths);
+  const entries2 = [];
+  async function add(absolute, file) {
+    const relativePath = portablePath(path.relative(projectRoot, absolute));
+    entries2.push({
+      absolute,
+      path: relativePath,
+      extension: path.extname(relativePath).toLowerCase(),
+      file,
+      operational: isOperational(relativePath, roots)
+    });
+  }
+  async function visit(directory) {
+    const children = await readdir(directory, { withFileTypes: true });
+    children.sort((left, right) => left.name.localeCompare(right.name));
+    for (const entry of children) {
+      const absolute = path.join(directory, entry.name);
+      if (entry.isDirectory()) await visit(absolute);
+      else await add(absolute, entry.isFile());
+    }
+  }
+  const rootStat = await stat(absoluteRoot);
+  if (rootStat.isFile()) await add(absoluteRoot, true);
+  else await visit(absoluteRoot);
+  return {
+    files: entries2.filter(
+      (entry) => entry.file && !entry.operational && MANUSCRIPT_EXTENSIONS.has(entry.extension)
+    ),
+    excludedFiles: entries2.filter(
+      (entry) => !entry.file || entry.operational || !MANUSCRIPT_EXTENSIONS.has(entry.extension)
+    ).map((entry) => entry.path)
+  };
+}
+var MANUSCRIPT_EXTENSIONS, ALWAYS_OPERATIONAL;
+var init_manuscript = __esm({
+  "scripts/lib/manuscript.mjs"() {
+    MANUSCRIPT_EXTENSIONS = /* @__PURE__ */ new Set([".md", ".markdown", ".txt"]);
+    ALWAYS_OPERATIONAL = [".author-toolkit", "draft-baseline.md"];
+  }
+});
+
 // node_modules/ajv/dist/compile/codegen/code.js
 var require_code = __commonJS({
   "node_modules/ajv/dist/compile/codegen/code.js"(exports) {
@@ -3283,8 +3346,8 @@ var require_utils = __commonJS({
       }
       return ind;
     }
-    function removeDotSegments(path20) {
-      let input = path20;
+    function removeDotSegments(path22) {
+      let input = path22;
       const output = [];
       let nextSlash = -1;
       let len = 0;
@@ -3358,11 +3421,11 @@ var require_utils = __commonJS({
       }
       return output.join("");
     }
-    function removeDotSegmentsRelative(path20) {
-      if (path20 === "" || path20[0] === "/") {
-        return removeDotSegments(path20);
+    function removeDotSegmentsRelative(path22) {
+      if (path22 === "" || path22[0] === "/") {
+        return removeDotSegments(path22);
       }
-      const segments = path20.split("/");
+      const segments = path22.split("/");
       const last = segments.length - 1;
       const output = [];
       let trailingDirectory = false;
@@ -3725,8 +3788,8 @@ var require_schemes = __commonJS({
       }
       if (wsComponent.resourceName) {
         const queryIndex = wsComponent.resourceName.indexOf("?");
-        const path20 = queryIndex === -1 ? wsComponent.resourceName : wsComponent.resourceName.slice(0, queryIndex);
-        wsComponent.path = path20 && path20 !== "/" ? path20 : void 0;
+        const path22 = queryIndex === -1 ? wsComponent.resourceName : wsComponent.resourceName.slice(0, queryIndex);
+        wsComponent.path = path22 && path22 !== "/" ? path22 : void 0;
         wsComponent.query = queryIndex === -1 ? void 0 : wsComponent.resourceName.slice(queryIndex + 1);
         wsComponent.resourceName = void 0;
       }
@@ -8312,6 +8375,154 @@ var init_schemas = __esm({
   }
 });
 
+// scripts/lib/project-files.mjs
+var project_files_exports = {};
+__export(project_files_exports, {
+  isUninitializedProjectTemplate: () => isUninitializedProjectTemplate,
+  projectRootFromManifest: () => projectRootFromManifest,
+  validateProjectFiles: () => validateProjectFiles,
+  validateScopeCurrency: () => validateScopeCurrency
+});
+import { createHash } from "node:crypto";
+import { readFile, stat as stat2 } from "node:fs/promises";
+import path2 from "node:path";
+function fileError(instancePath, message) {
+  return { instancePath, keyword: "filesystem", message, params: {} };
+}
+function scopeError(instancePath, message) {
+  return { instancePath, keyword: "scope-currency", message, params: {} };
+}
+function projectRootFromManifest(manifestPath) {
+  const directory = path2.dirname(path2.resolve(manifestPath));
+  return path2.basename(directory) === ".author-toolkit" ? path2.dirname(directory) : directory;
+}
+function isUninitializedProjectTemplate(manifest) {
+  return manifest.language === "und" && manifest.created_at === "2000-01-01T00:00:00Z" && manifest.updated_at === "2000-01-01T00:00:00Z";
+}
+async function checkExists(root, instancePath, relativePath) {
+  if (!validateRelativePath(relativePath).valid) {
+    return fileError(instancePath, "project path must be a portable project-relative path");
+  }
+  try {
+    await stat2(path2.resolve(root, relativePath));
+    return null;
+  } catch (error) {
+    if (error.code === "ENOENT") {
+      return fileError(instancePath, `required project path does not exist: ${relativePath}`);
+    }
+    return fileError(instancePath, `cannot access project path ${relativePath}: ${error.message}`);
+  }
+}
+async function validateProjectFiles(manifest, manifestPath) {
+  const projectRoot = projectRootFromManifest(manifestPath);
+  if (isUninitializedProjectTemplate(manifest)) {
+    return { valid: true, errors: [], projectRoot };
+  }
+  const checks = [["/manuscript_root", manifest.manuscript_root]];
+  const operationalPaths = [...OPERATIONAL_PATHS];
+  if (["3.1.0", "3.2.0"].includes(manifest.schema_version)) operationalPaths.push("creation");
+  if (manifest.schema_version === "3.2.0") operationalPaths.push("convergence");
+  for (const name of operationalPaths) {
+    checks.push([`/paths/${name}`, manifest.paths?.[name]]);
+  }
+  if (V3_SCHEMA_VERSIONS.has(manifest.schema_version)) {
+    manifest.pending_action?.artifacts?.forEach((artifact, artifactIndex) => {
+      checks.push([`/pending_action/artifacts/${artifactIndex}`, artifact]);
+    });
+    manifest.current_scope?.files?.forEach((file, fileIndex) => {
+      checks.push([`/current_scope/files/${fileIndex}/path`, file.path]);
+    });
+  } else {
+    manifest.workflow?.stages?.forEach((stage, stageIndex) => {
+      stage.artifacts?.forEach((artifact, artifactIndex) => {
+        checks.push([
+          `/workflow/stages/${stageIndex}/artifacts/${artifactIndex}`,
+          artifact
+        ]);
+      });
+    });
+  }
+  const errors = [];
+  for (const [instancePath, relativePath] of checks) {
+    const error = await checkExists(projectRoot, instancePath, relativePath);
+    if (error) errors.push(error);
+  }
+  return { valid: errors.length === 0, errors, projectRoot };
+}
+async function validateScopeCurrency(manifest, manifestPath) {
+  const projectRoot = projectRootFromManifest(manifestPath);
+  if (!V3_SCHEMA_VERSIONS.has(manifest.schema_version) || !manifest.current_scope || isUninitializedProjectTemplate(manifest)) {
+    return { valid: true, errors: [], projectRoot };
+  }
+  const errors = [];
+  for (const [index, file] of manifest.current_scope.files.entries()) {
+    const instancePath = `/current_scope/files/${index}`;
+    if (!validateRelativePath(file.path).valid) {
+      errors.push(scopeError(`${instancePath}/path`, "scope path must be project-relative"));
+      continue;
+    }
+    try {
+      const contents = await readFile(path2.resolve(projectRoot, file.path));
+      const actual = createHash("sha256").update(contents).digest("hex");
+      if (actual !== file.sha256) {
+        errors.push(
+          scopeError(
+            `${instancePath}/sha256`,
+            `manuscript content changed since the scope was recorded: ${file.path}`
+          )
+        );
+      }
+    } catch (error) {
+      errors.push(
+        scopeError(
+          `${instancePath}/path`,
+          `cannot read current manuscript ${file.path}: ${error.message}`
+        )
+      );
+    }
+  }
+  try {
+    const inventory = await collectManuscriptInventory(
+      projectRoot,
+      manifest.manuscript_root,
+      manifest.paths
+    );
+    const actualPaths = inventory.files.map((file) => file.path);
+    const recordedPaths = new Set(manifest.current_scope.files.map((file) => file.path));
+    for (const filePath of actualPaths) {
+      if (!recordedPaths.has(filePath)) {
+        errors.push(
+          scopeError(
+            "/current_scope/files",
+            `manuscript file is not registered in the current scope: ${filePath}`
+          )
+        );
+      }
+    }
+  } catch (error) {
+    errors.push(
+      scopeError("/current_scope/files", `cannot inventory current manuscript: ${error.message}`)
+    );
+  }
+  return { valid: errors.length === 0, errors, projectRoot };
+}
+var OPERATIONAL_PATHS;
+var init_project_files = __esm({
+  "scripts/lib/project-files.mjs"() {
+    init_constants();
+    init_manuscript();
+    init_schemas();
+    OPERATIONAL_PATHS = [
+      "story_bible",
+      "audit_tracker",
+      "reports",
+      "sessions",
+      "backups",
+      "handoffs"
+    ];
+  }
+});
+
 // scripts/lib/markdown.mjs
 function scanMarkdownLines(markdown, visit) {
   let fence = null;
@@ -8472,20 +8683,20 @@ var init_markdown = __esm({
 });
 
 // scripts/lib/state-io.mjs
-import { createHash, randomUUID } from "node:crypto";
-import { link, mkdir, readFile, readdir, rename, rm, rmdir, unlink, writeFile } from "node:fs/promises";
-import path from "node:path";
+import { createHash as createHash2, randomUUID } from "node:crypto";
+import { link, mkdir, readFile as readFile2, readdir as readdir2, rename, rm, rmdir, unlink, writeFile } from "node:fs/promises";
+import path3 from "node:path";
 function sha256Bytes(contents) {
-  return createHash("sha256").update(contents).digest("hex");
+  return createHash2("sha256").update(contents).digest("hex");
 }
 async function writeTemporarySibling(file, contents) {
-  await mkdir(path.dirname(file), { recursive: true });
-  const temporary = path.join(
-    path.dirname(file),
-    `.${path.basename(file)}.${process.pid}.${randomUUID()}.tmp`
+  await mkdir(path3.dirname(file), { recursive: true });
+  const temporary = path3.join(
+    path3.dirname(file),
+    `.${path3.basename(file)}.${process.pid}.${randomUUID()}.tmp`
   );
   await writeFile(temporary, contents, { encoding: "utf8", flag: "wx" });
-  if (sha256Bytes(await readFile(temporary)) !== sha256Bytes(contents)) {
+  if (sha256Bytes(await readFile2(temporary)) !== sha256Bytes(contents)) {
     await rm(temporary, { force: true });
     throw new Error(`Temporary write verification failed: ${file}`);
   }
@@ -8495,7 +8706,7 @@ async function writeAtomicVerified(file, contents) {
   const temporary = await writeTemporarySibling(file, contents);
   try {
     await rename(temporary, file);
-    if (sha256Bytes(await readFile(file)) !== sha256Bytes(contents)) {
+    if (sha256Bytes(await readFile2(file)) !== sha256Bytes(contents)) {
       throw new Error(`Atomic write verification failed: ${file}`);
     }
   } finally {
@@ -8506,7 +8717,7 @@ async function createNoClobberVerified(file, contents) {
   const temporary = await writeTemporarySibling(file, contents);
   try {
     await link(temporary, file);
-    if (sha256Bytes(await readFile(file)) !== sha256Bytes(contents)) {
+    if (sha256Bytes(await readFile2(file)) !== sha256Bytes(contents)) {
       throw new Error(`No-clobber publication verification failed: ${file}`);
     }
   } finally {
@@ -8514,7 +8725,7 @@ async function createNoClobberVerified(file, contents) {
   }
 }
 async function removeVerified(file, expectedSha256) {
-  const contents = await readFile(file);
+  const contents = await readFile2(file);
   const actual = sha256Bytes(contents);
   if (actual !== expectedSha256) {
     throw new Error(`Refusing to remove ${file}: expected ${expectedSha256}, found ${actual}`);
@@ -8537,7 +8748,7 @@ async function acquireDirectoryLock(directory, { timeoutMs = 1e4, retryMs = 20 }
         acquired_at: (/* @__PURE__ */ new Date()).toISOString()
       };
       await writeFile(
-        path.join(directory, "owner.json"),
+        path3.join(directory, "owner.json"),
         `${JSON.stringify(owner, null, 2)}
 `,
         { encoding: "utf8", flag: "wx" }
@@ -8569,7 +8780,7 @@ async function acquireDirectoryLock(directory, { timeoutMs = 1e4, retryMs = 20 }
 }
 async function releaseDirectoryLock(lock) {
   try {
-    const owner = JSON.parse(await readFile(path.join(lock.directory, "owner.json"), "utf8"));
+    const owner = JSON.parse(await readFile2(path3.join(lock.directory, "owner.json"), "utf8"));
     if (owner.pid !== process.pid || owner.token !== lock.token) {
       throw new Error(`Transition lock ownership changed: ${lock.directory}`);
     }
@@ -8592,13 +8803,13 @@ function ownerIsRunning(pid) {
 async function inspectDirectoryLock(directory) {
   let entries2;
   try {
-    entries2 = await readdir(directory, { withFileTypes: true });
+    entries2 = await readdir2(directory, { withFileTypes: true });
   } catch (error) {
     if (error.code === "ENOENT") return { present: false, directory, owner: null };
     throw error;
   }
   try {
-    const owner = JSON.parse(await readFile(path.join(directory, "owner.json"), "utf8"));
+    const owner = JSON.parse(await readFile2(path3.join(directory, "owner.json"), "utf8"));
     if (!Number.isInteger(owner.pid) || owner.pid <= 0 || typeof owner.token !== "string" || owner.token.length === 0 || typeof owner.acquired_at !== "string") {
       throw new Error("Lock owner requires a positive PID, token, and acquisition time");
     }
@@ -8635,8 +8846,8 @@ async function releaseAbandonedDirectoryLock(directory, expectedOwner) {
   if (inspected.entries.length !== 1 || inspected.entries[0] !== "owner.json") {
     return { released: false, code: "cycle-lock-contents-unexpected", inspected };
   }
-  const ownerPath = path.join(directory, "owner.json");
-  const confirmed = JSON.parse(await readFile(ownerPath, "utf8"));
+  const ownerPath = path3.join(directory, "owner.json");
+  const confirmed = JSON.parse(await readFile2(ownerPath, "utf8"));
   if (confirmed.pid !== expectedOwner.pid || confirmed.token !== expectedOwner.token) {
     return { released: false, code: "cycle-lock-owner-mismatch", inspected };
   }
@@ -9043,1230 +9254,302 @@ var init_manifest = __esm({
   }
 });
 
-// scripts/lib/review.mjs
-function reviewError(instancePath, keyword, message) {
-  return { instancePath, keyword, message, params: {} };
-}
-function objectArray(value) {
-  return Array.isArray(value) ? value.filter((item) => item && typeof item === "object") : [];
-}
-function duplicateErrors(items, key, path20, keyword, errors) {
-  const seen = /* @__PURE__ */ new Set();
-  for (const [index, item] of items.entries()) {
-    const value = item?.[key];
-    if (seen.has(value)) {
-      errors.push(reviewError(`${path20}/${index}/${key}`, keyword, `duplicate ${key}: ${value}`));
-    }
-    seen.add(value);
-  }
-}
-function structureErrors(job) {
-  const errors = [];
-  const files = objectArray(job?.files);
-  const chunks = objectArray(job?.chunks);
-  const volumes = objectArray(job?.volumes);
-  duplicateErrors(files, "path", "/files", "review-source", errors);
-  duplicateErrors(chunks, "chunk_id", "/chunks", "review-chunk", errors);
-  duplicateErrors(chunks, "sequence", "/chunks", "review-sequence", errors);
-  duplicateErrors(volumes, "volume_id", "/volumes", "review-volume", errors);
-  const filesByPath = new Map(files.map((file) => [file.path, file]));
-  const chunksById = new Map(chunks.map((chunk) => [chunk.chunk_id, chunk]));
-  const volumesById = new Map(volumes.map((volume) => [volume.volume_id, volume]));
-  for (const [chunkIndex, chunk] of chunks.entries()) {
-    if (chunk.status === "complete" && !chunk.report) {
-      errors.push(
-        reviewError(
-          `/chunks/${chunkIndex}/report`,
-          "review-report",
-          "a completed chunk requires its report"
-        )
-      );
-    }
-    for (const [sourceIndex, source] of objectArray(chunk.sources).entries()) {
-      const file = filesByPath.get(source.path);
-      const sourcePath = `/chunks/${chunkIndex}/sources/${sourceIndex}`;
-      if (!file || file.sha256 !== source.sha256) {
-        errors.push(
-          reviewError(
-            `${sourcePath}/sha256`,
-            "review-source",
-            "chunk source must match a declared scope path and hash"
-          )
-        );
-      }
-      if (source.line_end < source.line_start || file && source.line_end > file.line_count) {
-        errors.push(
-          reviewError(
-            `${sourcePath}/line_end`,
-            "review-range",
-            "chunk source lines must be a valid range inside the scope file"
-          )
-        );
-      }
-    }
-  }
-  for (const [volumeIndex, volume] of volumes.entries()) {
-    if (volume.status === "complete" && !volume.report) {
-      errors.push(
-        reviewError(
-          `/volumes/${volumeIndex}/report`,
-          "review-report",
-          "a completed volume synthesis requires its report"
-        )
-      );
-    }
-    for (const [chunkIndex, chunkId] of (Array.isArray(volume.chunk_ids) ? volume.chunk_ids : []).entries()) {
-      const chunk = chunksById.get(chunkId);
-      if (!chunk) {
-        errors.push(
-          reviewError(
-            `/volumes/${volumeIndex}/chunk_ids/${chunkIndex}`,
-            "review-synthesis",
-            "volume synthesis references an unknown chunk"
-          )
-        );
-      } else if (volume.status === "complete" && chunk.status !== "complete") {
-        errors.push(
-          reviewError(
-            `/volumes/${volumeIndex}/status`,
-            "review-synthesis",
-            "a completed volume cannot synthesize an incomplete chunk"
-          )
-        );
-      }
-    }
-  }
-  if (job?.book?.status === "complete" && !job.book.report) {
-    errors.push(
-      reviewError("/book/report", "review-report", "a completed book synthesis requires its report")
-    );
-  }
-  const bookVolumeIds = Array.isArray(job?.book?.volume_ids) ? job.book.volume_ids : [];
-  for (const [volumeIndex, volumeId] of bookVolumeIds.entries()) {
-    const volume = volumesById.get(volumeId);
-    if (!volume) {
-      errors.push(
-        reviewError(
-          `/book/volume_ids/${volumeIndex}`,
-          "review-synthesis",
-          "book synthesis references an unknown volume"
-        )
-      );
-    } else if (job.book.status === "complete" && volume.status !== "complete") {
-      errors.push(
-        reviewError(
-          "/book/status",
-          "review-synthesis",
-          "a completed book cannot synthesize an incomplete volume"
-        )
-      );
-    }
-  }
-  if (job?.perspective === "fresh") {
-    const fileIndexes = new Map(files.map((file, index) => [file.path, index]));
-    let previousFileIndex = -1;
-    let previousLineEnd = 0;
-    for (const [index, chunk] of chunks.entries()) {
-      if (chunk.sequence !== index + 1) {
-        errors.push(
-          reviewError(
-            `/chunks/${index}/sequence`,
-            "review-sequence",
-            "fresh review chunks must use continuous sequence numbers starting at 1"
-          )
-        );
-      }
-      for (const [sourceIndex, source] of objectArray(chunk.sources).entries()) {
-        const fileIndex = fileIndexes.get(source.path);
-        if (fileIndex === void 0) continue;
-        if (fileIndex < previousFileIndex || fileIndex === previousFileIndex && source.line_start <= previousLineEnd) {
-          errors.push(
-            reviewError(
-              `/chunks/${index}/sources/${sourceIndex}/line_start`,
-              "review-order",
-              "fresh review sources must follow job.files order and increasing, non-overlapping line ranges"
-            )
-          );
-        }
-        previousFileIndex = fileIndex;
-        previousLineEnd = source.line_end;
-      }
-    }
-    const firstIncompleteIndex = chunks.findIndex(
-      (chunk) => chunk.status !== "complete" || !chunk.report
-    );
-    const expectedNextChunkId = firstIncompleteIndex === -1 ? null : chunks[firstIncompleteIndex].chunk_id;
-    if (job.next_chunk_id !== expectedNextChunkId) {
-      errors.push(
-        reviewError(
-          "/next_chunk_id",
-          "review-resume",
-          "next chunk must be the first incomplete fresh review chunk"
-        )
-      );
-    }
-    if (firstIncompleteIndex !== -1) {
-      for (let index = firstIncompleteIndex + 1; index < chunks.length; index += 1) {
-        if (chunks[index].status === "complete") {
-          errors.push(
-            reviewError(
-              `/chunks/${index}/status`,
-              "review-progress",
-              "fresh review chunks must be completed in declared order"
-            )
-          );
-        }
-      }
-    }
-  }
-  if (job?.next_chunk_id) {
-    const next = chunksById.get(job.next_chunk_id);
-    if (!next || next.status === "complete") {
-      errors.push(
-        reviewError(
-          "/next_chunk_id",
-          "review-resume",
-          "next chunk must reference an incomplete declared chunk"
-        )
-      );
-    }
-  }
-  if (job?.status === "complete" && job.next_chunk_id !== null) {
-    errors.push(
-      reviewError(
-        "/next_chunk_id",
-        "review-resume",
-        "a completed review cannot name a next chunk"
-      )
-    );
-  }
-  return errors;
-}
-function rangesCoverFile(ranges, lineCount) {
-  const sorted2 = ranges.filter(
-    (range) => range.line_start >= 1 && range.line_end >= range.line_start && range.line_end <= lineCount
-  ).sort((left, right) => left.line_start - right.line_start || left.line_end - right.line_end);
-  let nextLine = 1;
-  for (const range of sorted2) {
-    if (range.line_start !== nextLine) return false;
-    nextLine = range.line_end + 1;
-  }
-  return nextLine === lineCount + 1;
-}
-function checkReviewCoverage(job) {
-  const files = objectArray(job?.files);
-  const chunks = objectArray(job?.chunks);
-  const volumes = objectArray(job?.volumes);
-  const completedChunks = chunks.filter((chunk) => chunk.status === "complete" && chunk.report);
-  const uncoveredFiles = files.filter((file) => {
-    const ranges = completedChunks.flatMap(
-      (chunk) => objectArray(chunk.sources).filter(
-        (source) => source.path === file.path && source.sha256 === file.sha256
-      )
-    );
-    return !rangesCoverFile(ranges, file.line_count);
-  }).map((file) => file.path);
-  const incompleteChunks = chunks.filter((chunk) => chunk.status !== "complete" || !chunk.report).map((chunk) => chunk.chunk_id);
-  const synthesizedChunks = new Set(
-    volumes.flatMap((volume) => Array.isArray(volume.chunk_ids) ? volume.chunk_ids : [])
-  );
-  const unsynthesizedChunks = chunks.map((chunk) => chunk.chunk_id).filter((chunkId) => !synthesizedChunks.has(chunkId));
-  const incompleteVolumes = volumes.filter((volume) => volume.status !== "complete" || !volume.report).map((volume) => volume.volume_id);
-  const bookVolumeIds = Array.isArray(job?.book?.volume_ids) ? job.book.volume_ids : [];
-  const synthesizedVolumes = new Set(bookVolumeIds);
-  const unsynthesizedVolumes = volumes.map((volume) => volume.volume_id).filter((volumeId) => !synthesizedVolumes.has(volumeId));
-  const bookComplete = job?.book?.status === "complete" && Boolean(job.book.report);
-  const structureValid = structureErrors(job).length === 0;
-  const complete = structureValid && files.length > 0 && uncoveredFiles.length === 0 && incompleteChunks.length === 0 && unsynthesizedChunks.length === 0 && incompleteVolumes.length === 0 && unsynthesizedVolumes.length === 0 && bookComplete;
-  return {
-    coverage: complete ? "full" : "partial",
-    complete,
-    structure_valid: structureValid,
-    uncovered_files: uncoveredFiles,
-    incomplete_chunks: incompleteChunks,
-    unsynthesized_chunks: unsynthesizedChunks,
-    incomplete_volumes: incompleteVolumes,
-    unsynthesized_volumes: unsynthesizedVolumes,
-    book_complete: bookComplete
-  };
-}
-function validateReviewJob(value) {
-  const result = validateReviewJobSchema(value);
-  const errors = [...result.errors, ...structureErrors(value)];
-  const coverage = checkReviewCoverage(value);
-  if (value?.coverage === "full" && !coverage.complete) {
-    errors.push(
-      reviewError(
-        "/coverage",
-        "review-completion",
-        "full coverage requires completed source ranges and chunk-volume-book synthesis"
-      )
-    );
-  }
-  if (value?.status === "complete" && !coverage.complete) {
-    errors.push(
-      reviewError(
-        "/status",
-        "review-completion",
-        "a complete review requires completed source ranges and chunk-volume-book synthesis"
-      )
-    );
-  }
-  if (value?.status === "complete" && value.coverage !== "full") {
-    errors.push(
-      reviewError(
-        "/coverage",
-        "review-completion",
-        "a complete review must record full coverage"
-      )
-    );
-  }
-  if (value?.coverage === "full" && value.status !== "complete") {
-    errors.push(
-      reviewError(
-        "/status",
-        "review-completion",
-        "full review coverage requires a complete job status"
-      )
-    );
-  }
-  return { ...result, valid: errors.length === 0, errors, coverage };
-}
-function validateReaderState(value) {
-  const result = validateReaderStateSchema(value);
-  const errors = [...result.errors];
-  const chunks = objectArray(value?.chunks);
-  duplicateErrors(chunks, "chunk_id", "/chunks", "reader-chunk", errors);
-  duplicateErrors(chunks, "sequence", "/chunks", "reader-sequence", errors);
-  for (const [chunkIndex, chunk] of chunks.entries()) {
-    if (value?.perspective === "fresh" && chunk.sequence !== chunkIndex + 1) {
-      errors.push(
-        reviewError(
-          `/chunks/${chunkIndex}/sequence`,
-          "reader-sequence",
-          "fresh reader chunks must use continuous sequence numbers starting at 1"
-        )
-      );
-    }
-    for (const [sourceIndex, source] of objectArray(chunk.sources).entries()) {
-      if (source.line_end < source.line_start) {
-        errors.push(
-          reviewError(
-            `/chunks/${chunkIndex}/sources/${sourceIndex}/line_end`,
-            "reader-range",
-            "reader source lines must end after they start"
-          )
-        );
-      }
-    }
-  }
-  const lastSequence = chunks.reduce((maximum, chunk) => Math.max(maximum, chunk.sequence), 0);
-  if (value?.next_sequence !== lastSequence + 1) {
-    errors.push(
-      reviewError(
-        "/next_sequence",
-        "reader-sequence",
-        "next sequence must follow the last recorded reader chunk"
-      )
-    );
-  }
-  if (value?.status === "complete" && chunks.length === 0) {
-    errors.push(
-      reviewError(
-        "/status",
-        "reader-completion",
-        "a complete reader state requires at least one recorded chunk"
-      )
-    );
-  }
-  return { ...result, valid: errors.length === 0, errors };
-}
-function validateReaderStateForJob(value, job) {
-  const result = validateReaderState(value);
-  const errors = [...result.errors];
-  for (const field of ["job_id", "scope_id", "perspective"]) {
-    if (value?.[field] !== job?.[field]) {
-      errors.push(
-        reviewError(
-          `/${field}`,
-          "reader-job-identity",
-          `reader state ${field} must match its review job`
-        )
-      );
-    }
-  }
-  const chunks = objectArray(value?.chunks);
-  const jobChunks = objectArray(job?.chunks);
-  const jobChunksById = new Map(jobChunks.map((chunk) => [chunk.chunk_id, chunk]));
-  const fileIndexes = new Map(objectArray(job?.files).map((file, index) => [file.path, index]));
-  let previousFileIndex = -1;
-  let previousLineEnd = 0;
-  for (const [chunkIndex, chunk] of chunks.entries()) {
-    const jobChunk = jobChunksById.get(chunk.chunk_id);
-    const sources = objectArray(chunk.sources);
-    if (!jobChunk) {
-      errors.push(
-        reviewError(
-          `/chunks/${chunkIndex}/chunk_id`,
-          "reader-job-chunk",
-          "reader chunk must reference a chunk declared by its review job"
-        )
-      );
-    } else {
-      if (chunk.report !== jobChunk.report) {
-        errors.push(
-          reviewError(
-            `/chunks/${chunkIndex}/report`,
-            "reader-job-report",
-            "reader chunk report must match its review job chunk"
-          )
-        );
-      }
-      const jobSources = objectArray(jobChunk.sources);
-      if (sources.length !== jobSources.length) {
-        errors.push(
-          reviewError(
-            `/chunks/${chunkIndex}/sources`,
-            "reader-job-source",
-            "reader chunk must record the same sources as its review job chunk"
-          )
-        );
-      }
-      for (const [sourceIndex, source] of sources.entries()) {
-        const jobSource = jobSources[sourceIndex];
-        if (!jobSource || source.path !== jobSource.path || source.sha256 !== jobSource.sha256 || source.line_start !== jobSource.line_start || source.line_end !== jobSource.line_end) {
-          errors.push(
-            reviewError(
-              `/chunks/${chunkIndex}/sources/${sourceIndex}`,
-              "reader-job-source",
-              "reader source path, hash, and line range must match its review job chunk"
-            )
-          );
-        }
-      }
-    }
-    if (job?.perspective === "fresh") {
-      const expectedChunk = jobChunks[chunkIndex];
-      if (!expectedChunk || expectedChunk.chunk_id !== chunk.chunk_id || expectedChunk.sequence !== chunk.sequence) {
-        errors.push(
-          reviewError(
-            `/chunks/${chunkIndex}/chunk_id`,
-            "reader-job-chain",
-            "fresh reader chunks must form a continuous prefix of the review job chunks"
-          )
-        );
-      }
-      for (const [sourceIndex, source] of sources.entries()) {
-        const fileIndex = fileIndexes.get(source.path);
-        if (fileIndex === void 0) continue;
-        if (fileIndex < previousFileIndex || fileIndex === previousFileIndex && source.line_start <= previousLineEnd) {
-          errors.push(
-            reviewError(
-              `/chunks/${chunkIndex}/sources/${sourceIndex}/line_start`,
-              "reader-job-order",
-              "fresh reader sources must follow job.files order and increasing, non-overlapping line ranges"
-            )
-          );
-        }
-        previousFileIndex = fileIndex;
-        previousLineEnd = source.line_end;
-      }
-    }
-  }
-  if (job?.status === "complete" && job?.perspective === "fresh") {
-    if (value?.status !== "complete") {
-      errors.push(reviewError(
-        "/status",
-        "reader-job-chain",
-        "a completed fresh review job requires a completed reader state"
-      ));
-    }
-    const expected = jobChunks.map((chunk) => `${chunk.chunk_id}\0${chunk.sequence}`);
-    const actual = chunks.map((chunk) => `${chunk.chunk_id}\0${chunk.sequence}`);
-    if (JSON.stringify(actual) !== JSON.stringify(expected)) {
-      errors.push(reviewError(
-        "/chunks",
-        "reader-job-chain",
-        "a completed fresh reader state must contain every review-job chunk in the required order"
-      ));
-    }
-  }
-  return { ...result, valid: errors.length === 0, errors };
-}
-function validateReaderStateMarkdown(markdown) {
-  return validateMarkdownEnvelope(markdown, validateReaderState);
-}
-var init_review = __esm({
-  "scripts/lib/review.mjs"() {
-    init_markdown();
-    init_schemas();
-  }
-});
-
-// scripts/lib/manuscript.mjs
-import { readdir as readdir2, stat } from "node:fs/promises";
-import path2 from "node:path";
-function portablePath(value) {
-  return value.split(path2.sep).join("/");
-}
-function operationalRoots(paths) {
-  return [
-    ...ALWAYS_OPERATIONAL,
-    ...Object.values(paths).filter((value) => typeof value === "string")
-  ].map((value) => value.replace(/\/$/, "")).filter(Boolean);
-}
-function isOperational(relativePath, roots) {
-  return roots.some(
-    (root) => root === "." || relativePath === root || relativePath.startsWith(`${root}/`)
-  );
-}
-function isOperationalManuscriptPath(relativePath, paths = {}) {
-  return isOperational(relativePath, operationalRoots(paths));
-}
-async function collectManuscriptInventory(projectRoot, manuscriptRoot, paths = {}) {
-  const absoluteRoot = path2.resolve(projectRoot, manuscriptRoot);
-  const roots = operationalRoots(paths);
-  const entries2 = [];
-  async function add(absolute, file) {
-    const relativePath = portablePath(path2.relative(projectRoot, absolute));
-    entries2.push({
-      absolute,
-      path: relativePath,
-      extension: path2.extname(relativePath).toLowerCase(),
-      file,
-      operational: isOperational(relativePath, roots)
-    });
-  }
-  async function visit(directory) {
-    const children = await readdir2(directory, { withFileTypes: true });
-    children.sort((left, right) => left.name.localeCompare(right.name));
-    for (const entry of children) {
-      const absolute = path2.join(directory, entry.name);
-      if (entry.isDirectory()) await visit(absolute);
-      else await add(absolute, entry.isFile());
-    }
-  }
-  const rootStat = await stat(absoluteRoot);
-  if (rootStat.isFile()) await add(absoluteRoot, true);
-  else await visit(absoluteRoot);
-  return {
-    files: entries2.filter(
-      (entry) => entry.file && !entry.operational && MANUSCRIPT_EXTENSIONS.has(entry.extension)
-    ),
-    excludedFiles: entries2.filter(
-      (entry) => !entry.file || entry.operational || !MANUSCRIPT_EXTENSIONS.has(entry.extension)
-    ).map((entry) => entry.path)
-  };
-}
-var MANUSCRIPT_EXTENSIONS, ALWAYS_OPERATIONAL;
-var init_manuscript = __esm({
-  "scripts/lib/manuscript.mjs"() {
-    MANUSCRIPT_EXTENSIONS = /* @__PURE__ */ new Set([".md", ".markdown", ".txt"]);
-    ALWAYS_OPERATIONAL = [".author-toolkit", "draft-baseline.md"];
-  }
-});
-
-// scripts/lib/project-files.mjs
-import { createHash as createHash2 } from "node:crypto";
-import { readFile as readFile2, stat as stat2 } from "node:fs/promises";
-import path3 from "node:path";
-function fileError(instancePath, message) {
-  return { instancePath, keyword: "filesystem", message, params: {} };
-}
-function scopeError(instancePath, message) {
-  return { instancePath, keyword: "scope-currency", message, params: {} };
-}
-function projectRootFromManifest(manifestPath) {
-  const directory = path3.dirname(path3.resolve(manifestPath));
-  return path3.basename(directory) === ".author-toolkit" ? path3.dirname(directory) : directory;
-}
-function isUninitializedProjectTemplate(manifest) {
-  return manifest.language === "und" && manifest.created_at === "2000-01-01T00:00:00Z" && manifest.updated_at === "2000-01-01T00:00:00Z";
-}
-async function checkExists(root, instancePath, relativePath) {
-  if (!validateRelativePath(relativePath).valid) {
-    return fileError(instancePath, "project path must be a portable project-relative path");
-  }
-  try {
-    await stat2(path3.resolve(root, relativePath));
-    return null;
-  } catch (error) {
-    if (error.code === "ENOENT") {
-      return fileError(instancePath, `required project path does not exist: ${relativePath}`);
-    }
-    return fileError(instancePath, `cannot access project path ${relativePath}: ${error.message}`);
-  }
-}
-async function validateProjectFiles(manifest, manifestPath) {
-  const projectRoot = projectRootFromManifest(manifestPath);
-  if (isUninitializedProjectTemplate(manifest)) {
-    return { valid: true, errors: [], projectRoot };
-  }
-  const checks = [["/manuscript_root", manifest.manuscript_root]];
-  const operationalPaths = [...OPERATIONAL_PATHS];
-  if (["3.1.0", "3.2.0"].includes(manifest.schema_version)) operationalPaths.push("creation");
-  if (manifest.schema_version === "3.2.0") operationalPaths.push("convergence");
-  for (const name of operationalPaths) {
-    checks.push([`/paths/${name}`, manifest.paths?.[name]]);
-  }
-  if (V3_SCHEMA_VERSIONS.has(manifest.schema_version)) {
-    manifest.pending_action?.artifacts?.forEach((artifact, artifactIndex) => {
-      checks.push([`/pending_action/artifacts/${artifactIndex}`, artifact]);
-    });
-    manifest.current_scope?.files?.forEach((file, fileIndex) => {
-      checks.push([`/current_scope/files/${fileIndex}/path`, file.path]);
-    });
-  } else {
-    manifest.workflow?.stages?.forEach((stage, stageIndex) => {
-      stage.artifacts?.forEach((artifact, artifactIndex) => {
-        checks.push([
-          `/workflow/stages/${stageIndex}/artifacts/${artifactIndex}`,
-          artifact
-        ]);
-      });
-    });
-  }
-  const errors = [];
-  for (const [instancePath, relativePath] of checks) {
-    const error = await checkExists(projectRoot, instancePath, relativePath);
-    if (error) errors.push(error);
-  }
-  return { valid: errors.length === 0, errors, projectRoot };
-}
-async function validateScopeCurrency(manifest, manifestPath) {
-  const projectRoot = projectRootFromManifest(manifestPath);
-  if (!V3_SCHEMA_VERSIONS.has(manifest.schema_version) || !manifest.current_scope || isUninitializedProjectTemplate(manifest)) {
-    return { valid: true, errors: [], projectRoot };
-  }
-  const errors = [];
-  for (const [index, file] of manifest.current_scope.files.entries()) {
-    const instancePath = `/current_scope/files/${index}`;
-    if (!validateRelativePath(file.path).valid) {
-      errors.push(scopeError(`${instancePath}/path`, "scope path must be project-relative"));
-      continue;
-    }
-    try {
-      const contents = await readFile2(path3.resolve(projectRoot, file.path));
-      const actual = createHash2("sha256").update(contents).digest("hex");
-      if (actual !== file.sha256) {
-        errors.push(
-          scopeError(
-            `${instancePath}/sha256`,
-            `manuscript content changed since the scope was recorded: ${file.path}`
-          )
-        );
-      }
-    } catch (error) {
-      errors.push(
-        scopeError(
-          `${instancePath}/path`,
-          `cannot read current manuscript ${file.path}: ${error.message}`
-        )
-      );
-    }
-  }
-  try {
-    const inventory = await collectManuscriptInventory(
-      projectRoot,
-      manifest.manuscript_root,
-      manifest.paths
-    );
-    const actualPaths = inventory.files.map((file) => file.path);
-    const recordedPaths = new Set(manifest.current_scope.files.map((file) => file.path));
-    for (const filePath of actualPaths) {
-      if (!recordedPaths.has(filePath)) {
-        errors.push(
-          scopeError(
-            "/current_scope/files",
-            `manuscript file is not registered in the current scope: ${filePath}`
-          )
-        );
-      }
-    }
-  } catch (error) {
-    errors.push(
-      scopeError("/current_scope/files", `cannot inventory current manuscript: ${error.message}`)
-    );
-  }
-  return { valid: errors.length === 0, errors, projectRoot };
-}
-var OPERATIONAL_PATHS;
-var init_project_files = __esm({
-  "scripts/lib/project-files.mjs"() {
-    init_constants();
-    init_manuscript();
-    init_schemas();
-    OPERATIONAL_PATHS = [
-      "story_bible",
-      "audit_tracker",
-      "reports",
-      "sessions",
-      "backups",
-      "handoffs"
-    ];
-  }
-});
-
-// scripts/lib/approval-paths.mjs
-function codeSpan(value) {
-  const longestRun = Math.max(0, ...[...value.matchAll(/`+/g)].map((match) => match[0].length));
-  const delimiter = "`".repeat(longestRun + 1);
-  const padding = value.startsWith("`") || value.endsWith("`") ? " " : "";
-  return `${delimiter}${padding}${value}${padding}${delimiter}`;
-}
-function formatApprovalPaths(paths) {
-  return paths.map((file) => codeSpan(file)).join(", ");
-}
-function decodeSegment(segment) {
-  const trimmed = segment.trim();
-  if (!trimmed) throw new Error("empty approval path");
-  if (!trimmed.startsWith("`")) return trimmed.replace(/\\\|/g, "|");
-  const delimiter = trimmed.match(/^`+/)[0];
-  if (!trimmed.endsWith(delimiter) || trimmed.length < delimiter.length * 2) {
-    throw new Error("unclosed approval path code span");
-  }
-  let value = trimmed.slice(delimiter.length, -delimiter.length);
-  if (delimiter.length > 1 && value.startsWith(" ") && value.endsWith(" ")) {
-    value = value.slice(1, -1);
-  }
-  return value.replace(/\\\|/g, "|");
-}
-function parseApprovalPaths(cell) {
-  try {
-    const segments = [];
-    let current = "";
-    let delimiter = null;
-    for (let index = 0; index < cell.length; index += 1) {
-      const character = cell[index];
-      if (character === "\\" && cell[index + 1] === "|") {
-        current += character + cell[index + 1];
-        index += 1;
-        continue;
-      }
-      if (character === "`") {
-        let end = index + 1;
-        while (cell[end] === "`") end += 1;
-        const run = cell.slice(index, end);
-        if (delimiter === null) delimiter = run;
-        else if (run === delimiter) delimiter = null;
-        current += run;
-        index = end - 1;
-        continue;
-      }
-      if (character === "," && delimiter === null) {
-        segments.push(current);
-        current = "";
-      } else {
-        current += character;
-      }
-    }
-    if (delimiter !== null) return { valid: false, paths: [] };
-    segments.push(current);
-    return { valid: true, paths: segments.map(decodeSegment) };
-  } catch {
-    return { valid: false, paths: [] };
-  }
-}
-var init_approval_paths = __esm({
-  "scripts/lib/approval-paths.mjs"() {
-  }
-});
-
-// scripts/lib/tracker.mjs
-import { readFile as readFile3, stat as stat3 } from "node:fs/promises";
+// scripts/lib/cycle-coordination.mjs
+import { readFile as readFile3 } from "node:fs/promises";
 import path4 from "node:path";
-function trackerError(instancePath, message) {
-  return { instancePath, keyword: "tracker", message, params: {} };
+function action() {
+  return {
+    strategy: "author-project",
+    operation: "reconcile-cycle",
+    command: "author-project reconcile-cycle"
+  };
 }
-function cleanCell(value = "") {
-  return value.trim().replace(/^`([^`]*)`$/, "$1").trim();
+function blocker(code, message, operation = null) {
+  return {
+    code,
+    message,
+    ...operation ? {
+      operation_id: operation.operation_id,
+      cycle_id: operation.cycle_id,
+      expected_revision: operation.expected_revision,
+      intended_revision: operation.intended_revision,
+      kind: operation.kind
+    } : {},
+    required_action: action()
+  };
 }
-function splitRow(line) {
-  const trimmed = line.trim();
-  if (!trimmed.startsWith("|") || !trimmed.endsWith("|")) return null;
-  const cells = [];
-  let value = "";
-  let escaped = false;
-  for (const character of trimmed.slice(1, -1)) {
-    if (escaped) {
-      value += character;
-      escaped = false;
-    } else if (character === "\\") {
-      escaped = true;
-      value += character;
-    } else if (character === "|") {
-      cells.push(value.trim());
-      value = "";
-    } else {
-      value += character;
-    }
+function pendingBlockers(manifest, active) {
+  const pending = manifest.pending_action;
+  if (!pending?.cycle_id) return [];
+  const cycle = active?.value;
+  if (!cycle) {
+    if (manifest.last_completed_cycle?.cycle_id === pending.cycle_id) return [];
+    return [blocker(
+      "pending-cycle-unavailable",
+      `Pending action ${pending.operation_id ?? pending.operation} names unavailable cycle ${pending.cycle_id}; it cannot authorize continuation.`
+    )];
   }
-  cells.push(value.trim());
-  return cells;
-}
-function normalizeHeader(value) {
-  return cleanCell(value).toLowerCase().replace(/[_-]+/g, " ").replace(/\s+/g, " ");
-}
-function isSeparator(row) {
-  return row?.length > 0 && row.every((cell) => /^:?-{3,}:?$/.test(cell.trim()));
-}
-function findingsSection(markdown) {
-  const lines = markdown.split(/\r?\n/);
-  const headings = lines.flatMap(
-    (line, index) => /^ {0,3}##[ \t]+Findings[ \t]*$/.test(line) ? [index] : []
-  );
-  if (headings.length !== 1) return { lines, error: headings.length };
-  const start = headings[0] + 1;
-  let end = lines.length;
-  for (let index = start; index < lines.length; index += 1) {
-    if (/^ {0,3}##[ \t]+/.test(lines[index])) {
-      end = index;
-      break;
-    }
+  if (pending.cycle_id !== cycle.cycle_id) {
+    return [blocker(
+      "pending-cycle-id-mismatch",
+      `Pending action names cycle ${pending.cycle_id}, but active cycle is ${cycle.cycle_id}.`
+    )];
   }
-  return { lines: lines.slice(start, end), start };
+  if (pending.cycle_revision !== cycle.revision) {
+    return [blocker(
+      "cycle-pending-revision-mismatch",
+      `Pending action revision ${pending.cycle_revision} does not match active cycle revision ${cycle.revision}.`
+    )];
+  }
+  const position = cycle.recovery_position;
+  if (pending.operation_id && position?.operation_id && pending.operation_id !== position.operation_id) {
+    return [blocker(
+      "cycle-operation-id-mismatch",
+      `Pending operation ID ${pending.operation_id} does not match cycle operation ID ${position.operation_id}.`
+    )];
+  }
+  if (position?.operation && pending.operation !== position.operation) {
+    return [blocker(
+      "cycle-operation-mismatch",
+      `Pending operation ${pending.operation} does not match cycle recovery operation ${position.operation}.`
+    )];
+  }
+  if (cycle.target_scope?.scope_id && (pending.scope_id !== cycle.target_scope.scope_id || pending.scope_fingerprint && pending.scope_fingerprint !== cycle.target_scope.scope_fingerprint)) {
+    return [blocker(
+      "cycle-pending-scope-mismatch",
+      `Pending scope ${pending.scope_id ?? "null"}@${pending.scope_fingerprint ?? "unrecorded"} does not match active target ${cycle.target_scope.scope_id}@${cycle.target_scope.scope_fingerprint}.`
+    )];
+  }
+  return [];
 }
-function reportCell(value) {
-  const link2 = value.match(/\[[^\]]+\]\(([^)]+)\)/);
-  return cleanCell(link2?.[1] ?? value);
-}
-async function validateTrackerMarkdown(markdown, projectRoot) {
-  const errors = [];
-  const section = findingsSection(markdown);
-  if (section.error !== void 0) {
-    return {
-      valid: false,
-      errors: [
-        trackerError(
-          "/Findings",
-          `expected exactly one ## Findings heading; found ${section.error}`
-        )
-      ]
-    };
+function coordinationBlockers(project, active, { allowOperationId = null } = {}) {
+  const operation = project.manifest.cycle_operation;
+  if (operation && operation.operation_id !== allowOperationId) {
+    if (operation.cycle_id !== active?.value.cycle_id) {
+      return [blocker(
+        "cycle-operation-cycle-id-mismatch",
+        `Interrupted operation ${operation.operation_id} names cycle ${operation.cycle_id}, which does not match active cycle ${active?.value.cycle_id ?? "null"}.`,
+        operation
+      )];
+    }
+    if (![operation.expected_revision, operation.intended_revision].includes(active?.value.revision)) {
+      return [blocker(
+        "cycle-operation-revision-mismatch",
+        `Interrupted operation ${operation.operation_id} allows revisions ${operation.expected_revision} or ${operation.intended_revision}, but active revision is ${active?.value.revision ?? "null"}.`,
+        operation
+      )];
+    }
+    if (active?.value.revision === operation.intended_revision && active.value.recovery_position?.operation_id && active.value.recovery_position.operation_id !== operation.operation_id) {
+      return [blocker(
+        "cycle-operation-id-mismatch",
+        `Active operation ID ${active.value.recovery_position.operation_id} does not match interrupted operation ${operation.operation_id}.`,
+        operation
+      )];
+    }
+    return [blocker(
+      "cycle-reconciliation-required",
+      `Interrupted ${operation.kind} ${operation.operation_id} stopped at cycle revision ${active?.value.revision ?? "null"}; diagnose and choose an explicit reconciliation direction.`,
+      operation
+    )];
   }
-  let headerIndex = -1;
-  let columns = null;
-  for (let index = 0; index < section.lines.length - 1; index += 1) {
-    const header = splitRow(section.lines[index]);
-    const separator = splitRow(section.lines[index + 1]);
-    if (!header || !isSeparator(separator)) continue;
-    const normalized = header.map(normalizeHeader);
-    const resolved = {};
-    for (const [name, aliases] of Object.entries(COLUMN_ALIASES)) {
-      resolved[name] = normalized.findIndex((column) => aliases.includes(column));
-    }
-    if (Object.values(resolved).every((index2) => index2 >= 0)) {
-      headerIndex = index;
-      columns = resolved;
-      break;
-    }
-  }
-  if (!columns) {
-    return {
-      valid: false,
-      errors: [
-        trackerError(
-          "/Findings",
-          "Findings table requires Finding ID, Stage, Audit, Location, Status, Current report, Updated, and Decision or stale reason columns"
-        )
-      ]
-    };
-  }
-  const ids = /* @__PURE__ */ new Set();
-  const dataLines = section.lines.slice(headerIndex + 2);
-  for (const [rowIndex, line] of dataLines.entries()) {
-    if (!line.trim()) continue;
-    const row = splitRow(line);
-    if (!row) break;
-    const rowPath = `/Findings/${rowIndex}`;
-    const get = (name) => cleanCell(row[columns[name]]);
-    const id = get("id");
-    const status = get("status").toLowerCase();
-    const report = reportCell(row[columns.report]);
-    const reason = get("reason");
-    if (row.length !== Object.keys(columns).length) {
-      errors.push(trackerError(rowPath, "finding row has the wrong number of columns"));
-      continue;
-    }
-    for (const field of ["stage", "audit", "location", "updated", "reason"]) {
-      if (!get(field)) errors.push(trackerError(`${rowPath}/${field}`, `${field} is required`));
-    }
-    if (!/^[A-Z][A-Z0-9]*-[0-9]{3,}$/.test(id)) {
-      errors.push(trackerError(`${rowPath}/id`, "finding ID must have an uppercase prefix and at least three digits"));
-    } else if (ids.has(id)) {
-      errors.push(trackerError(`${rowPath}/id`, `duplicate finding ID: ${id}`));
-    }
-    ids.add(id);
-    if (!TRACKER_STATUSES.includes(status)) {
-      errors.push(
-        trackerError(
-          `${rowPath}/status`,
-          `status must be one of ${TRACKER_STATUSES.join(", ")}; received ${status || "empty"}`
-        )
-      );
-    }
-    if (/pending|待决定/i.test(reason)) {
-      errors.push(trackerError(`${rowPath}/reason`, "record an actual decision or stale reason, not a pending placeholder"));
-    }
-    if (!report) {
-      errors.push(trackerError(`${rowPath}/report`, "current report is required"));
-      continue;
-    }
-    if (!validateRelativePath(report).valid) {
-      errors.push(trackerError(`${rowPath}/report`, "current report must be a portable project-relative path"));
-      continue;
-    }
-    try {
-      const reportStat = await stat3(path4.resolve(projectRoot, report));
-      if (!reportStat.isFile()) {
-        errors.push(trackerError(`${rowPath}/report`, `current report is not a file: ${report}`));
+  if (operation) return [];
+  const recoveryPending = allowOperationId && project.manifest.pending_action?.cycle_id === active?.value.cycle_id && project.manifest.pending_action.operation_id === allowOperationId;
+  const pending = recoveryPending ? [] : pendingBlockers(project.manifest, active);
+  if (pending.length > 0) return pending;
+  const reconciliation = active?.value.related_artifacts?.reconciliations?.at(-1) ?? null;
+  const manifestReconciliation = project.manifest.manuscript_reconciliation ?? null;
+  if (reconciliation && (reconciliation.path !== manifestReconciliation?.path || reconciliation.sha256 !== manifestReconciliation?.sha256 || reconciliation.reconciliation_id !== manifestReconciliation?.reconciliation_id)) {
+    return [blocker(
+      "cycle-manifest-reconciliation-mismatch",
+      `Active reconciliation ${reconciliation.reconciliation_id} at ${reconciliation.path}@${reconciliation.sha256} does not match manifest ${manifestReconciliation?.reconciliation_id ?? "null"} at ${manifestReconciliation?.path ?? "null"}@${manifestReconciliation?.sha256 ?? "null"}.`,
+      {
+        operation_id: reconciliation.reconciliation_id,
+        cycle_id: active.value.cycle_id,
+        expected_revision: active.value.revision - 1,
+        intended_revision: active.value.revision,
+        kind: "manuscript-reconciliation"
       }
-    } catch (error) {
-      errors.push(trackerError(`${rowPath}/report`, `current report does not exist: ${report}`));
+    )];
+  }
+  return [];
+}
+async function runCheckpoint(options, point) {
+  if (typeof options.checkpoint === "function") await options.checkpoint(point);
+}
+function timestamp(options) {
+  const now = options.now instanceof Date ? options.now : /* @__PURE__ */ new Date();
+  if (Number.isNaN(now.getTime())) throw new Error("Invalid cycle coordination time");
+  return now.toISOString();
+}
+async function writeManifest(project, manifest) {
+  const validation = validateManifest(manifest);
+  if (!validation.valid) {
+    throw new Error(`Coordinated manifest is invalid: ${validation.errors.map((error) => error.message).join("; ")}`);
+  }
+  await writeAtomicVerified(project.manifestPath, `${JSON.stringify(manifest, null, 2)}
+`);
+  project.manifest = manifest;
+}
+async function beginCycleOperation(project, active, definition, options = {}) {
+  const existing = project.manifest.cycle_operation;
+  if (existing) {
+    if (options.recoveryOperationId === definition.operationId && existing.operation_id === definition.operationId && existing.kind === definition.kind && existing.cycle_id === active.value.cycle_id && existing.expected_revision === active.value.revision && existing.intended_revision === active.value.revision + 1 && (existing.artifact_id ?? null) === (definition.artifactId ?? null)) {
+      return existing;
+    }
+    throw new Error(`Cannot begin ${definition.operationId} while ${existing.operation_id} awaits reconciliation`);
+  }
+  const operation = {
+    kind: definition.kind,
+    operation_id: definition.operationId,
+    cycle_id: active.value.cycle_id,
+    expected_revision: active.value.revision,
+    intended_revision: active.value.revision + 1,
+    ...definition.artifactId ? { artifact_id: definition.artifactId } : {},
+    created_at: timestamp(options)
+  };
+  await writeManifest(project, {
+    ...project.manifest,
+    cycle_operation: operation,
+    updated_at: operation.created_at
+  });
+  await runCheckpoint(options, "manifest-written");
+  return operation;
+}
+async function finishCycleOperation(project, cycle, operationId, options = {}) {
+  const operation = project.manifest.cycle_operation;
+  if (!operation && !options.allowMissingOperation || operation && (operation.operation_id !== operationId || operation.cycle_id !== cycle.cycle_id || operation.intended_revision !== cycle.revision)) {
+    throw new Error(`Cannot finish unrecorded cycle operation ${operationId} at revision ${cycle.revision}`);
+  }
+  const { cycle_operation: removed, ...withoutOperation } = project.manifest;
+  let pending = project.manifest.pending_action;
+  if (pending?.cycle_id === cycle.cycle_id) {
+    if (options.complete) {
+      pending = null;
+    } else {
+      pending = {
+        ...pending,
+        operation: cycle.recovery_position?.operation ?? pending.operation,
+        cycle_revision: cycle.revision,
+        operation_id: cycle.recovery_position?.operation_id ?? operationId,
+        updated_at: timestamp(options)
+      };
+      if (cycle.target_scope) {
+        pending.scope_id = cycle.target_scope.scope_id;
+        pending.scope_fingerprint = cycle.target_scope.scope_fingerprint;
+      } else {
+        delete pending.scope_id;
+        delete pending.scope_fingerprint;
+      }
     }
   }
-  return { valid: errors.length === 0, errors };
+  const manifest = {
+    ...withoutOperation,
+    ...options.manifestChanges ?? {},
+    ...pending ? { pending_action: pending } : {},
+    updated_at: options.completedAt ?? cycle.updated_at ?? timestamp(options)
+  };
+  if (!pending) delete manifest.pending_action;
+  for (const field of options.removeManifestFields ?? []) delete manifest[field];
+  await writeManifest(project, manifest);
+  await runCheckpoint(options, "manifest-updated");
+  return manifest;
 }
-function approvalsSection(markdown) {
-  const lines = markdown.split(/\r?\n/);
-  const headings = lines.flatMap(
-    (line, index) => /^ {0,3}##[ \t]+Approvals[ \t]*$/.test(line) ? [index] : []
+async function discardCycleOperation(project, operationId, options = {}) {
+  const operation = project.manifest.cycle_operation;
+  if (!operation || operation.operation_id !== operationId) {
+    throw new Error(`Cannot discard unrecorded cycle operation ${operationId}`);
+  }
+  const { cycle_operation: removed, ...manifest } = project.manifest;
+  manifest.updated_at = timestamp(options);
+  await writeManifest(project, manifest);
+  return manifest;
+}
+async function completedPointerBlocker(project) {
+  const pointer = project.manifest.last_completed_cycle;
+  if (!pointer) return null;
+  const expectedPath = path4.posix.join(
+    project.manifest.paths.convergence,
+    "cycles",
+    `${pointer.cycle_id}.json`
   );
-  if (headings.length !== 1) return { lines, error: headings.length };
-  const start = headings[0] + 1;
-  let end = lines.length;
-  for (let index = start; index < lines.length; index += 1) {
-    if (/^ {0,3}##[ \t]+/.test(lines[index])) {
-      end = index;
-      break;
-    }
-  }
-  return { lines: lines.slice(start, end) };
-}
-function validateApprovalsMarkdown(markdown) {
-  const errors = [];
-  const section = approvalsSection(markdown);
-  if (section.error !== void 0) {
+  if (pointer.path !== expectedPath) {
     return {
-      valid: false,
-      errors: [
-        trackerError(
-          "/Approvals",
-          `expected exactly one ## Approvals heading; found ${section.error}`
-        )
-      ]
+      ...blocker(
+        "cycle-completed-pointer-path-mismatch",
+        `Completed-cycle pointer path ${pointer.path} must be ${expectedPath}.`,
+        {
+          kind: "completion",
+          operation_id: pointer.cycle_id,
+          cycle_id: pointer.cycle_id,
+          expected_revision: pointer.revision - 1,
+          intended_revision: pointer.revision
+        }
+      ),
+      path: pointer.path,
+      expected_path: expectedPath
     };
   }
-  const tables = [];
-  for (let index = 0; index < section.lines.length - 1; index += 1) {
-    const header2 = splitRow(section.lines[index]);
-    const separator = splitRow(section.lines[index + 1]);
-    if (header2 && isSeparator(separator)) tables.push({ header: header2, index });
-  }
-  if (tables.length !== 1) {
+  let text;
+  try {
+    text = await readFile3(path4.resolve(project.root, pointer.path), "utf8");
+  } catch (error) {
     return {
-      valid: false,
-      errors: [
-        trackerError(
-          "/Approvals",
-          `expected exactly one Approvals table; found ${tables.length}`
-        )
-      ]
+      ...blocker(
+        "cycle-completed-pointer-unavailable",
+        `Cannot read completed cycle ${pointer.cycle_id} at ${pointer.path}: ${error.message}`,
+        {
+          kind: "completion",
+          operation_id: pointer.cycle_id,
+          cycle_id: pointer.cycle_id,
+          expected_revision: pointer.revision - 1,
+          intended_revision: pointer.revision
+        }
+      ),
+      path: pointer.path
     };
   }
-  const [{ header, index: headerIndex }] = tables;
-  const normalized = header.map(normalizeHeader);
-  const columns = Object.fromEntries(
-    APPROVAL_COLUMNS.map(([name, label]) => [name, normalized.indexOf(label)])
-  );
-  if (header.length !== APPROVAL_COLUMNS.length || Object.values(columns).some((index) => index < 0)) {
+  const actualHash = sha256Bytes(text);
+  if (actualHash !== pointer.sha256) {
     return {
-      valid: false,
-      errors: [
-        trackerError(
-          "/Approvals",
-          "Approvals table requires Approval ID, Type, Operation, Scope ID, Paths, Status, Reason, and Updated columns"
-        )
-      ]
+      ...blocker(
+        "cycle-completed-pointer-hash-mismatch",
+        `Completed cycle at ${pointer.path} has SHA-256 ${actualHash}, expected ${pointer.sha256}.`,
+        {
+          kind: "completion",
+          operation_id: pointer.cycle_id,
+          cycle_id: pointer.cycle_id,
+          expected_revision: pointer.revision - 1,
+          intended_revision: pointer.revision
+        }
+      ),
+      path: pointer.path,
+      expected_sha256: pointer.sha256,
+      actual_sha256: actualHash
     };
   }
-  const ids = /* @__PURE__ */ new Set();
-  const dataLines = section.lines.slice(headerIndex + 2);
-  for (const [rowIndex, line] of dataLines.entries()) {
-    if (!line.trim()) continue;
-    const row = splitRow(line);
-    if (!row) break;
-    const rowPath = `/Approvals/${rowIndex}`;
-    const get = (name) => cleanCell(row[columns[name]]);
-    if (row.length !== APPROVAL_COLUMNS.length) {
-      errors.push(trackerError(rowPath, "approval row has the wrong number of columns"));
-      continue;
-    }
-    const id = get("id");
-    if (!/^[A-Z][A-Z0-9]*-[0-9]{3,}$/.test(id)) {
-      errors.push(
-        trackerError(
-          `${rowPath}/id`,
-          "approval ID must have an uppercase prefix and at least three digits"
-        )
-      );
-    } else if (ids.has(id)) {
-      errors.push(trackerError(`${rowPath}/id`, `duplicate approval ID: ${id}`));
-    }
-    ids.add(id);
-    for (const field of ["type", "operation", "scopeId", "paths", "reason", "updated"]) {
-      if (!get(field)) errors.push(trackerError(`${rowPath}/${field}`, `${field} is required`));
-    }
-    const status = get("status");
-    if (!APPROVAL_STATUSES.includes(status)) {
-      errors.push(
-        trackerError(
-          `${rowPath}/status`,
-          `status must be one of ${APPROVAL_STATUSES.join(", ")}; received ${status || "empty"}`
-        )
-      );
-    }
-    const parsedPaths = parseApprovalPaths(row[columns.paths] ?? "");
-    if (!parsedPaths.valid || parsedPaths.paths.some((value) => !value || !validateRelativePath(value).valid)) {
-      errors.push(
-        trackerError(
-          `${rowPath}/paths`,
-          "paths must be comma-separated portable project-relative paths"
-        )
-      );
-    }
-  }
-  return { valid: errors.length === 0, errors };
-}
-function namedSection(markdown, name) {
-  const lines = markdown.split(/\r?\n/);
-  const headings = lines.flatMap(
-    (line, index) => new RegExp(`^ {0,3}##[ \\t]+${name}[ \\t]*$`).test(line) ? [index] : []
-  );
-  if (headings.length !== 1) return { lines, error: headings.length };
-  const start = headings[0] + 1;
-  let end = lines.length;
-  for (let index = start; index < lines.length; index += 1) {
-    if (/^ {0,3}##[ \t]+/.test(lines[index])) {
-      end = index;
-      break;
-    }
-  }
-  return { lines: lines.slice(start, end), heading: headings[0], error: void 0 };
-}
-function tableWithColumns(lines, definitions) {
-  for (let index = 0; index < lines.length - 1; index += 1) {
-    const header = splitRow(lines[index]);
-    const separator = splitRow(lines[index + 1]);
-    if (!header || !isSeparator(separator)) continue;
-    const normalized = header.map(normalizeHeader);
-    const columns = Object.fromEntries(
-      definitions.map(([name, label]) => [name, normalized.indexOf(label)])
-    );
-    if (Object.values(columns).every((column) => column >= 0)) {
-      return { header, columns, index };
-    }
+  const completed = JSON.parse(text);
+  if (completed.status !== "completed" || completed.cycle_id !== pointer.cycle_id || completed.revision !== pointer.revision) {
+    return {
+      ...blocker(
+        "cycle-completed-pointer-identity-mismatch",
+        `Completed cycle at ${pointer.path} does not match ${pointer.cycle_id} revision ${pointer.revision}.`,
+        {
+          kind: "completion",
+          operation_id: pointer.cycle_id,
+          cycle_id: pointer.cycle_id,
+          expected_revision: pointer.revision - 1,
+          intended_revision: pointer.revision
+        }
+      ),
+      path: pointer.path
+    };
   }
   return null;
 }
-function parsedRows(lines, table, definitions) {
-  const rows = [];
-  for (const line of lines.slice(table.index + 2)) {
-    if (!line.trim()) continue;
-    const cells = splitRow(line);
-    if (!cells) break;
-    const row = Object.fromEntries(
-      definitions.map(([name]) => [name, cleanCell(cells[table.columns[name]])])
-    );
-    row.cellCount = cells.length;
-    rows.push(row);
-  }
-  return rows;
-}
-async function parseTrackerState(markdown, projectRoot) {
-  const findingValidation = await validateTrackerMarkdown(markdown, projectRoot);
-  const approvalValidation = validateApprovalsMarkdown(markdown);
-  const errors = [...findingValidation.errors, ...approvalValidation.errors];
-  const findings = [];
-  const findingSection = findingsSection(markdown);
-  if (findingSection.error === void 0) {
-    const definitions = Object.entries(COLUMN_ALIASES).map(([name, aliases]) => [name, aliases[0]]);
-    const table = tableWithColumns(findingSection.lines, definitions);
-    if (table) {
-      for (const row of parsedRows(findingSection.lines, table, definitions)) {
-        row.report = reportCell(row.report);
-        row.status = row.status.toLowerCase();
-        delete row.cellCount;
-        findings.push(row);
-      }
-    }
-  }
-  const approvals = [];
-  const approvalSection = approvalsSection(markdown);
-  if (approvalSection.error === void 0) {
-    const table = tableWithColumns(approvalSection.lines, APPROVAL_COLUMNS);
-    if (table) {
-      for (const row of parsedRows(approvalSection.lines, table, APPROVAL_COLUMNS)) {
-        row.paths = parseApprovalPaths(row.paths).paths;
-        delete row.cellCount;
-        approvals.push(row);
-      }
-    }
-  }
-  const completionDecisions = [];
-  const completionSection = namedSection(markdown, "Cycle completions");
-  if (completionSection.error === void 0) {
-    const table = tableWithColumns(completionSection.lines, CYCLE_COMPLETION_COLUMNS);
-    if (!table || table.header.length !== CYCLE_COMPLETION_COLUMNS.length) {
-      errors.push(trackerError(
-        "/Cycle completions",
-        "Cycle completions requires Decision ID, Cycle ID, Target scope fingerprint, Status, Reason, and Updated columns"
-      ));
-    } else {
-      const ids = /* @__PURE__ */ new Set();
-      for (const [index, row] of parsedRows(
-        completionSection.lines,
-        table,
-        CYCLE_COMPLETION_COLUMNS
-      ).entries()) {
-        const rowPath = `/Cycle completions/${index}`;
-        if (row.cellCount !== CYCLE_COMPLETION_COLUMNS.length) {
-          errors.push(trackerError(rowPath, "cycle completion row has the wrong number of columns"));
-        }
-        if (!/^[A-Z][A-Z0-9]*-[0-9]{3,}$/.test(row.id)) {
-          errors.push(trackerError(`${rowPath}/id`, "completion decision ID has an invalid format"));
-        } else if (ids.has(row.id)) {
-          errors.push(trackerError(`${rowPath}/id`, `duplicate completion decision ID: ${row.id}`));
-        }
-        ids.add(row.id);
-        if (!/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(row.cycleId)) {
-          errors.push(trackerError(`${rowPath}/cycleId`, "cycle ID has an invalid format"));
-        }
-        if (!/^[0-9a-f]{64}$/.test(row.scopeFingerprint)) {
-          errors.push(trackerError(`${rowPath}/scopeFingerprint`, "target scope fingerprint must be SHA-256"));
-        }
-        if (!APPROVAL_STATUSES.includes(row.status)) {
-          errors.push(trackerError(`${rowPath}/status`, "completion decision status is invalid"));
-        }
-        if (!row.reason || !row.updated) {
-          errors.push(trackerError(rowPath, "completion decision reason and updated time are required"));
-        }
-        delete row.cellCount;
-        completionDecisions.push(row);
-      }
-    }
-  } else if (completionSection.error > 1) {
-    errors.push(trackerError("/Cycle completions", "expected at most one ## Cycle completions heading"));
-  }
-  return {
-    valid: errors.length === 0,
-    errors,
-    findings,
-    approvals,
-    completion_decisions: completionDecisions
-  };
-}
-function completionCell(value) {
-  return String(value).replace(/\r?\n/g, " ").replaceAll("|", "\\|").trim();
-}
-function appendCycleCompletionDecision(markdown, decision) {
-  const section = namedSection(markdown, "Cycle completions");
-  const row = `| ${decision.decision_id} | ${decision.cycle_id} | ${decision.scope_fingerprint} | approved | ${completionCell(decision.reason)} | ${decision.updated_at} |
-`;
-  if (section.error === void 0) {
-    const table = tableWithColumns(section.lines, CYCLE_COMPLETION_COLUMNS);
-    if (!table) throw new Error("Cycle completions table is invalid");
-    for (const existing of parsedRows(section.lines, table, CYCLE_COMPLETION_COLUMNS)) {
-      if (existing.id === decision.decision_id) throw new Error(`Duplicate completion decision: ${decision.decision_id}`);
-    }
-    const lines = markdown.split(/\r?\n/);
-    const separatorIndex = section.heading + 1 + table.index + 1;
-    lines.splice(separatorIndex + 1, 0, row.trimEnd());
-    return lines.join("\n");
-  }
-  const block = `## Cycle completions
-
-| Decision ID | Cycle ID | Target scope fingerprint | Status | Reason | Updated |
-|---|---|---|---|---|---|
-${row}
-`;
-  const openQuestions = markdown.match(/^ {0,3}##[ \t]+Open questions[ \t]*$/m);
-  if (openQuestions?.index !== void 0) {
-    return `${markdown.slice(0, openQuestions.index)}${block}
-${markdown.slice(openQuestions.index)}`;
-  }
-  return `${markdown.trimEnd()}
-
-${block}`;
-}
-async function validateTrackerV3Markdown(markdown, projectRoot) {
-  const state = await parseTrackerState(markdown, projectRoot);
-  return { valid: state.valid, errors: state.errors };
-}
-async function validateTracker(manifest, manifestPath) {
-  if (isUninitializedProjectTemplate(manifest)) {
-    return { valid: true, errors: [] };
-  }
-  const projectRoot = projectRootFromManifest(manifestPath);
-  const trackerPath = path4.resolve(projectRoot, manifest.paths.audit_tracker);
-  try {
-    const markdown = await readFile3(trackerPath, "utf8");
-    return V3_SCHEMA_VERSIONS.has(manifest.schema_version) ? await validateTrackerV3Markdown(markdown, projectRoot) : await validateTrackerMarkdown(markdown, projectRoot);
-  } catch (error) {
-    return {
-      valid: false,
-      errors: [trackerError("/paths/audit_tracker", `cannot read audit tracker: ${error.message}`)]
-    };
-  }
-}
-var TRACKER_STATUSES, COLUMN_ALIASES, APPROVAL_STATUSES, APPROVAL_COLUMNS, CYCLE_COMPLETION_COLUMNS;
-var init_tracker = __esm({
-  "scripts/lib/tracker.mjs"() {
-    init_approval_paths();
-    init_constants();
-    init_project_files();
-    init_schemas();
-    TRACKER_STATUSES = Object.freeze([
-      "open",
-      "resolved",
-      "deferred",
-      "dismissed",
-      "stale"
-    ]);
-    COLUMN_ALIASES = {
-      id: ["finding id", "id"],
-      stage: ["stage"],
-      audit: ["audit"],
-      location: ["location"],
-      status: ["status"],
-      report: ["current report"],
-      updated: ["updated"],
-      reason: ["decision or stale reason", "decision reason"]
-    };
-    APPROVAL_STATUSES = Object.freeze([
-      "approved",
-      "deferred",
-      "cancelled",
-      "superseded"
-    ]);
-    APPROVAL_COLUMNS = [
-      ["id", "approval id"],
-      ["type", "type"],
-      ["operation", "operation"],
-      ["scopeId", "scope id"],
-      ["paths", "paths"],
-      ["status", "status"],
-      ["reason", "reason"],
-      ["updated", "updated"]
-    ];
-    CYCLE_COMPLETION_COLUMNS = [
-      ["id", "decision id"],
-      ["cycleId", "cycle id"],
-      ["scopeFingerprint", "target scope fingerprint"],
-      ["status", "status"],
-      ["reason", "reason"],
-      ["updated", "updated"]
-    ];
+var init_cycle_coordination = __esm({
+  "scripts/lib/cycle-coordination.mjs"() {
+    init_manifest();
+    init_state_io();
   }
 });
 
@@ -10920,302 +10203,566 @@ var init_scope = __esm({
   }
 });
 
-// scripts/lib/cycle-coordination.mjs
-import { readFile as readFile5 } from "node:fs/promises";
-import path6 from "node:path";
-function action() {
-  return {
-    strategy: "author-project",
-    operation: "reconcile-cycle",
-    command: "author-project reconcile-cycle"
-  };
+// scripts/lib/approval-paths.mjs
+function codeSpan(value) {
+  const longestRun = Math.max(0, ...[...value.matchAll(/`+/g)].map((match) => match[0].length));
+  const delimiter = "`".repeat(longestRun + 1);
+  const padding = value.startsWith("`") || value.endsWith("`") ? " " : "";
+  return `${delimiter}${padding}${value}${padding}${delimiter}`;
 }
-function blocker(code, message, operation = null) {
-  return {
-    code,
-    message,
-    ...operation ? {
-      operation_id: operation.operation_id,
-      cycle_id: operation.cycle_id,
-      expected_revision: operation.expected_revision,
-      intended_revision: operation.intended_revision,
-      kind: operation.kind
-    } : {},
-    required_action: action()
-  };
+function formatApprovalPaths(paths) {
+  return paths.map((file) => codeSpan(file)).join(", ");
 }
-function pendingBlockers(manifest, active) {
-  const pending = manifest.pending_action;
-  if (!pending?.cycle_id) return [];
-  const cycle = active?.value;
-  if (!cycle) {
-    if (manifest.last_completed_cycle?.cycle_id === pending.cycle_id) return [];
-    return [blocker(
-      "pending-cycle-unavailable",
-      `Pending action ${pending.operation_id ?? pending.operation} names unavailable cycle ${pending.cycle_id}; it cannot authorize continuation.`
-    )];
+function decodeSegment(segment) {
+  const trimmed = segment.trim();
+  if (!trimmed) throw new Error("empty approval path");
+  if (!trimmed.startsWith("`")) return trimmed.replace(/\\\|/g, "|");
+  const delimiter = trimmed.match(/^`+/)[0];
+  if (!trimmed.endsWith(delimiter) || trimmed.length < delimiter.length * 2) {
+    throw new Error("unclosed approval path code span");
   }
-  if (pending.cycle_id !== cycle.cycle_id) {
-    return [blocker(
-      "pending-cycle-id-mismatch",
-      `Pending action names cycle ${pending.cycle_id}, but active cycle is ${cycle.cycle_id}.`
-    )];
+  let value = trimmed.slice(delimiter.length, -delimiter.length);
+  if (delimiter.length > 1 && value.startsWith(" ") && value.endsWith(" ")) {
+    value = value.slice(1, -1);
   }
-  if (pending.cycle_revision !== cycle.revision) {
-    return [blocker(
-      "cycle-pending-revision-mismatch",
-      `Pending action revision ${pending.cycle_revision} does not match active cycle revision ${cycle.revision}.`
-    )];
-  }
-  const position = cycle.recovery_position;
-  if (pending.operation_id && position?.operation_id && pending.operation_id !== position.operation_id) {
-    return [blocker(
-      "cycle-operation-id-mismatch",
-      `Pending operation ID ${pending.operation_id} does not match cycle operation ID ${position.operation_id}.`
-    )];
-  }
-  if (position?.operation && pending.operation !== position.operation) {
-    return [blocker(
-      "cycle-operation-mismatch",
-      `Pending operation ${pending.operation} does not match cycle recovery operation ${position.operation}.`
-    )];
-  }
-  if (cycle.target_scope?.scope_id && (pending.scope_id !== cycle.target_scope.scope_id || pending.scope_fingerprint && pending.scope_fingerprint !== cycle.target_scope.scope_fingerprint)) {
-    return [blocker(
-      "cycle-pending-scope-mismatch",
-      `Pending scope ${pending.scope_id ?? "null"}@${pending.scope_fingerprint ?? "unrecorded"} does not match active target ${cycle.target_scope.scope_id}@${cycle.target_scope.scope_fingerprint}.`
-    )];
-  }
-  return [];
+  return value.replace(/\\\|/g, "|");
 }
-function coordinationBlockers(project, active, { allowOperationId = null } = {}) {
-  const operation = project.manifest.cycle_operation;
-  if (operation && operation.operation_id !== allowOperationId) {
-    if (operation.cycle_id !== active?.value.cycle_id) {
-      return [blocker(
-        "cycle-operation-cycle-id-mismatch",
-        `Interrupted operation ${operation.operation_id} names cycle ${operation.cycle_id}, which does not match active cycle ${active?.value.cycle_id ?? "null"}.`,
-        operation
-      )];
-    }
-    if (![operation.expected_revision, operation.intended_revision].includes(active?.value.revision)) {
-      return [blocker(
-        "cycle-operation-revision-mismatch",
-        `Interrupted operation ${operation.operation_id} allows revisions ${operation.expected_revision} or ${operation.intended_revision}, but active revision is ${active?.value.revision ?? "null"}.`,
-        operation
-      )];
-    }
-    if (active?.value.revision === operation.intended_revision && active.value.recovery_position?.operation_id && active.value.recovery_position.operation_id !== operation.operation_id) {
-      return [blocker(
-        "cycle-operation-id-mismatch",
-        `Active operation ID ${active.value.recovery_position.operation_id} does not match interrupted operation ${operation.operation_id}.`,
-        operation
-      )];
-    }
-    return [blocker(
-      "cycle-reconciliation-required",
-      `Interrupted ${operation.kind} ${operation.operation_id} stopped at cycle revision ${active?.value.revision ?? "null"}; diagnose and choose an explicit reconciliation direction.`,
-      operation
-    )];
-  }
-  if (operation) return [];
-  const recoveryPending = allowOperationId && project.manifest.pending_action?.cycle_id === active?.value.cycle_id && project.manifest.pending_action.operation_id === allowOperationId;
-  const pending = recoveryPending ? [] : pendingBlockers(project.manifest, active);
-  if (pending.length > 0) return pending;
-  const reconciliation = active?.value.related_artifacts?.reconciliations?.at(-1) ?? null;
-  const manifestReconciliation = project.manifest.manuscript_reconciliation ?? null;
-  if (reconciliation && (reconciliation.path !== manifestReconciliation?.path || reconciliation.sha256 !== manifestReconciliation?.sha256 || reconciliation.reconciliation_id !== manifestReconciliation?.reconciliation_id)) {
-    return [blocker(
-      "cycle-manifest-reconciliation-mismatch",
-      `Active reconciliation ${reconciliation.reconciliation_id} at ${reconciliation.path}@${reconciliation.sha256} does not match manifest ${manifestReconciliation?.reconciliation_id ?? "null"} at ${manifestReconciliation?.path ?? "null"}@${manifestReconciliation?.sha256 ?? "null"}.`,
-      {
-        operation_id: reconciliation.reconciliation_id,
-        cycle_id: active.value.cycle_id,
-        expected_revision: active.value.revision - 1,
-        intended_revision: active.value.revision,
-        kind: "manuscript-reconciliation"
-      }
-    )];
-  }
-  return [];
-}
-async function runCheckpoint(options, point) {
-  if (typeof options.checkpoint === "function") await options.checkpoint(point);
-}
-function timestamp(options) {
-  const now = options.now instanceof Date ? options.now : /* @__PURE__ */ new Date();
-  if (Number.isNaN(now.getTime())) throw new Error("Invalid cycle coordination time");
-  return now.toISOString();
-}
-async function writeManifest(project, manifest) {
-  const validation = validateManifest(manifest);
-  if (!validation.valid) {
-    throw new Error(`Coordinated manifest is invalid: ${validation.errors.map((error) => error.message).join("; ")}`);
-  }
-  await writeAtomicVerified(project.manifestPath, `${JSON.stringify(manifest, null, 2)}
-`);
-  project.manifest = manifest;
-}
-async function beginCycleOperation(project, active, definition, options = {}) {
-  const existing = project.manifest.cycle_operation;
-  if (existing) {
-    if (options.recoveryOperationId === definition.operationId && existing.operation_id === definition.operationId && existing.kind === definition.kind && existing.cycle_id === active.value.cycle_id && existing.expected_revision === active.value.revision && existing.intended_revision === active.value.revision + 1 && (existing.artifact_id ?? null) === (definition.artifactId ?? null)) {
-      return existing;
-    }
-    throw new Error(`Cannot begin ${definition.operationId} while ${existing.operation_id} awaits reconciliation`);
-  }
-  const operation = {
-    kind: definition.kind,
-    operation_id: definition.operationId,
-    cycle_id: active.value.cycle_id,
-    expected_revision: active.value.revision,
-    intended_revision: active.value.revision + 1,
-    ...definition.artifactId ? { artifact_id: definition.artifactId } : {},
-    created_at: timestamp(options)
-  };
-  await writeManifest(project, {
-    ...project.manifest,
-    cycle_operation: operation,
-    updated_at: operation.created_at
-  });
-  await runCheckpoint(options, "manifest-written");
-  return operation;
-}
-async function finishCycleOperation(project, cycle, operationId, options = {}) {
-  const operation = project.manifest.cycle_operation;
-  if (!operation && !options.allowMissingOperation || operation && (operation.operation_id !== operationId || operation.cycle_id !== cycle.cycle_id || operation.intended_revision !== cycle.revision)) {
-    throw new Error(`Cannot finish unrecorded cycle operation ${operationId} at revision ${cycle.revision}`);
-  }
-  const { cycle_operation: removed, ...withoutOperation } = project.manifest;
-  let pending = project.manifest.pending_action;
-  if (pending?.cycle_id === cycle.cycle_id) {
-    if (options.complete) {
-      pending = null;
-    } else {
-      pending = {
-        ...pending,
-        operation: cycle.recovery_position?.operation ?? pending.operation,
-        cycle_revision: cycle.revision,
-        operation_id: cycle.recovery_position?.operation_id ?? operationId,
-        updated_at: timestamp(options)
-      };
-      if (cycle.target_scope) {
-        pending.scope_id = cycle.target_scope.scope_id;
-        pending.scope_fingerprint = cycle.target_scope.scope_fingerprint;
-      } else {
-        delete pending.scope_id;
-        delete pending.scope_fingerprint;
-      }
-    }
-  }
-  const manifest = {
-    ...withoutOperation,
-    ...options.manifestChanges ?? {},
-    ...pending ? { pending_action: pending } : {},
-    updated_at: options.completedAt ?? cycle.updated_at ?? timestamp(options)
-  };
-  if (!pending) delete manifest.pending_action;
-  for (const field of options.removeManifestFields ?? []) delete manifest[field];
-  await writeManifest(project, manifest);
-  await runCheckpoint(options, "manifest-updated");
-  return manifest;
-}
-async function discardCycleOperation(project, operationId, options = {}) {
-  const operation = project.manifest.cycle_operation;
-  if (!operation || operation.operation_id !== operationId) {
-    throw new Error(`Cannot discard unrecorded cycle operation ${operationId}`);
-  }
-  const { cycle_operation: removed, ...manifest } = project.manifest;
-  manifest.updated_at = timestamp(options);
-  await writeManifest(project, manifest);
-  return manifest;
-}
-async function completedPointerBlocker(project) {
-  const pointer = project.manifest.last_completed_cycle;
-  if (!pointer) return null;
-  const expectedPath = path6.posix.join(
-    project.manifest.paths.convergence,
-    "cycles",
-    `${pointer.cycle_id}.json`
-  );
-  if (pointer.path !== expectedPath) {
-    return {
-      ...blocker(
-        "cycle-completed-pointer-path-mismatch",
-        `Completed-cycle pointer path ${pointer.path} must be ${expectedPath}.`,
-        {
-          kind: "completion",
-          operation_id: pointer.cycle_id,
-          cycle_id: pointer.cycle_id,
-          expected_revision: pointer.revision - 1,
-          intended_revision: pointer.revision
-        }
-      ),
-      path: pointer.path,
-      expected_path: expectedPath
-    };
-  }
-  let text;
+function parseApprovalPaths(cell) {
   try {
-    text = await readFile5(path6.resolve(project.root, pointer.path), "utf8");
-  } catch (error) {
+    const segments = [];
+    let current = "";
+    let delimiter = null;
+    for (let index = 0; index < cell.length; index += 1) {
+      const character = cell[index];
+      if (character === "\\" && cell[index + 1] === "|") {
+        current += character + cell[index + 1];
+        index += 1;
+        continue;
+      }
+      if (character === "`") {
+        let end = index + 1;
+        while (cell[end] === "`") end += 1;
+        const run = cell.slice(index, end);
+        if (delimiter === null) delimiter = run;
+        else if (run === delimiter) delimiter = null;
+        current += run;
+        index = end - 1;
+        continue;
+      }
+      if (character === "," && delimiter === null) {
+        segments.push(current);
+        current = "";
+      } else {
+        current += character;
+      }
+    }
+    if (delimiter !== null) return { valid: false, paths: [] };
+    segments.push(current);
+    return { valid: true, paths: segments.map(decodeSegment) };
+  } catch {
+    return { valid: false, paths: [] };
+  }
+}
+var init_approval_paths = __esm({
+  "scripts/lib/approval-paths.mjs"() {
+  }
+});
+
+// scripts/lib/tracker.mjs
+import { readFile as readFile5, stat as stat3 } from "node:fs/promises";
+import path6 from "node:path";
+function trackerError(instancePath, message) {
+  return { instancePath, keyword: "tracker", message, params: {} };
+}
+function cleanCell(value = "") {
+  return value.trim().replace(/^`([^`]*)`$/, "$1").trim();
+}
+function splitRow(line) {
+  const trimmed = line.trim();
+  if (!trimmed.startsWith("|") || !trimmed.endsWith("|")) return null;
+  const cells = [];
+  let value = "";
+  let escaped = false;
+  for (const character of trimmed.slice(1, -1)) {
+    if (escaped) {
+      value += character;
+      escaped = false;
+    } else if (character === "\\") {
+      escaped = true;
+      value += character;
+    } else if (character === "|") {
+      cells.push(value.trim());
+      value = "";
+    } else {
+      value += character;
+    }
+  }
+  cells.push(value.trim());
+  return cells;
+}
+function normalizeHeader(value) {
+  return cleanCell(value).toLowerCase().replace(/[_-]+/g, " ").replace(/\s+/g, " ");
+}
+function isSeparator(row) {
+  return row?.length > 0 && row.every((cell) => /^:?-{3,}:?$/.test(cell.trim()));
+}
+function findingsSection(markdown) {
+  const lines = markdown.split(/\r?\n/);
+  const headings = lines.flatMap(
+    (line, index) => /^ {0,3}##[ \t]+Findings[ \t]*$/.test(line) ? [index] : []
+  );
+  if (headings.length !== 1) return { lines, error: headings.length };
+  const start = headings[0] + 1;
+  let end = lines.length;
+  for (let index = start; index < lines.length; index += 1) {
+    if (/^ {0,3}##[ \t]+/.test(lines[index])) {
+      end = index;
+      break;
+    }
+  }
+  return { lines: lines.slice(start, end), start };
+}
+function reportCell(value) {
+  const link2 = value.match(/\[[^\]]+\]\(([^)]+)\)/);
+  return cleanCell(link2?.[1] ?? value);
+}
+async function validateTrackerMarkdown(markdown, projectRoot) {
+  const errors = [];
+  const section = findingsSection(markdown);
+  if (section.error !== void 0) {
     return {
-      ...blocker(
-        "cycle-completed-pointer-unavailable",
-        `Cannot read completed cycle ${pointer.cycle_id} at ${pointer.path}: ${error.message}`,
-        {
-          kind: "completion",
-          operation_id: pointer.cycle_id,
-          cycle_id: pointer.cycle_id,
-          expected_revision: pointer.revision - 1,
-          intended_revision: pointer.revision
-        }
-      ),
-      path: pointer.path
+      valid: false,
+      errors: [
+        trackerError(
+          "/Findings",
+          `expected exactly one ## Findings heading; found ${section.error}`
+        )
+      ]
     };
   }
-  const actualHash = sha256Bytes(text);
-  if (actualHash !== pointer.sha256) {
+  let headerIndex = -1;
+  let columns = null;
+  for (let index = 0; index < section.lines.length - 1; index += 1) {
+    const header = splitRow(section.lines[index]);
+    const separator = splitRow(section.lines[index + 1]);
+    if (!header || !isSeparator(separator)) continue;
+    const normalized = header.map(normalizeHeader);
+    const resolved = {};
+    for (const [name, aliases] of Object.entries(COLUMN_ALIASES)) {
+      resolved[name] = normalized.findIndex((column) => aliases.includes(column));
+    }
+    if (Object.values(resolved).every((index2) => index2 >= 0)) {
+      headerIndex = index;
+      columns = resolved;
+      break;
+    }
+  }
+  if (!columns) {
     return {
-      ...blocker(
-        "cycle-completed-pointer-hash-mismatch",
-        `Completed cycle at ${pointer.path} has SHA-256 ${actualHash}, expected ${pointer.sha256}.`,
-        {
-          kind: "completion",
-          operation_id: pointer.cycle_id,
-          cycle_id: pointer.cycle_id,
-          expected_revision: pointer.revision - 1,
-          intended_revision: pointer.revision
-        }
-      ),
-      path: pointer.path,
-      expected_sha256: pointer.sha256,
-      actual_sha256: actualHash
+      valid: false,
+      errors: [
+        trackerError(
+          "/Findings",
+          "Findings table requires Finding ID, Stage, Audit, Location, Status, Current report, Updated, and Decision or stale reason columns"
+        )
+      ]
     };
   }
-  const completed = JSON.parse(text);
-  if (completed.status !== "completed" || completed.cycle_id !== pointer.cycle_id || completed.revision !== pointer.revision) {
+  const ids = /* @__PURE__ */ new Set();
+  const dataLines = section.lines.slice(headerIndex + 2);
+  for (const [rowIndex, line] of dataLines.entries()) {
+    if (!line.trim()) continue;
+    const row = splitRow(line);
+    if (!row) break;
+    const rowPath = `/Findings/${rowIndex}`;
+    const get = (name) => cleanCell(row[columns[name]]);
+    const id = get("id");
+    const status = get("status").toLowerCase();
+    const report = reportCell(row[columns.report]);
+    const reason = get("reason");
+    if (row.length !== Object.keys(columns).length) {
+      errors.push(trackerError(rowPath, "finding row has the wrong number of columns"));
+      continue;
+    }
+    for (const field of ["stage", "audit", "location", "updated", "reason"]) {
+      if (!get(field)) errors.push(trackerError(`${rowPath}/${field}`, `${field} is required`));
+    }
+    if (!/^[A-Z][A-Z0-9]*-[0-9]{3,}$/.test(id)) {
+      errors.push(trackerError(`${rowPath}/id`, "finding ID must have an uppercase prefix and at least three digits"));
+    } else if (ids.has(id)) {
+      errors.push(trackerError(`${rowPath}/id`, `duplicate finding ID: ${id}`));
+    }
+    ids.add(id);
+    if (!TRACKER_STATUSES.includes(status)) {
+      errors.push(
+        trackerError(
+          `${rowPath}/status`,
+          `status must be one of ${TRACKER_STATUSES.join(", ")}; received ${status || "empty"}`
+        )
+      );
+    }
+    if (/pending|待决定/i.test(reason)) {
+      errors.push(trackerError(`${rowPath}/reason`, "record an actual decision or stale reason, not a pending placeholder"));
+    }
+    if (!report) {
+      errors.push(trackerError(`${rowPath}/report`, "current report is required"));
+      continue;
+    }
+    if (!validateRelativePath(report).valid) {
+      errors.push(trackerError(`${rowPath}/report`, "current report must be a portable project-relative path"));
+      continue;
+    }
+    try {
+      const reportStat = await stat3(path6.resolve(projectRoot, report));
+      if (!reportStat.isFile()) {
+        errors.push(trackerError(`${rowPath}/report`, `current report is not a file: ${report}`));
+      }
+    } catch (error) {
+      errors.push(trackerError(`${rowPath}/report`, `current report does not exist: ${report}`));
+    }
+  }
+  return { valid: errors.length === 0, errors };
+}
+function approvalsSection(markdown) {
+  const lines = markdown.split(/\r?\n/);
+  const headings = lines.flatMap(
+    (line, index) => /^ {0,3}##[ \t]+Approvals[ \t]*$/.test(line) ? [index] : []
+  );
+  if (headings.length !== 1) return { lines, error: headings.length };
+  const start = headings[0] + 1;
+  let end = lines.length;
+  for (let index = start; index < lines.length; index += 1) {
+    if (/^ {0,3}##[ \t]+/.test(lines[index])) {
+      end = index;
+      break;
+    }
+  }
+  return { lines: lines.slice(start, end) };
+}
+function validateApprovalsMarkdown(markdown) {
+  const errors = [];
+  const section = approvalsSection(markdown);
+  if (section.error !== void 0) {
     return {
-      ...blocker(
-        "cycle-completed-pointer-identity-mismatch",
-        `Completed cycle at ${pointer.path} does not match ${pointer.cycle_id} revision ${pointer.revision}.`,
-        {
-          kind: "completion",
-          operation_id: pointer.cycle_id,
-          cycle_id: pointer.cycle_id,
-          expected_revision: pointer.revision - 1,
-          intended_revision: pointer.revision
-        }
-      ),
-      path: pointer.path
+      valid: false,
+      errors: [
+        trackerError(
+          "/Approvals",
+          `expected exactly one ## Approvals heading; found ${section.error}`
+        )
+      ]
     };
+  }
+  const tables = [];
+  for (let index = 0; index < section.lines.length - 1; index += 1) {
+    const header2 = splitRow(section.lines[index]);
+    const separator = splitRow(section.lines[index + 1]);
+    if (header2 && isSeparator(separator)) tables.push({ header: header2, index });
+  }
+  if (tables.length !== 1) {
+    return {
+      valid: false,
+      errors: [
+        trackerError(
+          "/Approvals",
+          `expected exactly one Approvals table; found ${tables.length}`
+        )
+      ]
+    };
+  }
+  const [{ header, index: headerIndex }] = tables;
+  const normalized = header.map(normalizeHeader);
+  const columns = Object.fromEntries(
+    APPROVAL_COLUMNS.map(([name, label]) => [name, normalized.indexOf(label)])
+  );
+  if (header.length !== APPROVAL_COLUMNS.length || Object.values(columns).some((index) => index < 0)) {
+    return {
+      valid: false,
+      errors: [
+        trackerError(
+          "/Approvals",
+          "Approvals table requires Approval ID, Type, Operation, Scope ID, Paths, Status, Reason, and Updated columns"
+        )
+      ]
+    };
+  }
+  const ids = /* @__PURE__ */ new Set();
+  const dataLines = section.lines.slice(headerIndex + 2);
+  for (const [rowIndex, line] of dataLines.entries()) {
+    if (!line.trim()) continue;
+    const row = splitRow(line);
+    if (!row) break;
+    const rowPath = `/Approvals/${rowIndex}`;
+    const get = (name) => cleanCell(row[columns[name]]);
+    if (row.length !== APPROVAL_COLUMNS.length) {
+      errors.push(trackerError(rowPath, "approval row has the wrong number of columns"));
+      continue;
+    }
+    const id = get("id");
+    if (!/^[A-Z][A-Z0-9]*-[0-9]{3,}$/.test(id)) {
+      errors.push(
+        trackerError(
+          `${rowPath}/id`,
+          "approval ID must have an uppercase prefix and at least three digits"
+        )
+      );
+    } else if (ids.has(id)) {
+      errors.push(trackerError(`${rowPath}/id`, `duplicate approval ID: ${id}`));
+    }
+    ids.add(id);
+    for (const field of ["type", "operation", "scopeId", "paths", "reason", "updated"]) {
+      if (!get(field)) errors.push(trackerError(`${rowPath}/${field}`, `${field} is required`));
+    }
+    const status = get("status");
+    if (!APPROVAL_STATUSES.includes(status)) {
+      errors.push(
+        trackerError(
+          `${rowPath}/status`,
+          `status must be one of ${APPROVAL_STATUSES.join(", ")}; received ${status || "empty"}`
+        )
+      );
+    }
+    const parsedPaths = parseApprovalPaths(row[columns.paths] ?? "");
+    if (!parsedPaths.valid || parsedPaths.paths.some((value) => !value || !validateRelativePath(value).valid)) {
+      errors.push(
+        trackerError(
+          `${rowPath}/paths`,
+          "paths must be comma-separated portable project-relative paths"
+        )
+      );
+    }
+  }
+  return { valid: errors.length === 0, errors };
+}
+function namedSection(markdown, name) {
+  const lines = markdown.split(/\r?\n/);
+  const headings = lines.flatMap(
+    (line, index) => new RegExp(`^ {0,3}##[ \\t]+${name}[ \\t]*$`).test(line) ? [index] : []
+  );
+  if (headings.length !== 1) return { lines, error: headings.length };
+  const start = headings[0] + 1;
+  let end = lines.length;
+  for (let index = start; index < lines.length; index += 1) {
+    if (/^ {0,3}##[ \t]+/.test(lines[index])) {
+      end = index;
+      break;
+    }
+  }
+  return { lines: lines.slice(start, end), heading: headings[0], error: void 0 };
+}
+function tableWithColumns(lines, definitions) {
+  for (let index = 0; index < lines.length - 1; index += 1) {
+    const header = splitRow(lines[index]);
+    const separator = splitRow(lines[index + 1]);
+    if (!header || !isSeparator(separator)) continue;
+    const normalized = header.map(normalizeHeader);
+    const columns = Object.fromEntries(
+      definitions.map(([name, label]) => [name, normalized.indexOf(label)])
+    );
+    if (Object.values(columns).every((column) => column >= 0)) {
+      return { header, columns, index };
+    }
   }
   return null;
 }
-var init_cycle_coordination = __esm({
-  "scripts/lib/cycle-coordination.mjs"() {
-    init_manifest();
-    init_state_io();
+function parsedRows(lines, table, definitions) {
+  const rows = [];
+  for (const line of lines.slice(table.index + 2)) {
+    if (!line.trim()) continue;
+    const cells = splitRow(line);
+    if (!cells) break;
+    const row = Object.fromEntries(
+      definitions.map(([name]) => [name, cleanCell(cells[table.columns[name]])])
+    );
+    row.cellCount = cells.length;
+    rows.push(row);
+  }
+  return rows;
+}
+async function parseTrackerState(markdown, projectRoot) {
+  const findingValidation = await validateTrackerMarkdown(markdown, projectRoot);
+  const approvalValidation = validateApprovalsMarkdown(markdown);
+  const errors = [...findingValidation.errors, ...approvalValidation.errors];
+  const findings = [];
+  const findingSection = findingsSection(markdown);
+  if (findingSection.error === void 0) {
+    const definitions = Object.entries(COLUMN_ALIASES).map(([name, aliases]) => [name, aliases[0]]);
+    const table = tableWithColumns(findingSection.lines, definitions);
+    if (table) {
+      for (const row of parsedRows(findingSection.lines, table, definitions)) {
+        row.report = reportCell(row.report);
+        row.status = row.status.toLowerCase();
+        delete row.cellCount;
+        findings.push(row);
+      }
+    }
+  }
+  const approvals = [];
+  const approvalSection = approvalsSection(markdown);
+  if (approvalSection.error === void 0) {
+    const table = tableWithColumns(approvalSection.lines, APPROVAL_COLUMNS);
+    if (table) {
+      for (const row of parsedRows(approvalSection.lines, table, APPROVAL_COLUMNS)) {
+        row.paths = parseApprovalPaths(row.paths).paths;
+        delete row.cellCount;
+        approvals.push(row);
+      }
+    }
+  }
+  const completionDecisions = [];
+  const completionSection = namedSection(markdown, "Cycle completions");
+  if (completionSection.error === void 0) {
+    const table = tableWithColumns(completionSection.lines, CYCLE_COMPLETION_COLUMNS);
+    if (!table || table.header.length !== CYCLE_COMPLETION_COLUMNS.length) {
+      errors.push(trackerError(
+        "/Cycle completions",
+        "Cycle completions requires Decision ID, Cycle ID, Target scope fingerprint, Status, Reason, and Updated columns"
+      ));
+    } else {
+      const ids = /* @__PURE__ */ new Set();
+      for (const [index, row] of parsedRows(
+        completionSection.lines,
+        table,
+        CYCLE_COMPLETION_COLUMNS
+      ).entries()) {
+        const rowPath = `/Cycle completions/${index}`;
+        if (row.cellCount !== CYCLE_COMPLETION_COLUMNS.length) {
+          errors.push(trackerError(rowPath, "cycle completion row has the wrong number of columns"));
+        }
+        if (!/^[A-Z][A-Z0-9]*-[0-9]{3,}$/.test(row.id)) {
+          errors.push(trackerError(`${rowPath}/id`, "completion decision ID has an invalid format"));
+        } else if (ids.has(row.id)) {
+          errors.push(trackerError(`${rowPath}/id`, `duplicate completion decision ID: ${row.id}`));
+        }
+        ids.add(row.id);
+        if (!/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(row.cycleId)) {
+          errors.push(trackerError(`${rowPath}/cycleId`, "cycle ID has an invalid format"));
+        }
+        if (!/^[0-9a-f]{64}$/.test(row.scopeFingerprint)) {
+          errors.push(trackerError(`${rowPath}/scopeFingerprint`, "target scope fingerprint must be SHA-256"));
+        }
+        if (!APPROVAL_STATUSES.includes(row.status)) {
+          errors.push(trackerError(`${rowPath}/status`, "completion decision status is invalid"));
+        }
+        if (!row.reason || !row.updated) {
+          errors.push(trackerError(rowPath, "completion decision reason and updated time are required"));
+        }
+        delete row.cellCount;
+        completionDecisions.push(row);
+      }
+    }
+  } else if (completionSection.error > 1) {
+    errors.push(trackerError("/Cycle completions", "expected at most one ## Cycle completions heading"));
+  }
+  return {
+    valid: errors.length === 0,
+    errors,
+    findings,
+    approvals,
+    completion_decisions: completionDecisions
+  };
+}
+function completionCell(value) {
+  return String(value).replace(/\r?\n/g, " ").replaceAll("|", "\\|").trim();
+}
+function appendCycleCompletionDecision(markdown, decision) {
+  const section = namedSection(markdown, "Cycle completions");
+  const row = `| ${decision.decision_id} | ${decision.cycle_id} | ${decision.scope_fingerprint} | approved | ${completionCell(decision.reason)} | ${decision.updated_at} |
+`;
+  if (section.error === void 0) {
+    const table = tableWithColumns(section.lines, CYCLE_COMPLETION_COLUMNS);
+    if (!table) throw new Error("Cycle completions table is invalid");
+    for (const existing of parsedRows(section.lines, table, CYCLE_COMPLETION_COLUMNS)) {
+      if (existing.id === decision.decision_id) throw new Error(`Duplicate completion decision: ${decision.decision_id}`);
+    }
+    const lines = markdown.split(/\r?\n/);
+    const separatorIndex = section.heading + 1 + table.index + 1;
+    lines.splice(separatorIndex + 1, 0, row.trimEnd());
+    return lines.join("\n");
+  }
+  const block = `## Cycle completions
+
+| Decision ID | Cycle ID | Target scope fingerprint | Status | Reason | Updated |
+|---|---|---|---|---|---|
+${row}
+`;
+  const openQuestions = markdown.match(/^ {0,3}##[ \t]+Open questions[ \t]*$/m);
+  if (openQuestions?.index !== void 0) {
+    return `${markdown.slice(0, openQuestions.index)}${block}
+${markdown.slice(openQuestions.index)}`;
+  }
+  return `${markdown.trimEnd()}
+
+${block}`;
+}
+async function validateTrackerV3Markdown(markdown, projectRoot) {
+  const state = await parseTrackerState(markdown, projectRoot);
+  return { valid: state.valid, errors: state.errors };
+}
+async function validateTracker(manifest, manifestPath) {
+  if (isUninitializedProjectTemplate(manifest)) {
+    return { valid: true, errors: [] };
+  }
+  const projectRoot = projectRootFromManifest(manifestPath);
+  const trackerPath = path6.resolve(projectRoot, manifest.paths.audit_tracker);
+  try {
+    const markdown = await readFile5(trackerPath, "utf8");
+    return V3_SCHEMA_VERSIONS.has(manifest.schema_version) ? await validateTrackerV3Markdown(markdown, projectRoot) : await validateTrackerMarkdown(markdown, projectRoot);
+  } catch (error) {
+    return {
+      valid: false,
+      errors: [trackerError("/paths/audit_tracker", `cannot read audit tracker: ${error.message}`)]
+    };
+  }
+}
+var TRACKER_STATUSES, COLUMN_ALIASES, APPROVAL_STATUSES, APPROVAL_COLUMNS, CYCLE_COMPLETION_COLUMNS;
+var init_tracker = __esm({
+  "scripts/lib/tracker.mjs"() {
+    init_approval_paths();
+    init_constants();
+    init_project_files();
+    init_schemas();
+    TRACKER_STATUSES = Object.freeze([
+      "open",
+      "resolved",
+      "deferred",
+      "dismissed",
+      "stale"
+    ]);
+    COLUMN_ALIASES = {
+      id: ["finding id", "id"],
+      stage: ["stage"],
+      audit: ["audit"],
+      location: ["location"],
+      status: ["status"],
+      report: ["current report"],
+      updated: ["updated"],
+      reason: ["decision or stale reason", "decision reason"]
+    };
+    APPROVAL_STATUSES = Object.freeze([
+      "approved",
+      "deferred",
+      "cancelled",
+      "superseded"
+    ]);
+    APPROVAL_COLUMNS = [
+      ["id", "approval id"],
+      ["type", "type"],
+      ["operation", "operation"],
+      ["scopeId", "scope id"],
+      ["paths", "paths"],
+      ["status", "status"],
+      ["reason", "reason"],
+      ["updated", "updated"]
+    ];
+    CYCLE_COMPLETION_COLUMNS = [
+      ["id", "decision id"],
+      ["cycleId", "cycle id"],
+      ["scopeFingerprint", "target scope fingerprint"],
+      ["status", "status"],
+      ["reason", "reason"],
+      ["updated", "updated"]
+    ];
   }
 });
 
@@ -12903,6 +12450,466 @@ var init_revision_execution = __esm({
     init_scope();
     init_state_io();
     init_tracker();
+  }
+});
+
+// scripts/lib/review.mjs
+function reviewError(instancePath, keyword, message) {
+  return { instancePath, keyword, message, params: {} };
+}
+function objectArray(value) {
+  return Array.isArray(value) ? value.filter((item) => item && typeof item === "object") : [];
+}
+function duplicateErrors(items, key, path22, keyword, errors) {
+  const seen = /* @__PURE__ */ new Set();
+  for (const [index, item] of items.entries()) {
+    const value = item?.[key];
+    if (seen.has(value)) {
+      errors.push(reviewError(`${path22}/${index}/${key}`, keyword, `duplicate ${key}: ${value}`));
+    }
+    seen.add(value);
+  }
+}
+function structureErrors(job) {
+  const errors = [];
+  const files = objectArray(job?.files);
+  const chunks = objectArray(job?.chunks);
+  const volumes = objectArray(job?.volumes);
+  duplicateErrors(files, "path", "/files", "review-source", errors);
+  duplicateErrors(chunks, "chunk_id", "/chunks", "review-chunk", errors);
+  duplicateErrors(chunks, "sequence", "/chunks", "review-sequence", errors);
+  duplicateErrors(volumes, "volume_id", "/volumes", "review-volume", errors);
+  const filesByPath = new Map(files.map((file) => [file.path, file]));
+  const chunksById = new Map(chunks.map((chunk) => [chunk.chunk_id, chunk]));
+  const volumesById = new Map(volumes.map((volume) => [volume.volume_id, volume]));
+  for (const [chunkIndex, chunk] of chunks.entries()) {
+    if (chunk.status === "complete" && !chunk.report) {
+      errors.push(
+        reviewError(
+          `/chunks/${chunkIndex}/report`,
+          "review-report",
+          "a completed chunk requires its report"
+        )
+      );
+    }
+    for (const [sourceIndex, source] of objectArray(chunk.sources).entries()) {
+      const file = filesByPath.get(source.path);
+      const sourcePath = `/chunks/${chunkIndex}/sources/${sourceIndex}`;
+      if (!file || file.sha256 !== source.sha256) {
+        errors.push(
+          reviewError(
+            `${sourcePath}/sha256`,
+            "review-source",
+            "chunk source must match a declared scope path and hash"
+          )
+        );
+      }
+      if (source.line_end < source.line_start || file && source.line_end > file.line_count) {
+        errors.push(
+          reviewError(
+            `${sourcePath}/line_end`,
+            "review-range",
+            "chunk source lines must be a valid range inside the scope file"
+          )
+        );
+      }
+    }
+  }
+  for (const [volumeIndex, volume] of volumes.entries()) {
+    if (volume.status === "complete" && !volume.report) {
+      errors.push(
+        reviewError(
+          `/volumes/${volumeIndex}/report`,
+          "review-report",
+          "a completed volume synthesis requires its report"
+        )
+      );
+    }
+    for (const [chunkIndex, chunkId] of (Array.isArray(volume.chunk_ids) ? volume.chunk_ids : []).entries()) {
+      const chunk = chunksById.get(chunkId);
+      if (!chunk) {
+        errors.push(
+          reviewError(
+            `/volumes/${volumeIndex}/chunk_ids/${chunkIndex}`,
+            "review-synthesis",
+            "volume synthesis references an unknown chunk"
+          )
+        );
+      } else if (volume.status === "complete" && chunk.status !== "complete") {
+        errors.push(
+          reviewError(
+            `/volumes/${volumeIndex}/status`,
+            "review-synthesis",
+            "a completed volume cannot synthesize an incomplete chunk"
+          )
+        );
+      }
+    }
+  }
+  if (job?.book?.status === "complete" && !job.book.report) {
+    errors.push(
+      reviewError("/book/report", "review-report", "a completed book synthesis requires its report")
+    );
+  }
+  const bookVolumeIds = Array.isArray(job?.book?.volume_ids) ? job.book.volume_ids : [];
+  for (const [volumeIndex, volumeId] of bookVolumeIds.entries()) {
+    const volume = volumesById.get(volumeId);
+    if (!volume) {
+      errors.push(
+        reviewError(
+          `/book/volume_ids/${volumeIndex}`,
+          "review-synthesis",
+          "book synthesis references an unknown volume"
+        )
+      );
+    } else if (job.book.status === "complete" && volume.status !== "complete") {
+      errors.push(
+        reviewError(
+          "/book/status",
+          "review-synthesis",
+          "a completed book cannot synthesize an incomplete volume"
+        )
+      );
+    }
+  }
+  if (job?.perspective === "fresh") {
+    const fileIndexes = new Map(files.map((file, index) => [file.path, index]));
+    let previousFileIndex = -1;
+    let previousLineEnd = 0;
+    for (const [index, chunk] of chunks.entries()) {
+      if (chunk.sequence !== index + 1) {
+        errors.push(
+          reviewError(
+            `/chunks/${index}/sequence`,
+            "review-sequence",
+            "fresh review chunks must use continuous sequence numbers starting at 1"
+          )
+        );
+      }
+      for (const [sourceIndex, source] of objectArray(chunk.sources).entries()) {
+        const fileIndex = fileIndexes.get(source.path);
+        if (fileIndex === void 0) continue;
+        if (fileIndex < previousFileIndex || fileIndex === previousFileIndex && source.line_start <= previousLineEnd) {
+          errors.push(
+            reviewError(
+              `/chunks/${index}/sources/${sourceIndex}/line_start`,
+              "review-order",
+              "fresh review sources must follow job.files order and increasing, non-overlapping line ranges"
+            )
+          );
+        }
+        previousFileIndex = fileIndex;
+        previousLineEnd = source.line_end;
+      }
+    }
+    const firstIncompleteIndex = chunks.findIndex(
+      (chunk) => chunk.status !== "complete" || !chunk.report
+    );
+    const expectedNextChunkId = firstIncompleteIndex === -1 ? null : chunks[firstIncompleteIndex].chunk_id;
+    if (job.next_chunk_id !== expectedNextChunkId) {
+      errors.push(
+        reviewError(
+          "/next_chunk_id",
+          "review-resume",
+          "next chunk must be the first incomplete fresh review chunk"
+        )
+      );
+    }
+    if (firstIncompleteIndex !== -1) {
+      for (let index = firstIncompleteIndex + 1; index < chunks.length; index += 1) {
+        if (chunks[index].status === "complete") {
+          errors.push(
+            reviewError(
+              `/chunks/${index}/status`,
+              "review-progress",
+              "fresh review chunks must be completed in declared order"
+            )
+          );
+        }
+      }
+    }
+  }
+  if (job?.next_chunk_id) {
+    const next = chunksById.get(job.next_chunk_id);
+    if (!next || next.status === "complete") {
+      errors.push(
+        reviewError(
+          "/next_chunk_id",
+          "review-resume",
+          "next chunk must reference an incomplete declared chunk"
+        )
+      );
+    }
+  }
+  if (job?.status === "complete" && job.next_chunk_id !== null) {
+    errors.push(
+      reviewError(
+        "/next_chunk_id",
+        "review-resume",
+        "a completed review cannot name a next chunk"
+      )
+    );
+  }
+  return errors;
+}
+function rangesCoverFile(ranges, lineCount) {
+  const sorted2 = ranges.filter(
+    (range) => range.line_start >= 1 && range.line_end >= range.line_start && range.line_end <= lineCount
+  ).sort((left, right) => left.line_start - right.line_start || left.line_end - right.line_end);
+  let nextLine = 1;
+  for (const range of sorted2) {
+    if (range.line_start !== nextLine) return false;
+    nextLine = range.line_end + 1;
+  }
+  return nextLine === lineCount + 1;
+}
+function checkReviewCoverage(job) {
+  const files = objectArray(job?.files);
+  const chunks = objectArray(job?.chunks);
+  const volumes = objectArray(job?.volumes);
+  const completedChunks = chunks.filter((chunk) => chunk.status === "complete" && chunk.report);
+  const uncoveredFiles = files.filter((file) => {
+    const ranges = completedChunks.flatMap(
+      (chunk) => objectArray(chunk.sources).filter(
+        (source) => source.path === file.path && source.sha256 === file.sha256
+      )
+    );
+    return !rangesCoverFile(ranges, file.line_count);
+  }).map((file) => file.path);
+  const incompleteChunks = chunks.filter((chunk) => chunk.status !== "complete" || !chunk.report).map((chunk) => chunk.chunk_id);
+  const synthesizedChunks = new Set(
+    volumes.flatMap((volume) => Array.isArray(volume.chunk_ids) ? volume.chunk_ids : [])
+  );
+  const unsynthesizedChunks = chunks.map((chunk) => chunk.chunk_id).filter((chunkId) => !synthesizedChunks.has(chunkId));
+  const incompleteVolumes = volumes.filter((volume) => volume.status !== "complete" || !volume.report).map((volume) => volume.volume_id);
+  const bookVolumeIds = Array.isArray(job?.book?.volume_ids) ? job.book.volume_ids : [];
+  const synthesizedVolumes = new Set(bookVolumeIds);
+  const unsynthesizedVolumes = volumes.map((volume) => volume.volume_id).filter((volumeId) => !synthesizedVolumes.has(volumeId));
+  const bookComplete = job?.book?.status === "complete" && Boolean(job.book.report);
+  const structureValid = structureErrors(job).length === 0;
+  const complete = structureValid && files.length > 0 && uncoveredFiles.length === 0 && incompleteChunks.length === 0 && unsynthesizedChunks.length === 0 && incompleteVolumes.length === 0 && unsynthesizedVolumes.length === 0 && bookComplete;
+  return {
+    coverage: complete ? "full" : "partial",
+    complete,
+    structure_valid: structureValid,
+    uncovered_files: uncoveredFiles,
+    incomplete_chunks: incompleteChunks,
+    unsynthesized_chunks: unsynthesizedChunks,
+    incomplete_volumes: incompleteVolumes,
+    unsynthesized_volumes: unsynthesizedVolumes,
+    book_complete: bookComplete
+  };
+}
+function validateReviewJob(value) {
+  const result = validateReviewJobSchema(value);
+  const errors = [...result.errors, ...structureErrors(value)];
+  const coverage = checkReviewCoverage(value);
+  if (value?.coverage === "full" && !coverage.complete) {
+    errors.push(
+      reviewError(
+        "/coverage",
+        "review-completion",
+        "full coverage requires completed source ranges and chunk-volume-book synthesis"
+      )
+    );
+  }
+  if (value?.status === "complete" && !coverage.complete) {
+    errors.push(
+      reviewError(
+        "/status",
+        "review-completion",
+        "a complete review requires completed source ranges and chunk-volume-book synthesis"
+      )
+    );
+  }
+  if (value?.status === "complete" && value.coverage !== "full") {
+    errors.push(
+      reviewError(
+        "/coverage",
+        "review-completion",
+        "a complete review must record full coverage"
+      )
+    );
+  }
+  if (value?.coverage === "full" && value.status !== "complete") {
+    errors.push(
+      reviewError(
+        "/status",
+        "review-completion",
+        "full review coverage requires a complete job status"
+      )
+    );
+  }
+  return { ...result, valid: errors.length === 0, errors, coverage };
+}
+function validateReaderState(value) {
+  const result = validateReaderStateSchema(value);
+  const errors = [...result.errors];
+  const chunks = objectArray(value?.chunks);
+  duplicateErrors(chunks, "chunk_id", "/chunks", "reader-chunk", errors);
+  duplicateErrors(chunks, "sequence", "/chunks", "reader-sequence", errors);
+  for (const [chunkIndex, chunk] of chunks.entries()) {
+    if (value?.perspective === "fresh" && chunk.sequence !== chunkIndex + 1) {
+      errors.push(
+        reviewError(
+          `/chunks/${chunkIndex}/sequence`,
+          "reader-sequence",
+          "fresh reader chunks must use continuous sequence numbers starting at 1"
+        )
+      );
+    }
+    for (const [sourceIndex, source] of objectArray(chunk.sources).entries()) {
+      if (source.line_end < source.line_start) {
+        errors.push(
+          reviewError(
+            `/chunks/${chunkIndex}/sources/${sourceIndex}/line_end`,
+            "reader-range",
+            "reader source lines must end after they start"
+          )
+        );
+      }
+    }
+  }
+  const lastSequence = chunks.reduce((maximum, chunk) => Math.max(maximum, chunk.sequence), 0);
+  if (value?.next_sequence !== lastSequence + 1) {
+    errors.push(
+      reviewError(
+        "/next_sequence",
+        "reader-sequence",
+        "next sequence must follow the last recorded reader chunk"
+      )
+    );
+  }
+  if (value?.status === "complete" && chunks.length === 0) {
+    errors.push(
+      reviewError(
+        "/status",
+        "reader-completion",
+        "a complete reader state requires at least one recorded chunk"
+      )
+    );
+  }
+  return { ...result, valid: errors.length === 0, errors };
+}
+function validateReaderStateForJob(value, job) {
+  const result = validateReaderState(value);
+  const errors = [...result.errors];
+  for (const field of ["job_id", "scope_id", "perspective"]) {
+    if (value?.[field] !== job?.[field]) {
+      errors.push(
+        reviewError(
+          `/${field}`,
+          "reader-job-identity",
+          `reader state ${field} must match its review job`
+        )
+      );
+    }
+  }
+  const chunks = objectArray(value?.chunks);
+  const jobChunks = objectArray(job?.chunks);
+  const jobChunksById = new Map(jobChunks.map((chunk) => [chunk.chunk_id, chunk]));
+  const fileIndexes = new Map(objectArray(job?.files).map((file, index) => [file.path, index]));
+  let previousFileIndex = -1;
+  let previousLineEnd = 0;
+  for (const [chunkIndex, chunk] of chunks.entries()) {
+    const jobChunk = jobChunksById.get(chunk.chunk_id);
+    const sources = objectArray(chunk.sources);
+    if (!jobChunk) {
+      errors.push(
+        reviewError(
+          `/chunks/${chunkIndex}/chunk_id`,
+          "reader-job-chunk",
+          "reader chunk must reference a chunk declared by its review job"
+        )
+      );
+    } else {
+      if (chunk.report !== jobChunk.report) {
+        errors.push(
+          reviewError(
+            `/chunks/${chunkIndex}/report`,
+            "reader-job-report",
+            "reader chunk report must match its review job chunk"
+          )
+        );
+      }
+      const jobSources = objectArray(jobChunk.sources);
+      if (sources.length !== jobSources.length) {
+        errors.push(
+          reviewError(
+            `/chunks/${chunkIndex}/sources`,
+            "reader-job-source",
+            "reader chunk must record the same sources as its review job chunk"
+          )
+        );
+      }
+      for (const [sourceIndex, source] of sources.entries()) {
+        const jobSource = jobSources[sourceIndex];
+        if (!jobSource || source.path !== jobSource.path || source.sha256 !== jobSource.sha256 || source.line_start !== jobSource.line_start || source.line_end !== jobSource.line_end) {
+          errors.push(
+            reviewError(
+              `/chunks/${chunkIndex}/sources/${sourceIndex}`,
+              "reader-job-source",
+              "reader source path, hash, and line range must match its review job chunk"
+            )
+          );
+        }
+      }
+    }
+    if (job?.perspective === "fresh") {
+      const expectedChunk = jobChunks[chunkIndex];
+      if (!expectedChunk || expectedChunk.chunk_id !== chunk.chunk_id || expectedChunk.sequence !== chunk.sequence) {
+        errors.push(
+          reviewError(
+            `/chunks/${chunkIndex}/chunk_id`,
+            "reader-job-chain",
+            "fresh reader chunks must form a continuous prefix of the review job chunks"
+          )
+        );
+      }
+      for (const [sourceIndex, source] of sources.entries()) {
+        const fileIndex = fileIndexes.get(source.path);
+        if (fileIndex === void 0) continue;
+        if (fileIndex < previousFileIndex || fileIndex === previousFileIndex && source.line_start <= previousLineEnd) {
+          errors.push(
+            reviewError(
+              `/chunks/${chunkIndex}/sources/${sourceIndex}/line_start`,
+              "reader-job-order",
+              "fresh reader sources must follow job.files order and increasing, non-overlapping line ranges"
+            )
+          );
+        }
+        previousFileIndex = fileIndex;
+        previousLineEnd = source.line_end;
+      }
+    }
+  }
+  if (job?.status === "complete" && job?.perspective === "fresh") {
+    if (value?.status !== "complete") {
+      errors.push(reviewError(
+        "/status",
+        "reader-job-chain",
+        "a completed fresh review job requires a completed reader state"
+      ));
+    }
+    const expected = jobChunks.map((chunk) => `${chunk.chunk_id}\0${chunk.sequence}`);
+    const actual = chunks.map((chunk) => `${chunk.chunk_id}\0${chunk.sequence}`);
+    if (JSON.stringify(actual) !== JSON.stringify(expected)) {
+      errors.push(reviewError(
+        "/chunks",
+        "reader-job-chain",
+        "a completed fresh reader state must contain every review-job chunk in the required order"
+      ));
+    }
+  }
+  return { ...result, valid: errors.length === 0, errors };
+}
+function validateReaderStateMarkdown(markdown) {
+  return validateMarkdownEnvelope(markdown, validateReaderState);
+}
+var init_review = __esm({
+  "scripts/lib/review.mjs"() {
+    init_markdown();
+    init_schemas();
   }
 });
 
@@ -16078,7 +16085,7 @@ async function deriveCreationChangeSet(project, cycle, candidate, request) {
     return { path: file.path, before_index: before.index, after_index: after.index };
   });
   const expected = {
-    create: created.map(({ path: filePath, sha256: sha2562 }) => ({ path: filePath, sha256: sha2562 })),
+    create: created.map(({ path: filePath, sha256: sha2563 }) => ({ path: filePath, sha256: sha2563 })),
     modify: modified,
     delete: deleted
   };
@@ -16401,9 +16408,483 @@ var init_cycles = __esm({
   }
 });
 
-// scripts/lib/reconciliation.mjs
-import { readFile as readFile15 } from "node:fs/promises";
+// scripts/lib/shared-references.mjs
+import { createHash as createHash4 } from "node:crypto";
+import { readFile as readFile15, readdir as readdir6 } from "node:fs/promises";
 import path16 from "node:path";
+import { fileURLToPath } from "node:url";
+function sha2562(bytes) {
+  return createHash4("sha256").update(bytes).digest("hex");
+}
+async function validateDeployedReferences(projectRoot) {
+  const errors = [];
+  const entries2 = await readdir6(packagedReferences2, { withFileTypes: true });
+  for (const entry of entries2) {
+    if (!entry.isFile()) continue;
+    const relativePath = `.author-toolkit/references/${entry.name}`;
+    const packaged = await readFile15(path16.join(packagedReferences2, entry.name));
+    let deployed;
+    try {
+      deployed = await readFile15(path16.join(projectRoot, relativePath));
+    } catch (error) {
+      if (error.code !== "ENOENT") throw error;
+      errors.push({
+        instancePath: `/${relativePath}`,
+        code: "shared-reference-missing",
+        message: `missing shared reference ${relativePath}; run setup-author-toolkit`
+      });
+      continue;
+    }
+    const expectedHash = sha2562(packaged);
+    const actualHash = sha2562(deployed);
+    if (actualHash !== expectedHash) {
+      errors.push({
+        instancePath: `/${relativePath}`,
+        code: "reference-version-conflict",
+        expected_sha256: expectedHash,
+        actual_sha256: actualHash,
+        message: `reference-version-conflict: ${relativePath}; expected_sha256=${expectedHash} actual_sha256=${actualHash}; run setup-author-toolkit`
+      });
+    }
+  }
+  return { valid: errors.length === 0, errors };
+}
+var packagedReferenceUrl, packagedReferences2;
+var init_shared_references = __esm({
+  "scripts/lib/shared-references.mjs"() {
+    packagedReferenceUrl = globalThis[Symbol.for("author-toolkit.packaged-references")];
+    packagedReferences2 = fileURLToPath(
+      packagedReferenceUrl ?? new URL("../../skills/setup-author-toolkit/assets/references/", import.meta.url)
+    );
+  }
+});
+
+// scripts/lib/project-state.mjs
+var project_state_exports = {};
+__export(project_state_exports, {
+  getCompactProjectStatus: () => getCompactProjectStatus,
+  getFullProjectStatus: () => getFullProjectStatus,
+  initializeProject: () => initializeProject
+});
+import { mkdir as mkdir2, readdir as readdir7, readFile as readFile16 } from "node:fs/promises";
+import path17 from "node:path";
+import { fileURLToPath as fileURLToPath2 } from "node:url";
+async function readTemplate(name) {
+  return readFile16(path17.join(packagedAssets, name), "utf8");
+}
+async function deployReferences(projectRoot) {
+  const errors = [];
+  const entries2 = await readdir7(packagedReferences2, { withFileTypes: true });
+  for (const entry of entries2) {
+    if (!entry.isFile()) continue;
+    const relativePath = `.author-toolkit/references/${entry.name}`;
+    const target = path17.join(projectRoot, relativePath);
+    const packaged = await readFile16(path17.join(packagedReferences2, entry.name));
+    try {
+      const deployed = await readFile16(target);
+      if (!deployed.equals(packaged)) {
+        errors.push({
+          code: "reference-version-conflict",
+          instancePath: `/${relativePath}`,
+          message: `reference-version-conflict: ${relativePath}; initialization leaves the existing file unchanged`
+        });
+      }
+    } catch (error) {
+      if (error.code !== "ENOENT") throw error;
+    }
+  }
+  if (errors.length > 0) return { valid: false, created: [], errors };
+  const created = [];
+  for (const entry of entries2) {
+    if (!entry.isFile()) continue;
+    const relativePath = `.author-toolkit/references/${entry.name}`;
+    const target = path17.join(projectRoot, relativePath);
+    const contents = await readFile16(path17.join(packagedReferences2, entry.name));
+    try {
+      await createNoClobberVerified(target, contents);
+      created.push(relativePath);
+    } catch (error) {
+      if (error.code !== "EEXIST") throw error;
+    }
+  }
+  return { valid: true, created, errors: [] };
+}
+async function createFile(projectRoot, relativePath, contents, created) {
+  await createNoClobberVerified(path17.join(projectRoot, relativePath), contents);
+  created.push(relativePath);
+}
+async function initializeProject(projectRoot, input = {}) {
+  const root = path17.resolve(projectRoot);
+  const manifestPath = path17.join(root, ".author-toolkit", "project.json");
+  try {
+    const existing = JSON.parse(await readFile16(manifestPath, "utf8"));
+    const references2 = await deployReferences(root);
+    if (!references2.valid) {
+      return {
+        valid: false,
+        initialized: false,
+        manifest_path: manifestPath,
+        created: [],
+        errors: references2.errors
+      };
+    }
+    const validation = validateManifest(existing);
+    const errors2 = [...validation.errors];
+    if (existing.schema_version !== "3.2.0" && validation.valid) {
+      errors2.push({
+        code: "project-version-requires-migration",
+        instancePath: "/schema_version",
+        message: "This project requires the documented setup migration before current project operations."
+      });
+    }
+    if (validation.valid && existing.schema_version === "3.2.0") {
+      errors2.push(...(await validateProjectFiles(existing, manifestPath)).errors);
+      errors2.push(...(await validateTracker(existing, manifestPath)).errors);
+      if (existing.current_scope) {
+        errors2.push(...(existing.current_scope.status === "confirmed" ? await validateFullManuscriptScope(existing, manifestPath) : await validateScopeCurrency(existing, manifestPath)).errors);
+      }
+    }
+    return {
+      valid: errors2.length === 0,
+      initialized: false,
+      manifest_path: manifestPath,
+      created: references2.created,
+      errors: errors2
+    };
+  } catch (error) {
+    if (error.code !== "ENOENT") {
+      return {
+        valid: false,
+        initialized: false,
+        manifest_path: manifestPath,
+        errors: [{ code: "manifest-invalid", message: error.message }]
+      };
+    }
+  }
+  const template = JSON.parse(await readTemplate("project-template.json"));
+  const timestamp2 = (/* @__PURE__ */ new Date()).toISOString();
+  const manifest = {
+    ...template,
+    language: input.language ?? template.language,
+    manuscript_root: input.manuscript_root ?? template.manuscript_root,
+    paths: { ...template.paths, ...input.paths ?? {} },
+    created_at: timestamp2,
+    updated_at: timestamp2
+  };
+  const manifestValidation = validateManifest(manifest);
+  if (!manifestValidation.valid) {
+    return {
+      valid: false,
+      initialized: false,
+      manifest_path: manifestPath,
+      errors: manifestValidation.errors
+    };
+  }
+  const references = await deployReferences(root);
+  if (!references.valid) {
+    return {
+      valid: false,
+      initialized: false,
+      manifest_path: manifestPath,
+      created: [],
+      errors: references.errors
+    };
+  }
+  for (const directory of [
+    manifest.manuscript_root,
+    manifest.paths.reports,
+    manifest.paths.sessions,
+    manifest.paths.backups,
+    manifest.paths.handoffs,
+    manifest.paths.creation,
+    manifest.paths.convergence
+  ]) {
+    await mkdir2(path17.resolve(root, directory), { recursive: true });
+  }
+  const created = [...references.created];
+  const tracker = (await readTemplate("audit-tracker-template.md")).replace("- Project root:", `- Project root: ${root}`).replace("- Manifest created at:", `- Manifest created at: ${timestamp2}`);
+  const storyBible = (await readTemplate("story-bible-template.md")).replace("PROJECT_TITLE", input.project_title ?? "Untitled Book");
+  const files = [
+    [".author-toolkit/project.json", `${JSON.stringify(manifest, null, 2)}
+`],
+    [manifest.paths.story_bible, storyBible],
+    [manifest.paths.audit_tracker, tracker],
+    [path17.posix.join(manifest.paths.backups, "index.json"), await readTemplate("backup-index-template.json")]
+  ];
+  try {
+    await createFile(root, "AGENTS.md", await readTemplate("AGENTS.md"), created);
+  } catch (error) {
+    if (error.code !== "EEXIST") throw error;
+  }
+  for (const [relativePath, contents] of files) {
+    await createFile(root, relativePath, contents, created);
+  }
+  const checks = [
+    validateManifest(manifest),
+    await validateProjectFiles(manifest, manifestPath),
+    await validateTracker(manifest, manifestPath),
+    await validateDeployedReferences(root)
+  ];
+  const errors = checks.flatMap((check) => check.errors);
+  return {
+    valid: errors.length === 0,
+    initialized: errors.length === 0,
+    manifest_path: manifestPath,
+    created,
+    errors
+  };
+}
+function statusCounts(rows, statuses) {
+  const counts = { total: rows.length };
+  for (const status of statuses) {
+    counts[status] = rows.filter((row) => row.status === status).length;
+  }
+  return counts;
+}
+function emptyDecisions() {
+  return {
+    findings: statusCounts([], findingStatuses),
+    approvals: statusCounts([], decisionStatuses),
+    cycle_completions: statusCounts([], decisionStatuses)
+  };
+}
+function compactBlocker(blocker2) {
+  return {
+    code: blocker2.code ?? blocker2.keyword ?? "validation-failed",
+    message: blocker2.message,
+    required_action: blocker2.required_action ?? null
+  };
+}
+function setupAction() {
+  return {
+    strategy: "setup-author-toolkit",
+    operation: "initialize",
+    command: "setup-author-toolkit"
+  };
+}
+function unavailableStatus(root, references, projectErrors, message) {
+  const errors = [...references.errors, ...projectErrors];
+  return {
+    valid: false,
+    result: {
+      view: "compact",
+      project: {
+        root,
+        manifest_path: path17.join(root, ".author-toolkit", "project.json"),
+        schema_version: null,
+        project_type: null,
+        language: null,
+        manuscript_root: null,
+        created_at: null,
+        updated_at: null,
+        valid: false,
+        errors: projectErrors
+      },
+      references,
+      scope: null,
+      pending_action: null,
+      cycle: null,
+      evaluation: {
+        outcome: "indeterminate",
+        current: false,
+        blockers: [{ code: "project-state-unavailable", message, required_action: setupAction() }],
+        request_completion: null
+      },
+      decisions: emptyDecisions(),
+      next_action: setupAction()
+    },
+    errors
+  };
+}
+function compactCycle(cycle, interruptedOperation) {
+  if (cycle?.status === "active") {
+    return {
+      cycle_id: cycle.cycle_id,
+      revision: cycle.revision,
+      status: cycle.status,
+      current_strategy: cycle.current_strategy,
+      recovery_position: cycle.recovery_position,
+      interrupted_operation: interruptedOperation ?? null
+    };
+  }
+  if (interruptedOperation) {
+    return {
+      cycle_id: interruptedOperation.cycle_id,
+      revision: null,
+      status: null,
+      current_strategy: null,
+      recovery_position: null,
+      interrupted_operation: interruptedOperation
+    };
+  }
+  return null;
+}
+async function getCompactProjectStatus(projectRoot) {
+  const root = path17.resolve(projectRoot);
+  const references = await validateDeployedReferences(root);
+  if (!references.valid) {
+    return unavailableStatus(
+      root,
+      references,
+      [],
+      "Shared references are missing or do not match the installed payload; run setup-author-toolkit."
+    );
+  }
+  const manifestPath = path17.join(root, ".author-toolkit", "project.json");
+  let manifest;
+  try {
+    manifest = JSON.parse(await readFile16(manifestPath, "utf8"));
+  } catch (error) {
+    return unavailableStatus(
+      root,
+      references,
+      [{ code: "manifest-invalid", instancePath: "/.author-toolkit/project.json", message: error.message }],
+      "The project manifest cannot be read; repair or reinitialize the project state."
+    );
+  }
+  const projectChecks = [{ name: "manifest", ...validateManifest(manifest) }];
+  if (projectChecks[0].valid) {
+    projectChecks.push(
+      { name: "files", ...await validateProjectFiles(manifest, manifestPath) },
+      { name: "tracker", ...await validateTracker(manifest, manifestPath) }
+    );
+    if (manifest.current_scope) {
+      projectChecks.push({
+        name: "scope",
+        ...manifest.schema_version === "3.2.0" && manifest.current_scope.status === "confirmed" ? await validateFullManuscriptScope(manifest, manifestPath) : await validateScopeCurrency(manifest, manifestPath)
+      });
+    }
+  }
+  const projectErrors = projectChecks.flatMap(
+    (check) => check.errors.map((error) => ({ ...error, check: check.name }))
+  );
+  const projectValid = projectErrors.length === 0;
+  let convergence;
+  if (projectChecks[0].valid && manifest.schema_version === "3.2.0") {
+    convergence = await getCycleStatus(root);
+  } else {
+    convergence = {
+      query_valid: false,
+      outcome: "indeterminate",
+      current: false,
+      blockers: [{
+        code: "project-validation-failed",
+        message: "A valid v3.2 manifest is required before convergence status is available.",
+        required_action: setupAction()
+      }],
+      required_action: setupAction(),
+      request_completion: null
+    };
+  }
+  let tracker = { findings: [], approvals: [], completion_decisions: [] };
+  try {
+    tracker = await parseTrackerState(
+      await readFile16(path17.resolve(root, manifest.paths.audit_tracker), "utf8"),
+      root
+    );
+  } catch {
+  }
+  const scopeCheck = projectChecks.find((check) => check.name === "scope");
+  const valid = projectValid && convergence.query_valid;
+  const errors = [
+    ...projectErrors,
+    ...convergence.query_valid ? [] : convergence.blockers
+  ];
+  return {
+    valid,
+    result: {
+      view: "compact",
+      project: {
+        root,
+        manifest_path: manifestPath,
+        schema_version: manifest.schema_version,
+        project_type: manifest.project_type,
+        language: manifest.language,
+        manuscript_root: manifest.manuscript_root,
+        created_at: manifest.created_at,
+        updated_at: manifest.updated_at,
+        valid: projectValid,
+        errors: projectErrors
+      },
+      references,
+      scope: manifest.current_scope ? {
+        scope_id: manifest.current_scope.scope_id,
+        scope_fingerprint: manifest.current_scope.scope_fingerprint ?? null,
+        status: manifest.current_scope.status,
+        file_count: manifest.current_scope.files.length,
+        full_manuscript: scopeCheck?.full_manuscript ?? false
+      } : null,
+      pending_action: manifest.pending_action ?? null,
+      cycle: compactCycle(convergence.cycle, manifest.cycle_operation),
+      evaluation: {
+        outcome: convergence.outcome,
+        current: convergence.current,
+        blockers: convergence.blockers.map(compactBlocker),
+        request_completion: convergence.request_completion ? {
+          status: convergence.request_completion.status,
+          blockers: convergence.request_completion.blockers.map(compactBlocker)
+        } : null
+      },
+      decisions: {
+        findings: statusCounts(tracker.findings, findingStatuses),
+        approvals: statusCounts(tracker.approvals, decisionStatuses),
+        cycle_completions: statusCounts(tracker.completion_decisions, decisionStatuses)
+      },
+      next_action: convergence.required_action
+    },
+    errors
+  };
+}
+async function getFullProjectStatus(projectRoot) {
+  const compact = await getCompactProjectStatus(projectRoot);
+  let manifest = null;
+  let status = null;
+  if (compact.result.references.valid) {
+    try {
+      manifest = JSON.parse(await readFile16(compact.result.project.manifest_path, "utf8"));
+    } catch {
+      manifest = null;
+    }
+  }
+  if (manifest?.schema_version === "3.2.0" && compact.result.project.valid) {
+    status = await getCycleStatus(projectRoot);
+  }
+  return {
+    valid: compact.valid,
+    result: {
+      view: "full",
+      manifest,
+      project: compact.result.project,
+      references: compact.result.references,
+      status,
+      decisions: compact.result.decisions,
+      next_action: compact.result.next_action
+    },
+    errors: compact.errors
+  };
+}
+var packagedReferenceUrl2, packagedAssets, findingStatuses, decisionStatuses;
+var init_project_state = __esm({
+  "scripts/lib/project-state.mjs"() {
+    init_cycles();
+    init_manifest();
+    init_project_files();
+    init_scope();
+    init_shared_references();
+    init_state_io();
+    init_tracker();
+    packagedReferenceUrl2 = globalThis[Symbol.for("author-toolkit.packaged-references")];
+    packagedAssets = fileURLToPath2(
+      packagedReferenceUrl2 ? new URL("../", packagedReferenceUrl2) : new URL("../../skills/setup-author-toolkit/assets/", import.meta.url)
+    );
+    findingStatuses = ["open", "resolved", "deferred", "dismissed", "stale"];
+    decisionStatuses = ["approved", "deferred", "cancelled", "superseded"];
+  }
+});
+
+// scripts/lib/reconciliation.mjs
+import { readFile as readFile17 } from "node:fs/promises";
+import path18 from "node:path";
 function action3(strategy, operation) {
   return { strategy, operation, command: strategy };
 }
@@ -16420,9 +16901,9 @@ function failure2(code, message, cycle = null, details = {}) {
   };
 }
 async function readProject4(projectRoot) {
-  const root = path16.resolve(projectRoot);
-  const manifestPath = path16.join(root, ".author-toolkit", "project.json");
-  const manifest = JSON.parse(await readFile15(manifestPath, "utf8"));
+  const root = path18.resolve(projectRoot);
+  const manifestPath = path18.join(root, ".author-toolkit", "project.json");
+  const manifest = JSON.parse(await readFile17(manifestPath, "utf8"));
   const validation = validateManifest(manifest);
   if (!validation.valid || manifest.schema_version !== "3.2.0") {
     throw new Error("External manuscript reconciliation requires a valid v3.2 project");
@@ -16430,8 +16911,8 @@ async function readProject4(projectRoot) {
   return { root, manifestPath, manifest };
 }
 async function readActiveCycle4(project) {
-  const file = path16.resolve(project.root, project.manifest.paths.convergence, "active-cycle.json");
-  const value = JSON.parse(await readFile15(file, "utf8"));
+  const file = path18.resolve(project.root, project.manifest.paths.convergence, "active-cycle.json");
+  const value = JSON.parse(await readFile17(file, "utf8"));
   const validation = validateConvergenceCycleSchema(value);
   if (!validation.valid || value.status !== "active") {
     throw new Error(`Living cycle is invalid: ${file}`);
@@ -16450,7 +16931,7 @@ async function readArtifact(project, reference) {
   if (!validateRelativePath(reference.path).valid || !/^[0-9a-f]{64}$/.test(reference.sha256)) {
     throw new Error("reconcile-manuscript requires safe project-relative artifact paths and SHA-256 hashes");
   }
-  const contents = await readFile15(path16.resolve(project.root, reference.path));
+  const contents = await readFile17(path18.resolve(project.root, reference.path));
   if (sha256Bytes(contents) !== reference.sha256) {
     throw new Error(`Referenced artifact hash does not match: ${reference.path}`);
   }
@@ -16562,8 +17043,8 @@ async function validateStoryState2(project, references, target) {
   }
 }
 async function validateImportDecision2(project, request, previous, target, inventory) {
-  const trackerText = await readFile15(
-    path16.resolve(project.root, project.manifest.paths.audit_tracker),
+  const trackerText = await readFile17(
+    path18.resolve(project.root, project.manifest.paths.audit_tracker),
     "utf8"
   );
   const tracker = await parseTrackerState(trackerText, project.root);
@@ -16595,7 +17076,7 @@ async function invalidatedHistory(project, evaluationReference2, changes) {
       }
       if (artifact.role !== "coverage-unit" || affected.size === 0) continue;
       try {
-        const unit = JSON.parse(await readFile15(path16.resolve(project.root, artifact.path), "utf8"));
+        const unit = JSON.parse(await readFile17(path18.resolve(project.root, artifact.path), "utf8"));
         if (unit.paths.some((file) => affected.has(file.path))) {
           coverage.push({ path: artifact.path, sha256: artifact.sha256 });
         }
@@ -16622,7 +17103,7 @@ async function reconcileManuscript(projectRoot, request, options = {}) {
   validateRequest(request);
   const project = await readProject4(projectRoot);
   const lock = await acquireDirectoryLock(
-    path16.resolve(project.root, project.manifest.paths.convergence, "active-cycle.lock"),
+    path18.resolve(project.root, project.manifest.paths.convergence, "active-cycle.lock"),
     {
       timeoutMs: options.lockTimeoutMs ?? 1e4,
       retryMs: options.lockRetryMs ?? 20
@@ -16778,12 +17259,12 @@ async function reconcileManuscript(projectRoot, request, options = {}) {
       if (!recordValidation.valid) {
         throw new Error(`Generated reconciliation is invalid: ${recordValidation.errors.map((error) => error.message).join("; ")}`);
       }
-      const relative = path16.posix.join(
+      const relative = path18.posix.join(
         project.manifest.paths.convergence,
         "reconciliations",
         `${reconciliation.reconciliation_id}.json`
       );
-      const absolute = path16.resolve(project.root, relative);
+      const absolute = path18.resolve(project.root, relative);
       if (cycle) {
         await beginCycleOperation(project, active, {
           kind: "manuscript-reconciliation",
@@ -16799,7 +17280,7 @@ async function reconcileManuscript(projectRoot, request, options = {}) {
         if (error.code !== "EEXIST" || options.recoveryOperationId !== reconciliation.reconciliation_id) {
           throw error;
         }
-        const existingText = await readFile15(absolute, "utf8");
+        const existingText = await readFile17(absolute, "utf8");
         const existing = JSON.parse(existingText);
         const expected = { ...reconciliation, created_at: existing.created_at };
         if (JSON.stringify(expected) !== JSON.stringify(existing)) {
@@ -16914,12 +17395,12 @@ var init_reconciliation = __esm({
 });
 
 // scripts/lib/cycle-recovery.mjs
-import { readFile as readFile16 } from "node:fs/promises";
-import path17 from "node:path";
+import { readFile as readFile18 } from "node:fs/promises";
+import path19 from "node:path";
 async function readProject5(projectRoot) {
-  const root = path17.resolve(projectRoot);
-  const manifestPath = path17.join(root, ".author-toolkit", "project.json");
-  const manifest = JSON.parse(await readFile16(manifestPath, "utf8"));
+  const root = path19.resolve(projectRoot);
+  const manifestPath = path19.join(root, ".author-toolkit", "project.json");
+  const manifest = JSON.parse(await readFile18(manifestPath, "utf8"));
   const validation = validateManifest(manifest);
   if (!validation.valid || manifest.schema_version !== "3.2.0") {
     throw new Error("Cycle reconciliation requires a valid v3.2 project");
@@ -16960,7 +17441,7 @@ function formatErrors3(errors) {
 }
 async function readJsonIfPresent(file) {
   try {
-    return { text: await readFile16(file, "utf8"), file };
+    return { text: await readFile18(file, "utf8"), file };
   } catch (error) {
     if (error.code === "ENOENT") return null;
     throw error;
@@ -16974,12 +17455,12 @@ function parseCycle(record) {
   return { ...record, value };
 }
 function completedCyclePath(project, cycleId) {
-  const relative = path17.posix.join(
+  const relative = path19.posix.join(
     project.manifest.paths.convergence,
     "cycles",
     `${cycleId}.json`
   );
-  return { relative, absolute: path17.resolve(project.root, relative) };
+  return { relative, absolute: path19.resolve(project.root, relative) };
 }
 function sameScope(left, right) {
   return JSON.stringify(left ?? null) === JSON.stringify(right ?? null);
@@ -16993,7 +17474,7 @@ function activeArtifactReferences(project, cycle) {
       role,
       path: reference.snapshot_path,
       sha256: reference.snapshot_sha256,
-      expectedPath: path17.posix.join(
+      expectedPath: path19.posix.join(
         project.manifest.paths.convergence,
         "scopes",
         `${reference.scope_id}-${reference.scope_fingerprint}.json`
@@ -17053,7 +17534,7 @@ async function artifactDiagnostics(project, active) {
   for (const reference of activeArtifactReferences(project, active?.value)) {
     let contents;
     try {
-      contents = await readFile16(path17.resolve(project.root, reference.path));
+      contents = await readFile18(path19.resolve(project.root, reference.path));
     } catch (error) {
       blockers.push({
         code: "cycle-artifact-unavailable",
@@ -17286,13 +17767,13 @@ async function reconcileCycle(projectRoot, request = {}, options = {}) {
     if (!allowed.has(key)) throw new Error(`Unknown reconcile-cycle input field: ${key}`);
   }
   const project = await readProject5(projectRoot);
-  const lockPath = path17.resolve(
+  const lockPath = path19.resolve(
     project.root,
     project.manifest.paths.convergence,
     "active-cycle.lock"
   );
   const inspected = await inspectDirectoryLock(lockPath);
-  const active = parseCycle(await readJsonIfPresent(path17.resolve(
+  const active = parseCycle(await readJsonIfPresent(path19.resolve(
     project.root,
     project.manifest.paths.convergence,
     "active-cycle.json"
@@ -17360,8 +17841,8 @@ async function reconcileCycle(projectRoot, request = {}, options = {}) {
     let currentManifest;
     let currentActiveText;
     try {
-      currentManifest = JSON.parse(await readFile16(project.manifestPath, "utf8"));
-      currentActiveText = active ? await readFile16(active.file, "utf8") : null;
+      currentManifest = JSON.parse(await readFile18(project.manifestPath, "utf8"));
+      currentActiveText = active ? await readFile18(active.file, "utf8") : null;
     } catch (error) {
       await releaseDirectoryLock(recoveryLock);
       return failure3(
@@ -17438,19 +17919,19 @@ async function reconcileCycle(projectRoot, request = {}, options = {}) {
         return failure3("creation-publication-identity-mismatch", "Creation recovery requires the exact cycle, commit ID, pre-link active revision, and no leftover lock.", active?.value ?? null);
       }
       try {
-        const commitRelative = path17.posix.join(
+        const commitRelative = path19.posix.join(
           project.manifest.paths.creation,
           "batches",
           `${request.operation_id}.json`
         );
-        const commitText = await readFile16(path17.resolve(project.root, commitRelative), "utf8");
+        const commitText = await readFile18(path19.resolve(project.root, commitRelative), "utf8");
         const commit = JSON.parse(commitText);
-        const batchRelative = path17.posix.join(
+        const batchRelative = path19.posix.join(
           project.manifest.paths.creation,
           "batches",
           `${commit.batch_id}.json`
         );
-        const batchText = await readFile16(path17.resolve(project.root, batchRelative), "utf8");
+        const batchText = await readFile18(path19.resolve(project.root, batchRelative), "utf8");
         const current = project.manifest.current_scope;
         if (!current?.snapshot_path) throw new Error("The confirmed publication scope is unavailable");
         const targetScope = {
@@ -17492,14 +17973,14 @@ async function reconcileCycle(projectRoot, request = {}, options = {}) {
       if (inspected.present || !operation || operation.kind !== "manuscript-reconciliation" || operation.operation_id !== request.operation_id || operation.cycle_id !== request.cycle_id || active?.value.revision !== operation.expected_revision) {
         return failure3("reconciliation-identity-mismatch", "Manuscript reconciliation recovery requires the exact interrupted record, active revision, and no leftover lock.", active?.value ?? null);
       }
-      const relative = path17.posix.join(
+      const relative = path19.posix.join(
         project.manifest.paths.convergence,
         "reconciliations",
         `${operation.artifact_id ?? operation.operation_id}.json`
       );
       let reconciliation;
       try {
-        reconciliation = JSON.parse(await readFile16(path17.resolve(project.root, relative), "utf8"));
+        reconciliation = JSON.parse(await readFile18(path19.resolve(project.root, relative), "utf8"));
       } catch (error) {
         return failure3("reconciliation-artifact-unavailable", error.message, active.value);
       }
@@ -17517,14 +17998,14 @@ async function reconcileCycle(projectRoot, request = {}, options = {}) {
       if (inspected.present || !operation || !["revision-preparation", "revision-verification"].includes(operation.kind) || operation.operation_id !== request.operation_id || operation.cycle_id !== request.cycle_id || active?.value.revision !== operation.expected_revision) {
         return failure3("revision-execution-identity-mismatch", "Revision recovery requires the exact interrupted execution, active revision, and no leftover lock.", active?.value ?? null);
       }
-      const relative = path17.posix.join(
+      const relative = path19.posix.join(
         project.manifest.paths.convergence,
         "executions",
         `${operation.artifact_id ?? operation.operation_id}.json`
       );
       let execution;
       try {
-        execution = JSON.parse(await readFile16(path17.resolve(project.root, relative), "utf8"));
+        execution = JSON.parse(await readFile18(path19.resolve(project.root, relative), "utf8"));
       } catch (error) {
         return failure3("revision-execution-unavailable", error.message, active.value);
       }
@@ -17579,12 +18060,12 @@ async function reconcileCycle(projectRoot, request = {}, options = {}) {
         return failure3("evaluation-identity-mismatch", "The evaluation recovery direction does not match the interrupted evaluation and active revision.", active?.value ?? null);
       }
       try {
-        const relative = path17.posix.join(
+        const relative = path19.posix.join(
           project.manifest.paths.convergence,
           "evaluations",
           `${operation.artifact_id ?? operation.operation_id}.json`
         );
-        const text = await readFile16(path17.resolve(project.root, relative), "utf8");
+        const text = await readFile18(path19.resolve(project.root, relative), "utf8");
         const reference = {
           evaluation_id: operation.artifact_id ?? operation.operation_id,
           path: relative,
@@ -17757,9 +18238,9 @@ var init_cycle_recovery = __esm({
 });
 
 // scripts/lib/migration.mjs
-import { createHash as createHash4 } from "node:crypto";
-import { mkdir as mkdir2, readFile as readFile17 } from "node:fs/promises";
-import path18 from "node:path";
+import { createHash as createHash5 } from "node:crypto";
+import { mkdir as mkdir3, readFile as readFile19 } from "node:fs/promises";
+import path20 from "node:path";
 function validationError3(label, result) {
   const details = result.errors.map((error) => `${error.instancePath || "/"} ${error.message}`).join("\n");
   return new Error(`${label} failed:
@@ -17780,10 +18261,10 @@ async function createCurrentScope(projectRoot, manuscriptRoot, paths, timestamp2
   }
   const files = [];
   for (const entry of inventory.files) {
-    const contents = await readFile17(entry.absolute);
+    const contents = await readFile19(entry.absolute);
     files.push({
       path: entry.path,
-      sha256: createHash4("sha256").update(contents).digest("hex")
+      sha256: createHash5("sha256").update(contents).digest("hex")
     });
   }
   return {
@@ -18000,10 +18481,10 @@ function v32Manifest(legacy, timestamp2) {
 }
 async function createOperationalSkeleton(projectRoot, manifest) {
   for (const directory of ["state/chapters", "state/volumes", "batches", "staging"]) {
-    await mkdir2(path18.resolve(projectRoot, manifest.paths.creation, directory), { recursive: true });
+    await mkdir3(path20.resolve(projectRoot, manifest.paths.creation, directory), { recursive: true });
   }
   for (const directory of CONVERGENCE_DIRECTORIES) {
-    await mkdir2(path18.resolve(projectRoot, manifest.paths.convergence, directory), { recursive: true });
+    await mkdir3(path20.resolve(projectRoot, manifest.paths.convergence, directory), { recursive: true });
   }
 }
 async function migrationSummary({
@@ -18027,14 +18508,14 @@ async function migrationSummary({
       scopes: scopeSnapshots,
       inventories: inventorySnapshots
     },
-    recovery: await inspectLegacyRecovery(path18.dirname(path18.dirname(manifestPath)), manifest),
+    recovery: await inspectLegacyRecovery(path20.dirname(path20.dirname(manifestPath)), manifest),
     valid: true
   };
 }
 async function migrateProjectToV32(projectRoot, { now = /* @__PURE__ */ new Date() } = {}) {
-  const root = path18.resolve(projectRoot);
-  const manifestPath = path18.join(root, ".author-toolkit", "project.json");
-  const originalManifestText = await readFile17(manifestPath, "utf8");
+  const root = path20.resolve(projectRoot);
+  const manifestPath = path20.join(root, ".author-toolkit", "project.json");
+  const originalManifestText = await readFile19(manifestPath, "utf8");
   const legacy = JSON.parse(originalManifestText);
   if (legacy.schema_version === "3.2.0") {
     const validation2 = await validateOnDisk(legacy, manifestPath);
@@ -18048,7 +18529,7 @@ async function migrateProjectToV32(projectRoot, { now = /* @__PURE__ */ new Date
         scopeValidation
       ].flatMap((result) => result.errors)
     });
-    const tracker = await readFile17(path18.resolve(root, legacy.paths.audit_tracker), "utf8");
+    const tracker = await readFile19(path20.resolve(root, legacy.paths.audit_tracker), "utf8");
     return migrationSummary({
       manifestPath,
       snapshotPath: null,
@@ -18084,8 +18565,8 @@ async function migrateProjectToV32(projectRoot, { now = /* @__PURE__ */ new Date
     scope_fingerprint: computeScopeFingerprint(proposedScope)
   };
   const pendingAction = convertPendingAction(legacy.workflow, currentScope.scope_id, timestamp2);
-  const trackerPath = path18.resolve(root, legacy.paths.audit_tracker);
-  const originalTracker = await readFile17(trackerPath, "utf8");
+  const trackerPath = path20.resolve(root, legacy.paths.audit_tracker);
+  const originalTracker = await readFile19(trackerPath, "utf8");
   const existingApprovalIds = new Set(
     [...originalTracker.matchAll(/\|\s*`?(LEGACY-[0-9]{3,})`?\s*\|/g)].map(
       (match) => match[1]
@@ -18106,15 +18587,15 @@ async function migrateProjectToV32(projectRoot, { now = /* @__PURE__ */ new Date
   const updatedTracker = updateTracker(originalTracker, approvals);
   assertValid("v3.2 manifest preflight validation", validateManifest(manifest));
   assertValid("v3.2 tracker preflight validation", await validateTrackerV3Markdown(updatedTracker, root));
-  const migrationDirectory = path18.join(
+  const migrationDirectory = path20.join(
     root,
     ".author-toolkit",
     "migrations",
     `${utcStamp(migrationTime)}-v2-v3_2`
   );
-  const snapshotPath = path18.join(migrationDirectory, "project.json");
-  await mkdir2(path18.dirname(migrationDirectory), { recursive: true });
-  await mkdir2(migrationDirectory);
+  const snapshotPath = path20.join(migrationDirectory, "project.json");
+  await mkdir3(path20.dirname(migrationDirectory), { recursive: true });
+  await mkdir3(migrationDirectory);
   await createNoClobberVerified(snapshotPath, originalManifestText);
   await createOperationalSkeleton(root, manifest);
   assertValid("v3.2 project files preflight validation", await validateProjectFiles(manifest, manifestPath));
@@ -18139,7 +18620,7 @@ async function migrateProjectToV32(projectRoot, { now = /* @__PURE__ */ new Date
     created_snapshots: { scopes: [], inventories: [inventory.reference] }
   };
   await writeAtomicVerified(
-    path18.join(migrationDirectory, "migration.json"),
+    path20.join(migrationDirectory, "migration.json"),
     `${JSON.stringify(migrationRecord, null, 2)}
 `
   );
@@ -18159,7 +18640,7 @@ async function migrateProjectToV32(projectRoot, { now = /* @__PURE__ */ new Date
 }
 async function findLegacyScopeConfirmation(root, legacy) {
   if (legacy.current_scope?.status !== "confirmed") return null;
-  const tracker = await readFile17(path18.resolve(root, legacy.paths.audit_tracker), "utf8");
+  const tracker = await readFile19(path20.resolve(root, legacy.paths.audit_tracker), "utf8");
   const parsed = await parseTrackerState(tracker, root);
   if (!parsed.valid) return null;
   const scopeFingerprint = computeScopeFingerprint(legacy.current_scope);
@@ -18195,15 +18676,15 @@ async function migrateLegacyV3Project(root, manifestPath, originalManifestText, 
   }
   assertValid("v3.2 manifest preflight validation", validateManifest(manifest));
   const sourceTag = `v${sourceVersion.split(".").slice(0, 2).join("_")}`;
-  const migrationDirectory = path18.join(
+  const migrationDirectory = path20.join(
     root,
     ".author-toolkit",
     "migrations",
     `${utcStamp(migrationTime)}-${sourceTag}-v3_2`
   );
-  const snapshotPath = path18.join(migrationDirectory, "project.json");
-  await mkdir2(path18.dirname(migrationDirectory), { recursive: true });
-  await mkdir2(migrationDirectory);
+  const snapshotPath = path20.join(migrationDirectory, "project.json");
+  await mkdir3(path20.dirname(migrationDirectory), { recursive: true });
+  await mkdir3(migrationDirectory);
   await createNoClobberVerified(snapshotPath, originalManifestText);
   await createOperationalSkeleton(root, manifest);
   assertValid("v3.2 project files preflight validation", await validateProjectFiles(manifest, manifestPath));
@@ -18226,13 +18707,13 @@ async function migrateLegacyV3Project(root, manifestPath, originalManifestText, 
       inventory_fingerprint: recorded.inventory_fingerprint
     });
     const snapshot = JSON.parse(
-      await readFile17(path18.resolve(root, recorded.current_scope.snapshot_path), "utf8")
+      await readFile19(path20.resolve(root, recorded.current_scope.snapshot_path), "utf8")
     );
     inventory = { reference: snapshot.inventory };
   } else {
     inventory = await recordInventorySnapshot(root, migratedManifest, { now: migrationTime });
   }
-  const tracker = await readFile17(path18.resolve(root, legacy.paths.audit_tracker), "utf8");
+  const tracker = await readFile19(path20.resolve(root, legacy.paths.audit_tracker), "utf8");
   const migrationRecord = {
     migrated_at: timestamp2,
     source_schema_version: sourceVersion,
@@ -18246,7 +18727,7 @@ async function migrateLegacyV3Project(root, manifestPath, originalManifestText, 
     created_snapshots: { scopes: scopeSnapshots, inventories: [inventory.reference] }
   };
   await writeAtomicVerified(
-    path18.join(migrationDirectory, "migration.json"),
+    path20.join(migrationDirectory, "migration.json"),
     `${JSON.stringify(migrationRecord, null, 2)}
 `
   );
@@ -18433,8 +18914,8 @@ var init_lib = __esm({
 });
 
 // scripts/author-project.mjs
-import { readFile as readFile18 } from "node:fs/promises";
-import path19 from "node:path";
+import { readFile as readFile20 } from "node:fs/promises";
+import path21 from "node:path";
 var commands = /* @__PURE__ */ new Set([
   "start-cycle",
   "transition-cycle",
@@ -18455,6 +18936,10 @@ var commands = /* @__PURE__ */ new Set([
 ]);
 function usage() {
   console.log(`Usage:
+  node ${process.argv[1] ?? "author-project.mjs"} init --project-root ROOT [--input FILE]
+  node ${process.argv[1] ?? "author-project.mjs"} init --project-root ROOT [--language TAG] [--manuscript-root PATH]
+  node ${process.argv[1] ?? "author-project.mjs"} read --project-root ROOT [--full]
+  node ${process.argv[1] ?? "author-project.mjs"} status --project-root ROOT [--full]
   node ${process.argv[1] ?? "author-project.mjs"} start-cycle --project-root ROOT --input FILE
   node ${process.argv[1] ?? "author-project.mjs"} transition-cycle --project-root ROOT --input FILE
   node ${process.argv[1] ?? "author-project.mjs"} reconcile-cycle --project-root ROOT [--input FILE]
@@ -18473,6 +18958,11 @@ function usage() {
   node ${process.argv[1] ?? "author-project.mjs"} check-operation --project-root ROOT --input FILE
 
 Use --manifest FILE instead of --project-root ROOT when addressing the manifest directly.
+init accepts either --input or the direct language and manuscript-root options. It creates fresh operational evidence and preserves an existing valid project.
+Every command response is JSON with response_contract_version=1.0, command, valid, result, and errors.
+Success exits 0; project or operation validation failure exits 1; argument, input-file, or input-shape usage error exits 2.
+A valid status query exits 0 for satisfied, not_satisfied, and indeterminate outcomes. Gates exit 1 unless evidence is current and satisfied.
+Default read and status responses are compact. Explicit --full and dedicated cycle queries retain complete manifests, ordered hashes, evaluations, evidence graphs, and history.
 Transitions, reconciliation, revision execution, evaluations, and completions serialize independent processes with active-cycle.lock and recheck expected_revision in the lock.
 reconcile-cycle without --input only diagnoses; a direction requires exact cycle and operation identities and never rewrites historical artifacts or infers approval from pending action.
 Manuscript reconciliation verifies an existing creation-import decision, current inventory, scope, and story state; it never writes manuscript or accepts a confirmation boolean as replacement evidence.
@@ -18496,7 +18986,7 @@ function parseArguments(args) {
     }
     const key = argument === "--project-root" ? "projectRoot" : argument.slice(2);
     if (selection[key] !== null) throw new Error(`Repeated argument: ${argument}`);
-    selection[key] = path19.resolve(rest[index + 1]);
+    selection[key] = path21.resolve(rest[index + 1]);
     index += 1;
   }
   if (Boolean(selection.projectRoot) === Boolean(selection.manifest)) {
@@ -18510,8 +19000,93 @@ function parseArguments(args) {
   }
   return selection;
 }
+async function runInitialization(args) {
+  const selection = {
+    projectRoot: null,
+    manifest: null,
+    input: null,
+    language: null,
+    manuscriptRoot: null
+  };
+  const options = {
+    "--project-root": "projectRoot",
+    "--manifest": "manifest",
+    "--input": "input",
+    "--language": "language",
+    "--manuscript-root": "manuscriptRoot"
+  };
+  for (let index = 0; index < args.length; index += 1) {
+    const key = options[args[index]];
+    if (!key || !args[index + 1]) throw new Error(`Unknown or incomplete argument: ${args[index]}`);
+    if (selection[key] !== null) throw new Error(`Repeated argument: ${args[index]}`);
+    selection[key] = args[index + 1];
+    index += 1;
+  }
+  if (Boolean(selection.projectRoot) === Boolean(selection.manifest)) {
+    throw new Error("Select exactly one of --project-root or --manifest");
+  }
+  if (selection.input && (selection.language || selection.manuscriptRoot)) {
+    throw new Error("--input cannot be combined with --language or --manuscript-root");
+  }
+  const input = selection.input ? JSON.parse(await readFile20(path21.resolve(selection.input), "utf8")) : {};
+  if (selection.language) input.language = selection.language;
+  if (selection.manuscriptRoot) input.manuscript_root = selection.manuscriptRoot;
+  const { projectRootFromManifest: projectRootFromManifest2 } = await Promise.resolve().then(() => (init_project_files(), project_files_exports));
+  const { initializeProject: initializeProject2 } = await Promise.resolve().then(() => (init_project_state(), project_state_exports));
+  const projectRoot = selection.manifest ? projectRootFromManifest2(path21.resolve(selection.manifest)) : path21.resolve(selection.projectRoot);
+  const result = await initializeProject2(projectRoot, input);
+  console.log(JSON.stringify({
+    response_contract_version: "1.0",
+    command: "init",
+    valid: result.valid,
+    result,
+    errors: result.errors
+  }, null, 2));
+  if (!result.valid) process.exitCode = 1;
+}
+async function runStateCommand(command, args) {
+  const selection = { projectRoot: null, manifest: null, full: false };
+  for (let index = 0; index < args.length; index += 1) {
+    const argument = args[index];
+    if (argument === "--full") {
+      if (selection.full) throw new Error("Repeated argument: --full");
+      selection.full = true;
+      continue;
+    }
+    if (!["--project-root", "--manifest"].includes(argument) || !args[index + 1]) {
+      throw new Error(`Unknown or incomplete argument: ${argument}`);
+    }
+    const key = argument === "--project-root" ? "projectRoot" : "manifest";
+    if (selection[key] !== null) throw new Error(`Repeated argument: ${argument}`);
+    selection[key] = path21.resolve(args[index + 1]);
+    index += 1;
+  }
+  if (Boolean(selection.projectRoot) === Boolean(selection.manifest)) {
+    throw new Error("Select exactly one of --project-root or --manifest");
+  }
+  const { projectRootFromManifest: projectRootFromManifest2 } = await Promise.resolve().then(() => (init_project_files(), project_files_exports));
+  const { getCompactProjectStatus: getCompactProjectStatus2, getFullProjectStatus: getFullProjectStatus2 } = await Promise.resolve().then(() => (init_project_state(), project_state_exports));
+  const projectRoot = selection.manifest ? projectRootFromManifest2(selection.manifest) : selection.projectRoot;
+  const status = selection.full ? await getFullProjectStatus2(projectRoot) : await getCompactProjectStatus2(projectRoot);
+  console.log(JSON.stringify({
+    response_contract_version: "1.0",
+    command,
+    valid: status.valid,
+    result: status.result,
+    errors: status.errors
+  }, null, 2));
+  if (!status.valid) process.exitCode = 1;
+}
 async function main() {
   const args = process.argv.slice(2);
+  if (args[0] === "init") {
+    await runInitialization(args.slice(1));
+    return;
+  }
+  if (["read", "status"].includes(args[0])) {
+    await runStateCommand(args[0], args.slice(1));
+    return;
+  }
   if (args.length === 0 || args.includes("--help") || args.includes("-h")) {
     usage();
     return;
@@ -18531,10 +19106,42 @@ async function main() {
     reconcileManuscript: reconcileManuscript2,
     startCycle: startCycle2,
     transitionCycle: transitionCycle2,
+    validateManifest: validateManifest2,
     verifyDraftRevisionExecution: verifyDraftRevisionExecution2,
     verifyRevisionExecution: verifyRevisionExecution2
   } = await Promise.resolve().then(() => (init_lib(), lib_exports));
   const projectRoot = selection.manifest ? projectRootFromManifest2(selection.manifest) : selection.projectRoot;
+  if (!["cycle-status", "cycle-gate", "convergence-status", "convergence-gate"].includes(selection.command)) {
+    let manifest;
+    let stateError;
+    try {
+      manifest = JSON.parse(await readFile20(
+        path21.join(projectRoot, ".author-toolkit", "project.json"),
+        "utf8"
+      ));
+      const validation = validateManifest2(manifest);
+      if (!validation.valid || manifest.schema_version !== "3.2.0") {
+        stateError = {
+          code: "project-state-invalid",
+          message: manifest.schema_version === "3.2.0" ? "The project manifest does not satisfy the current schema." : "Current project operations require a valid v3.2 manifest.",
+          details: validation.errors
+        };
+      }
+    } catch (error) {
+      stateError = { code: "project-state-invalid", message: error.message, details: [] };
+    }
+    if (stateError) {
+      console.log(JSON.stringify({
+        response_contract_version: "1.0",
+        command: selection.command,
+        valid: false,
+        result: null,
+        errors: [stateError]
+      }, null, 2));
+      process.exitCode = 1;
+      return;
+    }
+  }
   let result;
   if (["cycle-status", "convergence-status"].includes(selection.command)) {
     result = await getCycleStatus2(projectRoot);
@@ -18543,7 +19150,7 @@ async function main() {
   } else if (selection.command === "reconcile-cycle" && !selection.input) {
     result = await reconcileCycle2(projectRoot);
   } else {
-    const input = JSON.parse(await readFile18(selection.input, "utf8"));
+    const input = JSON.parse(await readFile20(selection.input, "utf8"));
     if (selection.command === "start-cycle") result = await startCycle2(projectRoot, input);
     if (selection.command === "transition-cycle") {
       result = await transitionCycle2(projectRoot, input);
@@ -18573,14 +19180,26 @@ async function main() {
       result = await assertCycleAllowsOperation2(projectRoot, input);
     }
   }
-  console.log(JSON.stringify(result, null, 2));
   const succeeded = ["cycle-status", "convergence-status"].includes(selection.command) ? result.query_valid : result.valid;
+  const errors = succeeded ? [] : [...result.errors ?? [], ...result.blockers ?? []];
+  console.log(JSON.stringify({
+    response_contract_version: "1.0",
+    command: selection.command,
+    valid: succeeded,
+    result,
+    errors
+  }, null, 2));
   if (!succeeded) process.exitCode = 1;
 }
 try {
   await main();
 } catch (error) {
-  console.error(error.message);
-  usage();
+  console.log(JSON.stringify({
+    response_contract_version: "1.0",
+    command: process.argv[2] ?? null,
+    valid: false,
+    result: null,
+    errors: [{ code: "usage-error", message: error.message }]
+  }, null, 2));
   process.exitCode = 2;
 }

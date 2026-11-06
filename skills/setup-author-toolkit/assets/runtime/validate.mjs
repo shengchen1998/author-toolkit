@@ -18441,6 +18441,7 @@ var init_lib = __esm({
 // scripts/lib/shared-references.mjs
 var shared_references_exports = {};
 __export(shared_references_exports, {
+  packagedReferences: () => packagedReferences2,
   validateDeployedReferences: () => validateDeployedReferences
 });
 import { createHash as createHash5 } from "node:crypto";

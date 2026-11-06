@@ -548,7 +548,7 @@ test("cycle-external reconciliation still requires previous_scope and creates no
   };
   const missing = await runInput(projectRoot, "reconcile-manuscript", input);
   assert.equal(missing.status, 2);
-  assert.match(missing.stderr, /explicit previous_scope/);
+  assert.match(missing.response.errors[0].message, /explicit previous_scope/);
 
   const reconciled = await runInput(projectRoot, "reconcile-manuscript", {
     ...input,
@@ -1156,7 +1156,7 @@ test("cycle-external empty recovery accepts explicit null previous_scope but rej
   const manifestBeforeOmission = await readFile(manifestPath, "utf8");
   const omitted = await runInput(projectRoot, "reconcile-manuscript", input);
   assert.equal(omitted.status, 2, `${omitted.stdout}\n${omitted.stderr}`);
-  assert.match(omitted.stderr, /previous_scope/);
+  assert.match(omitted.response.errors[0].message, /previous_scope/);
   assert.equal(await readFile(manifestPath, "utf8"), manifestBeforeOmission);
   await assert.rejects(readFile(
     path.join(projectRoot, ".author-toolkit", "convergence", "reconciliations", `${input.reconciliation_id}.json`),
