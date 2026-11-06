@@ -1461,3 +1461,192 @@ test("completed-cycle pointer mismatches block dependent work without rehashing 
   assert.equal(JSON.parse(gate.stdout).blockers[0].code,
     "cycle-completed-pointer-hash-mismatch");
 });
+
+
+test("discard preserves a verified-execution recovery handle and resume reaches convergence", async (t) => {
+  const fixture = await establishChapterRevision(t);
+  const prepared = await prepareRevisionExecution(fixture.projectRoot, fixture.execution);
+  assert.equal(prepared.valid, true, JSON.stringify(prepared.blockers));
+  await writeFile(path.join(fixture.projectRoot, "manuscript", "chapter-001.md"), fixture.output, "utf8");
+  await recordScope(fixture.projectRoot, {
+    scope_id: fixture.evidence.scopeReference.scope_id,
+    description: "The complete manuscript after the approved edit.",
+    status: "confirmed",
+    files: [{
+      path: "manuscript/chapter-001.md",
+      sha256: createHash("sha256").update(fixture.output).digest("hex"),
+    }],
+    excluded_files: [],
+    created_at: timestamp,
+  }, {
+    authorConfirmation: {
+      decision_id: "SCOPE-002",
+      confirmed_at: timestamp,
+      reading_order_confirmed: true,
+    },
+    now: new Date(timestamp),
+  });
+  const target = await createNoEditEvidence(fixture.projectRoot, {
+    passId: "pass-002",
+    noEditDecisionId: "NOEDIT-002",
+  });
+  const verification = {
+    cycle_id: "cycle-bootstrap-001",
+    expected_revision: 4,
+    execution_id: "execution-001",
+    requested_pass: target.passReference,
+    target_scope: target.scopeReference,
+  };
+  await assert.rejects(verifyRevisionExecution(fixture.projectRoot, verification, {
+    now: new Date("2026-11-06T05:00:00Z"),
+    checkpoint: async (point) => {
+      if (point === "execution-written") {
+        throw new Error("Injected crash after verified bytes, before active update");
+      }
+    },
+  }), /before active update/);
+  const executionBefore = await readFile(prepared.execution_path, "utf8");
+  const activeBefore = await readFile(fixture.activePath, "utf8");
+  const manifestBefore = await readFile(fixture.manifestPath, "utf8");
+  const backupBefore = await readFile(path.join(fixture.projectRoot, fixture.backupRelative), "utf8");
+  assert.equal(JSON.parse(executionBefore).status, "verified");
+  const diagnosis = JSON.parse(runAuthorProject([
+    "reconcile-cycle",
+    "--project-root",
+    fixture.projectRoot,
+  ]).stdout);
+  assert.ok(diagnosis.blockers.some((blocker) => blocker.code === "cycle-reconciliation-required"));
+  assert.ok(diagnosis.blockers.some((blocker) => blocker.code === "cycle-artifact-hash-mismatch"));
+
+  const discardInput = await writeJson(path.join(fixture.projectRoot, "reject-unsafe-discard.json"), {
+    cycle_id: "cycle-bootstrap-001",
+    operation_id: "execution-001",
+    direction: "discard-interrupted-operation",
+  });
+  const discarded = runAuthorProject([
+    "reconcile-cycle",
+    "--project-root",
+    fixture.projectRoot,
+    "--input",
+    discardInput,
+  ]);
+  assert.equal(discarded.status, 1, `${discarded.stdout}\n${discarded.stderr}`);
+  const rejection = JSON.parse(discarded.stdout);
+  assert.equal(rejection.valid, false);
+  assert.equal(rejection.state_written, false);
+  assert.ok(rejection.blockers.some((blocker) => blocker.code === "cycle-artifact-hash-mismatch"));
+  assert.ok(rejection.available_directions.includes("resume-revision-execution"));
+  assert.equal(rejection.required_action.operation, "resume-revision-execution");
+  assert.equal(await readFile(fixture.manifestPath, "utf8"), manifestBefore);
+  assert.equal(await readFile(fixture.activePath, "utf8"), activeBefore);
+  assert.equal(await readFile(prepared.execution_path, "utf8"), executionBefore);
+  assert.equal(await readFile(path.join(fixture.projectRoot, fixture.backupRelative), "utf8"), backupBefore);
+  const afterRejection = JSON.parse(runAuthorProject([
+    "reconcile-cycle",
+    "--project-root",
+    fixture.projectRoot,
+  ]).stdout);
+  assert.equal(afterRejection.interrupted_operation.operation_id, "execution-001");
+  assert.ok(afterRejection.blockers.some((blocker) => blocker.code === "cycle-artifact-hash-mismatch"));
+
+  const resumeInput = await writeJson(path.join(fixture.projectRoot, "resume-after-rejected-discard.json"), {
+    cycle_id: "cycle-bootstrap-001",
+    operation_id: "execution-001",
+    direction: "resume-revision-execution",
+  });
+  const resumed = runAuthorProject([
+    "reconcile-cycle",
+    "--project-root",
+    fixture.projectRoot,
+    "--input",
+    resumeInput,
+  ]);
+  assert.equal(resumed.status, 0, `${resumed.stdout}\n${resumed.stderr}`);
+  assert.equal(await readFile(prepared.execution_path, "utf8"), executionBefore);
+  assert.equal(await readFile(path.join(fixture.projectRoot, fixture.backupRelative), "utf8"), backupBefore);
+  assert.equal(Object.hasOwn(JSON.parse(await readFile(fixture.manifestPath, "utf8")), "cycle_operation"), false);
+
+  const linked = await transitionCycle(fixture.projectRoot, {
+    cycle_id: "cycle-bootstrap-001",
+    expected_revision: 5,
+    operation_id: "review-after-recovery-006",
+    recovery_position: {
+      operation: "current-scope-review",
+      reason: "The recovered verified execution requires its full-target review and evaluation.",
+    },
+    target_scope: target.scopeReference,
+    requested_pass: target.passReference,
+    related_artifacts: {
+      review_groups: [target.reviewGroupReference],
+      reviews: target.reviewJobs.map(({ reference }) => reference),
+      no_edit_skips: [target.noEditReference],
+    },
+  });
+  assert.equal(linked.valid, true, JSON.stringify(linked.blockers));
+  const evaluated = await evaluateCycle(
+    fixture.projectRoot,
+    target.evaluationInput("evaluation-recovery-001", 6),
+    { now: new Date("2026-11-06T08:00:00Z") },
+  );
+  assert.equal(evaluated.valid, true, JSON.stringify(evaluated.blockers));
+  assert.equal(evaluated.evaluation.outcome, "satisfied");
+  const completed = await completeCycle(fixture.projectRoot, {
+    cycle_id: "cycle-bootstrap-001",
+    expected_revision: 7,
+    evaluation_id: "evaluation-recovery-completion",
+    decision_id: "COMPLETE-001",
+    author_confirmed: true,
+  }, { now: new Date("2026-11-06T09:00:00Z") });
+  assert.equal(completed.valid, true, JSON.stringify(completed.blockers));
+  assert.equal(completed.cycle.status, "completed");
+  assert.equal(await readFile(prepared.execution_path, "utf8"), executionBefore);
+  assert.equal(await readFile(path.join(fixture.projectRoot, fixture.backupRelative), "utf8"), backupBefore);
+  const gate = runAuthorProject(["convergence-gate", "--project-root", fixture.projectRoot]);
+  assert.equal(gate.status, 0, `${gate.stdout}\n${gate.stderr}`);
+});
+
+test("discard also refuses non-execution artifact identity damage without clearing the operation", async (t) => {
+  const fixture = await establishEvaluatedCycle(t, { evaluate: false });
+  await assert.rejects(transitionCycle(fixture.projectRoot, {
+    cycle_id: "cycle-bootstrap-001",
+    expected_revision: 2,
+    operation_id: "transition-artifact-guard",
+    recovery_position: {
+      operation: "current-scope-review",
+      reason: "This operation is interrupted before any new artifact is written.",
+    },
+  }, {
+    checkpoint: async (point) => {
+      if (point === "manifest-written") throw new Error("Injected manifest-only interruption");
+    },
+  }), /manifest-only interruption/);
+  const manifestBefore = await readFile(fixture.manifestPath, "utf8");
+  const activeBefore = await readFile(fixture.activePath, "utf8");
+  const active = JSON.parse(activeBefore);
+  const snapshotPath = path.join(fixture.projectRoot, active.target_scope.snapshot_path);
+  const snapshotBefore = await readFile(snapshotPath, "utf8");
+  await writeFile(snapshotPath, `${snapshotBefore}\n`, "utf8");
+  const input = await writeJson(path.join(fixture.projectRoot, "reject-scope-artifact-discard.json"), {
+    cycle_id: "cycle-bootstrap-001",
+    operation_id: "transition-artifact-guard",
+    direction: "discard-interrupted-operation",
+  });
+  const discarded = runAuthorProject([
+    "reconcile-cycle",
+    "--project-root",
+    fixture.projectRoot,
+    "--input",
+    input,
+  ]);
+  assert.equal(discarded.status, 1, `${discarded.stdout}\n${discarded.stderr}`);
+  const rejection = JSON.parse(discarded.stdout);
+  assert.equal(rejection.valid, false);
+  assert.equal(rejection.state_written, false);
+  assert.ok(rejection.blockers.some((blocker) =>
+    blocker.code === "cycle-artifact-hash-mismatch" &&
+    blocker.path === active.target_scope.snapshot_path
+  ));
+  assert.equal(await readFile(fixture.manifestPath, "utf8"), manifestBefore);
+  assert.equal(await readFile(fixture.activePath, "utf8"), activeBefore);
+  assert.equal(await readFile(snapshotPath, "utf8"), `${snapshotBefore}\n`);
+});

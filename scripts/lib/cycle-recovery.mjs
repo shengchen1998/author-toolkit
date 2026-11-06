@@ -287,6 +287,61 @@ function failure(code, message, cycle, details = {}) {
   };
 }
 
+function discardDirections(operation) {
+  switch (operation.kind) {
+    case "revision-preparation":
+    case "revision-verification":
+      return ["resume-revision-execution"];
+    case "evaluation":
+      return ["attach-interrupted-evaluation"];
+    case "creation-publication":
+      return ["resume-creation-publication"];
+    case "manuscript-reconciliation":
+      return ["resume-manuscript-reconciliation"];
+    case "completion":
+      return ["resume-completion"];
+    default:
+      return [];
+  }
+}
+
+function directionAction(direction = null) {
+  if (!direction) return recoveryAction();
+  return {
+    strategy: "author-project",
+    operation: direction,
+    command: "author-project reconcile-cycle",
+  };
+}
+
+async function unsafeDiscardResult(project, active, operation, artifacts) {
+  const manifest = { ...project.manifest };
+  delete manifest.cycle_operation;
+  const remaining = coordinationBlockers({ ...project, manifest }, active);
+  const completedPointer = await completedPointerBlocker(project);
+  const blockers = [
+    ...artifacts,
+    ...remaining,
+    ...(completedPointer ? [completedPointer] : []),
+  ];
+  if (blockers.length === 0) return null;
+  const directions = discardDirections(operation);
+  const requiredAction = directionAction(directions[0]);
+  return {
+    valid: false,
+    diagnostic_only: false,
+    state_written: false,
+    cycle: active.value,
+    interrupted_operation: operation,
+    available_directions: directions,
+    blockers: blockers.map((blocker) => ({
+      ...blocker,
+      required_action: requiredAction,
+    })),
+    required_action: requiredAction,
+  };
+}
+
 async function finishCompletion(project, active, completed, request) {
   if (!active || !completed) {
     return failure("cycle-completion-unavailable", "The active and completed records needed for completion recovery are not both present.", active?.value ?? completed?.value ?? null);
@@ -770,6 +825,8 @@ export async function reconcileCycle(projectRoot, request = {}, options = {}) {
           active.value,
         );
       }
+      const unsafe = await unsafeDiscardResult(project, active, operation, artifacts);
+      if (unsafe) return unsafe;
       await discardCycleOperation(project, operation.operation_id, options);
     } else {
       if (artifacts.length > 0) {

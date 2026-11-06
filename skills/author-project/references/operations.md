@@ -176,7 +176,7 @@ Use exactly one applicable direction with `cycle_id` and `operation_id`:
 
 | Direction | Recovery behavior |
 | --- | --- |
-| `discard-interrupted-operation` | Clear only the recorded intent while the active cycle is still at its expected revision. Preserve every published artifact and all pending author decisions; rerun the original operation explicitly afterward. |
+| `discard-interrupted-operation` | Clear only the recorded intent while the active cycle is still at its expected revision and removing that intent would leave consistent state. If an artifact identity/hash, pending, reconciliation, or completed-pointer contradiction remains, return `valid: false`, preserve `cycle_operation` and every historical byte, and expose `available_directions` such as `resume-revision-execution`. Never discard the only usable recovery handle or roll back a verified execution. |
 | `accept-active-cycle` | Accept an active cycle already at the intended revision with the same operation ID, then finish its manifest and pending coordination. Without `cycle_operation`, this is also the explicit way to accept the current recovery position for a pending or manuscript-reconciliation mismatch; every active artifact must first match its path, hash, and internal identity. |
 | `attach-interrupted-evaluation` | Recompute and attach an already published evaluation whose cycle, pass, target, outcome, and evidence graph are current, then finish manifest coordination. Do not rewrite the evaluation. |
 | `resume-revision-execution` | Reuse the recorded prepared or verified execution, rerun preparation or actual-output verification, and link it to the same cycle. Verified bytes and backups are not rewritten. |
