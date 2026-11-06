@@ -35,6 +35,7 @@ import {
   writeAtomicVerified,
 } from "./state-io.mjs";
 import { parseTrackerState } from "./tracker.mjs";
+import { utcTimestamp } from "./time.mjs";
 
 const STRATEGIES = new Set([
   "write-fiction",
@@ -56,8 +57,8 @@ function cycleError(instancePath, message, keyword = "cycle-identity") {
   return { instancePath, keyword, message, params: {} };
 }
 
-export function validateConvergenceCycle(value) {
-  const schema = validateConvergenceCycleSchema(value);
+export function validateConvergenceCycle(value, options = {}) {
+  const schema = validateConvergenceCycleSchema(value, options);
   const errors = [...schema.errors];
   if (
     value?.completion &&
@@ -236,9 +237,7 @@ function emptyChangeSet() {
 }
 
 function operationTime(options) {
-  const now = options.now instanceof Date ? options.now : new Date();
-  if (Number.isNaN(now.getTime())) throw new Error("Invalid cycle operation time");
-  return now.toISOString();
+  return utcTimestamp(options);
 }
 
 function validateStartRequest(request) {
@@ -1188,6 +1187,7 @@ export async function transitionCycle(projectRoot, request, options = {}) {
     {
       timeoutMs: options.lockTimeoutMs ?? 10000,
       retryMs: options.lockRetryMs ?? 20,
+      now: options.now,
     },
   );
   if (!lock.acquired) {

@@ -103,7 +103,8 @@ function usage() {
 With no options, print this help without inspecting state.
 Repository mode checks all schemas, example manifests, reports, and workflow fixtures.
 Project-root mode checks deployed shared-reference hashes, then the selected project's manifest, files, and tracker.
-Repository and project-root modes cannot be combined with each other or individual checks.`);
+Repository and project-root modes cannot be combined with each other or individual checks.
+--now ISO_TIMESTAMP injects the UTC validation clock; current timestamps may be at most 60 seconds in the future.`);
 }
 
 async function readJson(file) {
@@ -130,6 +131,7 @@ function parseArguments(args, artifactTypes) {
     ...Object.fromEntries(artifactTypes.map(({ key }) => [key, []])),
     repository: false,
     projectRoot: null,
+    now: null,
     help: args.length === 0,
   };
   const destinations = {
@@ -153,6 +155,12 @@ function parseArguments(args, artifactTypes) {
     }
     if (argument === "--project-root" && args[index + 1]) {
       selection.projectRoot = path.resolve(args[index + 1]);
+      index += 1;
+      continue;
+    }
+    if (argument === "--now" && args[index + 1]) {
+      if (selection.now !== null) throw new Error("Repeated argument: --now");
+      selection.now = args[index + 1];
       index += 1;
       continue;
     }
@@ -269,7 +277,7 @@ async function main() {
   for (const file of selection.manifests) {
     try {
       const manifest = await readJson(file);
-      const result = validateManifest(manifest);
+      const result = validateManifest(manifest, { now: selection.now ?? undefined });
       check(path.relative(root, file), result);
 
       if (result.valid) {
@@ -308,11 +316,15 @@ async function main() {
   for (const file of selection.reports) {
     try {
       const markdown = await readFile(file, "utf8");
-      const parsed = validateMarkdownReport(markdown);
+      const options = { now: selection.now ?? undefined };
+      const parsed = validateMarkdownReport(markdown, options);
       const needsEvidence = ["draft-baseline", "diagnostics", "current-scope-review"].includes(
         parsed.envelope?.stage,
       );
-      check(path.relative(root, file), needsEvidence ? validateEvidenceReport(markdown) : parsed);
+      check(
+        path.relative(root, file),
+        needsEvidence ? validateEvidenceReport(markdown, options) : parsed,
+      );
     } catch (error) {
       check(path.relative(root, file), {
         valid: false,
@@ -361,9 +373,10 @@ async function main() {
     for (const file of selection[type.key]) {
       try {
         const isMarkdown = type.validateMarkdown && /\.(?:md|markdown)$/i.test(file);
+        const options = { now: selection.now ?? undefined };
         const result = isMarkdown
-          ? type.validateMarkdown(await readFile(file, "utf8"))
-          : type.validate(await readJson(file));
+          ? type.validateMarkdown(await readFile(file, "utf8"), options)
+          : type.validate(await readJson(file), options);
         check(path.relative(root, file), result);
       } catch (error) {
         check(path.relative(root, file), {

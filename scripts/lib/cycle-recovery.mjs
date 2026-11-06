@@ -21,6 +21,7 @@ import {
 } from "./revision-execution.mjs";
 import { reconcileManuscript } from "./reconciliation.mjs";
 import { validateConvergenceCycleSchema } from "./schemas.mjs";
+import { utcTimestamp } from "./time.mjs";
 import {
   acquireDirectoryLock,
   inspectDirectoryLock,
@@ -502,6 +503,7 @@ export async function reconcileCycle(projectRoot, request = {}, options = {}) {
     recoveryLock = await acquireDirectoryLock(lockPath, {
       timeoutMs: options.lockTimeoutMs ?? 10000,
       retryMs: options.lockRetryMs ?? 20,
+      now: options.now,
     });
     if (!recoveryLock.acquired) {
       return failure(
@@ -798,7 +800,7 @@ export async function reconcileCycle(projectRoot, request = {}, options = {}) {
               ...active.value.recovery_position,
               operation_id: operation.operation_id,
             },
-        updated_at: options.now instanceof Date ? options.now.toISOString() : new Date().toISOString(),
+        updated_at: utcTimestamp(options),
       };
       await writeAtomicVerified(active.file, `${JSON.stringify(updated, null, 2)}\n`);
       await finishCycleOperation(project, updated, operation.operation_id, options);

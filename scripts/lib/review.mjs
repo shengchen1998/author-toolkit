@@ -292,8 +292,8 @@ export function checkReviewCoverage(job) {
   };
 }
 
-export function validateReviewJob(value) {
-  const result = validateReviewJobSchema(value);
+export function validateReviewJob(value, options = {}) {
+  const result = validateReviewJobSchema(value, options);
   const errors = [...result.errors, ...structureErrors(value)];
   const coverage = checkReviewCoverage(value);
   if (value?.coverage === "full" && !coverage.complete) {
@@ -335,8 +335,8 @@ export function validateReviewJob(value) {
   return { ...result, valid: errors.length === 0, errors, coverage };
 }
 
-export function validateReaderState(value) {
-  const result = validateReaderStateSchema(value);
+export function validateReaderState(value, options = {}) {
+  const result = validateReaderStateSchema(value, options);
   const errors = [...result.errors];
   const chunks = objectArray(value?.chunks);
   duplicateErrors(chunks, "chunk_id", "/chunks", "reader-chunk", errors);
@@ -387,8 +387,8 @@ export function validateReaderState(value) {
   return { ...result, valid: errors.length === 0, errors };
 }
 
-export function validateReaderStateForJob(value, job) {
-  const result = validateReaderState(value);
+export function validateReaderStateForJob(value, job, options = {}) {
+  const result = validateReaderState(value, options);
   const errors = [...result.errors];
   for (const field of ["job_id", "scope_id", "perspective"]) {
     if (value?.[field] !== job?.[field]) {
@@ -518,6 +518,6 @@ export function validateReaderStateForJob(value, job) {
   return { ...result, valid: errors.length === 0, errors };
 }
 
-export function validateReaderStateMarkdown(markdown) {
-  return validateMarkdownEnvelope(markdown, validateReaderState);
+export function validateReaderStateMarkdown(markdown, options = {}) {
+  return validateMarkdownEnvelope(markdown, validateReaderState, options);
 }
