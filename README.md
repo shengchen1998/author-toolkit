@@ -13,7 +13,7 @@ Kimi Code.
 
 ## What is included
 
-Version 3.1.0 contains 16 skills in three groups.
+Version 3.2.0 contains 16 skills in three groups.
 
 ### User entry points
 
@@ -65,7 +65,7 @@ or rewriting, invoke `prose-mechanics` with its AI-Isms audit; shared
 
 ## Scope and language support
 
-The shared 3.1 creation and revision workflows support single-book fiction
+The shared 3.2 creation and revision workflows support single-book fiction
 projects with Markdown or plain-text manuscripts. `write-fiction` can start
 without a complete outline or ending and can also continue an existing manuscript.
 `revise-fiction` addresses the whole book. `revise-draft` can work on an
@@ -79,7 +79,7 @@ revision to existing content, and restores that state for the full-manuscript
 target scope.
 
 Narrative nonfiction remains a direct `narrative-nonfiction` task. Multi-book
-projects and integrations with other hosts are outside the supported 3.1
+projects and integrations with other hosts are outside the supported 3.2
 workflows.
 
 English and Chinese are the core workflow languages. Chinese prose audits use
@@ -221,8 +221,9 @@ recorded separately. Acceptance allows `creation-commit` to proceed without
 another author gate. Publication alone does not establish current-draft revision
 convergence for the publication scope. After first-time bootstrap publication,
 continue the same cycle with `revise-draft` for the initial full-manuscript
-evaluation. After ordinary creation, continue with `revise-increment` when that
-is the goal.
+evaluation. After ordinary creation, continue the same cycle with
+`revise-increment`; another `writing-plan` waits for satisfied full-target
+evaluation and the author's explicit cycle completion decision.
 
 ### `revise-fiction`: whole-book revision
 

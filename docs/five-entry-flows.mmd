@@ -4,97 +4,127 @@ flowchart TD
     START([开始]) --> SETUP["必要时由用户运行<br/>setup-author-toolkit"]
     SETUP --> REFS["部署共享 references<br/>.author-toolkit/references"]
     REFS --> READ["author-project<br/>read → validate → status"]
-    READ --> STATE["读取共享 manifest / tracker / sessions<br/>范围 / reports / creation state"]
-    STATE --> GATES["选择策略并记录待处理操作<br/>作者决定循环 · 批准与备份<br/>report v2 · finding v2 · 覆盖度 · 失效传播"]
-    GATES --> WAIT["记录 tracker / session / artifact<br/>在稳定操作门禁等待作者，或显式切换策略"]
+    READ --> STATE["读取 manifest / tracker / sessions<br/>范围快照 / reports / creation state<br/>当前草稿收敛周期与评估"]
+    STATE --> GATES["每次调用运行一个证据门操作<br/>作者决定循环 · 精确批准与备份<br/>report v2 · finding v2 · 覆盖度 · 失效传播"]
+    GATES --> WAIT["记录 tracker / session / artifact<br/>显示准确宿主命令并等待作者<br/>活动周期只执行其恢复位置或只读工作"]
   end
 
   subgraph RF["revise-fiction｜全书修订"]
     direction LR
-    RF0([入口]) --> RF1["intake"]
+    RF0([入口]) --> RFV{"只读 structure<br/>或 final-review？"}
+    RFV -->|是：按请求选择操作| RF1["intake"]
+    RFV -->|否：正文变更或证据失效| RFC["要求 satisfied 全稿起始评估<br/>start-cycle：revise-fiction"]
+    RFC --> RF1
     RF1 --> RF2["story-bible<br/>完整全书基线"]
     RF2 --> RF3["structure<br/>全书结构审计"]
     RF3 --> RF4["characters<br/>全书角色弧线与连续性"]
     RF4 --> RF5["revision-plan"]
-    RF5 --> RF6["chapter-revision"]
+    RF5 --> RF6["chapter-revision<br/>prepare / verify 执行"]
     RF6 --> RF7["prose"]
     RF7 --> RF8["ai-cleanup"]
     RF8 --> RF9["final-review<br/>全书终审，仅产出发现项"]
+    RF9 --> RFE{"本次工作改变正文<br/>或使所需证据失效？"}
+    RFE -->|否| RFRO["报告发现项<br/>不开启或完成周期"]
+    RFE -->|是| RFEV["恢复全目标覆盖与终审<br/>evaluate-cycle = satisfied"]
+    RFEV --> RFCOMP["作者显式 complete-cycle"]
   end
 
   subgraph RD["revise-draft｜当前草稿修订"]
     direction LR
     RD0([入口]) --> RDN["允许未完成稿件和未知结局<br/>支持仅诊断、直接 prose / ai-cleanup、有限复核"]
-    RDN --> RD1["intake"]
+    RDN --> RDM{"独立局部或收窄工作<br/>还是全稿 / 活动周期恢复？"}
+    RDM -->|独立局部或收窄| RD1["intake"]
+    RDM -->|独立全稿| RDIND0["无需 start-cycle<br/>保留最近一次 satisfied 子检查基线"]
+    RDM -->|活动周期恢复| RDACT0["链接同一周期<br/>首次创作发布也从这里续接"]
+    RDIND0 --> RD1
+    RDACT0 --> RD1
     RD1 --> RD2["draft-baseline"]
     RD2 --> RD3["diagnostics<br/>场景与章节局部诊断"]
     RD3 --> RD4["characters<br/>当前文本与连续性"]
     RD4 --> RD5["revision-plan<br/>无修改时记录跳过"]
-    RD5 --> RD6["chapter-revision<br/>无修改时记录跳过"]
+    RD5 --> RD6["chapter-revision<br/>独立或周期 prepare / verify"]
     RD6 --> RD7["prose"]
     RD7 --> RD8["ai-cleanup"]
     RD8 --> RD9["current-scope-review<br/>目标范围 · 三种视角"]
     RD9 --> RDC{"有获批修改<br/>或失效证据？"}
     RDC -->|是：回到受影响操作| RD5
-    RDC -->|否| RDDONE["当前草稿修订收敛"]
+    RDC -->|否| RDO{"工作类型"}
+    RDO -->|局部或收窄| RDDONE["记录实际范围与缺口<br/>不宣称全稿当前草稿修订收敛"]
+    RDO -->|独立全稿| RDIND["evaluate-draft<br/>cycle_id: null<br/>satisfied 后支持其他入口"]
+    RDO -->|活动周期| RDACT["evaluate-cycle<br/>全稿目标 satisfied"]
+    RDACT --> RDCOMP["作者显式 complete-cycle"]
   end
 
   subgraph RI["revise-increment｜增量修订"]
     direction LR
-    RI0([入口]) --> RISTATE{"活动增量任务<br/>且有已验证前一范围？"}
-    RISTATE -->|是：恢复| RIRESUME["前一范围作为历史证据<br/>自身修改不重新打开准入门"]
+    RI0([入口]) --> RISTATE{"活动周期要求<br/>revise-increment？"}
+    RISTATE -->|是：续接同一周期| RIRESUME["前一范围作为历史证据<br/>自身修改不重新打开准入门"]
     RIRESUME --> RI1
     RISTATE -->|否：新任务或无法确认| RIV["验证前一范围<br/>当前草稿修订收敛"]
-    RIV --> RIBASE{"前一范围已达到<br/>当前草稿修订收敛？"}
+    RIV --> RIBASE{"前一范围具有当前<br/>satisfied 全稿评估？"}
     RIBASE -->|否| RISTOP["显示 revise-draft 命令<br/>停止跳过前一范围的未完成工作"]
-    RIBASE -->|是| RI1["确定目标范围 / 变化集合<br/>工作集合 / 可复用证据"]
+    RIBASE -->|是| RISTART["start-cycle 链接前一范围<br/>目标为完整当前正文"]
+    RISTART --> RI1["确定目标范围 / 变化集合<br/>工作集合 / 可复用证据"]
     RI1 --> RI2["intake<br/>确认目标范围 + 工作集合"]
     RI2 --> RI3["draft-baseline<br/>更新全部目标范围"]
     RI3 --> RI4["diagnostics<br/>工作集合 → 目标范围覆盖度"]
     RI4 --> RI5["characters<br/>工作集合中受影响路径<br/>→ 目标范围覆盖度"]
     RI5 --> RI6["revision-plan<br/>准确工作集合批次"]
-    RI6 --> RI7["chapter-revision<br/>仅修改获批工作集合"]
+    RI6 --> RI7["chapter-revision<br/>仅修改获批工作集合<br/>prepare / verify 执行"]
     RI7 --> RI8["prose<br/>工作集合 + 全目标范围综合报告"]
     RI8 --> RI9["ai-cleanup<br/>工作集合 + 目标范围覆盖度"]
     RI9 --> RI10["current-scope-review<br/>始终覆盖全部目标范围"]
     RI10 --> RIC{"有获批修改？"}
     RIC -->|是| RI6
-    RIC -->|否| RIDONE["当前草稿修订收敛<br/>(目标范围)"]
+    RIC -->|否| RIEV["evaluate-cycle<br/>全稿目标 satisfied"]
+    RIEV --> RICOMP["作者显式 complete-cycle<br/>完成后才允许下一创作周期"]
   end
 
   subgraph RR["revise-request｜请求驱动修订"]
     direction LR
     RR0([入口]) --> RRV["验证全稿基准范围<br/>当前草稿修订收敛"]
-    RRV --> RRBASE{"全稿基准范围已达到<br/>当前草稿修订收敛？"}
+    RRV --> RRBASE{"全稿基准范围具有当前<br/>satisfied 评估？"}
     RRBASE -->|否：范围增长| RRISTOP["显示 revise-increment 命令<br/>停止跳过基础工作"]
     RRBASE -->|否：其他缺口| RRDSTOP["显示 revise-draft 命令<br/>停止跳过基础工作"]
-    RRBASE -->|是| RR1["记录请求 / 约束<br/>目标范围 / 请求集合 / 工作集合"]
+    RRBASE -->|是| RRSTART["start-cycle 保留基准范围<br/>作为 starting_scope"]
+    RRSTART --> RR1["记录请求 / 约束<br/>全稿目标范围 / 请求集合 / 工作集合"]
     RR1 --> RR2["intake<br/>确认请求计划"]
     RR2 --> RR3["按请求选择 diagnostics / structure<br/>characters / prose / ai-cleanup"]
     RR3 --> RR4["revision-plan<br/>准确获批批次"]
-    RR4 --> RR5["chapter-revision 或无修改跳过<br/>失效传播 → 扩大工作集合"]
+    RR4 --> RR5["chapter-revision 或无修改跳过<br/>prepare / verify 执行<br/>失效传播 → 扩大工作集合"]
     RR5 --> RR6["重跑受影响操作<br/>复用匹配的完整局部覆盖单元<br/>新全目标范围综合报告"]
     RR6 --> RR7["current-scope-review<br/>正文修改后重跑三视角<br/>覆盖全部目标范围<br/>无变化复用当前基准范围复核"]
     RR7 --> RRC{"获批修改<br/>或证据仍失效？"}
     RRC -->|是| RR4
-    RRC -->|否| RRDONE["请求完成 + 当前草稿修订收敛<br/>(全稿目标范围)"]
+    RRC -->|否| RREV["分别计算请求完成与<br/>evaluate-cycle 全稿目标 satisfied"]
+    RREV --> RRCOMP["作者显式 complete-cycle"]
   end
 
   subgraph WF["write-fiction｜增量创作"]
     direction LR
-    WF0([入口]) --> WFV["v3.0 创作写入前<br/>作者确认 upgrade-v31"]
-    WFV --> WFTYPE{"任务类型"}
+    WF0([入口]) --> WFV{"正文清单实际为空<br/>且没有当前范围？"}
+    WFV -->|是：首次创作引导| WFB["bootstrap = true<br/>null starting_scope<br/>start-cycle"]
+    WFV -->|否：普通创作| WFO["要求 satisfied 全稿起始评估<br/>start-cycle；起始证据不可伪造"]
+    WFB --> WFTYPE{"任务类型"}
+    WFO --> WFTYPE
     WFTYPE -->|缺少基础| WF1["creation-baseline"]
-    WFTYPE -->|外部稿件变化| WF2["creation-import"]
+    WFTYPE -->|外部稿件变化| WF2["creation-import<br/>协调进入同一周期"]
     WFTYPE -->|卷 / 故事阶段| WF3["milestone-review"]
-    WFTYPE -->|下一批次| WF4["writing-plan<br/>默认一章，批准准确写入批次"]
+    WFTYPE -->|下一批次| WF4["writing-plan<br/>默认一章，批准准确写入批次<br/>每周期最多一个 accepted commit"]
     WF4 --> WF5["chapter-creation<br/>仅写入 staging"]
     WF5 --> WF6["chapter-review<br/>检查完整创作批次"]
     WF6 --> WFA{"作者验收创作批次？"}
     WFA -->|拒绝| WFR["保留暂存稿<br/>正文 / 故事状态 / 范围不变"]
+    WFR --> WFREJ{"首次创作引导？"}
+    WFREJ -->|是| WFRB["空正文不能完成<br/>创建非空批次或批准导入"]
+    WFREJ -->|否| WFRO["重新验证起始范围<br/>无修改评估 + 作者完成"]
     WFA -->|验收| WF7["creation-commit<br/>无额外批准门，发布并同步状态"]
-    WF7 --> WF8["发布 ≠ 当前草稿修订收敛<br/>修订新增或受影响章节时转 revise-increment"]
-    WF8 -.->|下一批次| WF4
+    WF7 --> WF8{"首次创作引导？"}
+    WF8 -->|是| WFBOOT["显示 revise-draft 命令<br/>续接同一周期，建立初始全稿评估"]
+    WF8 -->|否| WFINC["显示 revise-increment 命令<br/>续接同一周期，恢复全稿当前草稿修订收敛"]
+    WFBOOT --> WFDONE["satisfied 全稿目标评估<br/>+ 作者显式 complete-cycle"]
+    WFINC --> WFDONE
+    WFDONE -.->|完成后才允许下一周期| WF4
   end
 
   COMMON ~~~ RF
@@ -111,12 +141,10 @@ flowchart TD
   classDef note fill:#FAFAFA,stroke:#90A4AE,color:#37474F,stroke-dasharray:4 3;
 
   class START,RF0,RD0,RI0,RR0,WF0 startEnd;
-  class SETUP,REFS,READ,STATE,GATES,WAIT,RDN,RISTATE,RIRESUME,RIV,RIBASE,RISTOP,RDC,RIC,RRV,RRBASE,RRISTOP,RRDSTOP,RRC,WFV,WFTYPE,WFA,WFR,WF8 control;
+  class SETUP,REFS,READ,STATE,GATES,WAIT,RFV,RFC,RFE,RFRO,RFEV,RFCOMP,RDN,RDM,RDIND0,RDACT0,RDC,RDO,RDDONE,RDIND,RDACT,RDCOMP,RISTATE,RIRESUME,RIV,RIBASE,RISTOP,RISTART,RIC,RIEV,RICOMP,RRV,RRBASE,RRISTOP,RRDSTOP,RRSTART,RRC,RREV,RRCOMP,WFV,WFB,WFO,WFTYPE,WFA,WFR,WFREJ,WFRB,WFRO,WF8,WFBOOT,WFINC,WFDONE control;
   class RF1,RF4,RF5,RF6,RF7,RF8,RD1,RD4,RD5,RD6,RD7,RD8,RI2,RI5,RI6,RI7,RI8,RI9,RR2,RR4,RR5,RR6 shared;
-  class RD2,RD3,RD9,RI3,RI4,RI10,RR3,RR7 draftShared;
-  class RF2,RF3,RF9,RI1,RR1,WF1,WF2,WF3,WF4,WF5,WF6,WF7 unique;
-  class RDDONE,RIDONE,RRDONE note;
-
+  class RF2,RF3,RF9,RD2,RD3,RD9,RI3,RI4,RI10,RR3,RR7 draftShared;
+  class RI1,RR1,WF1,WF2,WF3,WF4,WF5,WF6,WF7 unique;
   style COMMON fill:#FAFAFA,stroke:#78909C,stroke-width:1.5px
   style RF fill:#FFFFFF,stroke:#FB8C00,stroke-width:1.5px
   style RD fill:#FFFFFF,stroke:#1E88E5,stroke-width:1.5px
