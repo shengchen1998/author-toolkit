@@ -123,7 +123,7 @@ npx skills update
    setup 将随技能提供的共享契约部署到 `.author-toolkit/references/`; 匹配文件保持不变,
    版本冲突会阻止共享工作流, 经作者批准的替换会先把原文件保存到登记的备份路径下.
    新项目根目录没有 `AGENTS.md` 时, setup 会安装项目级 agent 指令模板; 已有指令文件保持不变.
-   不指定工作流或操作参数. 工具包更新后, 已有 v3 项目可能需要再次运行 setup 部署新的共享引用.
+   不指定工作流或操作参数. 工具包更新后, 已有 4.0.0 项目可能需要再次运行 setup 部署新的共享引用.
    初始 `author-project` 读取, 校验和状态调用会逐个检查随技能提供的文件; 缺失或哈希不匹配时重新引导至 setup,
    不会仅凭有效 manifest 认定共享引用已部署.
 3. setup 验证共享 manifest 后, 根据目标选择 `write-fiction`, `revise-fiction`,
@@ -478,10 +478,10 @@ AI 关联发现只描述文本模式, 不能证明文本由 AI 生成.
 
 ## 验证状态
 
-4.0.0 的仓库检查已通过: 421 项测试和 11 项仓库校验, 0 失败; 实际命令与范围见
+4.0.0 的仓库检查已通过: 422 项测试和 11 项仓库校验, 0 失败; 实际命令与范围见
 [docs/VALIDATION.md](docs/VALIDATION.md).
-通用本地源安装, 自包含运行时, 旧状态拒绝和中英文 current fixtures 均通过契约与安装检查.
-这些结果不证明完整宿主创作流程或创作质量; 4.0.0 的宿主验收不属于本次 cutover 的声明.
+通用本地源安装, 自包含运行时, disposable 项目公共命令和 Kimi Code 2.4.1 对项目 `.agents/skills/` 的自动发现及最小 setup/read/status smoke 均通过.
+这些结果不证明完整宿主创作流程或创作质量; native plugin, Desktop 和完整宿主评估仍未验证.
 
 ## 开发与产物校验
 
@@ -494,6 +494,14 @@ npm run smoke:installed
 npm test
 npm run validate
 ```
+
+如需在每次工具包提交前运行快速检查, 在工具包仓库根目录手动执行一次 opt-in:
+
+```bash
+git config --local core.hooksPath .githooks
+```
+
+已纳入版本控制的 `.githooks/pre-commit` 会运行仓库校验, 生成运行时一致性检查以及聚焦的公共 CLI 和证据契约测试. 这个手动 opt-in 只修改工具包仓库的本地 Git 配置. 安装和写作项目 setup 都不会启用 hook 或修改 Git 配置. 直接运行 `.githooks/pre-commit` 可以在不修改任何 Git 配置的情况下执行同一组检查.
 
 `npm test` 已包含生成运行时一致性检查和隔离真实安装器 smoke. smoke 在一次性目录中运行通用安装器, 删除临时源副本后不依赖仓库依赖执行安装后的 CLI; 它不证明宿主技能发现或创作质量.
 

@@ -40,6 +40,7 @@ Report v2 and shared finding v2 remain current. Independent skills retain findin
 | `scripts/author-project.mjs` | Versioned-JSON facade for UTC timestamps, manuscript-only initialization, compact/full reads and status, pending and scope writes, typed tracker writes, backups/restores, cycles, manuscript reconciliation, revision execution, evaluation, completion, and recovery. It does not invoke strategies. |
 | `scripts/build-runtime.mjs` | Generator and consistency checker for the two installed runtime bundles. |
 | `scripts/smoke-installed-runtime.mjs` | Real generic-installer smoke in an isolated deployment without development dependencies. |
+| `.githooks/pre-commit` | Tracked opt-in fast validation, generated-runtime consistency, and focused public CLI and evidence-contract checks. Setup and installation never enable it or change Git configuration. |
 | `scripts/lib/` | Current project initialization, validation, state composition, scope, tracker, backup, cycle, recovery, execution, evaluation, and verified-write implementation, exported through `index.mjs`. |
 | `references/` | Canonical shared JSON Schemas, controlled terminology, reporting rules, and AI-writing integration documents. The only project schema is `project-schema-v4.json`. |
 | `examples/` | Current English and Chinese manuscript, report, tracker, and on-disk fixtures with empty operational evidence. |
