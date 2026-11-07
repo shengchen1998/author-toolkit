@@ -29,7 +29,7 @@ For every operation, read [`references/operations.md`](references/operations.md)
 
 ## Invocation boundary
 
-This skill calls no other skills. Use text reads and writes for normal operation. Run the documented validation or migration script when the installed toolkit provides it. Git is optional and is never required for state or backups.
+This skill calls no other skills. Use text reads and writes for normal operation. Resolve the installed `setup-author-toolkit` skill's root as `<setup-skill-root>` and run its bundled validation or migration script. These CLIs include their runtime dependencies and require no repository checkout or project `npm install`. Git is optional and is never required for state or backups.
 
 ## Completion
 

@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
-import { readFile, readdir } from "node:fs/promises";
+import { spawnSync } from "node:child_process";
+import { cp, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import test from "node:test";
 
@@ -36,6 +37,112 @@ async function markdownFiles(directory) {
   const files = await filesUnder(directory);
   return files.filter((file) => file.endsWith(".md"));
 }
+
+test("setup carries self-contained validation and migration CLIs", async (t) => {
+  await mkdir(path.join(root, ".test-output"), { recursive: true });
+  const temporaryRoot = await mkdtemp(path.join(root, ".test-output", "setup-cli-"));
+  t.after(() => rm(temporaryRoot, { recursive: true, force: true }));
+
+  const mirror = spawnSync(
+    process.execPath,
+    [path.join(root, "scripts", "sync-setup-runtime.mjs"), "--check"],
+    { encoding: "utf8" },
+  );
+  assert.equal(mirror.status, 0, mirror.stderr);
+
+  const installedSetup = path.join(temporaryRoot, "setup-author-toolkit");
+  await cp(path.dirname(path.dirname(setupReferences)), installedSetup, { recursive: true });
+  const loader = path.join(temporaryRoot, "block-runtime-packages.mjs");
+  await writeFile(
+    loader,
+    `export async function resolve(specifier, context, nextResolve) {
+      if (/^(?:ajv|ajv-formats|fast-deep-equal|fast-uri|json-schema-traverse|require-from-string)(?:\\/|$)/.test(specifier)) {
+        throw new Error("Runtime package import blocked: " + specifier);
+      }
+      return nextResolve(specifier, context);
+    }
+  `,
+  );
+
+  const preload = path.join(temporaryRoot, "block-runtime-packages.cjs");
+  await writeFile(
+    preload,
+    `const Module = require("node:module");
+    const load = Module._load;
+    Module._load = function (request, ...args) {
+      if (/^(?:ajv|ajv-formats|fast-deep-equal|fast-uri|json-schema-traverse|require-from-string)(?:\\/|$)/.test(request)) {
+        throw new Error("Runtime package require blocked: " + request);
+      }
+      return load.call(this, request, ...args);
+    };
+  `,
+  );
+
+  const nodeArgs = ["--no-warnings", "--experimental-loader", loader, "--require", preload];
+  for (const script of ["validate.mjs", "migrate-v3.mjs"]) {
+    const result = spawnSync(
+      process.execPath,
+      [...nodeArgs, path.join(installedSetup, "scripts", script), "--help"],
+      { encoding: "utf8" },
+    );
+    assert.equal(result.status, 0, `${script}: ${result.stderr}`);
+  }
+
+  const result = spawnSync(
+    process.execPath,
+    [
+      ...nodeArgs,
+      path.join(installedSetup, "scripts", "validate.mjs"),
+      "--manifest",
+      path.join(root, "examples", "fiction-revision-zh", ".author-toolkit", "project.json"),
+    ],
+    { encoding: "utf8" },
+  );
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /3 checks, 0 failures/);
+
+  const project = path.join(temporaryRoot, "migration-project");
+  await cp(path.join(root, "examples", "fiction-revision-zh"), project, { recursive: true });
+  const migration = spawnSync(
+    process.execPath,
+    [
+      ...nodeArgs,
+      path.join(installedSetup, "scripts", "migrate-v3.mjs"),
+      "--project-root",
+      project,
+    ],
+    { encoding: "utf8" },
+  );
+  assert.equal(migration.status, 0, migration.stderr);
+
+  const migratedValidation = spawnSync(
+    process.execPath,
+    [
+      ...nodeArgs,
+      path.join(installedSetup, "scripts", "validate.mjs"),
+      "--manifest",
+      path.join(project, ".author-toolkit", "project.json"),
+    ],
+    { encoding: "utf8" },
+  );
+  assert.equal(migratedValidation.status, 0, migratedValidation.stderr);
+  assert.match(migratedValidation.stdout, /4 checks, 0 failures/);
+});
+
+test("workflow commands resolve the installed setup CLIs", async () => {
+  const files = await markdownFiles(path.join(root, "skills"));
+  for (const file of files) {
+    const text = await readFile(path.join(root, "skills", file), "utf8");
+    assert.doesNotMatch(text, /<toolkit-root>|manual-checks-only/, file);
+  }
+
+  const operations = await readFile(
+    path.join(root, "skills", "author-project", "references", "operations.md"),
+    "utf8",
+  );
+  assert.match(operations, /node <setup-skill-root>\/scripts\/validate\.mjs --manifest/);
+  assert.match(operations, /node <setup-skill-root>\/scripts\/migrate-v3\.mjs --project-root/);
+});
 
 test("setup carries a byte-identical copy of every shared reference", async () => {
   const [canonicalFiles, setupFiles] = await Promise.all([

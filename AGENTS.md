@@ -28,11 +28,11 @@ Shared workflows support one single-book fiction project per manifest with Markd
 
 - Development requires Node.js 22 or newer and npm. The generic skills installer documented in `README.md` requires Node.js 22.20 or newer.
 - The package uses native ECMAScript modules (`"type": "module"`) and Node's built-in `node:test` runner.
-- `ajv` and `ajv-formats` are the only direct development dependencies. Schemas use JSON Schema draft 2020-12; Ajv runs with `allErrors` and `strict` enabled.
+- `ajv` and `ajv-formats` provide JSON Schema draft 2020-12 validation with `allErrors` and `strict` enabled. The pinned `esbuild` development dependency bundles those runtime packages into the installed setup skill.
 - `package.json` defines the development scripts and Node engine. `package-lock.json` is the npm lockfile.
 - `kimi.plugin.json` exposes `./skills/` to Kimi Code. `.claude-plugin/plugin.json` and `.claude-plugin/marketplace.json` contain Claude Code plugin metadata.
 - Release metadata is not generated from one source. When changing versions, inspect `package.json`, `kimi.plugin.json`, and both `.claude-plugin` JSON files; all four currently say `3.1.0`.
-- There is no build, lint, formatter, coverage-threshold, environment-variable, or secrets configuration. There are no repository CI workflows or automated deployment scripts.
+- There is no application compilation, lint, formatter, coverage-threshold, environment-variable, or secrets configuration. There are no repository CI workflows. `scripts/sync-setup-runtime.mjs` maintains the checked-in setup CLI mirror; it is not a publishing workflow.
 
 ## Repository layout and module boundaries
 
@@ -44,6 +44,7 @@ Shared workflows support one single-book fiction project per manifest with Markd
 | `scripts/validate.mjs` | CLI for schemas, manifests, on-disk project state, Markdown reports and story state, creation and coverage artifacts, review jobs, and legacy workflow fixtures. |
 | `scripts/migrate-v3.mjs` | CLI for v2 or v3.0 to v3.1 migration and idempotent v3.1 validation. |
 | `scripts/lib/` | Validation and migration implementation, exported through `index.mjs`. |
+| `scripts/sync-setup-runtime.mjs` | Generate or check the self-contained CLI mirror under `skills/setup-author-toolkit/scripts/`, including bundled Ajv dependencies and third-party licenses. |
 | `references/` | Canonical shared JSON Schemas, controlled terminology, reporting rules, and AI-writing integration documents. |
 | `examples/` | English and Chinese manuscript, report, tracker, and workflow fixtures used by tests and default validation. |
 | `tests/` | Node test files and shared fixture helpers. |
@@ -106,14 +107,14 @@ Install locked development dependencies from the repository root:
 npm ci
 ```
 
-There is no compilation or build output. Run the complete repository checks with:
+After changing validation or migration implementation, regenerate the checked-in setup runtime mirror with `npm run sync:setup-runtime`. There is no application compilation or release bundle. Run the complete repository checks with:
 
 ```bash
 npm test
 npm run validate
 ```
 
-`npm test` runs every `tests/*.test.mjs` file using `node:test`. `npm run validate` checks all schema definitions, both localized legacy examples, their reports and on-disk state, and workflow fixtures. Run both commands before finishing changes to scripts, schemas, skills, templates, or fixtures.
+`npm test` runs every `tests/*.test.mjs` file using `node:test`. The deployment test runs the synchronizer with `--check` and exercises the installed validation and migration CLIs with external runtime packages blocked. `npm run validate` checks all schema definitions, both localized legacy examples, their reports and on-disk state, and workflow fixtures. Run both commands before finishing changes to scripts, schemas, skills, templates, or fixtures.
 
 During development, run a focused test file or test-name pattern:
 
@@ -188,7 +189,7 @@ The repository is installed directly as source; there is no release bundle to bu
 
 Updates are manual through the host or `npx skills check` and `npx skills update`. No CI/CD or publishing workflow is present.
 
-The generic installer deploys each skill directory, including the setup skill's shared-reference payload and each independent skill's local contracts. The repository-root `references/` directory is the canonical development source, not a runtime dependency of installed skills. Keep it byte-identical to `skills/setup-author-toolkit/assets/references/`; keep standalone finding schemas and the `prose-mechanics` AI-writing adapter mirrors synchronized as well. Setup deploys the shared payload into each writing project. `tests/deployment.test.mjs` checks these mirrors, repository-root reference independence, project-local reference coverage, and safe replacement rules.
+The generic installer deploys each skill directory, including the setup skill's shared-reference payload, self-contained validation and migration CLIs, and each independent skill's local contracts. The repository-root `references/` directory is the canonical development source, not a runtime dependency of installed skills. Keep it byte-identical to `skills/setup-author-toolkit/assets/references/`; keep standalone finding schemas and the `prose-mechanics` AI-writing adapter mirrors synchronized as well. Keep `skills/setup-author-toolkit/scripts/` synchronized through `npm run sync:setup-runtime`; its schema module bundles Ajv and resolves the setup skill's `assets/references/` payload, so installed CLIs need no repository checkout or project `npm install`. Setup deploys the shared payload into each writing project. `tests/deployment.test.mjs` checks these mirrors, runs both installed CLIs with external runtime packages blocked, exercises installed v2-to-v3.1 migration, and checks repository-root reference independence, project-local reference coverage, and safe replacement rules.
 
 ## Agent skills
 

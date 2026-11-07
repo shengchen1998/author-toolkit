@@ -143,7 +143,7 @@
 
 只在旧 fixture 的副本上执行本节. 旧阶段快照用于核对转换结果, 不用于指导 v3.1 日常操作.
 
-- [ ] 分别验证统一 `setup-author-toolkit` 路径和 `node <toolkit-root>/scripts/migrate-v3.mjs --project-root <project-root>` 命令路径.
+- [ ] 分别验证统一 `setup-author-toolkit` 路径和 `node <setup-skill-root>/scripts/migrate-v3.mjs --project-root <project-root>` 命令路径.
 - [ ] 对 v3.0 副本确认增量终态为 schema 3.1.0, 只新增 `paths.creation` 和创作目录骨架并更新版本字段; 原有正文稿件, 报告, 发现项, 批准, 范围, 待处理工作和备份保持不变.
 - [ ] 确认 v3.0 快照位于 `.author-toolkit/migrations/<stamp>-v3_0-v3_1/`; 对 v2 副本确认直达 v3.1, 快照仍位于 `.author-toolkit/migrations/<stamp>-v2-v3/`.
 - [ ] 对 v2 副本确认旧 stage 只保留为历史证据, 旧 current stage 转为 `awaiting_author` 待处理操作; v3.1 不延续 v2 阶段状态机.

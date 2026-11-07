@@ -33,3 +33,11 @@ candidate catalog in `references/avoid-ai-writing-zh-CN.md`. Those files belong
 to Author Toolkit and are not upstream files. The Chinese catalog is a local
 writing-pattern heuristic; it is not attributed to the upstream author and does
 not establish AI authorship.
+
+## Bundled validation runtime
+
+The generated `skills/setup-author-toolkit/scripts/lib/schemas.mjs` bundle
+contains Ajv, ajv-formats, fast-deep-equal, fast-uri, json-schema-traverse, and
+require-from-string. Their original copyright notices and license texts are
+preserved in `skills/setup-author-toolkit/scripts/licenses/`. Package versions
+and source registries are recorded in `package-lock.json`.

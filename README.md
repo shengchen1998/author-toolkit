@@ -135,6 +135,11 @@ Add `-g` to install at user level instead:
 npx skills@latest add shengchen1998/author-toolkit -a claude-code -a kimi-code-cli -g
 ```
 
+The setup skill includes self-contained validation and migration CLIs under
+`setup-author-toolkit/scripts/`. Shared workflows resolve that installed skill
+directory directly; no repository checkout or writing-project `npm install` is
+required.
+
 Updates are manual. Check and apply them with:
 
 ```bash
@@ -481,8 +486,16 @@ implicitly restore a backup.
 ## Development
 
 The development package requires Node.js >= 22. The generic skills installer
-requires Node.js >= 22.20. After installing dependencies, run the protocol tests
-and validation from the repository root:
+requires Node.js >= 22.20. After changing validation or migration
+implementation, regenerate the checked-in setup runtime mirror:
+
+```bash
+npm run sync:setup-runtime
+```
+
+After installing dependencies, run the protocol tests and validation from the
+repository root. The deployment test checks that the mirror is current and runs
+both installed CLIs without external runtime packages:
 
 ```bash
 npm test

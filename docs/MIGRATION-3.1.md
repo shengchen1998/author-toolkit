@@ -16,11 +16,11 @@ run a separate historical 3.0 conversion first.
 Use the existing migration CLI from the 3.1 toolkit:
 
 ```bash
-node <toolkit-root>/scripts/migrate-v3.mjs --project-root <project-root>
+node <setup-skill-root>/scripts/migrate-v3.mjs --project-root <project-root>
 ```
 
-Here, `<toolkit-root>` is the Author Toolkit 3.1 installation or repository root,
-and `<project-root>` is the writing project containing
+Here, `<setup-skill-root>` is the installed `setup-author-toolkit` skill
+directory, and `<project-root>` is the writing project containing
 `.author-toolkit/project.json`. Run setup first when the writing project has not
 been registered.
 
@@ -50,7 +50,7 @@ require their author gates.
 The same command now converts a valid v2 manifest directly to v3.1:
 
 ```bash
-node <toolkit-root>/scripts/migrate-v3.mjs --project-root <project-root>
+node <setup-skill-root>/scripts/migrate-v3.mjs --project-root <project-root>
 ```
 
 The conversion retains the established v2 migration behavior and adds the v3.1
@@ -91,6 +91,8 @@ after migration.
 ## Shared reference deployment
 
 Running `setup-author-toolkit` after installation or migration deploys the shared runtime contracts from the setup skill's bundled `assets/references/` into `.author-toolkit/references/` beneath the writing project. This fixed operational directory is separate from the seven registered manifest paths and requires no schema or manifest change. Shared workflows resolve terminology, reporting rules, schemas, and AI-writing integration from that project-local directory. Every shared workflow `read`, `validate`, and `status` through `author-project` first compares all packaged references with this directory. Missing files and hash mismatches route the author back through setup, so an existing v3 manifest cannot bypass reference deployment after a toolkit update.
+
+The installed setup skill also carries self-contained `scripts/validate.mjs` and `scripts/migrate-v3.mjs` CLIs, including their runtime dependencies. Shared workflows resolve these scripts from the setup skill's installation directory. A source checkout and writing-project `npm install` are not required for validation or migration.
 
 Setup creates missing files and preserves files whose SHA-256 hashes match the packaged payload. A mismatch produces `reference-version-conflict` and blocks shared workflows. Replacing a mismatched file requires separate author approval for that exact file and preservation of the existing file beneath `<paths.backups>/reference-updates/<UTC-stamp>/`. Existing manuscripts, reports, findings, approvals, scopes, and pending work are not changed by reference deployment.
 

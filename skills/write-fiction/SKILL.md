@@ -55,7 +55,7 @@ Use the artifact contracts and living state rules in [`references/creation-state
 
 Shared diagnostic and review reports retain report v2 and finding v2. Read [`../revise-fiction/references/state-and-findings.md`](../revise-fiction/references/state-and-findings.md) before changing findings, approvals, stale evidence, or report files. Do not add creation operations to the closed report v2 stage enum.
 
-Validate newly written artifacts with the installed `scripts/validate.mjs` options. Record actual coverage and validation results in the session note.
+Validate newly written artifacts with the installed setup skill's `scripts/validate.mjs` options. Record actual coverage and validation results in the session note.
 
 ## Finish
 

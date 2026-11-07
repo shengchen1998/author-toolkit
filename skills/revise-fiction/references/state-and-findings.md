@@ -21,7 +21,7 @@ Populate the actual v2 fields:
 
 Use `confidence: "judgment"` for editorial interpretation and `deterministic` only for direct code-detected evidence. Finding status is tracker state and is not a finding v2 property.
 
-Run `node <toolkit-root>/scripts/validate.mjs --report <report-path>` when available and retain the result in the session note. Use `validateEvidenceReport` for v3 evidence-semantic checks. If the payload does not conform, record the operation as `blocked`; never emit a legacy payload as a substitute.
+Run `node <setup-skill-root>/scripts/validate.mjs --report <report-path>` and retain the result in the session note. Use `validateEvidenceReport` for v3 evidence-semantic checks. If the payload does not conform, record the operation as `blocked`; never emit a legacy payload as a substitute.
 
 Historical reports are immutable. Author decisions, stale marks, later locations, and rerun results go into the living tracker and new reports.
 

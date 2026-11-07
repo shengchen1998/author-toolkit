@@ -1,10 +1,15 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 
 import Ajv2020 from "ajv/dist/2020.js";
 import addFormats from "ajv-formats";
 
+const referencesRoot = [
+  new URL("../../references/", import.meta.url),
+  new URL("../../assets/references/", import.meta.url),
+].find((url) => existsSync(url));
+
 function readSchema(name) {
-  return JSON.parse(readFileSync(new URL(`../../references/${name}`, import.meta.url), "utf8"));
+  return JSON.parse(readFileSync(new URL(name, referencesRoot), "utf8"));
 }
 
 const findingV1Schema = readSchema("finding-schema.json");

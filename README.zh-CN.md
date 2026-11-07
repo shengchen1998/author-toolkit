@@ -57,6 +57,9 @@ npx skills@latest add shengchen1998/author-toolkit -a claude-code -a kimi-code-c
 npx skills@latest add shengchen1998/author-toolkit -a claude-code -a kimi-code-cli -g
 ```
 
+setup 技能在 `setup-author-toolkit/scripts/` 下提供自包含的校验和迁移 CLI, 包括运行依赖.
+共享工作流直接解析该技能的安装目录, 无需仓库检出, 也无需在写作项目中运行 `npm install`.
+
 更新需要手动执行:
 
 ```bash
@@ -312,15 +315,22 @@ AI 关联发现只描述文本模式, 不能证明文本由 AI 生成.
 
 ## 验证状态
 
-3.1.0 工作树的仓库检查已通过: 136 项协议测试和 19 项默认校验, 详见
+3.1.0 工作树的仓库检查已通过: 139 项协议测试和 19 项默认校验, 详见
 [docs/VALIDATION.md](docs/VALIDATION.md). 通用本地源安装已发现全部 16 个技能, setup 共享载荷,
-项目内 schema 和独立技能本地契约均已验证. Kimi Code 已完成有限范围的创作提交和双向切换验证;
+自包含校验与迁移 CLI, 项目内 schema 和独立技能本地契约均已验证. Kimi Code 已完成有限范围的创作提交和双向切换验证;
 完整宿主流程, `revise-increment` 与 `revise-request` 端到端运行和百万字稿件的创作质量仍未验证.
 3.0 和 2.0 的历史结果单独保留, 不能作为 3.1 已通过宿主或质量验证的证据.
 
 ## 开发与产物校验
 
-开发包需要 Node.js >= 22, 通用技能安装器需要 Node.js >= 22.20. 安装依赖后在仓库根目录运行:
+开发包需要 Node.js >= 22, 通用技能安装器需要 Node.js >= 22.20. 修改校验或迁移实现后,
+重新生成纳入版本控制的 setup 运行镜像:
+
+```bash
+npm run sync:setup-runtime
+```
+
+安装依赖后在仓库根目录运行以下检查. 部署测试会核对镜像, 并在禁止加载外部运行包的环境中执行两个安装版 CLI:
 
 ```bash
 npm test
