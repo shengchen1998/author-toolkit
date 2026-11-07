@@ -131,7 +131,7 @@ try {
   assert.equal(full.status, 0, full.stdout);
   const fullResponse = projectResponse(full, "read");
   assert.equal(fullResponse.result.view, "full");
-  assert.equal(fullResponse.result.manifest.schema_version, "3.2.0");
+  assert.equal(fullResponse.result.manifest.schema_version, "4.0.0");
   assert.equal(fullResponse.result.status.query_valid, true);
 
   const proposedPath = path.join(freshProject, "proposed-scope.json");
@@ -211,7 +211,7 @@ try {
 
   const valid = runInstalled("validate.mjs", ["--project-root", projectRoot]);
   assert.equal(valid.status, 0, `${valid.stdout}\n${valid.stderr}`);
-  assert.match(valid.stdout, /4 checks, 0 failures/);
+  assert.match(valid.stdout, /5 checks, 0 failures/);
   assert.doesNotMatch(valid.stdout, /manual-checks-only/);
   assert.doesNotMatch(valid.stdout, /fiction-revision-zh/);
 

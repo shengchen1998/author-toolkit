@@ -34,19 +34,6 @@ export async function readReport(language = "en") {
   );
 }
 
-export async function readWorkflowProjects(language = "en") {
-  const directory = `examples/fiction-revision-${language}`;
-  const fixture = await readJson(`${directory}/sessions/rework-resume.fixture.json`);
-  const base = await readManifest(language);
-  const projects = fixture.snapshots.map((snapshot) => ({
-    ...base,
-    paths: snapshot.paths,
-    updated_at: snapshot.updated_at,
-    workflow: snapshot.workflow,
-  }));
-  return { fixture, projects };
-}
-
 export function clone(value) {
   return structuredClone(value);
 }

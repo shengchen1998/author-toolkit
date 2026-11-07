@@ -204,7 +204,7 @@ export function diffManuscriptInventories(previous, current) {
 
 function validationError(result) {
   return new Error(
-    `v3.2 scope validation failed:\n${result.errors
+    `4.0.0 scope validation failed:\n${result.errors
       .map((error) => `${error.instancePath || "/"} ${error.message}`)
       .join("\n")}`,
   );
@@ -235,9 +235,6 @@ async function recordScopeLocked(root, manifestPath, initialConvergence, scope, 
     );
   }
   const manifest = JSON.parse(manifestText);
-  if (manifest.schema_version !== "3.2.0") {
-    throw new Error("recordScope immutable snapshots require a v3.2 project");
-  }
   const originalValidation = validateManifest(manifest);
   if (!originalValidation.valid) throw validationError(originalValidation);
   if (manifest.paths.convergence !== initialConvergence) {
@@ -440,9 +437,6 @@ export async function recordScope(projectRoot, scope, options = {}) {
   const root = path.resolve(projectRoot);
   const manifestPath = path.join(root, ".author-toolkit", "project.json");
   const initialManifest = JSON.parse(await readFile(manifestPath, "utf8"));
-  if (initialManifest.schema_version !== "3.2.0") {
-    throw new Error("recordScope immutable snapshots require a v3.2 project");
-  }
   const originalValidation = validateManifest(initialManifest);
   if (!originalValidation.valid) throw validationError(originalValidation);
   await mkdir(path.resolve(root, initialManifest.paths.convergence), { recursive: true });

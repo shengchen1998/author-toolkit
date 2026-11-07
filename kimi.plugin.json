@@ -1,6 +1,6 @@
 {
   "name": "author-toolkit",
-  "version": "3.2.0",
+  "version": "4.0.0",
   "description": "Incremental fiction creation and four revision strategies sharing one project evidence model, plus six independent writing skills for Claude Code and Kimi Code",
   "skills": "./skills/"
 }

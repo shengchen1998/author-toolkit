@@ -12,7 +12,7 @@ For the cycle's current requested pass and target fingerprint, apply the [whole-
 
 ## 1. Intake
 
-**Inputs:** A v3 project root and accessible manuscript text.
+**Inputs:** A 4.0.0 project root and accessible manuscript text.
 
 **Work:** Inventory every registered manuscript file in reading order, including missing or duplicate chapter identifiers, language, and excluded non-manuscript files. Compute a SHA-256 version for every in-scope file. Record a new `scope_id` through `author-project`; scope changes require author confirmation. Record target reader, book metadata, current author goal, and requested entry operation when known. Use the author decision loop only for missing choices required by the current gate; keep optional unknowns open without requesting a batch of metadata.
 

@@ -72,6 +72,7 @@ function artifacts() {
       schema_version: "1.0.0",
       unit_id: "unit-001",
       source_report: "reports/diagnostics/chapter-001.md",
+      source_report_sha256: hash,
       scope_id: "scope-1",
       operation: "diagnostics",
       kind: "local",
@@ -85,6 +86,13 @@ function artifacts() {
     index: {
       schema_version: "1.0.0",
       scope_id: "scope-1",
+      scope_fingerprint: hash,
+      requested_pass: {
+        pass_id: "pass-001",
+        pass_fingerprint: hash,
+        path: ".author-toolkit/convergence/passes/pass-001.json",
+        sha256: hash,
+      },
       entries: [],
       updated_at: timestamp,
     },

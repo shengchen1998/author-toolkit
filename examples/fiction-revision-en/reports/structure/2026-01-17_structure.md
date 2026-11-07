@@ -68,6 +68,14 @@ The envelope below is the sole machine-readable report in this Markdown file. Ex
     "degraded": true,
     "notes": "Handwritten fixture envelope; no engine or model was executed. Coverage: full - all three English chapters and all 11 landmark checks."
   },
+  "scope_id": "fixture-scope-en",
+  "scope_fingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "requested_pass": {
+    "pass_id": "fixture-pass-en",
+    "pass_fingerprint": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "path": ".author-toolkit/convergence/passes/fixture-pass-en.json",
+    "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+  },
   "findings": [
     {
       "id": "STRUCT-001",

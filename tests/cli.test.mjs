@@ -25,7 +25,7 @@ test("the CLI prints help without implicit state and validates the repository on
 
   const result = runValidator(["--repository"]);
   assert.equal(result.status, 0, result.stderr);
-  assert.match(result.stdout, /19 checks, 0 failures/);
+  assert.match(result.stdout, /11 checks, 0 failures/);
   assert.match(result.stdout, /fiction-revision-en\/reports\/structure/);
   assert.match(result.stdout, /fiction-revision-zh\/reports\/structure/);
 });
@@ -157,7 +157,8 @@ test("the CLI exits nonzero for an invalid manifest and invalid Markdown", async
   );
   const standalone = runValidator(["--manifest", standalonePath]);
   assert.equal(standalone.status, 1);
-  assert.match(standalone.stderr, /run setup-author-toolkit to register or migrate it/);
+  assert.match(standalone.stderr, /greenfield-initialization-required/);
+  assert.match(standalone.stderr, /manuscript-only/);
 });
 
 test("the CLI enforces evidence semantics for current-draft operation reports", async (t) => {

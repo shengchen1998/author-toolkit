@@ -1,6 +1,6 @@
 # Author Toolkit 中文快速上手
 
-Author Toolkit 3.2.0 提供增量小说创作, 四个小说修订策略和六个独立写作技能. 创作与修订共享
+Author Toolkit 4.0.0 提供增量小说创作, 四个小说修订策略和六个独立写作技能. 创作与修订共享
 同一项目证据模型, 支持 Claude Code 与 Kimi Code. 完整说明见 [英文 README](README.md),
 共享用语见 [受控术语表](references/terminology.md).
 
@@ -237,14 +237,13 @@ AI, 作者和混合创作使用相同门禁. 每本书只保留一个活动创�
    处理复核发现项和返工, 分别报告请求完成以及全稿目标范围是否重新达到当前草稿修订收敛;
    请求批次完成本身不等于当前草稿修订收敛.
 
-叙事非虚构请直接调用 `narrative-nonfiction`. 多书籍项目和其他宿主不在 3.2 支持范围内.
+叙事非虚构请直接调用 `narrative-nonfiction`. 多书籍项目和其他宿主不在 4.0 支持范围内.
 
 ## 共享项目产物与证据
 
-五个策略共用中性的 `.author-toolkit/project.json` 和同一组登记路径. 新项目使用
-schema 3.2.0; v3.0 和 v3.1 manifest 仍可读取. `scripts/migrate-v32.mjs` 将 v2, v3.0 和
-v3.1 项目直接迁移到 v3.2. 现有 `scripts/migrate-v3.mjs` 命令和 `migrateProjectToV3`
-函数是具有相同目标的兼容包装.
+五个策略共用中性的 `.author-toolkit/project.json` 和同一组登记路径. 所有项目只使用
+schema 4.0.0. 旧 manifest 和旧共享产物会在 setup 写入前收到 `greenfield-initialization-required`.
+必须保留旧项目, 并从仅含正文稿件的输入初始化独立新项目; 不提供迁移或旧共享状态导入.
 
 - `project.json`: 项目登记, 产物路径, 以及可选的 `current_scope` 和 `pending_action`.
   不包含 `workflow.name`, `current_stage` 或 `stages`.
@@ -259,15 +258,13 @@ v3.1 项目直接迁移到 v3.2. 现有 `scripts/migrate-v3.mjs` 命令和 `migr
 - `handoffs/`: 当前证据和下一操作的交接指针.
 - `paths.creation`: 创作产物路径, 默认 `.author-toolkit/creation/`, 包含
   `state/current.md`, `state/chapters/`, `state/volumes/`, `batches/` 和 `staging/`.
-- v3.2 的收敛状态根目录默认为 `.author-toolkit/convergence/`. 确认范围后在此保存不可变
+- 4.0.0 的收敛状态根目录默认为 `.author-toolkit/convergence/`. 确认范围后在此保存不可变
   范围快照和正文清单快照. 范围指纹覆盖有序路径/哈希对和排序后的排除项, 不覆盖记录元数据和时间戳.
 
-项目迁移保留正文稿件, 报告, 发现项, 批准, 范围, session, 暂存稿, 备份, 创作批次,
-提交日志和待处理操作. 只有精确的旧范围确认才能支持已确认范围快照; 其他旧已确认范围转为
-待重新确认的 proposed 范围. 旧报告和待处理操作不会生成 satisfied 评估或已激活的当前草稿收敛周期.
-依赖周期的工作必须先协调中断的提交日志和写入. 旧暂存稿只能明确拒绝, 或在当前 satisfied
-起始评估存在后进入新周期并精确重新批准. 无法重新验证的旧修订基准通过当前全稿 `revise-draft`
-恢复, 覆盖证据仅按正常复用规则处理. 迁移矩阵和恢复规程见 [3.2 迁移指南](docs/MIGRATION-3.2.md).
+在 4.0.0 项目内, 报告, 发现项, 批准, 范围, session, 暂存稿, 备份, 创作批次,
+提交日志, 评估和待处理操作继续遵守现有安全与不可变历史规则. 当前项目仍支持周期协调恢复和
+`creation-import`. 不迁移只是本次 greenfield 的一次性例外; 未来不兼容版本默认必须提供迁移.
+架构决定见 [greenfield 4.0 ADR](docs/adr/0002-greenfield-4-0.md).
 
 章节和卷故事状态从已验收正文和有版本的来源派生, 用于续写; 它不能替代故事圣经的意图或正文事实.
 被拒绝的暂存稿不会进入故事状态或正文范围.
@@ -279,7 +276,7 @@ v3.1 项目直接迁移到 v3.2. 现有 `scripts/migrate-v3.mjs` 命令和 `migr
 
 ### 当前草稿收敛周期
 
-v3.2 在 `<convergence-state-root>/active-cycle.json` 中至多保存一个已激活的当前草稿收敛周期,
+4.0.0 在 `<convergence-state-root>/active-cycle.json` 中至多保存一个已激活的当前草稿收敛周期,
 已完成记录不可变地保存在 `<convergence-state-root>/cycles/`. 版本化契约记录发起与当前策略,
 首次创作引导, 起始与目标范围引用, 请求修订轮次, 恢复位置, 关联产物, 变化集合, 工作集合,
 收敛评估引用和完成决定. 请求修订的基准范围与增量修订的前一范围映射到同一个 `starting_scope` 角色.
@@ -422,15 +419,11 @@ Finding v2 和 report v2 的版本保持不变, 创作操作不加入封闭的�
 创作批次, 提交日志, 故事状态, 覆盖单元和覆盖索引, 复核任务和读者状态使用独立产物契约.
 外部变化使用封闭的 `references/manuscript-reconciliation-schema.json` 产物契约,
 manifest 的可选 `manuscript_reconciliation` 字段指向最新不可变正文协调记录.
-项目登记的源契约为 `references/project-schema-v3.2.json`, setup 将其与其他共享契约一起部署到写作项目;
-v3.0 和 v3.1 schema 保留用于读取和升级旧项目.
+项目登记的唯一源契约为 `references/project-schema-v4.json`, setup 将其与其他共享契约一起部署到写作项目;
+不提供旧项目 schema 或迁移命令.
 
-迁移说明见 [docs/MIGRATION-3.2.md](docs/MIGRATION-3.2.md). 历史说明保留在
-[docs/MIGRATION-3.1.md](docs/MIGRATION-3.1.md), [docs/MIGRATION-3.0.md](docs/MIGRATION-3.0.md) 和
-[docs/MIGRATION-2.0.md](docs/MIGRATION-2.0.md).
-
-随仓库提供的中英文 examples 有意保留 legacy v2 manifests 和 workflow fixtures 用于兼容性测试,
-不要为了显得最新而原地迁移它们.
+当前 4.0.0 报告发布后不可变, 旧共享产物不会被改写或导入新项目. 随仓库提供的中英文 examples
+使用空操作证据的 4.0.0 manifests; 其正文和手写报告仅作为语言与 Markdown fixtures, 不构成创作质量或宿主运行证据.
 
 ## 恢复, 切换与返工
 
@@ -485,13 +478,10 @@ AI 关联发现只描述文本模式, 不能证明文本由 AI 生成.
 
 ## 验证状态
 
-当前 3.2.0 的仓库检查已通过: 339 项协议测试和 19 项默认校验, 详见
-[docs/VALIDATION.md](docs/VALIDATION.md). 通用本地源安装已发现并复制全部 16 个技能, setup 共享载荷,
-项目内 schema 和独立技能本地契约均已验证. Kimi Code 2.4.1 已在一次性项目验证 setup, 首次创作基线,
-写作计划, staging, 章节复核, 首次发布与中断提交恢复, 普通创作基线, 发布后阻断, 增量与当前草稿 intake, 请求修订 intake 和迁移路由;
-四个长时间调用在有效产物写入后超时. 完整宿主评估与周期完成, 请求和增量端到端恢复, Claude Code,
-原生插件安装及百万字稿件的创作质量仍未验证. 3.1, 3.0 和 2.0 的历史结果单独保留,
-不能作为 3.2 已通过宿主或质量验证的证据.
+4.0.0 的仓库检查已通过: 421 项测试和 11 项仓库校验, 0 失败; 实际命令与范围见
+[docs/VALIDATION.md](docs/VALIDATION.md).
+通用本地源安装, 自包含运行时, 旧状态拒绝和中英文 current fixtures 均通过契约与安装检查.
+这些结果不证明完整宿主创作流程或创作质量; 4.0.0 的宿主验收不属于本次 cutover 的声明.
 
 ## 开发与产物校验
 

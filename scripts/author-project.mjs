@@ -271,12 +271,12 @@ async function main() {
         "utf8",
       ));
       const validation = validateManifest(manifest);
-      if (!validation.valid || manifest.schema_version !== "3.2.0") {
-        stateError = {
+      if (!validation.valid) {
+        stateError = validation.errors.find(
+          (error) => error.code === "greenfield-initialization-required",
+        ) ?? {
           code: "project-state-invalid",
-          message: manifest.schema_version === "3.2.0"
-            ? "The project manifest does not satisfy the current schema."
-            : "Current project operations require a valid v3.2 manifest.",
+          message: "The project manifest does not satisfy the current 4.0.0 schema.",
           details: validation.errors,
         };
       }

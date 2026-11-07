@@ -19,9 +19,6 @@ export async function readProject(projectRoot) {
   if (!validation.valid) {
     throw new Error(`Project validation failed: ${validation.errors.map((error) => error.message).join("; ")}`);
   }
-  if (manifest.schema_version !== "3.2.0") {
-    throw new Error("Convergence evaluation requires a v3.2 project");
-  }
   return { root, manifestPath, manifest };
 }
 

@@ -15,7 +15,6 @@ import {
   runCheckpoint,
 } from "./cycle-coordination.mjs";
 import { collectManuscriptInventory } from "./manuscript.mjs";
-import { inspectLegacyRecovery } from "./legacy-recovery.mjs";
 import { validateManifest } from "./manifest.mjs";
 import {
   validateConvergenceCycleSchema,
@@ -102,9 +101,6 @@ async function readProject(projectRoot) {
   const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
   const validation = validateManifest(manifest);
   if (!validation.valid) throw validationError(validation);
-  if (manifest.schema_version !== "3.2.0") {
-    throw new Error("Convergence cycles require a v3.2 project");
-  }
   return { root, manifestPath, manifest };
 }
 
@@ -294,21 +290,6 @@ export async function startCycle(projectRoot, request, options = {}) {
   if (completedProblem) return completedProblem;
   const coordination = coordinationFailure(project, active);
   if (coordination) return coordination;
-  const legacyRecovery = await inspectLegacyRecovery(root, manifest);
-  const legacyBlockers = legacyRecovery.blockers.filter((blocker) =>
-    blocker.code !== "legacy-staging-decision-required" ||
-    request.bootstrap ||
-    blocker.rejection_required
-  );
-  if (legacyBlockers.length > 0) {
-    return {
-      valid: false,
-      cycle: null,
-      required_action: legacyBlockers[0].required_action,
-      blockers: legacyBlockers,
-      state_written: false,
-    };
-  }
   const currentScope = manifest.current_scope;
   const external = await externalReconciliationBlock(
     project,
@@ -534,22 +515,6 @@ export async function assertCycleAllowsOperation(projectRoot, request) {
   if (completedProblem) return { ...completedProblem, read_only: false };
   const coordination = coordinationFailure(project, active);
   if (coordination) return { ...coordination, read_only: false };
-  if (!active) {
-    const legacyRecovery = await inspectLegacyRecovery(root, manifest);
-    const legacyBlockers = legacyRecovery.blockers.filter(
-      (blocker) => blocker.code !== "legacy-staging-decision-required",
-    );
-    if (legacyBlockers.length > 0) {
-      return {
-        valid: false,
-        read_only: false,
-        cycle: null,
-        required_action: legacyBlockers[0].required_action,
-        blockers: legacyBlockers,
-        state_written: false,
-      };
-    }
-  }
   const currentScope = manifest.current_scope;
   const trackedReference = active?.value.target_scope ?? active?.value.starting_scope ??
     (currentScope ? {

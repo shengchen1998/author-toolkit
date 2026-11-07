@@ -25,9 +25,9 @@ const timestamp = "2026-11-05T00:00:00Z";
 const expectedFingerprint = "943ae0d0924ba9547b4acd3cc97b10a761e48374a34288be66f76da0a2e7436a";
 const validator = path.join(root, "scripts", "validate.mjs");
 
-function manifestV32() {
+function currentManifest() {
   return {
-    schema_version: "3.2.0",
+    schema_version: "4.0.0",
     project_type: "fiction",
     language: "en",
     manuscript_root: "manuscript",
@@ -105,7 +105,7 @@ async function createProject(t) {
   );
   await writeFile(path.join(projectRoot, "manuscript", "cover.png"), "cover", "utf8");
   const manifestPath = path.join(projectRoot, ".author-toolkit", "project.json");
-  await writeFile(manifestPath, `${JSON.stringify(manifestV32(), null, 2)}\n`, "utf8");
+  await writeFile(manifestPath, `${JSON.stringify(currentManifest(), null, 2)}\n`, "utf8");
   await writeFile(path.join(projectRoot, ".author-toolkit", "backups", "index.json"), `${JSON.stringify({
     schema_version: "1.0.0",
     backups: [],
@@ -139,10 +139,10 @@ function runValidator(args) {
   });
 }
 
-test("v3.2 registers a project-local convergence state root", () => {
-  assert.equal(validateManifest(manifestV32()).valid, true);
+test("4.0 registers a project-local convergence state root", () => {
+  assert.equal(validateManifest(currentManifest()).valid, true);
 
-  const missing = manifestV32();
+  const missing = currentManifest();
   delete missing.paths.convergence;
   const result = validateManifest(missing);
   assert.equal(result.valid, false);
@@ -419,14 +419,14 @@ test("scope fingerprints exclude record metadata and sort exclusions", async (t)
   assert.equal(firstResult.scope_fingerprint, secondResult.scope_fingerprint);
 });
 
-test("the neutral project template registers the v3.2 convergence state root", async () => {
+test("the neutral project template registers the 4.0 convergence state root", async () => {
   const template = JSON.parse(
     await readFile(
       path.join(root, "skills", "author-project", "assets", "project-template.json"),
       "utf8",
     ),
   );
-  assert.equal(template.schema_version, "3.2.0");
+  assert.equal(template.schema_version, "4.0.0");
   assert.equal(template.paths.convergence, ".author-toolkit/convergence/");
   assert.equal(validateManifest(template).valid, true);
 });

@@ -2,7 +2,6 @@ import { createHash } from "node:crypto";
 import { readFile, stat } from "node:fs/promises";
 import path from "node:path";
 
-import { V3_SCHEMA_VERSIONS } from "./constants.mjs";
 import { collectManuscriptInventory } from "./manuscript.mjs";
 import { validateRelativePath } from "./schemas.mjs";
 
@@ -13,6 +12,8 @@ const OPERATIONAL_PATHS = [
   "sessions",
   "backups",
   "handoffs",
+  "creation",
+  "convergence",
 ];
 
 function fileError(instancePath, message) {
@@ -59,31 +60,15 @@ export async function validateProjectFiles(manifest, manifestPath) {
   }
 
   const checks = [["/manuscript_root", manifest.manuscript_root]];
-  const operationalPaths = [...OPERATIONAL_PATHS];
-  if (["3.1.0", "3.2.0"].includes(manifest.schema_version)) operationalPaths.push("creation");
-  if (manifest.schema_version === "3.2.0") operationalPaths.push("convergence");
-
-  for (const name of operationalPaths) {
+  for (const name of OPERATIONAL_PATHS) {
     checks.push([`/paths/${name}`, manifest.paths?.[name]]);
   }
-
-  if (V3_SCHEMA_VERSIONS.has(manifest.schema_version)) {
-    manifest.pending_action?.artifacts?.forEach((artifact, artifactIndex) => {
-      checks.push([`/pending_action/artifacts/${artifactIndex}`, artifact]);
-    });
-    manifest.current_scope?.files?.forEach((file, fileIndex) => {
-      checks.push([`/current_scope/files/${fileIndex}/path`, file.path]);
-    });
-  } else {
-    manifest.workflow?.stages?.forEach((stage, stageIndex) => {
-      stage.artifacts?.forEach((artifact, artifactIndex) => {
-        checks.push([
-          `/workflow/stages/${stageIndex}/artifacts/${artifactIndex}`,
-          artifact,
-        ]);
-      });
-    });
-  }
+  manifest.pending_action?.artifacts?.forEach((artifact, artifactIndex) => {
+    checks.push([`/pending_action/artifacts/${artifactIndex}`, artifact]);
+  });
+  manifest.current_scope?.files?.forEach((file, fileIndex) => {
+    checks.push([`/current_scope/files/${fileIndex}/path`, file.path]);
+  });
 
   const errors = [];
   for (const [instancePath, relativePath] of checks) {
@@ -96,11 +81,7 @@ export async function validateProjectFiles(manifest, manifestPath) {
 
 export async function validateScopeCurrency(manifest, manifestPath) {
   const projectRoot = projectRootFromManifest(manifestPath);
-  if (
-    !V3_SCHEMA_VERSIONS.has(manifest.schema_version) ||
-    !manifest.current_scope ||
-    isUninitializedProjectTemplate(manifest)
-  ) {
+  if (!manifest.current_scope || isUninitializedProjectTemplate(manifest)) {
     return { valid: true, errors: [], projectRoot };
   }
 

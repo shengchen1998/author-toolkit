@@ -34,32 +34,6 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
   mod
 ));
 
-// scripts/lib/constants.mjs
-var constants_exports = {};
-__export(constants_exports, {
-  ACTIVE_STATUSES: () => ACTIVE_STATUSES,
-  STAGES: () => STAGES,
-  V3_SCHEMA_VERSIONS: () => V3_SCHEMA_VERSIONS
-});
-var STAGES, V3_SCHEMA_VERSIONS, ACTIVE_STATUSES;
-var init_constants = __esm({
-  "scripts/lib/constants.mjs"() {
-    STAGES = Object.freeze([
-      "intake",
-      "story-bible",
-      "structure",
-      "characters",
-      "revision-plan",
-      "chapter-revision",
-      "prose",
-      "ai-cleanup",
-      "final-review"
-    ]);
-    V3_SCHEMA_VERSIONS = /* @__PURE__ */ new Set(["3.0.0", "3.1.0", "3.2.0"]);
-    ACTIVE_STATUSES = Object.freeze(["in_progress", "awaiting_author"]);
-  }
-});
-
 // scripts/lib/time.mjs
 function utcDate(now) {
   const value = now === void 0 ? /* @__PURE__ */ new Date() : new Date(now instanceof Date ? now.getTime() : now);
@@ -3339,8 +3313,8 @@ var require_utils = __commonJS({
       }
       return ind;
     }
-    function removeDotSegments(path24) {
-      let input = path24;
+    function removeDotSegments(path22) {
+      let input = path22;
       const output = [];
       let nextSlash = -1;
       let len = 0;
@@ -3414,11 +3388,11 @@ var require_utils = __commonJS({
       }
       return output.join("");
     }
-    function removeDotSegmentsRelative(path24) {
-      if (path24 === "" || path24[0] === "/") {
-        return removeDotSegments(path24);
+    function removeDotSegmentsRelative(path22) {
+      if (path22 === "" || path22[0] === "/") {
+        return removeDotSegments(path22);
       }
-      const segments = path24.split("/");
+      const segments = path22.split("/");
       const last = segments.length - 1;
       const output = [];
       let trailingDirectory = false;
@@ -3781,8 +3755,8 @@ var require_schemes = __commonJS({
       }
       if (wsComponent.resourceName) {
         const queryIndex = wsComponent.resourceName.indexOf("?");
-        const path24 = queryIndex === -1 ? wsComponent.resourceName : wsComponent.resourceName.slice(0, queryIndex);
-        wsComponent.path = path24 && path24 !== "/" ? path24 : void 0;
+        const path22 = queryIndex === -1 ? wsComponent.resourceName : wsComponent.resourceName.slice(0, queryIndex);
+        wsComponent.path = path22 && path22 !== "/" ? path22 : void 0;
         wsComponent.query = queryIndex === -1 ? void 0 : wsComponent.resourceName.slice(queryIndex + 1);
         wsComponent.resourceName = void 0;
       }
@@ -8176,17 +8150,8 @@ function validateFindingV1(value, options = {}) {
 function validateFindingV2(value, options = {}) {
   return evaluate(findingV2Validator, value, options);
 }
-function validateProjectSchema(value, options = {}) {
-  return evaluate(projectValidator, value, options);
-}
-function validateProjectV3Schema(value, options = {}) {
-  return evaluate(projectV3Validator, value, options);
-}
-function validateProjectV31Schema(value, options = {}) {
-  return evaluate(projectV31Validator, value, options);
-}
-function validateProjectV32Schema(value, options = {}) {
-  return evaluate(projectV32Validator, value, options);
+function validateProjectV4Schema(value, options = {}) {
+  return evaluate(projectV4Validator, value, options);
 }
 function validateScopeSnapshotSchema(value, options = {}) {
   return evaluate(scopeSnapshotValidator, value, options);
@@ -8218,8 +8183,34 @@ function validateRevisionExecutionSchema(value, options = {}) {
 function validateManuscriptReconciliationSchema(value, options = {}) {
   return evaluate(manuscriptReconciliationValidator, value, options);
 }
+function legacySharedArtifactError(artifact, instancePath, missingField) {
+  return {
+    code: "greenfield-initialization-required",
+    instancePath,
+    keyword: "current-evidence-identity",
+    message: `The ${artifact} lacks current identity field ${missingField} and uses the old schema-only shared-evidence form. Author Toolkit 4.0.0 accepts only current artifacts. If this artifact belongs to an old project, create a new project from manuscript-only input and run setup-author-toolkit there; preserve the old project and do not import its shared state.`,
+    params: { missingProperty: missingField },
+    required_action: {
+      strategy: "setup-author-toolkit",
+      operation: "initialize-manuscript-only-project",
+      command: "setup-author-toolkit",
+      manuscript_only: true,
+      preserve_existing_project: true
+    }
+  };
+}
+function withLegacyReportDiagnostic(value, result) {
+  const missingField = ["scope_id", "scope_fingerprint", "requested_pass"].find(
+    (field) => value?.schema_version === "2.0.0" && value?.[field] === void 0
+  );
+  if (!missingField) return result;
+  return {
+    valid: false,
+    errors: [legacySharedArtifactError("report v2", `/${missingField}`, missingField), ...result.errors]
+  };
+}
 function validateReportEnvelope(value, options = {}) {
-  return evaluate(reportValidator, value, options);
+  return withLegacyReportDiagnostic(value, evaluate(reportValidator, value, options));
 }
 function validateRelativePath(value, options = {}) {
   return evaluate(relativePathValidator, value, options);
@@ -8233,11 +8224,56 @@ function validateCreationBatchSchema(value, options = {}) {
 function validateCreationCommitSchema(value, options = {}) {
   return evaluate(creationCommitValidator, value, options);
 }
+function withLegacyCoverageUnitDiagnostic(value, result) {
+  if (value?.schema_version !== "1.0.0" || value.source_report_sha256 !== void 0) {
+    return result;
+  }
+  return {
+    valid: false,
+    errors: [
+      legacySharedArtifactError("coverage unit", "/source_report_sha256", "source_report_sha256"),
+      ...result.errors
+    ]
+  };
+}
+function withLegacyCoverageIndexDiagnostic(value, result) {
+  if (value?.schema_version !== "1.0.0") return result;
+  for (const field of ["scope_fingerprint", "requested_pass"]) {
+    if (value[field] === void 0) {
+      return {
+        valid: false,
+        errors: [legacySharedArtifactError("coverage index", `/${field}`, field), ...result.errors]
+      };
+    }
+  }
+  for (const [entryIndex, entry] of (value.entries ?? []).entries()) {
+    for (const [unitIndex, unit] of (entry.units ?? []).entries()) {
+      if (unit.sha256 === void 0) {
+        const instancePath = `/entries/${entryIndex}/units/${unitIndex}/sha256`;
+        return {
+          valid: false,
+          errors: [legacySharedArtifactError("coverage index", instancePath, "sha256"), ...result.errors]
+        };
+      }
+    }
+    if (entry.synthesis_report !== null && entry.synthesis_report_sha256 === void 0) {
+      const instancePath = `/entries/${entryIndex}/synthesis_report_sha256`;
+      return {
+        valid: false,
+        errors: [
+          legacySharedArtifactError("coverage index", instancePath, "synthesis_report_sha256"),
+          ...result.errors
+        ]
+      };
+    }
+  }
+  return result;
+}
 function validateCoverageUnitSchema(value, options = {}) {
-  return evaluate(coverageUnitValidator, value, options);
+  return withLegacyCoverageUnitDiagnostic(value, evaluate(coverageUnitValidator, value, options));
 }
 function validateCoverageIndexSchema(value, options = {}) {
-  return evaluate(coverageIndexValidator, value, options);
+  return withLegacyCoverageIndexDiagnostic(value, evaluate(coverageIndexValidator, value, options));
 }
 function validateReviewJobSchema(value, options = {}) {
   return evaluate(reviewJobValidator, value, options);
@@ -8272,10 +8308,7 @@ function validateSchemaDefinitions() {
     ["finding-schema.json", findingV1Schema],
     ["finding-schema-v2.json", findingV2Schema],
     ["relative-path-schema.json", relativePathSchema],
-    ["project-schema.json", projectSchema],
-    ["project-schema-v3.json", projectV3Schema],
-    ["project-schema-v3.1.json", projectV31Schema],
-    ["project-schema-v3.2.json", projectV32Schema],
+    ["project-schema-v4.json", projectV4Schema],
     ["scope-snapshot-schema.json", scopeSnapshotSchema],
     ["inventory-snapshot-schema.json", inventorySnapshotSchema],
     ["convergence-cycle-schema.json", convergenceCycleSchema],
@@ -8311,7 +8344,7 @@ function validateSchemaDefinitions() {
   }
   return { valid: errors.length === 0, errors };
 }
-var import__, import_ajv_formats, packagedReferences, findingV1Schema, findingV2Schema, relativePathSchema, projectSchema, projectV3Schema, projectV31Schema, projectV32Schema, scopeSnapshotSchema, inventorySnapshotSchema, convergenceCycleSchema, requestedPassSchema, noEditSkipSchema, reviewGroupSchema, semanticAttestationSchema, convergenceEvaluationSchema, revisionExecutionSchema, manuscriptReconciliationSchema, reportSchema, storyStateSchema, creationBatchSchema, creationCommitSchema, coverageUnitSchema, coverageIndexSchema, reviewJobSchema, readerStateSchema, recordFindingCommandSchema, recordApprovalCommandSchema, recordFindingDecisionCommandSchema, backupManifestSchema, backupIndexSchema, recordBackupCommandSchema, recordRestoreCommandSchema, ajv, findingV1Validator, findingV2Validator, relativePathValidator, projectValidator, projectV3Validator, projectV31Validator, projectV32Validator, scopeSnapshotValidator, inventorySnapshotValidator, convergenceCycleValidator, requestedPassValidator, noEditSkipValidator, reviewGroupValidator, semanticAttestationValidator, convergenceEvaluationValidator, revisionExecutionValidator, manuscriptReconciliationValidator, reportValidator, storyStateValidator, creationBatchValidator, creationCommitValidator, coverageUnitValidator, coverageIndexValidator, reviewJobValidator, readerStateValidator, recordFindingCommandValidator, recordApprovalCommandValidator, recordFindingDecisionCommandValidator, backupManifestValidator, backupIndexValidator, recordBackupCommandValidator, recordRestoreCommandValidator;
+var import__, import_ajv_formats, packagedReferences, findingV1Schema, findingV2Schema, relativePathSchema, projectV4Schema, scopeSnapshotSchema, inventorySnapshotSchema, convergenceCycleSchema, requestedPassSchema, noEditSkipSchema, reviewGroupSchema, semanticAttestationSchema, convergenceEvaluationSchema, revisionExecutionSchema, manuscriptReconciliationSchema, reportSchema, storyStateSchema, creationBatchSchema, creationCommitSchema, coverageUnitSchema, coverageIndexSchema, reviewJobSchema, readerStateSchema, recordFindingCommandSchema, recordApprovalCommandSchema, recordFindingDecisionCommandSchema, backupManifestSchema, backupIndexSchema, recordBackupCommandSchema, recordRestoreCommandSchema, ajv, findingV1Validator, findingV2Validator, relativePathValidator, projectV4Validator, scopeSnapshotValidator, inventorySnapshotValidator, convergenceCycleValidator, requestedPassValidator, noEditSkipValidator, reviewGroupValidator, semanticAttestationValidator, convergenceEvaluationValidator, revisionExecutionValidator, manuscriptReconciliationValidator, reportValidator, storyStateValidator, creationBatchValidator, creationCommitValidator, coverageUnitValidator, coverageIndexValidator, reviewJobValidator, readerStateValidator, recordFindingCommandValidator, recordApprovalCommandValidator, recordFindingDecisionCommandValidator, backupManifestValidator, backupIndexValidator, recordBackupCommandValidator, recordRestoreCommandValidator;
 var init_schemas = __esm({
   "scripts/lib/schemas.mjs"() {
     import__ = __toESM(require__(), 1);
@@ -8321,10 +8354,7 @@ var init_schemas = __esm({
     findingV1Schema = readSchema("finding-schema.json");
     findingV2Schema = readSchema("finding-schema-v2.json");
     relativePathSchema = readSchema("relative-path-schema.json");
-    projectSchema = readSchema("project-schema.json");
-    projectV3Schema = readSchema("project-schema-v3.json");
-    projectV31Schema = readSchema("project-schema-v3.1.json");
-    projectV32Schema = readSchema("project-schema-v3.2.json");
+    projectV4Schema = readSchema("project-schema-v4.json");
     scopeSnapshotSchema = readSchema("scope-snapshot-schema.json");
     inventorySnapshotSchema = readSchema("inventory-snapshot-schema.json");
     convergenceCycleSchema = readSchema("convergence-cycle-schema.json");
@@ -8355,10 +8385,7 @@ var init_schemas = __esm({
     ajv.addSchema(findingV1Schema, "finding-schema-v1.json");
     ajv.addSchema(findingV2Schema);
     ajv.addSchema(relativePathSchema);
-    ajv.addSchema(projectSchema);
-    ajv.addSchema(projectV3Schema);
-    ajv.addSchema(projectV31Schema);
-    ajv.addSchema(projectV32Schema);
+    ajv.addSchema(projectV4Schema);
     ajv.addSchema(scopeSnapshotSchema);
     ajv.addSchema(inventorySnapshotSchema);
     ajv.addSchema(convergenceCycleSchema);
@@ -8387,10 +8414,7 @@ var init_schemas = __esm({
     findingV1Validator = ajv.getSchema("finding-schema-v1.json");
     findingV2Validator = ajv.getSchema("finding-schema-v2.json");
     relativePathValidator = ajv.getSchema("relative-path-schema.json");
-    projectValidator = ajv.getSchema("project-schema.json");
-    projectV3Validator = ajv.getSchema("project-schema-v3.json");
-    projectV31Validator = ajv.getSchema("project-schema-v3.1.json");
-    projectV32Validator = ajv.getSchema("project-schema-v3.2.json");
+    projectV4Validator = ajv.getSchema("project-schema-v4.json");
     scopeSnapshotValidator = ajv.getSchema("scope-snapshot-schema.json");
     inventorySnapshotValidator = ajv.getSchema("inventory-snapshot-schema.json");
     convergenceCycleValidator = ajv.getSchema("convergence-cycle-schema.json");
@@ -8697,9 +8721,9 @@ function ownerIsRunning(pid) {
   }
 }
 async function inspectDirectoryLock(directory) {
-  let entries2;
+  let entries;
   try {
-    entries2 = await readdir(directory, { withFileTypes: true });
+    entries = await readdir(directory, { withFileTypes: true });
   } catch (error) {
     if (error.code === "ENOENT") return { present: false, directory, owner: null };
     throw error;
@@ -8714,7 +8738,7 @@ async function inspectDirectoryLock(directory) {
       directory,
       owner,
       running: ownerIsRunning(owner.pid),
-      entries: entries2.map((entry) => entry.name).sort()
+      entries: entries.map((entry) => entry.name).sort()
     };
   } catch (error) {
     return {
@@ -8722,7 +8746,7 @@ async function inspectDirectoryLock(directory) {
       directory,
       owner: null,
       running: null,
-      entries: entries2.map((entry) => entry.name).sort(),
+      entries: entries.map((entry) => entry.name).sort(),
       error
     };
   }
@@ -8809,9 +8833,9 @@ function creationDependencyFingerprint(batch) {
   })).sort(
     (left, right) => compareCreationText(left.path, right.path) || compareCreationText(left.version_type, right.version_type) || compareCreationText(left.version, right.version)
   );
-  const files = batch.files.map(({ path: filePath, action: action4, input_sha256 }) => ({
+  const files = batch.files.map(({ path: filePath, action: action3, input_sha256 }) => ({
     path: filePath,
-    action: action4,
+    action: action3,
     input_sha256
   })).sort((left, right) => compareCreationText(left.path, right.path));
   return sha256Bytes(JSON.stringify({ plan: batch.plan.summary, context, files }));
@@ -8925,9 +8949,9 @@ function canReuseCoverageUnit(unit, requested) {
 function validateCoverageIndex(value, options = {}) {
   const result = validateCoverageIndexSchema(value, options);
   const errors = [...result.errors];
-  const entries2 = Array.isArray(value?.entries) ? value.entries : [];
+  const entries = Array.isArray(value?.entries) ? value.entries : [];
   const operations = /* @__PURE__ */ new Set();
-  for (const [index, entry] of entries2.entries()) {
+  for (const [index, entry] of entries.entries()) {
     if (!entry || typeof entry !== "object") continue;
     if (operations.has(entry.operation)) {
       errors.push({
@@ -8965,189 +8989,35 @@ var init_artifacts = __esm({
   }
 });
 
-// scripts/lib/workflow.mjs
-function workflowError(instancePath, message) {
-  return { instancePath, keyword: "workflow", message, params: {} };
-}
-function stagePath(index, suffix = "") {
-  return `/workflow/stages/${index}${suffix}`;
-}
-function validateWorkflow(project) {
-  const errors = [];
-  const workflow = project?.workflow;
-  if (!workflow || !Array.isArray(workflow.stages)) {
-    return {
-      valid: false,
-      errors: [workflowError("/workflow", "workflow with a stages array is required")]
-    };
-  }
-  const { stages, current_stage: currentStage } = workflow;
-  if (stages.length !== STAGES.length) {
-    errors.push(workflowError("/workflow/stages", `exactly ${STAGES.length} stages are required`));
-  }
-  for (const [index, expectedName] of STAGES.entries()) {
-    if (stages[index]?.name !== expectedName) {
-      errors.push(
-        workflowError(stagePath(index, "/name"), `stage ${index} must be ${expectedName}`)
-      );
-    }
-  }
-  for (const [index, stage] of stages.entries()) {
-    if (stage.status === "stale" && !stage.reason) {
-      errors.push(workflowError(stagePath(index, "/reason"), "stale stages must record a reason"));
-    }
-    if (stage.status === "blocked" && !stage.reason) {
-      errors.push(workflowError(stagePath(index, "/reason"), "blocked stages must record a reason"));
-    }
-  }
-  const currentIndex = currentStage === "complete" ? STAGES.length : STAGES.indexOf(currentStage);
-  if (currentIndex < 0) {
-    errors.push(workflowError("/workflow/current_stage", "unknown current stage"));
-    return { valid: false, errors };
-  }
-  if (currentStage === "complete") {
-    for (const [index, stage] of stages.entries()) {
-      if (!["complete", "skipped"].includes(stage.status)) {
-        errors.push(
-          workflowError(
-            stagePath(index, "/status"),
-            "all stages must be complete or skipped when current_stage is complete"
-          )
-        );
-      }
-    }
-  } else {
-    const current = stages[currentIndex];
-    if (current && ["complete", "skipped", "stale"].includes(current.status)) {
-      errors.push(
-        workflowError(
-          stagePath(currentIndex, "/status"),
-          "the current stage must be actionable; advance current_stage after completion or resume stale work first"
-        )
-      );
-    }
-    for (let index = 0; index < currentIndex; index += 1) {
-      if (!["complete", "skipped", "stale"].includes(stages[index]?.status)) {
-        errors.push(
-          workflowError(
-            stagePath(index, "/status"),
-            "stages before current_stage must be complete, skipped, or explicitly stale"
-          )
-        );
-      }
-    }
-    for (let index = currentIndex + 1; index < stages.length; index += 1) {
-      if (ACTIVE_STATUSES.includes(stages[index]?.status)) {
-        errors.push(
-          workflowError(
-            stagePath(index, "/status"),
-            "a downstream stage cannot be active while current_stage points upstream"
-          )
-        );
-      }
-    }
-  }
-  const firstStaleIndex = stages.findIndex((stage) => stage.status === "stale");
-  if (firstStaleIndex >= 0) {
-    for (let index = firstStaleIndex + 1; index < stages.length; index += 1) {
-      const stage = stages[index];
-      if ([...ACTIVE_STATUSES, "complete"].includes(stage.status) && !stage.override_reason) {
-        errors.push(
-          workflowError(
-            stagePath(index, "/override_reason"),
-            "active or completed work downstream of a stale stage requires an override_reason"
-          )
-        );
-      }
-    }
-  }
-  return { valid: errors.length === 0, errors };
-}
-function validateWorkflowSequence(projects) {
-  const errors = [];
-  if (!Array.isArray(projects) || projects.length < 2) {
-    return {
-      valid: false,
-      errors: [workflowError("", "a workflow sequence needs at least two project snapshots")]
-    };
-  }
-  projects.forEach((project, index) => {
-    for (const error of validateWorkflow(project).errors) {
-      errors.push({ ...error, instancePath: `/projects/${index}${error.instancePath}` });
-    }
-  });
-  for (let index = 1; index < projects.length; index += 1) {
-    const previous = projects[index - 1]?.workflow;
-    const next = projects[index]?.workflow;
-    if (!previous || !next) continue;
-    const previousIndex = STAGES.indexOf(previous.current_stage);
-    const nextIndex = STAGES.indexOf(next.current_stage);
-    if (previousIndex < 0 || nextIndex < 0 || nextIndex >= previousIndex) continue;
-    for (let stageIndex = nextIndex + 1; stageIndex < STAGES.length; stageIndex += 1) {
-      const before = previous.stages[stageIndex];
-      const after = next.stages[stageIndex];
-      if (!before || !after || after.override_reason) continue;
-      if (before.status === "complete" && after.status !== "stale") {
-        errors.push(
-          workflowError(
-            `/projects/${index}${stagePath(stageIndex, "/status")}`,
-            `rework from ${previous.current_stage} to ${next.current_stage} must mark completed downstream stage ${STAGES[stageIndex]} stale`
-          )
-        );
-      } else if (ACTIVE_STATUSES.includes(before.status) && !["stale", "not_started"].includes(after.status)) {
-        errors.push(
-          workflowError(
-            `/projects/${index}${stagePath(stageIndex, "/status")}`,
-            `active downstream stage ${STAGES[stageIndex]} must become stale or not_started after rework`
-          )
-        );
-      }
-    }
-  }
-  return { valid: errors.length === 0, errors };
-}
-var init_workflow = __esm({
-  "scripts/lib/workflow.mjs"() {
-    init_constants();
-  }
-});
-
 // scripts/lib/manifest.mjs
-function validateManifest(value, options = {}) {
-  if (value?.schema_version === "3.2.0") {
-    return validateProjectV32Schema(value, options);
-  }
-  if (value?.schema_version === "3.1.0") {
-    return validateProjectV31Schema(value, options);
-  }
-  if (value?.schema_version === "3.0.0") {
-    return validateProjectV3Schema(value, options);
-  }
-  if (value?.schema_version !== "2.0.0") {
-    return {
-      valid: false,
-      errors: [
-        {
-          instancePath: "/schema_version",
-          keyword: "schema-version",
-          message: `unsupported project schema_version: ${value?.schema_version ?? "missing"}`,
-          params: { supported: ["2.0.0", "3.0.0", "3.1.0", "3.2.0"] }
-        }
-      ]
-    };
-  }
-  const schemaResult = validateProjectSchema(value, options);
-  if (!schemaResult.valid) return schemaResult;
-  const workflowResult = validateWorkflow(value);
+function greenfieldInitializationError(value) {
+  const detected = value?.schema_version ?? "missing";
   return {
-    valid: workflowResult.valid,
-    errors: workflowResult.errors
+    code: "greenfield-initialization-required",
+    instancePath: "/schema_version",
+    keyword: "schema-version",
+    message: `Unsupported project schema_version: ${detected}. Author Toolkit 4.0.0 supports only the 4.0.0 project contract. Create a new project from manuscript-only input and run setup-author-toolkit there; preserve the old project and do not copy its manifest, references, findings, approvals, evaluations, or other shared state. No migration or old shared-state import is available.`,
+    params: { supported: [CURRENT_PROJECT_SCHEMA_VERSION], detected },
+    required_action: {
+      strategy: "setup-author-toolkit",
+      operation: "initialize-manuscript-only-project",
+      command: "setup-author-toolkit",
+      manuscript_only: true,
+      preserve_existing_project: true
+    }
   };
 }
+function validateManifest(value, options = {}) {
+  if (value?.schema_version === CURRENT_PROJECT_SCHEMA_VERSION) {
+    return validateProjectV4Schema(value, options);
+  }
+  return { valid: false, errors: [greenfieldInitializationError(value)] };
+}
+var CURRENT_PROJECT_SCHEMA_VERSION;
 var init_manifest = __esm({
   "scripts/lib/manifest.mjs"() {
     init_schemas();
-    init_workflow();
+    CURRENT_PROJECT_SCHEMA_VERSION = "4.0.0";
   }
 });
 
@@ -9158,12 +9028,12 @@ function reviewError(instancePath, keyword, message) {
 function objectArray(value) {
   return Array.isArray(value) ? value.filter((item) => item && typeof item === "object") : [];
 }
-function duplicateErrors(items, key, path24, keyword, errors) {
+function duplicateErrors(items, key, path22, keyword, errors) {
   const seen = /* @__PURE__ */ new Set();
   for (const [index, item] of items.entries()) {
     const value = item?.[key];
     if (seen.has(value)) {
-      errors.push(reviewError(`${path24}/${index}/${key}`, keyword, `duplicate ${key}: ${value}`));
+      errors.push(reviewError(`${path22}/${index}/${key}`, keyword, `duplicate ${key}: ${value}`));
     }
     seen.add(value);
   }
@@ -9634,10 +9504,10 @@ function isOperationalManuscriptPath(relativePath, paths = {}) {
 async function collectManuscriptInventory(projectRoot, manuscriptRoot, paths = {}) {
   const absoluteRoot = path2.resolve(projectRoot, manuscriptRoot);
   const roots = operationalRoots(paths);
-  const entries2 = [];
+  const entries = [];
   async function add(absolute, file) {
     const relativePath = portablePath(path2.relative(projectRoot, absolute));
-    entries2.push({
+    entries.push({
       absolute,
       path: relativePath,
       extension: path2.extname(relativePath).toLowerCase(),
@@ -9658,10 +9528,10 @@ async function collectManuscriptInventory(projectRoot, manuscriptRoot, paths = {
   if (rootStat.isFile()) await add(absoluteRoot, true);
   else await visit(absoluteRoot);
   return {
-    files: entries2.filter(
+    files: entries.filter(
       (entry) => entry.file && !entry.operational && MANUSCRIPT_EXTENSIONS.has(entry.extension)
     ),
-    excludedFiles: entries2.filter(
+    excludedFiles: entries.filter(
       (entry) => !entry.file || entry.operational || !MANUSCRIPT_EXTENSIONS.has(entry.extension)
     ).map((entry) => entry.path)
   };
@@ -9711,29 +9581,15 @@ async function validateProjectFiles(manifest, manifestPath) {
     return { valid: true, errors: [], projectRoot };
   }
   const checks = [["/manuscript_root", manifest.manuscript_root]];
-  const operationalPaths = [...OPERATIONAL_PATHS];
-  if (["3.1.0", "3.2.0"].includes(manifest.schema_version)) operationalPaths.push("creation");
-  if (manifest.schema_version === "3.2.0") operationalPaths.push("convergence");
-  for (const name of operationalPaths) {
+  for (const name of OPERATIONAL_PATHS) {
     checks.push([`/paths/${name}`, manifest.paths?.[name]]);
   }
-  if (V3_SCHEMA_VERSIONS.has(manifest.schema_version)) {
-    manifest.pending_action?.artifacts?.forEach((artifact, artifactIndex) => {
-      checks.push([`/pending_action/artifacts/${artifactIndex}`, artifact]);
-    });
-    manifest.current_scope?.files?.forEach((file, fileIndex) => {
-      checks.push([`/current_scope/files/${fileIndex}/path`, file.path]);
-    });
-  } else {
-    manifest.workflow?.stages?.forEach((stage, stageIndex) => {
-      stage.artifacts?.forEach((artifact, artifactIndex) => {
-        checks.push([
-          `/workflow/stages/${stageIndex}/artifacts/${artifactIndex}`,
-          artifact
-        ]);
-      });
-    });
-  }
+  manifest.pending_action?.artifacts?.forEach((artifact, artifactIndex) => {
+    checks.push([`/pending_action/artifacts/${artifactIndex}`, artifact]);
+  });
+  manifest.current_scope?.files?.forEach((file, fileIndex) => {
+    checks.push([`/current_scope/files/${fileIndex}/path`, file.path]);
+  });
   const errors = [];
   for (const [instancePath, relativePath] of checks) {
     const error = await checkExists(projectRoot, instancePath, relativePath);
@@ -9743,7 +9599,7 @@ async function validateProjectFiles(manifest, manifestPath) {
 }
 async function validateScopeCurrency(manifest, manifestPath) {
   const projectRoot = projectRootFromManifest(manifestPath);
-  if (!V3_SCHEMA_VERSIONS.has(manifest.schema_version) || !manifest.current_scope || isUninitializedProjectTemplate(manifest)) {
+  if (!manifest.current_scope || isUninitializedProjectTemplate(manifest)) {
     return { valid: true, errors: [], projectRoot };
   }
   const errors = [];
@@ -9801,7 +9657,6 @@ async function validateScopeCurrency(manifest, manifestPath) {
 var OPERATIONAL_PATHS;
 var init_project_files = __esm({
   "scripts/lib/project-files.mjs"() {
-    init_constants();
     init_manuscript();
     init_schemas();
     OPERATIONAL_PATHS = [
@@ -9810,7 +9665,9 @@ var init_project_files = __esm({
       "reports",
       "sessions",
       "backups",
-      "handoffs"
+      "handoffs",
+      "creation",
+      "convergence"
     ];
   }
 });
@@ -10365,7 +10222,7 @@ async function validateTracker(manifest, manifestPath) {
   const trackerPath = path4.resolve(projectRoot, manifest.paths.audit_tracker);
   try {
     const markdown = await readFile3(trackerPath, "utf8");
-    return V3_SCHEMA_VERSIONS.has(manifest.schema_version) ? await validateTrackerV3Markdown(markdown, projectRoot) : await validateTrackerMarkdown(markdown, projectRoot);
+    return validateTrackerV3Markdown(markdown, projectRoot);
   } catch (error) {
     return {
       valid: false,
@@ -10377,7 +10234,6 @@ var TRACKER_STATUSES, COLUMN_ALIASES, APPROVAL_STATUSES, APPROVAL_COLUMNS, CYCLE
 var init_tracker = __esm({
   "scripts/lib/tracker.mjs"() {
     init_approval_paths();
-    init_constants();
     init_project_files();
     init_schemas();
     TRACKER_STATUSES = Object.freeze([
@@ -10945,9 +10801,6 @@ async function readProject(projectRoot) {
   if (!validation.valid) {
     throw new Error(`Project validation failed: ${validation.errors.map((error) => error.message).join("; ")}`);
   }
-  if (manifest.schema_version !== "3.2.0") {
-    throw new Error("Convergence evaluation requires a v3.2 project");
-  }
   return { root: root2, manifestPath, manifest };
 }
 async function readActiveCycle(project) {
@@ -10991,15 +10844,15 @@ function formatErrors(errors) {
 }
 async function completedCycles(project) {
   const directory = path6.resolve(project.root, project.manifest.paths.convergence, "cycles");
-  let entries2;
+  let entries;
   try {
-    entries2 = await readdir3(directory, { withFileTypes: true });
+    entries = await readdir3(directory, { withFileTypes: true });
   } catch (error) {
     if (error.code === "ENOENT") return [];
     throw error;
   }
   const cycles = [];
-  for (const entry of entries2) {
+  for (const entry of entries) {
     if (!entry.isFile() || !entry.name.endsWith(".json")) continue;
     const value = JSON.parse(await readFile5(path6.join(directory, entry.name), "utf8"));
     const validation = validateConvergenceCycleSchema(value);
@@ -11035,14 +10888,14 @@ async function evaluationSources(project) {
     sortAt: cycle.completion?.completed_at ?? cycle.updated_at
   }));
   const directory = path6.resolve(project.root, project.manifest.paths.convergence, "evaluations");
-  let entries2;
+  let entries;
   try {
-    entries2 = await readdir3(directory, { withFileTypes: true });
+    entries = await readdir3(directory, { withFileTypes: true });
   } catch (error) {
     if (error.code === "ENOENT") return sources;
     throw error;
   }
-  for (const entry of entries2) {
+  for (const entry of entries) {
     if (!entry.isFile() || !entry.name.endsWith(".json")) continue;
     const relative = path6.posix.join(
       project.manifest.paths.convergence,
@@ -11268,7 +11121,7 @@ function diffManuscriptInventories(previous, current) {
 }
 function validationError(result) {
   return new Error(
-    `v3.2 scope validation failed:
+    `4.0.0 scope validation failed:
 ${result.errors.map((error) => `${error.instancePath || "/"} ${error.message}`).join("\n")}`
   );
 }
@@ -11293,9 +11146,6 @@ async function recordScopeLocked(root2, manifestPath, initialConvergence, scope,
     );
   }
   const manifest = JSON.parse(manifestText);
-  if (manifest.schema_version !== "3.2.0") {
-    throw new Error("recordScope immutable snapshots require a v3.2 project");
-  }
   const originalValidation = validateManifest(manifest);
   if (!originalValidation.valid) throw validationError(originalValidation);
   if (manifest.paths.convergence !== initialConvergence) {
@@ -11491,9 +11341,6 @@ async function recordScope(projectRoot, scope, options = {}) {
   const root2 = path7.resolve(projectRoot);
   const manifestPath = path7.join(root2, ".author-toolkit", "project.json");
   const initialManifest = JSON.parse(await readFile6(manifestPath, "utf8"));
-  if (initialManifest.schema_version !== "3.2.0") {
-    throw new Error("recordScope immutable snapshots require a v3.2 project");
-  }
   const originalValidation = validateManifest(initialManifest);
   if (!originalValidation.valid) throw validationError(originalValidation);
   await mkdir2(path7.resolve(root2, initialManifest.paths.convergence), { recursive: true });
@@ -11898,167 +11745,6 @@ var init_scope = __esm({
   }
 });
 
-// scripts/lib/legacy-recovery.mjs
-import { readdir as readdir4, readFile as readFile7, stat as stat4 } from "node:fs/promises";
-import path8 from "node:path";
-async function exists(file) {
-  try {
-    await stat4(file);
-    return true;
-  } catch (error) {
-    if (error.code === "ENOENT") return false;
-    throw error;
-  }
-}
-async function readJson(file) {
-  try {
-    return JSON.parse(await readFile7(file, "utf8"));
-  } catch (error) {
-    if (error.code === "ENOENT" || error instanceof SyntaxError) return null;
-    throw error;
-  }
-}
-async function entries(directory) {
-  try {
-    return await readdir4(directory, { withFileTypes: true });
-  } catch (error) {
-    if (error.code === "ENOENT") return [];
-    throw error;
-  }
-}
-function action2(strategy, operation) {
-  return { strategy, operation, command: strategy };
-}
-function emptyRecovery(pendingAction = null) {
-  return {
-    recovery_required: false,
-    pending_decision_required: Boolean(pendingAction),
-    pending_action: pendingAction,
-    interrupted_commits: [],
-    interrupted_pending_actions: [],
-    legacy_staging: [],
-    blockers: [],
-    required_action: null
-  };
-}
-async function hasValidLegacyRejection(projectRoot, manifest, batch, batchId) {
-  if (batch.status !== "rejected" || batch.batch_id !== batchId || batch.commit !== null || !validateCreationBatch(batch).valid) {
-    return false;
-  }
-  const tracker = await parseTrackerState(
-    await readFile7(path8.resolve(projectRoot, manifest.paths.audit_tracker), "utf8"),
-    projectRoot
-  );
-  const rejectionApprovals = batch.approvals.map((approvalId) => tracker.approvals.find((approval2) => approval2.id === approvalId)).filter((approval2) => approval2?.type === "creation-rejection");
-  if (!tracker.valid || rejectionApprovals.length !== 1) return false;
-  const approval = rejectionApprovals[0];
-  let scopeFingerprint;
-  let scopeIdentityMatches;
-  if (manifest.current_scope) {
-    scopeFingerprint = computeScopeFingerprint(manifest.current_scope);
-    scopeIdentityMatches = manifest.current_scope.scope_fingerprint === scopeFingerprint && batch.scope_id === manifest.current_scope.scope_id && approval.scopeId === manifest.current_scope.scope_id;
-  } else {
-    scopeFingerprint = computeScopeFingerprint({ files: [], excluded_files: [] });
-    scopeIdentityMatches = batch.scope_id === null;
-  }
-  return scopeIdentityMatches && approval.status === "approved" && approval.operation === "chapter-review" && sameApprovalPaths(approval.paths, batch.files.map((file) => file.path)) && creationApprovalBindingMatches(approval, batch, scopeFingerprint);
-}
-async function inspectLegacyRecovery(projectRoot, manifest) {
-  const pendingAction = manifest.pending_action ?? null;
-  if (manifest.cycle_operation || pendingAction?.cycle_id || await exists(path8.resolve(projectRoot, manifest.paths.convergence, "active-cycle.json"))) {
-    return emptyRecovery(pendingAction);
-  }
-  const interruptedCommits = [];
-  const commitBlockers = [];
-  const batchesRelative = path8.posix.join(manifest.paths.creation, "batches");
-  const batchesAbsolute = path8.resolve(projectRoot, batchesRelative);
-  for (const entry of await entries(batchesAbsolute)) {
-    if (!entry.isFile() || !entry.name.endsWith(".json")) continue;
-    const commit = await readJson(path8.join(batchesAbsolute, entry.name));
-    if (!commit?.commit_id || TERMINAL_COMMIT_STATUSES.has(commit.status)) continue;
-    const relative = path8.posix.join(batchesRelative, entry.name);
-    const record = {
-      commit_id: commit.commit_id,
-      batch_id: commit.batch_id ?? null,
-      status: commit.status ?? "unknown",
-      path: relative
-    };
-    interruptedCommits.push(record);
-    commitBlockers.push({
-      code: "legacy-commit-recovery-required",
-      message: "The legacy commit journal requires the explicit creation recovery procedure before dependent cycle work; migration did not resume, publish, or restore it.",
-      ...record,
-      required_action: action2("write-fiction", "creation-commit")
-    });
-  }
-  const interruptedPendingActions = [];
-  const pendingBlockers2 = [];
-  if (pendingAction?.status === "in_progress") {
-    const record = {
-      operation: pendingAction.operation,
-      reason: pendingAction.reason,
-      artifacts: [...pendingAction.artifacts ?? []]
-    };
-    interruptedPendingActions.push(record);
-    pendingBlockers2.push({
-      code: "legacy-pending-recovery-required",
-      message: "The legacy in-progress pending action must be reconciled before dependent cycle work; it supplies no write, publication, restore, or completion approval.",
-      ...record,
-      required_action: action2(
-        pendingAction.operation.startsWith("creation") || pendingAction.operation === "chapter-review" ? "write-fiction" : "revise-draft",
-        pendingAction.operation
-      )
-    });
-  }
-  const legacyStaging = [];
-  const stagingBlockers = [];
-  const stagingRelative = path8.posix.join(manifest.paths.creation, "staging");
-  const stagingAbsolute = path8.resolve(projectRoot, stagingRelative);
-  for (const entry of await entries(stagingAbsolute)) {
-    if (!entry.isDirectory()) continue;
-    const batch = await readJson(path8.join(batchesAbsolute, `${entry.name}.json`));
-    if (TERMINAL_STAGING_STATUSES.has(batch?.status)) continue;
-    const rejectionRequired = batch?.status === "rejected";
-    if (rejectionRequired && await hasValidLegacyRejection(projectRoot, manifest, batch, entry.name)) {
-      continue;
-    }
-    const record = {
-      batch_id: entry.name,
-      status: batch?.status ?? "unknown",
-      path: path8.posix.join(stagingRelative, entry.name),
-      rejection_required: rejectionRequired
-    };
-    legacyStaging.push(record);
-    stagingBlockers.push({
-      code: "legacy-staging-decision-required",
-      message: "Legacy staging requires explicit rejection, or exact reapproval into a new cycle only after a current satisfied starting evaluation exists; migration did not approve or publish it.",
-      ...record,
-      required_action: action2("write-fiction", "chapter-review")
-    });
-  }
-  const blockers = [...commitBlockers, ...pendingBlockers2, ...stagingBlockers];
-  return {
-    recovery_required: blockers.length > 0,
-    pending_decision_required: Boolean(pendingAction),
-    pending_action: pendingAction,
-    interrupted_commits: interruptedCommits,
-    interrupted_pending_actions: interruptedPendingActions,
-    legacy_staging: legacyStaging,
-    blockers,
-    required_action: blockers[0]?.required_action ?? null
-  };
-}
-var TERMINAL_COMMIT_STATUSES, TERMINAL_STAGING_STATUSES;
-var init_legacy_recovery = __esm({
-  "scripts/lib/legacy-recovery.mjs"() {
-    init_artifacts();
-    init_scope();
-    init_tracker();
-    TERMINAL_COMMIT_STATUSES = /* @__PURE__ */ new Set(["committed", "restored"]);
-    TERMINAL_STAGING_STATUSES = /* @__PURE__ */ new Set(["committed", "restored"]);
-  }
-});
-
 // scripts/lib/shared-references.mjs
 var shared_references_exports = {};
 __export(shared_references_exports, {
@@ -12066,22 +11752,22 @@ __export(shared_references_exports, {
   validateDeployedReferences: () => validateDeployedReferences
 });
 import { createHash as createHash4 } from "node:crypto";
-import { readFile as readFile8, readdir as readdir5 } from "node:fs/promises";
-import path9 from "node:path";
+import { readFile as readFile7, readdir as readdir4 } from "node:fs/promises";
+import path8 from "node:path";
 import { fileURLToPath } from "node:url";
 function sha2562(bytes) {
   return createHash4("sha256").update(bytes).digest("hex");
 }
 async function validateDeployedReferences(projectRoot) {
   const errors = [];
-  const entries2 = await readdir5(packagedReferences2, { withFileTypes: true });
-  for (const entry of entries2) {
+  const entries = await readdir4(packagedReferences2, { withFileTypes: true });
+  for (const entry of entries) {
     if (!entry.isFile()) continue;
     const relativePath = `.author-toolkit/references/${entry.name}`;
-    const packaged = await readFile8(path9.join(packagedReferences2, entry.name));
+    const packaged = await readFile7(path8.join(packagedReferences2, entry.name));
     let deployed;
     try {
-      deployed = await readFile8(path9.join(projectRoot, relativePath));
+      deployed = await readFile7(path8.join(projectRoot, relativePath));
     } catch (error) {
       if (error.code !== "ENOENT") throw error;
       errors.push({
@@ -12116,8 +11802,8 @@ var init_shared_references = __esm({
 });
 
 // scripts/lib/backup.mjs
-import { readFile as readFile9, rename as rename2 } from "node:fs/promises";
-import path10 from "node:path";
+import { readFile as readFile8, rename as rename2 } from "node:fs/promises";
+import path9 from "node:path";
 function backupError(instancePath, message, code = "backup-contract-invalid") {
   return { instancePath, code, keyword: code, message, params: {} };
 }
@@ -12164,13 +11850,13 @@ function validateBackupManifest(value, options = {}) {
   return { valid: errors.length === 0, errors };
 }
 async function readManifest(projectRoot) {
-  return JSON.parse(await readFile9(
-    path10.join(projectRoot, ".author-toolkit", "project.json"),
+  return JSON.parse(await readFile8(
+    path9.join(projectRoot, ".author-toolkit", "project.json"),
     "utf8"
   ));
 }
 async function validateBackupIndex(projectRoot, value, options = {}) {
-  const root2 = path10.resolve(projectRoot);
+  const root2 = path9.resolve(projectRoot);
   const schema = validateBackupIndexSchema(value, options);
   if (!schema.valid) return schema;
   const errors = [];
@@ -12186,7 +11872,7 @@ async function validateBackupIndex(projectRoot, value, options = {}) {
     }
     backupIds.add(entry.backup_id);
     backupEntries.set(entry.backup_id, entry);
-    const expectedManifestPath = path10.posix.join(backupRoot, entry.backup_id, "manifest.json");
+    const expectedManifestPath = path9.posix.join(backupRoot, entry.backup_id, "manifest.json");
     if (entry.manifest.path !== expectedManifestPath) {
       errors.push(backupError(
         `${entryPath}/manifest/path`,
@@ -12197,7 +11883,7 @@ async function validateBackupIndex(projectRoot, value, options = {}) {
     }
     let text;
     try {
-      const contents = await readFile9(path10.resolve(root2, entry.manifest.path));
+      const contents = await readFile8(path9.resolve(root2, entry.manifest.path));
       if (sha256Bytes(contents) !== entry.manifest.sha256) {
         errors.push(backupError(
           `${entryPath}/manifest/sha256`,
@@ -12250,7 +11936,7 @@ async function validateBackupIndex(projectRoot, value, options = {}) {
       }
     }
     for (const [fileIndex, file] of backupManifest.files.entries()) {
-      const expectedBackupPath = file.action === "create" ? null : path10.posix.join(backupRoot, entry.backup_id, file.path);
+      const expectedBackupPath = file.action === "create" ? null : path9.posix.join(backupRoot, entry.backup_id, file.path);
       if (file.backup_path !== expectedBackupPath) {
         errors.push(backupError(
           `${entryPath}/manifest/files/${fileIndex}/backup_path`,
@@ -12261,7 +11947,7 @@ async function validateBackupIndex(projectRoot, value, options = {}) {
       }
       if (file.action === "create") continue;
       try {
-        const contents = await readFile9(path10.resolve(root2, file.backup_path));
+        const contents = await readFile8(path9.resolve(root2, file.backup_path));
         if (sha256Bytes(contents) !== file.input_sha256) {
           errors.push(backupError(
             `${entryPath}/manifest/files/${fileIndex}/input_sha256`,
@@ -12399,15 +12085,15 @@ async function validateBackupIndex(projectRoot, value, options = {}) {
   return { valid: errors.length === 0, errors };
 }
 async function projectRootForBackupIndex(indexPath) {
-  let directory = path10.dirname(path10.resolve(indexPath));
+  let directory = path9.dirname(path9.resolve(indexPath));
   while (true) {
     try {
-      await readFile9(path10.join(directory, ".author-toolkit", "project.json"), "utf8");
+      await readFile8(path9.join(directory, ".author-toolkit", "project.json"), "utf8");
       return directory;
     } catch (error) {
       if (error.code !== "ENOENT") throw error;
     }
-    const parent = path10.dirname(directory);
+    const parent = path9.dirname(directory);
     if (parent === directory) {
       throw new Error("Cannot locate .author-toolkit/project.json for the backup index");
     }
@@ -12418,14 +12104,14 @@ async function validateBackupIndexFile(indexPath, options = {}) {
   try {
     const projectRoot = options.projectRoot ?? await projectRootForBackupIndex(indexPath);
     const manifest = await readManifest(projectRoot);
-    const expected = path10.resolve(projectRoot, manifest.paths.backups, "index.json");
-    if (path10.resolve(indexPath) !== expected) {
+    const expected = path9.resolve(projectRoot, manifest.paths.backups, "index.json");
+    if (path9.resolve(indexPath) !== expected) {
       return {
         valid: false,
         errors: [backupError("", `backup index must be the registered ${manifest.paths.backups}/index.json`, "backup-index-path-mismatch")]
       };
     }
-    const value = JSON.parse(await readFile9(indexPath, "utf8"));
+    const value = JSON.parse(await readFile8(indexPath, "utf8"));
     return await validateBackupIndex(projectRoot, value, options);
   } catch (error) {
     return { valid: false, errors: [backupError("", error.message, "backup-index-unavailable")] };
@@ -12480,7 +12166,7 @@ function validateApproval(approval, request) {
 }
 async function readCurrentInput(project, file) {
   try {
-    const contents = await readFile9(path10.resolve(project.root, file.path));
+    const contents = await readFile8(path9.resolve(project.root, file.path));
     if (file.action === "create") {
       throw commandError("backup-input-mismatch", `Create target is not absent: ${file.path}`, { path: file.path });
     }
@@ -12502,7 +12188,7 @@ async function publishPreservedBytes(file, contents) {
     return false;
   } catch (error) {
     if (error.code !== "EEXIST") throw error;
-    const existing = await readFile9(file);
+    const existing = await readFile8(file);
     if (!existing.equals(contents)) {
       throw commandError("backup-content-conflict", `Existing backup bytes differ: ${file}`);
     }
@@ -12515,7 +12201,7 @@ async function publishManifest(file, text) {
     return false;
   } catch (error) {
     if (error.code !== "EEXIST") throw error;
-    const existing = await readFile9(file, "utf8");
+    const existing = await readFile8(file, "utf8");
     if (existing !== text) {
       throw commandError("backup-manifest-conflict", `Existing backup manifest differs: ${file}`);
     }
@@ -12526,10 +12212,10 @@ function manifestRequestMatches(manifest, request) {
   return manifest && ["backup_id", "operation", "approval_id", "scope_id", "scope_fingerprint"].every((field) => manifest[field] === request[field]) && JSON.stringify(manifest.files?.map(({ backup_path: ignored, ...file }) => file)) === JSON.stringify(request.files);
 }
 async function recoveryState(project, operation, progress) {
-  const indexPath = path10.resolve(project.root, project.manifest.paths.backups, "index.json");
+  const indexPath = path9.resolve(project.root, project.manifest.paths.backups, "index.json");
   let indexSha256 = null;
   try {
-    indexSha256 = sha256Bytes(await readFile9(indexPath));
+    indexSha256 = sha256Bytes(await readFile8(indexPath));
   } catch {
   }
   return {
@@ -12558,7 +12244,7 @@ async function recordBackup(projectRoot, request, options = {}) {
   }
   const initial = await readProject(projectRoot);
   const lock = await acquireDirectoryLock(
-    path10.resolve(initial.root, initial.manifest.paths.convergence, "active-cycle.lock"),
+    path9.resolve(initial.root, initial.manifest.paths.convergence, "active-cycle.lock"),
     {
       timeoutMs: options.lockTimeoutMs ?? 1e4,
       retryMs: options.lockRetryMs ?? 20,
@@ -12620,7 +12306,7 @@ async function recordBackup(projectRoot, request, options = {}) {
       }
     }
     const tracker = await parseTrackerState(
-      await readFile9(path10.resolve(project.root, project.manifest.paths.audit_tracker), "utf8"),
+      await readFile8(path9.resolve(project.root, project.manifest.paths.audit_tracker), "utf8"),
       project.root
     );
     if (!tracker.valid) {
@@ -12629,8 +12315,8 @@ async function recordBackup(projectRoot, request, options = {}) {
       });
     }
     validateApproval(tracker.approvals.find((approval) => approval.id === request.approval_id), request);
-    const indexPath = path10.resolve(project.root, project.manifest.paths.backups, "index.json");
-    const indexText = await readFile9(indexPath, "utf8");
+    const indexPath = path9.resolve(project.root, project.manifest.paths.backups, "index.json");
+    const indexText = await readFile8(indexPath, "utf8");
     const index = JSON.parse(indexText);
     const indexValidation = await validateBackupIndex(project.root, index, options);
     if (!indexValidation.valid) {
@@ -12640,7 +12326,7 @@ async function recordBackup(projectRoot, request, options = {}) {
     }
     const existingEntry = index.backups.find((entry) => entry.backup_id === request.backup_id);
     if (existingEntry) {
-      const existingManifest = JSON.parse(await readFile9(path10.resolve(project.root, existingEntry.manifest.path), "utf8"));
+      const existingManifest = JSON.parse(await readFile8(path9.resolve(project.root, existingEntry.manifest.path), "utf8"));
       if (!manifestRequestMatches(existingManifest, request)) {
         throw commandError("backup-already-exists", `Backup ID already exists: ${request.backup_id}`);
       }
@@ -12675,16 +12361,16 @@ async function recordBackup(projectRoot, request, options = {}) {
       }
       const manifestFiles = [];
       for (const [index2, file] of request.files.entries()) {
-        const backupPath = file.action === "create" ? null : path10.posix.join(project.manifest.paths.backups, request.backup_id, file.path);
+        const backupPath = file.action === "create" ? null : path9.posix.join(project.manifest.paths.backups, request.backup_id, file.path);
         if (backupPath !== null) {
-          await publishPreservedBytes(path10.resolve(project.root, backupPath), inputs[index2]);
+          await publishPreservedBytes(path9.resolve(project.root, backupPath), inputs[index2]);
           progress.bytesPublished = true;
         }
         manifestFiles.push({ ...file, backup_path: backupPath });
       }
       for (const file of request.files) await readCurrentInput(project, file);
       await runCheckpoint(options, "backup-bytes-written");
-      const relativeManifest = path10.posix.join(
+      const relativeManifest = path9.posix.join(
         project.manifest.paths.backups,
         request.backup_id,
         "manifest.json"
@@ -12692,7 +12378,7 @@ async function recordBackup(projectRoot, request, options = {}) {
       progress.manifestPath = relativeManifest;
       let createdAt = utcTimestamp(options);
       try {
-        const orphan = JSON.parse(await readFile9(path10.resolve(project.root, relativeManifest), "utf8"));
+        const orphan = JSON.parse(await readFile8(path9.resolve(project.root, relativeManifest), "utf8"));
         if (!manifestRequestMatches(orphan, request)) {
           throw commandError("backup-manifest-conflict", `Existing backup manifest differs: ${relativeManifest}`);
         }
@@ -12718,7 +12404,7 @@ async function recordBackup(projectRoot, request, options = {}) {
       }
       const manifestText = `${JSON.stringify(backupManifest, null, 2)}
 `;
-      await publishManifest(path10.resolve(project.root, relativeManifest), manifestText);
+      await publishManifest(path9.resolve(project.root, relativeManifest), manifestText);
       progress.manifestPublished = true;
       await runCheckpoint(options, "manifest-published");
       const manifestReference = { path: relativeManifest, sha256: sha256Bytes(manifestText) };
@@ -12792,13 +12478,13 @@ async function recordBackup(projectRoot, request, options = {}) {
   }
   return outcome;
 }
-function inverseAction(action4) {
+function inverseAction(action3) {
   return {
     create: "delete",
     delete: "create",
     modify: "modify",
     reorder: "reorder"
-  }[action4];
+  }[action3];
 }
 function inverseFiles(sourceFiles) {
   return sourceFiles.map((file) => ({
@@ -12823,7 +12509,7 @@ function validateRestoreApproval(approval, request) {
 }
 async function verifyRestoredOutput(project, file) {
   try {
-    const contents = await readFile9(path10.resolve(project.root, file.path));
+    const contents = await readFile8(path9.resolve(project.root, file.path));
     if (file.action === "delete") {
       throw commandError("restore-output-mismatch", `Removed output still exists: ${file.path}`, { path: file.path });
     }
@@ -12866,7 +12552,7 @@ async function recordRestore(projectRoot, request, options = {}) {
   }
   const initial = await readProject(projectRoot);
   const lock = await acquireDirectoryLock(
-    path10.resolve(initial.root, initial.manifest.paths.convergence, "active-cycle.lock"),
+    path9.resolve(initial.root, initial.manifest.paths.convergence, "active-cycle.lock"),
     {
       timeoutMs: options.lockTimeoutMs ?? 1e4,
       retryMs: options.lockRetryMs ?? 20,
@@ -12888,7 +12574,7 @@ async function recordRestore(projectRoot, request, options = {}) {
     restorationId: request.restoration_id,
     safetyBackupId: request.safety_backup_id
   };
-  const indexPath = path10.resolve(initial.root, initial.manifest.paths.backups, "index.json");
+  const indexPath = path9.resolve(initial.root, initial.manifest.paths.backups, "index.json");
   try {
     await runCheckpoint(options, "lock-acquired");
     project = await readProject(projectRoot);
@@ -12907,7 +12593,7 @@ async function recordRestore(projectRoot, request, options = {}) {
     if (request.source_backup_id === request.safety_backup_id) {
       throw commandError("restore-safety-backup-invalid", "The safety backup ID must differ from the source backup ID.");
     }
-    const safetyManifestRelative = path10.posix.join(
+    const safetyManifestRelative = path9.posix.join(
       project.manifest.paths.backups,
       request.safety_backup_id,
       "manifest.json"
@@ -12917,7 +12603,7 @@ async function recordRestore(projectRoot, request, options = {}) {
     let recoveryManifest = null;
     let recoveryManifestText = null;
     try {
-      recoveryManifestText = await readFile9(path10.resolve(project.root, safetyManifestRelative), "utf8");
+      recoveryManifestText = await readFile8(path9.resolve(project.root, safetyManifestRelative), "utf8");
       const candidate = JSON.parse(recoveryManifestText);
       if (manifestRequestMatches(candidate, {
         ...request,
@@ -12956,7 +12642,7 @@ async function recordRestore(projectRoot, request, options = {}) {
       }
     }
     const tracker = await parseTrackerState(
-      await readFile9(path10.resolve(project.root, project.manifest.paths.audit_tracker), "utf8"),
+      await readFile8(path9.resolve(project.root, project.manifest.paths.audit_tracker), "utf8"),
       project.root
     );
     if (!tracker.valid) {
@@ -12968,7 +12654,7 @@ async function recordRestore(projectRoot, request, options = {}) {
       tracker.approvals.find((approval) => approval.id === request.approval_id),
       request
     );
-    const indexText = await readFile9(indexPath, "utf8");
+    const indexText = await readFile8(indexPath, "utf8");
     const index = JSON.parse(indexText);
     const indexValidation = await validateBackupIndex(project.root, index, options);
     if (!indexValidation.valid) {
@@ -12995,7 +12681,7 @@ async function recordRestore(projectRoot, request, options = {}) {
       if (!sourceEntry) {
         throw commandError("restore-source-missing", `Source backup is not indexed: ${request.source_backup_id}`);
       }
-      sourceManifest = JSON.parse(await readFile9(path10.resolve(project.root, sourceEntry.manifest.path), "utf8"));
+      sourceManifest = JSON.parse(await readFile8(path9.resolve(project.root, sourceEntry.manifest.path), "utf8"));
     } else {
       sourceEntry = {
         manifest: { path: request.source_commit.path, sha256: request.source_commit.sha256 }
@@ -13022,9 +12708,9 @@ async function recordRestore(projectRoot, request, options = {}) {
       for (const file of request.files) inputs.push(await readCurrentInput(project, file));
       safetyFiles = [];
       for (const [index2, file] of request.files.entries()) {
-        const backupPath = file.action === "create" ? null : path10.posix.join(project.manifest.paths.backups, request.safety_backup_id, file.path);
+        const backupPath = file.action === "create" ? null : path9.posix.join(project.manifest.paths.backups, request.safety_backup_id, file.path);
         if (backupPath !== null) {
-          await publishPreservedBytes(path10.resolve(project.root, backupPath), inputs[index2]);
+          await publishPreservedBytes(path9.resolve(project.root, backupPath), inputs[index2]);
           progress.bytesPublished = true;
         }
         safetyFiles.push({ ...file, backup_path: backupPath });
@@ -13050,21 +12736,21 @@ async function recordRestore(projectRoot, request, options = {}) {
       }
       safetyManifestText = `${JSON.stringify(safetyManifest, null, 2)}
 `;
-      await publishManifest(path10.resolve(project.root, safetyManifestRelative), safetyManifestText);
+      await publishManifest(path9.resolve(project.root, safetyManifestRelative), safetyManifestText);
       progress.manifestPublished = true;
       await runCheckpoint(options, "manifest-published");
       for (const [index2, file] of request.files.entries()) {
-        const currentPath = path10.resolve(project.root, file.path);
+        const currentPath = path9.resolve(project.root, file.path);
         const sourceFile = sourceManifest.files[index2];
-        const originalBytes = sourceFile.action === "create" ? null : await readFile9(path10.resolve(project.root, sourceFile.backup_path));
+        const originalBytes = sourceFile.action === "create" ? null : await readFile8(path9.resolve(project.root, sourceFile.backup_path));
         await readCurrentInput(project, file);
         if (file.action === "delete") {
-          const safetyPath = path10.resolve(project.root, safetyFiles[index2].backup_path);
-          if (sha256Bytes(await readFile9(safetyPath)) !== file.input_sha256) {
+          const safetyPath = path9.resolve(project.root, safetyFiles[index2].backup_path);
+          if (sha256Bytes(await readFile8(safetyPath)) !== file.input_sha256) {
             throw commandError("restore-safety-backup-mismatch", `Safety backup changed before removal: ${file.path}`);
           }
           await rename2(currentPath, safetyPath);
-          if (sha256Bytes(await readFile9(safetyPath)) !== file.input_sha256) {
+          if (sha256Bytes(await readFile8(safetyPath)) !== file.input_sha256) {
             throw commandError("restore-output-mismatch", `Safety move verification failed: ${file.path}`);
           }
         } else if (file.action === "create") {
@@ -13189,7 +12875,7 @@ function restoreSourceId(request) {
   return request.source_backup_id ?? request.source_commit?.commit_id;
 }
 async function readCommitSource(project, reference, backupIndex, options = {}) {
-  const expectedPath = path10.posix.join(
+  const expectedPath = path9.posix.join(
     project.manifest.paths.creation,
     "batches",
     `${reference.commit_id}.json`
@@ -13201,7 +12887,7 @@ async function readCommitSource(project, reference, backupIndex, options = {}) {
       { commit_id: reference.commit_id }
     );
   }
-  const contents = await readFile9(path10.resolve(project.root, reference.path));
+  const contents = await readFile8(path9.resolve(project.root, reference.path));
   if (sha256Bytes(contents) !== reference.sha256) {
     throw commandError(
       "restore-source-mismatch",
@@ -13241,7 +12927,7 @@ async function readCommitSource(project, reference, backupIndex, options = {}) {
         { commit_id: reference.commit_id, backup_id: file.backup_id }
       );
     }
-    const originalManifest = JSON.parse(await readFile9(path10.resolve(project.root, indexed.manifest.path), "utf8"));
+    const originalManifest = JSON.parse(await readFile8(path9.resolve(project.root, indexed.manifest.path), "utf8"));
     const original = originalManifest.files.find((candidate) => candidate.path === file.path);
     if (!original || original.action !== file.action || original.input_sha256 !== file.input_sha256 || original.output_sha256 !== file.output_sha256) {
       throw commandError(
@@ -13275,8 +12961,8 @@ var init_backup = __esm({
 });
 
 // scripts/lib/revision-execution.mjs
-import { readFile as readFile10 } from "node:fs/promises";
-import path11 from "node:path";
+import { readFile as readFile9 } from "node:fs/promises";
+import path10 from "node:path";
 function executionError(instancePath, message, keyword = "revision-execution") {
   return { instancePath, keyword, message, params: {} };
 }
@@ -13353,19 +13039,16 @@ function validateRevisionExecution(value, options = {}) {
   return { valid: errors.length === 0, errors };
 }
 async function readProject2(projectRoot) {
-  const root2 = path11.resolve(projectRoot);
-  const manifestPath = path11.join(root2, ".author-toolkit", "project.json");
-  const manifest = JSON.parse(await readFile10(manifestPath, "utf8"));
+  const root2 = path10.resolve(projectRoot);
+  const manifestPath = path10.join(root2, ".author-toolkit", "project.json");
+  const manifest = JSON.parse(await readFile9(manifestPath, "utf8"));
   const validation = validateManifest(manifest);
   if (!validation.valid) throw new Error(formatErrors3(validation.errors));
-  if (manifest.schema_version !== "3.2.0") {
-    throw new Error("Revision execution requires a v3.2 project");
-  }
   return { root: root2, manifestPath, manifest };
 }
 async function readActiveCycle2(project) {
-  const file = path11.resolve(project.root, project.manifest.paths.convergence, "active-cycle.json");
-  const value = JSON.parse(await readFile10(file, "utf8"));
+  const file = path10.resolve(project.root, project.manifest.paths.convergence, "active-cycle.json");
+  const value = JSON.parse(await readFile9(file, "utf8"));
   const validation = validateConvergenceCycleSchema(value);
   if (!validation.valid || value.status !== "active") {
     throw new Error(`Living cycle is invalid: ${formatErrors3(validation.errors)}`);
@@ -13373,7 +13056,7 @@ async function readActiveCycle2(project) {
   return { value, file };
 }
 async function readVerifiedArtifact(project, reference) {
-  const contents = await readFile10(path11.resolve(project.root, reference.path));
+  const contents = await readFile9(path10.resolve(project.root, reference.path));
   if (sha256Bytes(contents) !== reference.sha256) {
     throw new Error(`Referenced artifact hash does not match: ${reference.path}`);
   }
@@ -13424,9 +13107,9 @@ function revisionApprovalFingerprint(execution, operation) {
       scope_id: execution.input_scope.scope_id,
       scope_fingerprint: execution.input_scope.scope_fingerprint
     },
-    files: execution.files.map(({ path: filePath, action: action4, input_sha256, output_sha256 }) => ({
+    files: execution.files.map(({ path: filePath, action: action3, input_sha256, output_sha256 }) => ({
       path: filePath,
-      action: action4,
+      action: action3,
       input_sha256,
       output_sha256
     }))
@@ -13486,7 +13169,7 @@ async function validateExecutionContext(project, execution, options = {}) {
       }
     }
     if (options.requireCurrentDecisions !== false) {
-      const trackerText = await readFile10(path11.resolve(project.root, project.manifest.paths.audit_tracker), "utf8");
+      const trackerText = await readFile9(path10.resolve(project.root, project.manifest.paths.audit_tracker), "utf8");
       const tracker = await parseTrackerState(trackerText, project.root);
       if (!tracker.valid) {
         errors.push(contextError("revision-tracker-invalid", formatErrors3(tracker.errors)));
@@ -13563,10 +13246,10 @@ async function validateExecutionContext(project, execution, options = {}) {
         }
       }
     }
-    const backupIndexPath = path11.resolve(project.root, project.manifest.paths.backups, "index.json");
+    const backupIndexPath = path10.resolve(project.root, project.manifest.paths.backups, "index.json");
     let backupIndex = null;
     try {
-      backupIndex = JSON.parse(await readFile10(backupIndexPath, "utf8"));
+      backupIndex = JSON.parse(await readFile9(backupIndexPath, "utf8"));
       const indexValidation = await validateBackupIndex(project.root, backupIndex);
       if (!indexValidation.valid) {
         errors.push(contextError(
@@ -13656,7 +13339,7 @@ async function validateExecutionContext(project, execution, options = {}) {
           ));
         }
         try {
-          const contents = await readFile10(path11.resolve(project.root, file.backup_path));
+          const contents = await readFile9(path10.resolve(project.root, file.backup_path));
           if (sha256Bytes(contents) !== file.sha256) {
             errors.push(contextError("revision-backup-invalid", `Backup content hash differs for ${file.path}.`, file.backup_path));
           }
@@ -13689,7 +13372,7 @@ async function validateExecutionContext(project, execution, options = {}) {
         }
       }
       try {
-        const contents = await readFile10(path11.resolve(project.root, file.path));
+        const contents = await readFile9(path10.resolve(project.root, file.path));
         const currentHash = sha256Bytes(contents);
         if (options.requireInputs && file.action !== "create" && currentHash !== file.input_sha256) {
           errors.push(contextError("revision-input-mismatch", `Current manuscript input changed for ${file.path}.`, file.path));
@@ -13726,12 +13409,12 @@ async function validateExecutionContext(project, execution, options = {}) {
       for (const file of targetChanges.reordered) {
         if (!expectedActions.has(file.path)) expectedActions.set(file.path, "reorder");
       }
-      for (const [filePath, action4] of expectedActions) {
+      for (const [filePath, action3] of expectedActions) {
         const actual = execution.files.find((file) => file.path === filePath);
-        if (!actual || actual.action !== action4) {
+        if (!actual || actual.action !== action3) {
           errors.push(contextError(
             "revision-target-diff-mismatch",
-            `Target change ${filePath} (${action4}) is not the recorded approved action.`,
+            `Target change ${filePath} (${action3}) is not the recorded approved action.`,
             filePath
           ));
         }
@@ -13817,7 +13500,7 @@ function checkCycleRequest(cycle, request) {
 }
 async function withCycleLock(project, options, operation) {
   const lock = await acquireDirectoryLock(
-    path11.resolve(project.root, project.manifest.paths.convergence, "active-cycle.lock"),
+    path10.resolve(project.root, project.manifest.paths.convergence, "active-cycle.lock"),
     {
       timeoutMs: options.lockTimeoutMs ?? 1e4,
       retryMs: options.lockRetryMs ?? 20,
@@ -13943,12 +13626,12 @@ async function prepareDraftRevisionExecution(projectRoot, request, options = {})
     const concurrent = await readOptionalActiveCycle(project);
     const concurrentFailure = independentCycleFailure(concurrent);
     if (concurrentFailure) return concurrentFailure;
-    const relative = path11.posix.join(
+    const relative = path10.posix.join(
       project.manifest.paths.convergence,
       "executions",
       `${execution.execution_id}.json`
     );
-    const absolute = path11.resolve(project.root, relative);
+    const absolute = path10.resolve(project.root, relative);
     const text = `${JSON.stringify(execution, null, 2)}
 `;
     try {
@@ -14024,15 +13707,15 @@ async function prepareRevisionExecution(projectRoot, request, options = {}) {
     if (!validation.valid) {
       return failure2("revision-execution-preparation-invalid", "The approved batch, backups, decisions, or current inputs do not validate.", cycle, validation.errors);
     }
-    const relative = path11.posix.join(
+    const relative = path10.posix.join(
       project.manifest.paths.convergence,
       "executions",
       `${execution.execution_id}.json`
     );
-    const absolute = path11.resolve(project.root, relative);
+    const absolute = path10.resolve(project.root, relative);
     if (options.recoveryOperationId !== execution.execution_id) {
       try {
-        await readFile10(absolute, "utf8");
+        await readFile9(absolute, "utf8");
         return failure2("revision-execution-already-exists", `Revision execution ${execution.execution_id} already exists; reconcile it explicitly instead of replacing it.`, cycle);
       } catch (error) {
         if (error.code !== "ENOENT") throw error;
@@ -14052,7 +13735,7 @@ async function prepareRevisionExecution(projectRoot, request, options = {}) {
       if (options.recoveryOperationId !== execution.execution_id) {
         return failure2("revision-execution-already-exists", `Revision execution ${execution.execution_id} already exists; reconcile it explicitly instead of replacing it.`, cycle);
       }
-      const existingText = await readFile10(absolute, "utf8");
+      const existingText = await readFile9(absolute, "utf8");
       const existing = JSON.parse(existingText);
       const expected = { ...execution, created_at: existing.created_at };
       if (JSON.stringify(expected) !== JSON.stringify(existing)) {
@@ -14165,13 +13848,13 @@ async function verifyRevisionExecution(projectRoot, request, options = {}) {
       allowOperationId: options.recoveryOperationId ?? null
     });
     if (coordination) return coordination;
-    const relative = path11.posix.join(
+    const relative = path10.posix.join(
       project.manifest.paths.convergence,
       "executions",
       `${request.execution_id}.json`
     );
-    const absolute = path11.resolve(project.root, relative);
-    const prepared = JSON.parse(await readFile10(absolute, "utf8"));
+    const absolute = path10.resolve(project.root, relative);
+    const prepared = JSON.parse(await readFile9(absolute, "utf8"));
     if (prepared.execution_id !== request.execution_id || prepared.cycle_id !== request.cycle_id || !["prepared", ...options.recoveryOperationId === request.execution_id ? ["verified"] : []].includes(prepared.status) || !cycle.related_artifacts.revision_executions.some((reference2) => reference2.execution_id === request.execution_id)) {
       return failure2("revision-execution-identity-mismatch", "The prepared execution is not linked to this active cycle.", cycle);
     }
@@ -14268,15 +13951,15 @@ async function verifyDraftRevisionExecution(projectRoot, request, options = {}) 
     const initial = await readOptionalActiveCycle(project);
     const activeFailure = independentCycleFailure(initial);
     if (activeFailure) return activeFailure;
-    const relative = path11.posix.join(
+    const relative = path10.posix.join(
       project.manifest.paths.convergence,
       "executions",
       `${request.execution_id}.json`
     );
-    const absolute = path11.resolve(project.root, relative);
+    const absolute = path10.resolve(project.root, relative);
     let prepared;
     try {
-      prepared = JSON.parse(await readFile10(absolute, "utf8"));
+      prepared = JSON.parse(await readFile9(absolute, "utf8"));
     } catch (error) {
       return failure2("revision-execution-unavailable", `Cannot read independent prepared execution ${request.execution_id}: ${error.message}`, null);
     }
@@ -14336,16 +14019,16 @@ async function getRequestCompletion(projectRoot, cycle) {
   if (!cycle || cycle.initiating_strategy !== "revise-request") return null;
   const project = await readProject2(projectRoot);
   const blockers = [];
-  const action4 = requiredAction2(cycle);
+  const action3 = requiredAction2(cycle);
   function block(code, message) {
     if (!blockers.some((blocker2) => blocker2.code === code && blocker2.message === message)) {
-      blockers.push({ code, message, required_action: action4 });
+      blockers.push({ code, message, required_action: action3 });
     }
   }
   let tracker = { findings: [], approvals: [], valid: false, errors: [] };
   try {
-    const trackerText = await readFile10(
-      path11.resolve(project.root, project.manifest.paths.audit_tracker),
+    const trackerText = await readFile9(
+      path10.resolve(project.root, project.manifest.paths.audit_tracker),
       "utf8"
     );
     tracker = await parseTrackerState(trackerText, project.root);
@@ -14470,8 +14153,8 @@ var init_revision_execution = __esm({
 });
 
 // scripts/lib/evaluation-chains.mjs
-import { readFile as readFile11 } from "node:fs/promises";
-import path12 from "node:path";
+import { readFile as readFile10 } from "node:fs/promises";
+import path11 from "node:path";
 function scopeEventIdentity(reference) {
   return reference === null || reference === void 0 ? null : JSON.stringify([
     reference.scope_id,
@@ -14536,8 +14219,8 @@ function buildScopeEventChain(cycle, roots, reconciliations, executionChain, cre
   return visit(startingIdentity, false);
 }
 async function validateImportDecision(project, reconciliation, previousScope, targetScope, inventory) {
-  const trackerText = await readFile11(
-    path12.resolve(project.root, project.manifest.paths.audit_tracker),
+  const trackerText = await readFile10(
+    path11.resolve(project.root, project.manifest.paths.audit_tracker),
     "utf8"
   );
   const tracker = await parseTrackerState(trackerText, project.root);
@@ -14705,13 +14388,13 @@ var init_evaluation_chains = __esm({
 });
 
 // scripts/lib/evaluation-evaluator.mjs
-import { readFile as readFile12 } from "node:fs/promises";
-import path13 from "node:path";
+import { readFile as readFile11 } from "node:fs/promises";
+import path12 from "node:path";
 function newComputation(project, cycle, roots, evaluationId, createdAt) {
   const artifacts = /* @__PURE__ */ new Map();
   const blockers = [];
   const blockerKeys = /* @__PURE__ */ new Set();
-  const action4 = cycle?.recovery_position ? {
+  const action3 = cycle?.recovery_position ? {
     strategy: cycle.recovery_position.required_strategy,
     operation: cycle.recovery_position.operation,
     command: cycle.recovery_position.required_strategy
@@ -14725,7 +14408,7 @@ function newComputation(project, cycle, roots, evaluationId, createdAt) {
       message,
       ...details.path ? { path: details.path } : {},
       ...details.artifact_id ? { artifact_id: details.artifact_id } : {},
-      required_action: details.required_action === void 0 ? action4 : details.required_action,
+      required_action: details.required_action === void 0 ? action3 : details.required_action,
       kind
     });
   }
@@ -14757,7 +14440,7 @@ function newComputation(project, cycle, roots, evaluationId, createdAt) {
     record(role, artifactId, reference);
     let contents;
     try {
-      contents = await readFile12(path13.resolve(project.root, reference.path));
+      contents = await readFile11(path12.resolve(project.root, reference.path));
     } catch (error) {
       block(
         "artifact-unavailable",
@@ -15315,7 +14998,7 @@ async function computeEvaluation(project, cycle, roots, evaluationId, createdAt)
     sha256: ""
   };
   try {
-    trackerReference.sha256 = sha256Bytes(await readFile12(path13.resolve(project.root, trackerReference.path)));
+    trackerReference.sha256 = sha256Bytes(await readFile11(path12.resolve(project.root, trackerReference.path)));
   } catch {
     trackerReference.sha256 = "0".repeat(64);
   }
@@ -15738,7 +15421,7 @@ async function computeEvaluation(project, cycle, roots, evaluationId, createdAt)
       }
       for (const file of job.files) {
         try {
-          const text = await readFile12(path13.resolve(project.root, file.path), "utf8");
+          const text = await readFile11(path12.resolve(project.root, file.path), "utf8");
           if (text.split(/\r?\n/).length !== file.line_count) {
             block(
               "review-source-range-mismatch",
@@ -16014,7 +15697,7 @@ async function computeEvaluation(project, cycle, roots, evaluationId, createdAt)
   for (const artifact of computation.artifacts.values()) {
     if (["manuscript", "execution-input-manuscript", "dependency", "attested-artifact"].includes(artifact.role)) continue;
     try {
-      const contents = await readFile12(path13.resolve(project.root, artifact.path));
+      const contents = await readFile11(path12.resolve(project.root, artifact.path));
       if (sha256Bytes(contents) !== artifact.sha256) {
         block(
           "artifact-hash-mismatch",
@@ -16075,14 +15758,14 @@ var init_evaluation_evaluator = __esm({
 });
 
 // scripts/lib/evaluation-recompute.mjs
-import { readFile as readFile13 } from "node:fs/promises";
-import path14 from "node:path";
+import { readFile as readFile12 } from "node:fs/promises";
+import path13 from "node:path";
 function sameEvidenceGraph(left, right) {
   return JSON.stringify(left?.artifacts ?? []) === JSON.stringify(right?.artifacts ?? []);
 }
 function targetEvaluationIdentityBlockers(cycle, stored, reference) {
   if (cycle?.status !== "active" || !cycle.target_evaluation || !sameReference(reference, cycle.target_evaluation)) return [];
-  const action4 = cycle.recovery_position ? {
+  const action3 = cycle.recovery_position ? {
     strategy: cycle.recovery_position.required_strategy,
     operation: cycle.recovery_position.operation,
     command: cycle.recovery_position.required_strategy
@@ -16092,14 +15775,14 @@ function targetEvaluationIdentityBlockers(cycle, stored, reference) {
     blockers.push({
       code: "requested-pass-evaluation-mismatch",
       message: "The stored target evaluation names a different requested pass than the active cycle; evaluate the current pass before dependent work.",
-      required_action: action4
+      required_action: action3
     });
   }
   if (!sameScopeReference(stored.target_scope, cycle.target_scope)) {
     blockers.push({
       code: "target-scope-evaluation-mismatch",
       message: "The stored target evaluation names a different target scope than the active cycle; evaluate the current target before dependent work.",
-      required_action: action4
+      required_action: action3
     });
   }
   return blockers;
@@ -16161,8 +15844,8 @@ async function recomputeCompletedCycleForRecovery(project, completed) {
     completed,
     completed.target_evaluation
   );
-  const trackerText = await readFile13(
-    path14.resolve(project.root, project.manifest.paths.audit_tracker),
+  const trackerText = await readFile12(
+    path13.resolve(project.root, project.manifest.paths.audit_tracker),
     "utf8"
   );
   const tracker = await parseTrackerState(trackerText, project.root);
@@ -16195,8 +15878,8 @@ var init_evaluation_recompute = __esm({
 });
 
 // scripts/lib/evaluation-operations.mjs
-import { readFile as readFile14 } from "node:fs/promises";
-import path15 from "node:path";
+import { readFile as readFile13 } from "node:fs/promises";
+import path14 from "node:path";
 function publicFailure(code, message, cycle = null, details = {}) {
   return {
     valid: false,
@@ -16268,7 +15951,7 @@ function validateEvaluationRequest(request, { independent = false } = {}) {
 }
 async function lockProjectCycle(project, options, operation) {
   const lock = await acquireDirectoryLock(
-    path15.resolve(project.root, project.manifest.paths.convergence, "active-cycle.lock"),
+    path14.resolve(project.root, project.manifest.paths.convergence, "active-cycle.lock"),
     {
       timeoutMs: options.lockTimeoutMs ?? 1e4,
       retryMs: options.lockRetryMs ?? 20,
@@ -16358,12 +16041,12 @@ async function evaluateCycle(projectRoot, request, options = {}) {
       request.evaluation_id,
       operationTime(options)
     );
-    const relative = path15.posix.join(
+    const relative = path14.posix.join(
       project.manifest.paths.convergence,
       "evaluations",
       `${evaluation.evaluation_id}.json`
     );
-    const absolute = path15.resolve(project.root, relative);
+    const absolute = path14.resolve(project.root, relative);
     const text = `${JSON.stringify(evaluation, null, 2)}
 `;
     await publishImmutable(absolute, text);
@@ -16438,12 +16121,12 @@ async function evaluateDraft(projectRoot, request, options = {}) {
       request.evaluation_id,
       operationTime(options)
     );
-    const relative = path15.posix.join(
+    const relative = path14.posix.join(
       project.manifest.paths.convergence,
       "evaluations",
       `${evaluation.evaluation_id}.json`
     );
-    const absolute = path15.resolve(project.root, relative);
+    const absolute = path14.resolve(project.root, relative);
     const text = `${JSON.stringify(evaluation, null, 2)}
 `;
     await publishImmutable(absolute, text);
@@ -16517,8 +16200,8 @@ async function completeCycle(projectRoot, request, options = {}) {
         evaluation: current.recomputed
       };
     }
-    const trackerPath = path15.resolve(project.root, project.manifest.paths.audit_tracker);
-    const trackerBefore = await readFile14(trackerPath, "utf8");
+    const trackerPath = path14.resolve(project.root, project.manifest.paths.audit_tracker);
+    const trackerBefore = await readFile13(trackerPath, "utf8");
     const trackerState = await parseTrackerState(trackerBefore, project.root);
     const existingDecision = trackerState.completion_decisions.find(
       (decision) => decision.id === request.decision_id
@@ -16553,15 +16236,15 @@ async function completeCycle(projectRoot, request, options = {}) {
       await writeAtomicVerified(trackerPath, trackerAfter);
     }
     await runCheckpoint(options, "completion-decision-written");
-    const relative = path15.posix.join(
+    const relative = path14.posix.join(
       project.manifest.paths.convergence,
       "evaluations",
       `${request.evaluation_id}.json`
     );
-    const absolute = path15.resolve(project.root, relative);
+    const absolute = path14.resolve(project.root, relative);
     let text;
     try {
-      text = await readFile14(absolute, "utf8");
+      text = await readFile13(absolute, "utf8");
     } catch (error) {
       if (error.code !== "ENOENT") throw error;
       text = null;
@@ -16642,7 +16325,7 @@ async function completeCycle(projectRoot, request, options = {}) {
     if (!completedValidation.valid || completed.completion.target_evaluation_id !== completed.target_evaluation.evaluation_id) {
       throw new Error(`Generated completed cycle is invalid: ${formatErrors(completedValidation.errors)}`);
     }
-    const completedRelative = path15.posix.join(
+    const completedRelative = path14.posix.join(
       project.manifest.paths.convergence,
       "cycles",
       `${cycle.cycle_id}.json`
@@ -16650,7 +16333,7 @@ async function completeCycle(projectRoot, request, options = {}) {
     const completedText = `${JSON.stringify(completed, null, 2)}
 `;
     await publishImmutable(
-      path15.resolve(project.root, completedRelative),
+      path14.resolve(project.root, completedRelative),
       completedText
     );
     await runCheckpoint(options, "completed-cycle-published");
@@ -16672,7 +16355,7 @@ async function completeCycle(projectRoot, request, options = {}) {
     return {
       valid: true,
       cycle: completed,
-      cycle_path: path15.resolve(project.root, completedRelative),
+      cycle_path: path14.resolve(project.root, completedRelative),
       evaluation,
       evaluation_path: absolute,
       evaluation_reference: reference,
@@ -16696,8 +16379,8 @@ var init_evaluation_operations = __esm({
 });
 
 // scripts/lib/evaluation-status.mjs
-import { readFile as readFile15 } from "node:fs/promises";
-import path16 from "node:path";
+import { readFile as readFile14 } from "node:fs/promises";
+import path15 from "node:path";
 function missingEvaluationStatus(cycle, pendingAction = null, requestCompletion = null) {
   const requiredAction6 = cycle?.recovery_position ? {
     strategy: cycle.recovery_position.required_strategy,
@@ -16768,7 +16451,7 @@ async function getConvergenceStatus(projectRoot) {
     };
   }
   if (active) {
-    const completedPath = path16.resolve(
+    const completedPath = path15.resolve(
       project.root,
       project.manifest.paths.convergence,
       "cycles",
@@ -16776,12 +16459,12 @@ async function getConvergenceStatus(projectRoot) {
     );
     let completed = null;
     try {
-      completed = JSON.parse(await readFile15(completedPath, "utf8"));
+      completed = JSON.parse(await readFile14(completedPath, "utf8"));
     } catch (error) {
       if (error.code !== "ENOENT") throw error;
     }
     if (completed?.status === "completed") {
-      const action4 = {
+      const action3 = {
         strategy: "author-project",
         operation: "reconcile-cycle",
         command: "author-project reconcile-cycle"
@@ -16794,11 +16477,11 @@ async function getConvergenceStatus(projectRoot) {
         cycle: active.value,
         pending_action: project.manifest.pending_action ?? null,
         request_completion: null,
-        required_action: action4,
+        required_action: action3,
         blockers: [{
           code: "cycle-completion-reconcile-required",
           message: `Completed cycle ${completed.cycle_id} and its active record coexist; run reconcile-cycle before dependent work.`,
-          required_action: action4
+          required_action: action3
         }]
       };
     }
@@ -16857,7 +16540,7 @@ async function getConvergenceStatus(projectRoot) {
       if (active.value.starting_evaluation) historicalReferences.push(active.value.starting_evaluation);
       try {
         for (const historical of historicalReferences) {
-          const contents = await readFile15(path16.resolve(project.root, historical.path));
+          const contents = await readFile14(path15.resolve(project.root, historical.path));
           if (sha256Bytes(contents) !== historical.sha256) {
             throw new Error(`Historical artifact hash changed: ${historical.path}`);
           }
@@ -16878,7 +16561,7 @@ async function getConvergenceStatus(projectRoot) {
     if (reconciliations.length === 0) return missing;
     const reconciliationReference = reconciliations.at(-1);
     try {
-      const contents = await readFile15(path16.resolve(project.root, reconciliationReference.path), "utf8");
+      const contents = await readFile14(path15.resolve(project.root, reconciliationReference.path), "utf8");
       if (sha256Bytes(contents) !== reconciliationReference.sha256) {
         throw new Error("Reconciliation content hash changed");
       }
@@ -16975,14 +16658,14 @@ async function findHistoricalSatisfiedEvaluation(project, scopeReference, prefer
       }
       for (const artifact of evaluation.evidence_graph.artifacts) {
         if (["manuscript", "tracker", "story-state"].includes(artifact.role)) continue;
-        const contents = await readFile15(path16.resolve(project.root, artifact.path));
+        const contents = await readFile14(path15.resolve(project.root, artifact.path));
         if (sha256Bytes(contents) !== artifact.sha256) throw new Error("Historical evidence changed");
       }
-      const scopeText = await readFile15(path16.resolve(project.root, scopeReference.snapshot_path), "utf8");
+      const scopeText = await readFile14(path15.resolve(project.root, scopeReference.snapshot_path), "utf8");
       if (sha256Bytes(scopeText) !== scopeReference.snapshot_sha256) continue;
       const scope = JSON.parse(scopeText);
       if (!validateScopeSnapshot(scope).valid) continue;
-      const inventoryText = await readFile15(path16.resolve(project.root, scope.inventory.path), "utf8");
+      const inventoryText = await readFile14(path15.resolve(project.root, scope.inventory.path), "utf8");
       if (sha256Bytes(inventoryText) !== scope.inventory.sha256) continue;
       const inventory = JSON.parse(inventoryText);
       if (!validateInventorySnapshot(inventory).valid) continue;
@@ -17042,8 +16725,8 @@ var init_convergence = __esm({
 });
 
 // scripts/lib/cycles.mjs
-import { readdir as readdir6, readFile as readFile16 } from "node:fs/promises";
-import path17 from "node:path";
+import { readdir as readdir5, readFile as readFile15 } from "node:fs/promises";
+import path16 from "node:path";
 function cycleError(instancePath, message, keyword = "cycle-identity") {
   return { instancePath, keyword, message, params: {} };
 }
@@ -17077,24 +16760,21 @@ ${result.errors.map((error) => `${error.instancePath || "/"} ${error.message}`).
   );
 }
 async function readProject3(projectRoot) {
-  const root2 = path17.resolve(projectRoot);
-  const manifestPath = path17.join(root2, ".author-toolkit", "project.json");
-  const manifest = JSON.parse(await readFile16(manifestPath, "utf8"));
+  const root2 = path16.resolve(projectRoot);
+  const manifestPath = path16.join(root2, ".author-toolkit", "project.json");
+  const manifest = JSON.parse(await readFile15(manifestPath, "utf8"));
   const validation = validateManifest(manifest);
   if (!validation.valid) throw validationError2(validation);
-  if (manifest.schema_version !== "3.2.0") {
-    throw new Error("Convergence cycles require a v3.2 project");
-  }
   return { root: root2, manifestPath, manifest };
 }
 function activeCyclePath(root2, manifest) {
-  return path17.resolve(root2, manifest.paths.convergence, "active-cycle.json");
+  return path16.resolve(root2, manifest.paths.convergence, "active-cycle.json");
 }
 async function readActiveCycle3(root2, manifest) {
   const file = activeCyclePath(root2, manifest);
   let value;
   try {
-    value = JSON.parse(await readFile16(file, "utf8"));
+    value = JSON.parse(await readFile15(file, "utf8"));
   } catch (error) {
     if (error.code === "ENOENT") return null;
     throw error;
@@ -17116,12 +16796,12 @@ function requiredAction3(cycle) {
   };
 }
 function blocked(code, message, cycle) {
-  const action4 = requiredAction3(cycle);
+  const action3 = requiredAction3(cycle);
   return {
     valid: false,
     cycle: cycle ?? null,
-    required_action: action4,
-    blockers: [{ code, message, required_action: action4 }]
+    required_action: action3,
+    blockers: [{ code, message, required_action: action3 }]
   };
 }
 function coordinationFailure3(project, active, options = {}) {
@@ -17149,7 +16829,7 @@ async function completedPointerFailure(project, active = null) {
 async function externalReconciliationBlock(project, reference, cycle = null) {
   if (!reference?.snapshot_path) return null;
   const previous = JSON.parse(
-    await readFile16(path17.resolve(project.root, reference.snapshot_path), "utf8")
+    await readFile15(path16.resolve(project.root, reference.snapshot_path), "utf8")
   );
   const current = await collectVersionedInventory(project.root, project.manifest);
   const currentScope = project.manifest.current_scope;
@@ -17220,17 +16900,17 @@ function validateStartRequest(request) {
   }
 }
 async function completedBootstrapExists(root2, manifest) {
-  const directory = path17.resolve(root2, manifest.paths.convergence, "cycles");
-  let entries2;
+  const directory = path16.resolve(root2, manifest.paths.convergence, "cycles");
+  let entries;
   try {
-    entries2 = await readdir6(directory, { withFileTypes: true });
+    entries = await readdir5(directory, { withFileTypes: true });
   } catch (error) {
     if (error.code === "ENOENT") return false;
     throw error;
   }
-  for (const entry of entries2) {
+  for (const entry of entries) {
     if (!entry.isFile() || !entry.name.endsWith(".json")) continue;
-    const value = JSON.parse(await readFile16(path17.join(directory, entry.name), "utf8"));
+    const value = JSON.parse(await readFile15(path16.join(directory, entry.name), "utf8"));
     const validation = validateConvergenceCycle(value);
     if (!validation.valid) throw validationError2(validation);
     if (value.status === "completed" && value.bootstrap) return true;
@@ -17253,19 +16933,6 @@ async function startCycle(projectRoot, request, options = {}) {
   if (completedProblem) return completedProblem;
   const coordination = coordinationFailure3(project, active);
   if (coordination) return coordination;
-  const legacyRecovery = await inspectLegacyRecovery(root2, manifest);
-  const legacyBlockers = legacyRecovery.blockers.filter(
-    (blocker2) => blocker2.code !== "legacy-staging-decision-required" || request.bootstrap || blocker2.rejection_required
-  );
-  if (legacyBlockers.length > 0) {
-    return {
-      valid: false,
-      cycle: null,
-      required_action: legacyBlockers[0].required_action,
-      blockers: legacyBlockers,
-      state_written: false
-    };
-  }
   const currentScope = manifest.current_scope;
   const external = await externalReconciliationBlock(
     project,
@@ -17284,7 +16951,7 @@ async function startCycle(projectRoot, request, options = {}) {
       try {
         const reference = manifest.manuscript_reconciliation;
         await verifyArtifactReference(root2, reference);
-        const value = JSON.parse(await readFile16(path17.resolve(root2, reference.path), "utf8"));
+        const value = JSON.parse(await readFile15(path16.resolve(root2, reference.path), "utf8"));
         if (!validateManuscriptReconciliationSchema(value).valid) {
           throw new Error("The manifest reconciliation artifact is invalid");
         }
@@ -17468,22 +17135,6 @@ async function assertCycleAllowsOperation(projectRoot, request) {
   if (completedProblem) return { ...completedProblem, read_only: false };
   const coordination = coordinationFailure3(project, active);
   if (coordination) return { ...coordination, read_only: false };
-  if (!active) {
-    const legacyRecovery = await inspectLegacyRecovery(root2, manifest);
-    const legacyBlockers = legacyRecovery.blockers.filter(
-      (blocker2) => blocker2.code !== "legacy-staging-decision-required"
-    );
-    if (legacyBlockers.length > 0) {
-      return {
-        valid: false,
-        read_only: false,
-        cycle: null,
-        required_action: legacyBlockers[0].required_action,
-        blockers: legacyBlockers,
-        state_written: false
-      };
-    }
-  }
   const currentScope = manifest.current_scope;
   const trackedReference = active?.value.target_scope ?? active?.value.starting_scope ?? (currentScope ? {
     scope_id: currentScope.scope_id,
@@ -17501,20 +17152,20 @@ async function assertCycleAllowsOperation(projectRoot, request) {
     if (request.strategy !== "revise-draft") {
       const gate = await checkConvergenceGate(projectRoot);
       if (!gate.valid) {
-        const action5 = recoveryActionOrDefault(null);
+        const action4 = recoveryActionOrDefault(null);
         return {
           valid: false,
           read_only: false,
           cycle: null,
-          required_action: action5,
+          required_action: action4,
           blockers: [{
             code: "starting-evaluation-indeterminate",
             message: "A current satisfied full-manuscript evaluation is required before this manuscript-changing entry; run full-manuscript revise-draft recovery.",
-            required_action: action5
+            required_action: action4
           }]
         };
       }
-      const action4 = {
+      const action3 = {
         strategy: request.strategy,
         operation: INITIAL_OPERATIONS[request.strategy],
         command: request.strategy
@@ -17523,11 +17174,11 @@ async function assertCycleAllowsOperation(projectRoot, request) {
         valid: false,
         read_only: false,
         cycle: null,
-        required_action: action4,
+        required_action: action3,
         blockers: [{
           code: "active-cycle-required",
           message: `Start a ${request.strategy} cycle from the satisfied full-manuscript evaluation before manuscript-changing work.`,
-          required_action: action4
+          required_action: action3
         }]
       };
     }
@@ -17607,7 +17258,7 @@ function mergeRelatedArtifacts(current, requested) {
   return merged;
 }
 async function verifyArtifactReference(root2, reference) {
-  const contents = await readFile16(path17.resolve(root2, reference.path));
+  const contents = await readFile15(path16.resolve(root2, reference.path));
   if (sha256Bytes(contents) !== reference.sha256) {
     throw new Error(`Referenced artifact hash does not match: ${reference.path}`);
   }
@@ -17618,10 +17269,10 @@ async function verifyScopeReference(project, reference, { requireCurrent = true 
     path: reference.snapshot_path,
     sha256: reference.snapshot_sha256
   });
-  const snapshot = JSON.parse(await readFile16(path17.resolve(root2, reference.snapshot_path), "utf8"));
+  const snapshot = JSON.parse(await readFile15(path16.resolve(root2, reference.snapshot_path), "utf8"));
   const validation = validateScopeSnapshot(snapshot);
   if (!validation.valid) throw validationError2(validation);
-  const expectedPath = path17.posix.join(
+  const expectedPath = path16.posix.join(
     manifest.paths.convergence,
     "scopes",
     `${reference.scope_id}-${reference.scope_fingerprint}.json`
@@ -17643,7 +17294,7 @@ async function verifyScopeReference(project, reference, { requireCurrent = true 
 }
 async function readReferencedJson(root2, reference) {
   await verifyArtifactReference(root2, reference);
-  return JSON.parse(await readFile16(path17.resolve(root2, reference.path), "utf8"));
+  return JSON.parse(await readFile15(path16.resolve(root2, reference.path), "utf8"));
 }
 function creationFileIdentity(file) {
   return {
@@ -17695,8 +17346,8 @@ async function deriveCreationChangeSet(project, cycle, candidate, request) {
     path: candidate.target_scope.snapshot_path,
     sha256: candidate.target_scope.snapshot_sha256
   });
-  const trackerText = await readFile16(
-    path17.resolve(project.root, project.manifest.paths.audit_tracker),
+  const trackerText = await readFile15(
+    path16.resolve(project.root, project.manifest.paths.audit_tracker),
     "utf8"
   );
   const tracker = await parseTrackerState(trackerText, project.root);
@@ -17759,10 +17410,10 @@ async function deriveCreationChangeSet(project, cycle, candidate, request) {
     modify: modified,
     delete: deleted
   };
-  for (const action4 of ["create", "modify", "delete"]) {
-    const actual = commit.files.filter((file) => file.action === action4).map((file) => {
-      if (action4 === "create") return { path: file.path, sha256: file.output_sha256 };
-      if (action4 === "modify") {
+  for (const action3 of ["create", "modify", "delete"]) {
+    const actual = commit.files.filter((file) => file.action === action3).map((file) => {
+      if (action3 === "create") return { path: file.path, sha256: file.output_sha256 };
+      if (action3 === "modify") {
         return {
           path: file.path,
           input_sha256: file.input_sha256,
@@ -17771,8 +17422,8 @@ async function deriveCreationChangeSet(project, cycle, candidate, request) {
       }
       return { path: file.path, input_sha256: file.input_sha256 };
     });
-    if (JSON.stringify(actual) !== JSON.stringify(expected[action4])) {
-      throw new Error(`Creation ${action4} transitions do not explain the target scope`);
+    if (JSON.stringify(actual) !== JSON.stringify(expected[action3])) {
+      throw new Error(`Creation ${action3} transitions do not explain the target scope`);
     }
   }
   for (const file of starting.files) {
@@ -17806,8 +17457,8 @@ async function deriveRejectedCreationChangeSet(project, cycle, candidate, reques
   if (batch.batch_id !== references[0].batch_id || batch.commit !== null || batch.scope_id !== cycle.starting_scope.scope_id || JSON.stringify(candidate.target_scope) !== JSON.stringify(cycle.starting_scope)) {
     throw new Error("Rejected staging must preserve the exact starting scope and have no commit journal");
   }
-  const trackerText = await readFile16(
-    path17.resolve(project.root, project.manifest.paths.audit_tracker),
+  const trackerText = await readFile15(
+    path16.resolve(project.root, project.manifest.paths.audit_tracker),
     "utf8"
   );
   const tracker = await parseTrackerState(trackerText, project.root);
@@ -17999,7 +17650,7 @@ async function transitionCycle(projectRoot, request, options = {}) {
     };
   }
   const lock = await acquireDirectoryLock(
-    path17.resolve(project.root, project.manifest.paths.convergence, "active-cycle.lock"),
+    path16.resolve(project.root, project.manifest.paths.convergence, "active-cycle.lock"),
     {
       timeoutMs: options.lockTimeoutMs ?? 1e4,
       retryMs: options.lockRetryMs ?? 20,
@@ -18051,7 +17702,6 @@ var init_cycles = __esm({
     init_artifacts();
     init_cycle_coordination();
     init_manuscript();
-    init_legacy_recovery();
     init_manifest();
     init_schemas();
     init_scope();
@@ -18081,13 +17731,13 @@ var init_cycles = __esm({
 });
 
 // scripts/lib/reconciliation.mjs
-import { readFile as readFile17 } from "node:fs/promises";
-import path18 from "node:path";
-function action3(strategy, operation) {
+import { readFile as readFile16 } from "node:fs/promises";
+import path17 from "node:path";
+function action2(strategy, operation) {
   return { strategy, operation, command: strategy };
 }
 function failure3(code, message, cycle = null, details = {}) {
-  const requiredAction6 = cycle?.recovery_position ? action3(cycle.recovery_position.required_strategy, cycle.recovery_position.operation) : action3("write-fiction", "creation-import");
+  const requiredAction6 = cycle?.recovery_position ? action2(cycle.recovery_position.required_strategy, cycle.recovery_position.operation) : action2("write-fiction", "creation-import");
   return {
     valid: false,
     cycle,
@@ -18099,18 +17749,18 @@ function failure3(code, message, cycle = null, details = {}) {
   };
 }
 async function readProject4(projectRoot) {
-  const root2 = path18.resolve(projectRoot);
-  const manifestPath = path18.join(root2, ".author-toolkit", "project.json");
-  const manifest = JSON.parse(await readFile17(manifestPath, "utf8"));
+  const root2 = path17.resolve(projectRoot);
+  const manifestPath = path17.join(root2, ".author-toolkit", "project.json");
+  const manifest = JSON.parse(await readFile16(manifestPath, "utf8"));
   const validation = validateManifest(manifest);
-  if (!validation.valid || manifest.schema_version !== "3.2.0") {
-    throw new Error("External manuscript reconciliation requires a valid v3.2 project");
+  if (!validation.valid) {
+    throw new Error(validation.errors.map((error) => error.message).join("; "));
   }
   return { root: root2, manifestPath, manifest };
 }
 async function readActiveCycle4(project) {
-  const file = path18.resolve(project.root, project.manifest.paths.convergence, "active-cycle.json");
-  const value = JSON.parse(await readFile17(file, "utf8"));
+  const file = path17.resolve(project.root, project.manifest.paths.convergence, "active-cycle.json");
+  const value = JSON.parse(await readFile16(file, "utf8"));
   const validation = validateConvergenceCycleSchema(value);
   if (!validation.valid || value.status !== "active") {
     throw new Error(`Living cycle is invalid: ${file}`);
@@ -18129,7 +17779,7 @@ async function readArtifact(project, reference) {
   if (!validateRelativePath(reference.path).valid || !/^[0-9a-f]{64}$/.test(reference.sha256)) {
     throw new Error("reconcile-manuscript requires safe project-relative artifact paths and SHA-256 hashes");
   }
-  const contents = await readFile17(path18.resolve(project.root, reference.path));
+  const contents = await readFile16(path17.resolve(project.root, reference.path));
   if (sha256Bytes(contents) !== reference.sha256) {
     throw new Error(`Referenced artifact hash does not match: ${reference.path}`);
   }
@@ -18241,8 +17891,8 @@ async function validateStoryState2(project, references, target) {
   }
 }
 async function validateImportDecision2(project, request, previous, target, inventory) {
-  const trackerText = await readFile17(
-    path18.resolve(project.root, project.manifest.paths.audit_tracker),
+  const trackerText = await readFile16(
+    path17.resolve(project.root, project.manifest.paths.audit_tracker),
     "utf8"
   );
   const tracker = await parseTrackerState(trackerText, project.root);
@@ -18274,7 +17924,7 @@ async function invalidatedHistory(project, evaluationReference2, changes) {
       }
       if (artifact.role !== "coverage-unit" || affected.size === 0) continue;
       try {
-        const unit = JSON.parse(await readFile17(path18.resolve(project.root, artifact.path), "utf8"));
+        const unit = JSON.parse(await readFile16(path17.resolve(project.root, artifact.path), "utf8"));
         if (unit.paths.some((file) => affected.has(file.path))) {
           coverage.push({ path: artifact.path, sha256: artifact.sha256 });
         }
@@ -18301,7 +17951,7 @@ async function reconcileManuscript(projectRoot, request, options = {}) {
   validateRequest(request);
   const project = await readProject4(projectRoot);
   const lock = await acquireDirectoryLock(
-    path18.resolve(project.root, project.manifest.paths.convergence, "active-cycle.lock"),
+    path17.resolve(project.root, project.manifest.paths.convergence, "active-cycle.lock"),
     {
       timeoutMs: options.lockTimeoutMs ?? 1e4,
       retryMs: options.lockRetryMs ?? 20,
@@ -18364,7 +18014,7 @@ async function reconcileManuscript(projectRoot, request, options = {}) {
           previous = await readScope(project, previousReference);
         } catch (error) {
           error.reconciliationCode = "starting-scope-indeterminate";
-          error.reconciliationAction = action3("revise-draft", "intake");
+          error.reconciliationAction = action2("revise-draft", "intake");
           throw error;
         }
       }
@@ -18394,7 +18044,7 @@ async function reconcileManuscript(projectRoot, request, options = {}) {
         await validateStoryState2(project, request.story_state, target);
       } catch (error) {
         error.reconciliationCode = "story-state-reconciliation-required";
-        error.reconciliationAction = action3("write-fiction", "creation-import");
+        error.reconciliationAction = action2("write-fiction", "creation-import");
         throw error;
       }
       await validateImportDecision2(project, request, previous, target, inventoryEvidence);
@@ -18458,12 +18108,12 @@ async function reconcileManuscript(projectRoot, request, options = {}) {
       if (!recordValidation.valid) {
         throw new Error(`Generated reconciliation is invalid: ${recordValidation.errors.map((error) => error.message).join("; ")}`);
       }
-      const relative = path18.posix.join(
+      const relative = path17.posix.join(
         project.manifest.paths.convergence,
         "reconciliations",
         `${reconciliation.reconciliation_id}.json`
       );
-      const absolute = path18.resolve(project.root, relative);
+      const absolute = path17.resolve(project.root, relative);
       if (cycle) {
         await beginCycleOperation(project, active, {
           kind: "manuscript-reconciliation",
@@ -18479,7 +18129,7 @@ async function reconcileManuscript(projectRoot, request, options = {}) {
         if (error.code !== "EEXIST" || options.recoveryOperationId !== reconciliation.reconciliation_id) {
           throw error;
         }
-        const existingText = await readFile17(absolute, "utf8");
+        const existingText = await readFile16(absolute, "utf8");
         const existing = JSON.parse(existingText);
         const expected = { ...reconciliation, created_at: existing.created_at };
         if (JSON.stringify(expected) !== JSON.stringify(existing)) {
@@ -18548,7 +18198,7 @@ async function reconcileManuscript(projectRoot, request, options = {}) {
         reconciliation_path: absolute,
         reconciliation_reference: reference,
         state_written: true,
-        required_action: action3(requiredStrategy, recoveryOperation),
+        required_action: action2(requiredStrategy, recoveryOperation),
         blockers: []
       };
     }
@@ -18595,8 +18245,8 @@ var init_reconciliation = __esm({
 });
 
 // scripts/lib/project-commands.mjs
-import { readFile as readFile18 } from "node:fs/promises";
-import path19 from "node:path";
+import { readFile as readFile17 } from "node:fs/promises";
+import path18 from "node:path";
 function requiredAction4(operation) {
   return {
     strategy: "author-project",
@@ -18649,7 +18299,7 @@ async function recoveryState2(project, active, operation) {
   let manifest = null;
   let manifestText = null;
   try {
-    manifestText = await readFile18(project.manifestPath, "utf8");
+    manifestText = await readFile17(project.manifestPath, "utf8");
     manifest = JSON.parse(manifestText);
   } catch {
   }
@@ -18679,7 +18329,7 @@ async function setPendingAction(projectRoot, request, options = {}) {
   }
   const initial = await readProject(projectRoot);
   const lock = await acquireDirectoryLock(
-    path19.resolve(initial.root, initial.manifest.paths.convergence, "active-cycle.lock"),
+    path18.resolve(initial.root, initial.manifest.paths.convergence, "active-cycle.lock"),
     {
       timeoutMs: options.lockTimeoutMs ?? 1e4,
       retryMs: options.lockRetryMs ?? 20,
@@ -18706,7 +18356,7 @@ async function setPendingAction(projectRoot, request, options = {}) {
     await runCheckpoint(options, "lock-acquired");
     project = await readProject(projectRoot);
     active = await readActiveCycle(project);
-    const manifestText = await readFile18(project.manifestPath, "utf8");
+    const manifestText = await readFile17(project.manifestPath, "utf8");
     if (request.expected_manifest_sha256 !== void 0 && sha256Bytes(manifestText) !== request.expected_manifest_sha256) {
       throw stateError(
         "manifest-hash-conflict",
@@ -18922,7 +18572,7 @@ async function recordProjectScope(projectRoot, request, options = {}) {
       lockRetryMs: options.lockRetryMs,
       progress
     });
-    const manifestText = await readFile18(initial.manifestPath, "utf8");
+    const manifestText = await readFile17(initial.manifestPath, "utf8");
     const manifest = JSON.parse(manifestText);
     const validation = await validateFullManuscriptScope(manifest, initial.manifestPath);
     return {
@@ -18983,8 +18633,8 @@ var init_project_commands = __esm({
 });
 
 // scripts/lib/tracker-commands.mjs
-import { readFile as readFile19 } from "node:fs/promises";
-import path20 from "node:path";
+import { readFile as readFile18 } from "node:fs/promises";
+import path19 from "node:path";
 import { isDeepStrictEqual } from "node:util";
 function requiredAction5(operation) {
   return {
@@ -19035,10 +18685,10 @@ function appendFinding(markdown, row) {
   throw commandError2("tracker-invalid", "The Findings table separator is unavailable.");
 }
 async function recoveryState3(project, operation) {
-  const trackerPath = path20.resolve(project.root, project.manifest.paths.audit_tracker);
+  const trackerPath = path19.resolve(project.root, project.manifest.paths.audit_tracker);
   let trackerSha256 = null;
   try {
-    trackerSha256 = sha256Bytes(await readFile19(trackerPath));
+    trackerSha256 = sha256Bytes(await readFile18(trackerPath));
   } catch {
   }
   return {
@@ -19057,7 +18707,7 @@ async function validateFindingReport(project, request, options) {
   }
   let markdown;
   try {
-    markdown = await readFile19(path20.resolve(project.root, request.report), "utf8");
+    markdown = await readFile18(path19.resolve(project.root, request.report), "utf8");
   } catch (error) {
     throw commandError2("finding-report-unavailable", `Cannot read current report ${request.report}: ${error.message}`);
   }
@@ -19091,7 +18741,7 @@ async function recordFinding(projectRoot, request, options = {}) {
   }
   const initial = await readProject(projectRoot);
   const lock = await acquireDirectoryLock(
-    path20.resolve(initial.root, initial.manifest.paths.convergence, "active-cycle.lock"),
+    path19.resolve(initial.root, initial.manifest.paths.convergence, "active-cycle.lock"),
     {
       timeoutMs: options.lockTimeoutMs ?? 1e4,
       retryMs: options.lockRetryMs ?? 20,
@@ -19113,8 +18763,8 @@ async function recordFinding(projectRoot, request, options = {}) {
   try {
     await runCheckpoint(options, "lock-acquired");
     project = await readProject(projectRoot);
-    const trackerPath = path20.resolve(project.root, project.manifest.paths.audit_tracker);
-    const trackerBefore = await readFile19(trackerPath, "utf8");
+    const trackerPath = path19.resolve(project.root, project.manifest.paths.audit_tracker);
+    const trackerBefore = await readFile18(trackerPath, "utf8");
     if (request.expected_tracker_sha256 !== void 0 && sha256Bytes(trackerBefore) !== request.expected_tracker_sha256) {
       throw commandError2(
         "tracker-hash-conflict",
@@ -19221,7 +18871,7 @@ function approvalValidationError(message) {
 async function validateRevisionArtifact(project, reference) {
   let contents;
   try {
-    contents = await readFile19(path20.resolve(project.root, reference.path));
+    contents = await readFile18(path19.resolve(project.root, reference.path));
   } catch (error) {
     throw approvalValidationError(`Cannot read revision artifact ${reference.path}: ${error.message}`);
   }
@@ -19311,7 +18961,7 @@ async function recordApproval(projectRoot, request, options = {}) {
   }
   const initial = await readProject(projectRoot);
   const lock = await acquireDirectoryLock(
-    path20.resolve(initial.root, initial.manifest.paths.convergence, "active-cycle.lock"),
+    path19.resolve(initial.root, initial.manifest.paths.convergence, "active-cycle.lock"),
     {
       timeoutMs: options.lockTimeoutMs ?? 1e4,
       retryMs: options.lockRetryMs ?? 20,
@@ -19333,8 +18983,8 @@ async function recordApproval(projectRoot, request, options = {}) {
   try {
     await runCheckpoint(options, "lock-acquired");
     project = await readProject(projectRoot);
-    const trackerPath = path20.resolve(project.root, project.manifest.paths.audit_tracker);
-    const trackerBefore = await readFile19(trackerPath, "utf8");
+    const trackerPath = path19.resolve(project.root, project.manifest.paths.audit_tracker);
+    const trackerBefore = await readFile18(trackerPath, "utf8");
     if (request.expected_tracker_sha256 !== void 0 && sha256Bytes(trackerBefore) !== request.expected_tracker_sha256) {
       throw commandError2(
         "tracker-hash-conflict",
@@ -19438,7 +19088,7 @@ function replaceFinding(markdown, findingId, row) {
 async function readDecisionArtifact(project, reference, identityField) {
   let text;
   try {
-    text = await readFile19(path20.resolve(project.root, reference.path), "utf8");
+    text = await readFile18(path19.resolve(project.root, reference.path), "utf8");
   } catch (error) {
     throw commandError2("finding-decision-evidence-unavailable", `Cannot read decision evidence ${reference.path}: ${error.message}`);
   }
@@ -19463,7 +19113,7 @@ async function validateDecisionReport(project, request, existing, options) {
   }
   let markdown;
   try {
-    markdown = await readFile19(path20.resolve(project.root, request.report), "utf8");
+    markdown = await readFile18(path19.resolve(project.root, request.report), "utf8");
   } catch (error) {
     throw commandError2("finding-decision-report-unavailable", `Cannot read current report ${request.report}: ${error.message}`);
   }
@@ -19546,7 +19196,7 @@ async function recordFindingDecision(projectRoot, request, options = {}) {
   }
   const initial = await readProject(projectRoot);
   const lock = await acquireDirectoryLock(
-    path20.resolve(initial.root, initial.manifest.paths.convergence, "active-cycle.lock"),
+    path19.resolve(initial.root, initial.manifest.paths.convergence, "active-cycle.lock"),
     {
       timeoutMs: options.lockTimeoutMs ?? 1e4,
       retryMs: options.lockRetryMs ?? 20,
@@ -19568,8 +19218,8 @@ async function recordFindingDecision(projectRoot, request, options = {}) {
   try {
     await runCheckpoint(options, "lock-acquired");
     project = await readProject(projectRoot);
-    const trackerPath = path20.resolve(project.root, project.manifest.paths.audit_tracker);
-    const trackerBefore = await readFile19(trackerPath, "utf8");
+    const trackerPath = path19.resolve(project.root, project.manifest.paths.audit_tracker);
+    const trackerBefore = await readFile18(trackerPath, "utf8");
     if (request.expected_tracker_sha256 !== void 0 && sha256Bytes(trackerBefore) !== request.expected_tracker_sha256) {
       throw commandError2(
         "tracker-hash-conflict",
@@ -19708,7 +19358,7 @@ async function validateExecutionDecision(project, request, report, options) {
   }
   if (report.reported) {
     const existing = (await parseTrackerState(
-      await readFile19(path20.resolve(project.root, project.manifest.paths.audit_tracker), "utf8"),
+      await readFile18(path19.resolve(project.root, project.manifest.paths.audit_tracker), "utf8"),
       project.root
     )).findings.find((candidate) => candidate.id === request.finding_id);
     if (report.reported.audit !== existing.audit || findingLocation(report.reported.location) !== existing.location) {
@@ -19726,7 +19376,7 @@ async function validateStaleDecision(project, tracker, request, report, existing
     }
     let contents;
     try {
-      contents = await readFile19(path20.resolve(project.root, input.path));
+      contents = await readFile18(path19.resolve(project.root, input.path));
     } catch (error) {
       throw commandError2("finding-decision-evidence-unavailable", `Cannot read current report input ${input.path}: ${error.message}`);
     }
@@ -19759,15 +19409,15 @@ var init_tracker_commands = __esm({
 });
 
 // scripts/lib/cycle-recovery.mjs
-import { readFile as readFile20 } from "node:fs/promises";
-import path21 from "node:path";
+import { readFile as readFile19 } from "node:fs/promises";
+import path20 from "node:path";
 async function readProject5(projectRoot) {
-  const root2 = path21.resolve(projectRoot);
-  const manifestPath = path21.join(root2, ".author-toolkit", "project.json");
-  const manifest = JSON.parse(await readFile20(manifestPath, "utf8"));
+  const root2 = path20.resolve(projectRoot);
+  const manifestPath = path20.join(root2, ".author-toolkit", "project.json");
+  const manifest = JSON.parse(await readFile19(manifestPath, "utf8"));
   const validation = validateManifest(manifest);
-  if (!validation.valid || manifest.schema_version !== "3.2.0") {
-    throw new Error("Cycle reconciliation requires a valid v3.2 project");
+  if (!validation.valid) {
+    throw new Error(validation.errors.map((error) => error.message).join("; "));
   }
   return { root: root2, manifestPath, manifest };
 }
@@ -19805,7 +19455,7 @@ function formatErrors4(errors) {
 }
 async function readJsonIfPresent(file) {
   try {
-    return { text: await readFile20(file, "utf8"), file };
+    return { text: await readFile19(file, "utf8"), file };
   } catch (error) {
     if (error.code === "ENOENT") return null;
     throw error;
@@ -19819,12 +19469,12 @@ function parseCycle(record) {
   return { ...record, value };
 }
 function completedCyclePath(project, cycleId) {
-  const relative = path21.posix.join(
+  const relative = path20.posix.join(
     project.manifest.paths.convergence,
     "cycles",
     `${cycleId}.json`
   );
-  return { relative, absolute: path21.resolve(project.root, relative) };
+  return { relative, absolute: path20.resolve(project.root, relative) };
 }
 function sameScope(left, right) {
   return JSON.stringify(left ?? null) === JSON.stringify(right ?? null);
@@ -19838,7 +19488,7 @@ function activeArtifactReferences(project, cycle) {
       role,
       path: reference.snapshot_path,
       sha256: reference.snapshot_sha256,
-      expectedPath: path21.posix.join(
+      expectedPath: path20.posix.join(
         project.manifest.paths.convergence,
         "scopes",
         `${reference.scope_id}-${reference.scope_fingerprint}.json`
@@ -19898,7 +19548,7 @@ async function artifactDiagnostics(project, active) {
   for (const reference of activeArtifactReferences(project, active?.value)) {
     let contents;
     try {
-      contents = await readFile20(path21.resolve(project.root, reference.path));
+      contents = await readFile19(path20.resolve(project.root, reference.path));
     } catch (error) {
       blockers.push({
         code: "cycle-artifact-unavailable",
@@ -20131,13 +19781,13 @@ async function reconcileCycle(projectRoot, request = {}, options = {}) {
     if (!allowed.has(key)) throw new Error(`Unknown reconcile-cycle input field: ${key}`);
   }
   const project = await readProject5(projectRoot);
-  const lockPath = path21.resolve(
+  const lockPath = path20.resolve(
     project.root,
     project.manifest.paths.convergence,
     "active-cycle.lock"
   );
   const inspected = await inspectDirectoryLock(lockPath);
-  const active = parseCycle(await readJsonIfPresent(path21.resolve(
+  const active = parseCycle(await readJsonIfPresent(path20.resolve(
     project.root,
     project.manifest.paths.convergence,
     "active-cycle.json"
@@ -20154,8 +19804,6 @@ async function reconcileCycle(projectRoot, request = {}, options = {}) {
   ];
   const completedPointer = await completedPointerBlocker(project);
   if (completedPointer) blockers.push(completedPointer);
-  const legacyRecovery = active ? null : await inspectLegacyRecovery(project.root, project.manifest);
-  if (legacyRecovery) blockers.push(...legacyRecovery.blockers);
   const lockDiagnostic = lockBlocker(inspected);
   if (lockDiagnostic) blockers.push(lockDiagnostic);
   if (!request.direction) {
@@ -20169,17 +19817,6 @@ async function reconcileCycle(projectRoot, request = {}, options = {}) {
       lock: inspected.present ? inspected : null,
       blockers,
       required_action: blockers.length > 0 ? blockers[0].required_action ?? recoveryAction() : null
-    };
-  }
-  if (legacyRecovery?.recovery_required) {
-    return {
-      valid: false,
-      diagnostic_only: false,
-      state_written: false,
-      cycle: null,
-      blockers,
-      available_directions: [],
-      required_action: legacyRecovery.required_action
     };
   }
   const needsLock = [
@@ -20206,8 +19843,8 @@ async function reconcileCycle(projectRoot, request = {}, options = {}) {
     let currentManifest;
     let currentActiveText;
     try {
-      currentManifest = JSON.parse(await readFile20(project.manifestPath, "utf8"));
-      currentActiveText = active ? await readFile20(active.file, "utf8") : null;
+      currentManifest = JSON.parse(await readFile19(project.manifestPath, "utf8"));
+      currentActiveText = active ? await readFile19(active.file, "utf8") : null;
     } catch (error) {
       await releaseDirectoryLock(recoveryLock);
       return failure6(
@@ -20284,19 +19921,19 @@ async function reconcileCycle(projectRoot, request = {}, options = {}) {
         return failure6("creation-publication-identity-mismatch", "Creation recovery requires the exact cycle, commit ID, pre-link active revision, and no leftover lock.", active?.value ?? null);
       }
       try {
-        const commitRelative = path21.posix.join(
+        const commitRelative = path20.posix.join(
           project.manifest.paths.creation,
           "batches",
           `${request.operation_id}.json`
         );
-        const commitText = await readFile20(path21.resolve(project.root, commitRelative), "utf8");
+        const commitText = await readFile19(path20.resolve(project.root, commitRelative), "utf8");
         const commit = JSON.parse(commitText);
-        const batchRelative = path21.posix.join(
+        const batchRelative = path20.posix.join(
           project.manifest.paths.creation,
           "batches",
           `${commit.batch_id}.json`
         );
-        const batchText = await readFile20(path21.resolve(project.root, batchRelative), "utf8");
+        const batchText = await readFile19(path20.resolve(project.root, batchRelative), "utf8");
         const current = project.manifest.current_scope;
         if (!current?.snapshot_path) throw new Error("The confirmed publication scope is unavailable");
         const targetScope = {
@@ -20338,14 +19975,14 @@ async function reconcileCycle(projectRoot, request = {}, options = {}) {
       if (inspected.present || !operation || operation.kind !== "manuscript-reconciliation" || operation.operation_id !== request.operation_id || operation.cycle_id !== request.cycle_id || active?.value.revision !== operation.expected_revision) {
         return failure6("reconciliation-identity-mismatch", "Manuscript reconciliation recovery requires the exact interrupted record, active revision, and no leftover lock.", active?.value ?? null);
       }
-      const relative = path21.posix.join(
+      const relative = path20.posix.join(
         project.manifest.paths.convergence,
         "reconciliations",
         `${operation.artifact_id ?? operation.operation_id}.json`
       );
       let reconciliation;
       try {
-        reconciliation = JSON.parse(await readFile20(path21.resolve(project.root, relative), "utf8"));
+        reconciliation = JSON.parse(await readFile19(path20.resolve(project.root, relative), "utf8"));
       } catch (error) {
         return failure6("reconciliation-artifact-unavailable", error.message, active.value);
       }
@@ -20363,14 +20000,14 @@ async function reconcileCycle(projectRoot, request = {}, options = {}) {
       if (inspected.present || !operation || !["revision-preparation", "revision-verification"].includes(operation.kind) || operation.operation_id !== request.operation_id || operation.cycle_id !== request.cycle_id || active?.value.revision !== operation.expected_revision) {
         return failure6("revision-execution-identity-mismatch", "Revision recovery requires the exact interrupted execution, active revision, and no leftover lock.", active?.value ?? null);
       }
-      const relative = path21.posix.join(
+      const relative = path20.posix.join(
         project.manifest.paths.convergence,
         "executions",
         `${operation.artifact_id ?? operation.operation_id}.json`
       );
       let execution;
       try {
-        execution = JSON.parse(await readFile20(path21.resolve(project.root, relative), "utf8"));
+        execution = JSON.parse(await readFile19(path20.resolve(project.root, relative), "utf8"));
       } catch (error) {
         return failure6("revision-execution-unavailable", error.message, active.value);
       }
@@ -20425,12 +20062,12 @@ async function reconcileCycle(projectRoot, request = {}, options = {}) {
         return failure6("evaluation-identity-mismatch", "The evaluation recovery direction does not match the interrupted evaluation and active revision.", active?.value ?? null);
       }
       try {
-        const relative = path21.posix.join(
+        const relative = path20.posix.join(
           project.manifest.paths.convergence,
           "evaluations",
           `${operation.artifact_id ?? operation.operation_id}.json`
         );
-        const text = await readFile20(path21.resolve(project.root, relative), "utf8");
+        const text = await readFile19(path20.resolve(project.root, relative), "utf8");
         const reference = {
           evaluation_id: operation.artifact_id ?? operation.operation_id,
           path: relative,
@@ -20593,7 +20230,6 @@ var init_cycle_recovery = __esm({
     init_convergence();
     init_cycle_coordination();
     init_cycles();
-    init_legacy_recovery();
     init_manifest();
     init_revision_execution();
     init_reconciliation();
@@ -20603,573 +20239,12 @@ var init_cycle_recovery = __esm({
   }
 });
 
-// scripts/lib/migration.mjs
-import { createHash as createHash5 } from "node:crypto";
-import { mkdir as mkdir3, readFile as readFile21 } from "node:fs/promises";
-import path22 from "node:path";
-function validationError3(label, result) {
-  const details = result.errors.map((error) => `${error.instancePath || "/"} ${error.message}`).join("\n");
-  return new Error(`${label} failed:
-${details}`);
-}
-function assertValid(label, result) {
-  if (!result.valid) throw validationError3(label, result);
-}
-async function createCurrentScope(projectRoot, manuscriptRoot, paths, timestamp2) {
-  let inventory;
-  try {
-    inventory = await collectManuscriptInventory(projectRoot, manuscriptRoot, paths);
-  } catch (error) {
-    throw new Error(`Cannot inventory manuscript_root: ${error.message}`);
-  }
-  if (inventory.files.length === 0) {
-    throw new Error("No .md, .markdown, or .txt manuscript files found; no files were written");
-  }
-  const files = [];
-  for (const entry of inventory.files) {
-    const contents = await readFile21(entry.absolute);
-    files.push({
-      path: entry.path,
-      sha256: createHash5("sha256").update(contents).digest("hex")
-    });
-  }
-  return {
-    scope_id: "scope-v3-migration",
-    description: "Migrated manuscript inventory; author confirmation is required before using this scope.",
-    status: "proposed",
-    files,
-    excluded_files: inventory.excludedFiles,
-    created_at: timestamp2
-  };
-}
-function convertPendingAction(workflow, scopeId, timestamp2) {
-  if (workflow.current_stage === "complete") return null;
-  const stage = workflow.stages.find((candidate) => candidate.name === workflow.current_stage);
-  return {
-    operation: workflow.current_stage,
-    status: "awaiting_author",
-    scope_id: scopeId,
-    reason: `Migrated from stage ${workflow.current_stage} with status ${stage.status}; legacy reason: ${stage.reason ?? "none"}. Author confirmation is required before resuming.`,
-    artifacts: [...stage.artifacts ?? []],
-    updated_at: timestamp2
-  };
-}
-function convertOverrides(workflow, currentScope, timestamp2, existingIds) {
-  let nextId = 1;
-  return workflow.stages.filter((stage) => stage.override_reason).map((stage) => {
-    while (existingIds.has(`LEGACY-${String(nextId).padStart(3, "0")}`)) nextId += 1;
-    const approvalId = `LEGACY-${String(nextId).padStart(3, "0")}`;
-    existingIds.add(approvalId);
-    nextId += 1;
-    return {
-      approval_id: approvalId,
-      type: stage.name === "prose" ? "prose-override" : "gate-override",
-      operation: stage.name,
-      scope_id: currentScope.scope_id,
-      paths: currentScope.files.map((file) => file.path),
-      status: "deferred",
-      reason: `${stage.override_reason} Author confirmation is required before the first resume after migration.`,
-      updated_at: timestamp2
-    };
-  });
-}
-function splitTableRow(line) {
-  const trimmed = line.trim();
-  if (!trimmed.startsWith("|") || !trimmed.endsWith("|")) return null;
-  const cells = [];
-  let value = "";
-  let escaped = false;
-  for (const character of trimmed.slice(1, -1)) {
-    if (escaped) {
-      value += character;
-      escaped = false;
-    } else if (character === "\\") {
-      escaped = true;
-      value += character;
-    } else if (character === "|") {
-      cells.push(value.trim());
-      value = "";
-    } else {
-      value += character;
-    }
-  }
-  cells.push(value.trim());
-  return cells;
-}
-function cleanCell2(value = "") {
-  return value.trim().replace(/^`([^`]*)`$/, "$1").trim();
-}
-function isSeparator2(row) {
-  return row?.length > 0 && row.every((cell2) => /^:?-{3,}:?$/.test(cell2.trim()));
-}
-function tableCell(value) {
-  return String(value).replace(/\r?\n/g, " ").replace(/\|/g, "\\|");
-}
-function renderApprovalRow(approval, headers) {
-  const values = {
-    "Approval ID": approval.approval_id,
-    Type: approval.type,
-    Operation: approval.operation,
-    "Scope ID": approval.scope_id,
-    Paths: formatApprovalPaths(approval.paths),
-    Status: approval.status,
-    Reason: approval.reason,
-    Updated: approval.updated_at
-  };
-  return `| ${headers.map((header) => tableCell(values[header])).join(" | ")} |`;
-}
-function emptyApprovalsSection(approvals) {
-  return [
-    "## Approvals",
-    "",
-    "Allowed statuses: `approved`, `deferred`, `cancelled`, `superseded`.",
-    "",
-    `| ${APPROVAL_HEADERS.join(" | ")} |`,
-    `|${APPROVAL_HEADERS.map(() => "---").join("|")}|`,
-    ...approvals.map((approval) => renderApprovalRow(approval, APPROVAL_HEADERS)),
-    ""
-  ];
-}
-function updateTracker(tracker, approvals) {
-  const newline = tracker.includes("\r\n") ? "\r\n" : "\n";
-  const lines = tracker.split(/\r?\n/);
-  const headings = lines.flatMap(
-    (line, index) => /^ {0,3}##[ \t]+Approvals[ \t]*$/.test(line) ? [index] : []
-  );
-  if (headings.length === 0) {
-    const section = emptyApprovalsSection(approvals);
-    let insertion2 = lines.findIndex((line) => /^ {0,3}##[ \t]+Open questions[ \t]*$/.test(line));
-    if (insertion2 < 0) {
-      insertion2 = lines.findIndex((line) => /^ {0,3}##[ \t]+Approved decisions[ \t]*$/.test(line));
-    }
-    if (insertion2 < 0) lines.push(...section);
-    else lines.splice(insertion2, 0, ...section);
-    return lines.join(newline);
-  }
-  if (headings.length !== 1) {
-    throw new Error("The existing tracker must contain at most one ## Approvals heading");
-  }
-  const start = headings[0] + 1;
-  let end = lines.length;
-  for (let index = start; index < lines.length; index += 1) {
-    if (/^ {0,3}##[ \t]+/.test(lines[index])) {
-      end = index;
-      break;
-    }
-  }
-  let headerIndex = -1;
-  let headers = null;
-  for (let index = start; index < end - 1; index += 1) {
-    const header = splitTableRow(lines[index]);
-    const separator = splitTableRow(lines[index + 1]);
-    if (!header || !isSeparator2(separator)) continue;
-    const normalized = header.map((cell2) => cleanCell2(cell2).toLowerCase());
-    if (header.length === APPROVAL_HEADERS.length && APPROVAL_HEADERS.every((label) => normalized.includes(label.toLowerCase()))) {
-      headerIndex = index;
-      headers = header.map(cleanCell2);
-      break;
-    }
-  }
-  if (headerIndex < 0) throw new Error("The existing ## Approvals section has no valid table");
-  const existingIds = /* @__PURE__ */ new Set();
-  for (let index = headerIndex + 2; index < end; index += 1) {
-    const row = splitTableRow(lines[index]);
-    if (row) existingIds.add(cleanCell2(row[0]));
-  }
-  const additions = approvals.filter((approval) => !existingIds.has(approval.approval_id));
-  let insertion = headerIndex + 2;
-  while (insertion < end && splitTableRow(lines[insertion])) insertion += 1;
-  lines.splice(
-    insertion,
-    0,
-    ...additions.map((approval) => renderApprovalRow(approval, headers))
-  );
-  return lines.join(newline);
-}
-function countApprovals(tracker) {
-  const lines = tracker.split(/\r?\n/);
-  const heading = lines.findIndex((line) => /^ {0,3}##[ \t]+Approvals[ \t]*$/.test(line));
-  if (heading < 0) return 0;
-  for (let index = heading + 1; index < lines.length - 1; index += 1) {
-    const header = splitTableRow(lines[index]);
-    if (!header || !isSeparator2(splitTableRow(lines[index + 1]))) continue;
-    let count = 0;
-    for (let rowIndex = index + 2; rowIndex < lines.length; rowIndex += 1) {
-      const row = splitTableRow(lines[rowIndex]);
-      if (!row) break;
-      if (cleanCell2(row[0])) count += 1;
-    }
-    return count;
-  }
-  return 0;
-}
-function utcStamp(date) {
-  return date.toISOString().replace(/[-:.]/g, "");
-}
-async function validateOnDisk(manifest, manifestPath) {
-  const manifestResult = validateManifest(manifest);
-  const filesResult = await validateProjectFiles(manifest, manifestPath);
-  const scopeResult = await validateScopeCurrency(manifest, manifestPath);
-  const trackerResult = await validateTracker(manifest, manifestPath);
-  const fileErrors = [...filesResult.errors, ...scopeResult.errors];
-  return {
-    valid: manifestResult.valid && fileErrors.length === 0 && trackerResult.valid,
-    manifest: manifestResult,
-    files: { ...filesResult, valid: fileErrors.length === 0, errors: fileErrors },
-    scope: scopeResult,
-    tracker: trackerResult
-  };
-}
-async function migrateProjectToV3(projectRoot, { now } = {}) {
-  return migrateProjectToV32(projectRoot, { now });
-}
-function migrationTimestamp(now) {
-  return utcDate(now);
-}
-function v32Manifest(legacy, timestamp2) {
-  const manifest = {
-    ...legacy,
-    schema_version: "3.2.0",
-    paths: {
-      ...legacy.paths,
-      creation: legacy.paths.creation ?? ".author-toolkit/creation/",
-      convergence: ".author-toolkit/convergence/"
-    },
-    updated_at: timestamp2
-  };
-  delete manifest.workflow;
-  if (manifest.$schema) {
-    manifest.$schema = manifest.$schema.replace(/[^/]*$/, "project-schema-v3.2.json");
-  }
-  return manifest;
-}
-async function createOperationalSkeleton(projectRoot, manifest) {
-  const backupIndex = path22.resolve(projectRoot, manifest.paths.backups, "index.json");
-  try {
-    await readFile21(backupIndex);
-  } catch (error) {
-    if (error.code !== "ENOENT") throw error;
-    await createNoClobberVerified(backupIndex, `${JSON.stringify({
-      schema_version: "1.0.0",
-      backups: [],
-      restorations: []
-    }, null, 2)}
-`);
-  }
-  for (const directory of ["state/chapters", "state/volumes", "batches", "staging"]) {
-    await mkdir3(path22.resolve(projectRoot, manifest.paths.creation, directory), { recursive: true });
-  }
-  for (const directory of CONVERGENCE_DIRECTORIES) {
-    await mkdir3(path22.resolve(projectRoot, manifest.paths.convergence, directory), { recursive: true });
-  }
-}
-async function migrationSummary({
-  manifestPath,
-  snapshotPath,
-  sourceVersion,
-  manifest,
-  approvalCount,
-  scopeSnapshots = [],
-  inventorySnapshots = []
-}) {
-  return {
-    manifest: manifestPath,
-    snapshot: snapshotPath,
-    source_schema_version: sourceVersion,
-    target_schema_version: "3.2.0",
-    scope_id: manifest.current_scope?.scope_id ?? null,
-    scope_fingerprint: manifest.current_scope?.scope_fingerprint ?? null,
-    approval_count: approvalCount,
-    created_snapshots: {
-      scopes: scopeSnapshots,
-      inventories: inventorySnapshots
-    },
-    recovery: await inspectLegacyRecovery(path22.dirname(path22.dirname(manifestPath)), manifest),
-    valid: true
-  };
-}
-async function migrateProjectToV32(projectRoot, { now } = {}) {
-  const root2 = path22.resolve(projectRoot);
-  const manifestPath = path22.join(root2, ".author-toolkit", "project.json");
-  const originalManifestText = await readFile21(manifestPath, "utf8");
-  const legacy = JSON.parse(originalManifestText);
-  if (legacy.schema_version === "3.2.0") {
-    const validation2 = await validateOnDisk(legacy, manifestPath);
-    const scopeValidation = legacy.current_scope?.status === "confirmed" ? await validateFullManuscriptScope(legacy, manifestPath) : { valid: true, errors: [] };
-    assertValid("v3.2 project validation", {
-      valid: validation2.valid && scopeValidation.valid,
-      errors: [
-        validation2.manifest,
-        validation2.files,
-        validation2.tracker,
-        scopeValidation
-      ].flatMap((result) => result.errors)
-    });
-    const tracker = await readFile21(path22.resolve(root2, legacy.paths.audit_tracker), "utf8");
-    return migrationSummary({
-      manifestPath,
-      snapshotPath: null,
-      sourceVersion: "3.2.0",
-      manifest: legacy,
-      approvalCount: countApprovals(tracker)
-    });
-  }
-  const migrationTime = migrationTimestamp(now);
-  if (["3.0.0", "3.1.0"].includes(legacy.schema_version)) {
-    return migrateLegacyV3Project(
-      root2,
-      manifestPath,
-      originalManifestText,
-      legacy,
-      migrationTime,
-      legacy.schema_version
-    );
-  }
-  if (legacy.schema_version !== "2.0.0") {
-    throw new Error(`Unsupported project schema_version: ${legacy.schema_version ?? "missing"}`);
-  }
-  assertValid("v2 manifest validation", validateManifest(legacy));
-  const timestamp2 = migrationTime.toISOString();
-  const proposedScope = await createCurrentScope(
-    root2,
-    legacy.manuscript_root,
-    legacy.paths,
-    timestamp2
-  );
-  const currentScope = {
-    ...proposedScope,
-    scope_fingerprint: computeScopeFingerprint(proposedScope)
-  };
-  const pendingAction = convertPendingAction(legacy.workflow, currentScope.scope_id, timestamp2);
-  const trackerPath = path22.resolve(root2, legacy.paths.audit_tracker);
-  const originalTracker = await readFile21(trackerPath, "utf8");
-  const existingApprovalIds = new Set(
-    [...originalTracker.matchAll(/\|\s*`?(LEGACY-[0-9]{3,})`?\s*\|/g)].map(
-      (match) => match[1]
-    )
-  );
-  const approvals = convertOverrides(
-    legacy.workflow,
-    currentScope,
-    timestamp2,
-    existingApprovalIds
-  );
-  const manifest = {
-    ...v32Manifest(legacy, timestamp2),
-    current_scope: currentScope
-  };
-  if (pendingAction) manifest.pending_action = pendingAction;
-  else delete manifest.pending_action;
-  const updatedTracker = updateTracker(originalTracker, approvals);
-  assertValid("v3.2 manifest preflight validation", validateManifest(manifest));
-  assertValid("v3.2 tracker preflight validation", await validateTrackerV3Markdown(updatedTracker, root2));
-  const migrationDirectory = path22.join(
-    root2,
-    ".author-toolkit",
-    "migrations",
-    `${utcStamp(migrationTime)}-v2-v3_2`
-  );
-  const snapshotPath = path22.join(migrationDirectory, "project.json");
-  await mkdir3(path22.dirname(migrationDirectory), { recursive: true });
-  await mkdir3(migrationDirectory);
-  await createNoClobberVerified(snapshotPath, originalManifestText);
-  await createOperationalSkeleton(root2, manifest);
-  assertValid("v3.2 project files preflight validation", await validateProjectFiles(manifest, manifestPath));
-  await writeAtomicVerified(trackerPath, updatedTracker);
-  try {
-    await writeAtomicVerified(manifestPath, `${JSON.stringify(manifest, null, 2)}
-`);
-  } catch (error) {
-    await writeAtomicVerified(trackerPath, originalTracker);
-    throw error;
-  }
-  const inventory = await recordInventorySnapshot(root2, manifest, { now: migrationTime });
-  const migrationRecord = {
-    migrated_at: timestamp2,
-    source_schema_version: "2.0.0",
-    target_schema_version: "3.2.0",
-    legacy_current_scope: legacy.current_scope ?? null,
-    current_scope: currentScope,
-    pending_action: pendingAction,
-    overrides: approvals,
-    scope_disposition: "proposed-reconfirmation-required",
-    created_snapshots: { scopes: [], inventories: [inventory.reference] }
-  };
-  await writeAtomicVerified(
-    path22.join(migrationDirectory, "migration.json"),
-    `${JSON.stringify(migrationRecord, null, 2)}
-`
-  );
-  const validation = await validateOnDisk(manifest, manifestPath);
-  assertValid("migrated project validation", {
-    valid: validation.valid,
-    errors: [validation.manifest, validation.files, validation.tracker].flatMap((result) => result.errors)
-  });
-  return migrationSummary({
-    manifestPath,
-    snapshotPath,
-    sourceVersion: "2.0.0",
-    manifest,
-    approvalCount: countApprovals(updatedTracker),
-    inventorySnapshots: [inventory.reference]
-  });
-}
-async function findLegacyScopeConfirmation(root2, legacy) {
-  if (legacy.current_scope?.status !== "confirmed") return null;
-  const tracker = await readFile21(path22.resolve(root2, legacy.paths.audit_tracker), "utf8");
-  const parsed = await parseTrackerState(tracker, root2);
-  if (!parsed.valid) return null;
-  const scopeFingerprint = computeScopeFingerprint(legacy.current_scope);
-  const candidates = parsed.approvals.filter(
-    (approval) => approval.type === "scope-confirmation" && approval.operation === "intake" && approval.scopeId === legacy.current_scope.scope_id && approval.status === "approved" && JSON.stringify(approval.paths) === JSON.stringify(
-      legacy.current_scope.files.map((file) => file.path)
-    ) && approval.reason.split(/\s+/).includes(`scope_fingerprint=${scopeFingerprint}`) && approval.reason.split(/\s+/).includes("reading_order_confirmed=true")
-  );
-  if (candidates.length !== 1) return null;
-  return {
-    decision_id: candidates[0].id,
-    confirmed_at: candidates[0].updated,
-    reading_order_confirmed: true
-  };
-}
-async function migrateLegacyV3Project(root2, manifestPath, originalManifestText, legacy, migrationTime, sourceVersion) {
-  const validation = await validateOnDisk(legacy, manifestPath);
-  assertValid(`${sourceVersion === "3.0.0" ? "v3" : "v3.1"} project validation`, {
-    valid: validation.valid,
-    errors: [validation.manifest, validation.files, validation.tracker].flatMap((result) => result.errors)
-  });
-  const timestamp2 = migrationTime.toISOString();
-  const scopeConfirmation = await findLegacyScopeConfirmation(root2, legacy);
-  const manifest = v32Manifest(legacy, timestamp2);
-  if (legacy.current_scope) {
-    manifest.current_scope = {
-      ...legacy.current_scope,
-      status: "proposed",
-      scope_fingerprint: computeScopeFingerprint(legacy.current_scope)
-    };
-    delete manifest.current_scope.snapshot_path;
-    delete manifest.current_scope.snapshot_sha256;
-  }
-  assertValid("v3.2 manifest preflight validation", validateManifest(manifest));
-  const sourceTag = `v${sourceVersion.split(".").slice(0, 2).join("_")}`;
-  const migrationDirectory = path22.join(
-    root2,
-    ".author-toolkit",
-    "migrations",
-    `${utcStamp(migrationTime)}-${sourceTag}-v3_2`
-  );
-  const snapshotPath = path22.join(migrationDirectory, "project.json");
-  await mkdir3(path22.dirname(migrationDirectory), { recursive: true });
-  await mkdir3(migrationDirectory);
-  await createNoClobberVerified(snapshotPath, originalManifestText);
-  await createOperationalSkeleton(root2, manifest);
-  assertValid("v3.2 project files preflight validation", await validateProjectFiles(manifest, manifestPath));
-  await writeAtomicVerified(manifestPath, `${JSON.stringify(manifest, null, 2)}
-`);
-  let migratedManifest = manifest;
-  let inventory;
-  const scopeSnapshots = [];
-  if (scopeConfirmation) {
-    const recorded = await recordScope(root2, legacy.current_scope, {
-      authorConfirmation: scopeConfirmation,
-      now: migrationTime
-    });
-    migratedManifest = { ...manifest, current_scope: recorded.current_scope };
-    scopeSnapshots.push({
-      path: recorded.current_scope.snapshot_path,
-      sha256: recorded.current_scope.snapshot_sha256,
-      scope_id: recorded.scope_id,
-      scope_fingerprint: recorded.scope_fingerprint,
-      inventory_fingerprint: recorded.inventory_fingerprint
-    });
-    const snapshot = JSON.parse(
-      await readFile21(path22.resolve(root2, recorded.current_scope.snapshot_path), "utf8")
-    );
-    inventory = { reference: snapshot.inventory };
-  } else {
-    inventory = await recordInventorySnapshot(root2, migratedManifest, { now: migrationTime });
-  }
-  const tracker = await readFile21(path22.resolve(root2, legacy.paths.audit_tracker), "utf8");
-  const migrationRecord = {
-    migrated_at: timestamp2,
-    source_schema_version: sourceVersion,
-    target_schema_version: "3.2.0",
-    legacy_current_scope: legacy.current_scope ?? null,
-    current_scope: migratedManifest.current_scope ?? null,
-    pending_action: legacy.pending_action ?? null,
-    overrides: [],
-    scope_disposition: scopeConfirmation ? "confirmed-with-legacy-evidence" : legacy.current_scope?.status === "confirmed" ? "reconfirmation-required" : legacy.current_scope?.status ?? "none",
-    scope_confirmation: scopeConfirmation,
-    created_snapshots: { scopes: scopeSnapshots, inventories: [inventory.reference] }
-  };
-  await writeAtomicVerified(
-    path22.join(migrationDirectory, "migration.json"),
-    `${JSON.stringify(migrationRecord, null, 2)}
-`
-  );
-  const upgradedValidation = await validateOnDisk(migratedManifest, manifestPath);
-  assertValid("migrated project validation", {
-    valid: upgradedValidation.valid,
-    errors: [
-      upgradedValidation.manifest,
-      upgradedValidation.files,
-      upgradedValidation.tracker
-    ].flatMap((result) => result.errors)
-  });
-  return migrationSummary({
-    manifestPath,
-    snapshotPath,
-    sourceVersion,
-    manifest: migratedManifest,
-    approvalCount: countApprovals(tracker),
-    scopeSnapshots,
-    inventorySnapshots: [inventory.reference]
-  });
-}
-var APPROVAL_HEADERS, CONVERGENCE_DIRECTORIES;
-var init_migration = __esm({
-  "scripts/lib/migration.mjs"() {
-    init_approval_paths();
-    init_legacy_recovery();
-    init_manifest();
-    init_manuscript();
-    init_project_files();
-    init_tracker();
-    init_scope();
-    init_state_io();
-    init_time();
-    APPROVAL_HEADERS = [
-      "Approval ID",
-      "Type",
-      "Operation",
-      "Scope ID",
-      "Paths",
-      "Status",
-      "Reason",
-      "Updated"
-    ];
-    CONVERGENCE_DIRECTORIES = [
-      "cycles",
-      "scopes",
-      "inventories",
-      "reconciliations",
-      "passes",
-      "executions",
-      "no-edit-skips",
-      "review-groups",
-      "attestations",
-      "evaluations"
-    ];
-  }
-});
-
 // scripts/lib/index.mjs
 var lib_exports = {};
 __export(lib_exports, {
-  ACTIVE_STATUSES: () => ACTIVE_STATUSES,
   APPROVAL_STATUSES: () => APPROVAL_STATUSES,
+  CURRENT_PROJECT_SCHEMA_VERSION: () => CURRENT_PROJECT_SCHEMA_VERSION,
   ReportEnvelopeError: () => ReportEnvelopeError,
-  STAGES: () => STAGES,
   TRACKER_STATUSES: () => TRACKER_STATUSES,
   appendCycleCompletionDecision: () => appendCycleCompletionDecision,
   assertCycleAllowsOperation: () => assertCycleAllowsOperation,
@@ -21191,9 +20266,8 @@ __export(lib_exports, {
   getConvergenceStatus: () => getConvergenceStatus,
   getCycleStatus: () => getCycleStatus,
   getRequestCompletion: () => getRequestCompletion,
+  greenfieldInitializationError: () => greenfieldInitializationError,
   languageCoverageHeadingCount: () => languageCoverageHeadingCount,
-  migrateProjectToV3: () => migrateProjectToV3,
-  migrateProjectToV32: () => migrateProjectToV32,
   parseTrackerState: () => parseTrackerState,
   prepareDraftRevisionExecution: () => prepareDraftRevisionExecution,
   prepareRevisionExecution: () => prepareRevisionExecution,
@@ -21243,10 +20317,7 @@ __export(lib_exports, {
   validateNoEditSkip: () => validateNoEditSkip,
   validateNoEditSkipSchema: () => validateNoEditSkipSchema,
   validateProjectFiles: () => validateProjectFiles,
-  validateProjectSchema: () => validateProjectSchema,
-  validateProjectV31Schema: () => validateProjectV31Schema,
-  validateProjectV32Schema: () => validateProjectV32Schema,
-  validateProjectV3Schema: () => validateProjectV3Schema,
+  validateProjectV4Schema: () => validateProjectV4Schema,
   validateReaderState: () => validateReaderState,
   validateReaderStateForJob: () => validateReaderStateForJob,
   validateReaderStateMarkdown: () => validateReaderStateMarkdown,
@@ -21278,14 +20349,11 @@ __export(lib_exports, {
   validateTracker: () => validateTracker,
   validateTrackerMarkdown: () => validateTrackerMarkdown,
   validateTrackerV3Markdown: () => validateTrackerV3Markdown,
-  validateWorkflow: () => validateWorkflow,
-  validateWorkflowSequence: () => validateWorkflowSequence,
   verifyDraftRevisionExecution: () => verifyDraftRevisionExecution,
   verifyRevisionExecution: () => verifyRevisionExecution
 });
 var init_lib = __esm({
   "scripts/lib/index.mjs"() {
-    init_constants();
     init_time();
     init_artifacts();
     init_manifest();
@@ -21294,7 +20362,6 @@ var init_lib = __esm({
     init_tracker();
     init_markdown();
     init_schemas();
-    init_workflow();
     init_scope();
     init_schemas();
     init_cycles();
@@ -21309,13 +20376,12 @@ var init_lib = __esm({
     init_tracker_commands();
     init_backup();
     init_cycle_recovery();
-    init_migration();
   }
 });
 
 // scripts/validate.mjs
-import { readFile as readFile22, readdir as readdir7 } from "node:fs/promises";
-import path23 from "node:path";
+import { readFile as readFile20, readdir as readdir6 } from "node:fs/promises";
+import path21 from "node:path";
 import { fileURLToPath as fileURLToPath2 } from "node:url";
 var root = fileURLToPath2(new URL("../", import.meta.url));
 var examples = ["fiction-revision-en", "fiction-revision-zh"];
@@ -21403,7 +20469,7 @@ function usage() {
   node ${process.argv[1] ?? "validate.mjs"}
   node ${process.argv[1] ?? "validate.mjs"} --repository
   node ${process.argv[1] ?? "validate.mjs"} --project-root ROOT
-  node ${process.argv[1] ?? "validate.mjs"} [--manifest FILE] [--report FILE] [--workflow-fixture FILE]...
+  node ${process.argv[1] ?? "validate.mjs"} [--manifest FILE] [--report FILE]...
   node ${process.argv[1] ?? "validate.mjs"} [--backup-manifest FILE] [--backup-index FILE]
   node ${process.argv[1] ?? "validate.mjs"} [--scope-snapshot FILE] [--inventory-snapshot FILE]...
   node ${process.argv[1] ?? "validate.mjs"} [--convergence-cycle FILE] [--requested-pass FILE]...
@@ -21417,18 +20483,18 @@ function usage() {
   node ${process.argv[1] ?? "validate.mjs"} [--review-job FILE] [--reader-state FILE] [--story-state FILE]...
 
 With no options, print this help without inspecting state.
-Repository mode checks all schemas, example manifests, reports, and workflow fixtures.
+Repository mode checks all schemas and current example manifests and reports.
 Project-root mode checks deployed shared-reference hashes, then the selected project's manifest, files, and tracker.
 Repository and project-root modes cannot be combined with each other or individual checks.
 --now ISO_TIMESTAMP injects the UTC validation clock; current timestamps may be at most 60 seconds in the future.`);
 }
-async function readJson2(file) {
-  return JSON.parse(await readFile22(file, "utf8"));
+async function readJson(file) {
+  return JSON.parse(await readFile20(file, "utf8"));
 }
 async function markdownFiles(directory) {
   const files = [];
-  for (const entry of await readdir7(directory, { withFileTypes: true })) {
-    const target = path23.join(directory, entry.name);
+  for (const entry of await readdir6(directory, { withFileTypes: true })) {
+    const target = path21.join(directory, entry.name);
     if (entry.isDirectory()) files.push(...await markdownFiles(target));
     else if (entry.isFile() && entry.name.endsWith(".md")) files.push(target);
   }
@@ -21438,7 +20504,6 @@ function parseArguments(args, artifactTypes) {
   const selection = {
     manifests: [],
     reports: [],
-    workflowFixtures: [],
     convergenceStatus: [],
     convergenceGate: [],
     ...Object.fromEntries(artifactTypes.map(({ key }) => [key, []])),
@@ -21450,7 +20515,6 @@ function parseArguments(args, artifactTypes) {
   const destinations = {
     "--manifest": "manifests",
     "--report": "reports",
-    "--workflow-fixture": "workflowFixtures",
     "--convergence-status": "convergenceStatus",
     "--convergence-gate": "convergenceGate",
     ...Object.fromEntries(artifactTypes.map(({ key, option }) => [option, key]))
@@ -21466,7 +20530,7 @@ function parseArguments(args, artifactTypes) {
       continue;
     }
     if (argument === "--project-root" && args[index + 1]) {
-      selection.projectRoot = path23.resolve(args[index + 1]);
+      selection.projectRoot = path21.resolve(args[index + 1]);
       index += 1;
       continue;
     }
@@ -21480,7 +20544,7 @@ function parseArguments(args, artifactTypes) {
     if (!destination || !args[index + 1]) {
       throw new Error(`Unknown or incomplete argument: ${argument}`);
     }
-    selection[destination].push(path23.resolve(args[index + 1]));
+    selection[destination].push(path21.resolve(args[index + 1]));
     index += 1;
   }
   const individualChecks = Object.values(selection).reduce(
@@ -21500,9 +20564,8 @@ async function main() {
     usage();
     return;
   }
-  const [runtime, { V3_SCHEMA_VERSIONS: V3_SCHEMA_VERSIONS2 }, { validateDeployedReferences: validateDeployedReferences2 }] = await Promise.all([
+  const [runtime, { validateDeployedReferences: validateDeployedReferences2 }] = await Promise.all([
     Promise.resolve().then(() => (init_lib(), lib_exports)),
-    Promise.resolve().then(() => (init_constants(), constants_exports)),
     Promise.resolve().then(() => (init_shared_references(), shared_references_exports))
   ]);
   const {
@@ -21515,9 +20578,7 @@ async function main() {
     validateMarkdownReport: validateMarkdownReport2,
     validateProjectFiles: validateProjectFiles2,
     validateSchemaDefinitions: validateSchemaDefinitions2,
-    validateScopeCurrency: validateScopeCurrency2,
-    validateTracker: validateTracker2,
-    validateWorkflowSequence: validateWorkflowSequence2
+    validateTracker: validateTracker2
   } = runtime;
   const artifactTypes = createArtifactTypes(runtime);
   const selection = parseArguments(args, artifactTypes);
@@ -21549,63 +20610,51 @@ async function main() {
     failures += 1;
     console.error(`not ok - ${label}`);
     for (const error of result.errors) {
-      console.error(`  ${error.instancePath || "/"} ${error.message}`);
+      console.error(`  ${error.instancePath || "/"} ${error.code ? `${error.code}: ` : ""}${error.message}`);
     }
   }
   if (selection.projectRoot) {
-    const references = await validateDeployedReferences2(selection.projectRoot);
-    check(".author-toolkit/references", references);
-    if (references.valid) {
-      selection.manifests.push(
-        path23.join(selection.projectRoot, ".author-toolkit", "project.json")
-      );
-    }
+    selection.manifests.push(
+      path21.join(selection.projectRoot, ".author-toolkit", "project.json")
+    );
+    check(
+      ".author-toolkit/references",
+      await validateDeployedReferences2(selection.projectRoot)
+    );
   }
   if (selection.repository) {
     check("JSON Schema definitions", validateSchemaDefinitions2());
     for (const example of examples) {
-      const directory = path23.join(root, "examples", example);
-      selection.manifests.push(path23.join(directory, ".author-toolkit", "project.json"));
-      selection.reports.push(...await markdownFiles(path23.join(directory, "reports")));
-      const sessions = await readdir7(path23.join(directory, "sessions"));
-      selection.workflowFixtures.push(
-        ...sessions.filter((file) => file.endsWith(".fixture.json")).map((file) => path23.join(directory, "sessions", file))
-      );
+      const directory = path21.join(root, "examples", example);
+      selection.manifests.push(path21.join(directory, ".author-toolkit", "project.json"));
+      selection.reports.push(...await markdownFiles(path21.join(directory, "reports")));
     }
   }
   for (const file of selection.manifests) {
     try {
-      const manifest = await readJson2(file);
+      const manifest = await readJson(file);
       const result = validateManifest2(manifest, { now: selection.now ?? void 0 });
-      check(path23.relative(root, file), result);
+      check(path21.relative(root, file), result);
       if (result.valid) {
-        check(`${path23.relative(root, file)}#files`, await validateProjectFiles2(manifest, file));
-        if (V3_SCHEMA_VERSIONS2.has(manifest.schema_version) && manifest.current_scope) {
-          const scopeResult = manifest.schema_version === "3.2.0" ? await validateFullManuscriptScope2(manifest, file) : await validateScopeCurrency2(manifest, file);
-          check(`${path23.relative(root, file)}#scope`, scopeResult);
-          if (manifest.schema_version === "3.2.0") {
-            console.log(
-              `  scope_id=${scopeResult.scope_id} scope_fingerprint=${scopeResult.scope_fingerprint} full_manuscript=${scopeResult.full_manuscript}`
-            );
-          }
-        }
-        check(`${path23.relative(root, file)}#tracker`, await validateTracker2(manifest, file));
-        if (manifest.schema_version === "3.2.0") {
-          check(
-            `${path23.relative(root, file)}#backups`,
-            await runtime.validateBackupIndexFile(
-              path23.resolve(path23.dirname(file), "..", manifest.paths.backups, "index.json"),
-              { projectRoot: projectRootFromManifest2(file), now: selection.now ?? void 0 }
-            )
+        check(`${path21.relative(root, file)}#files`, await validateProjectFiles2(manifest, file));
+        if (manifest.current_scope) {
+          const scopeResult = await validateFullManuscriptScope2(manifest, file);
+          check(`${path21.relative(root, file)}#scope`, scopeResult);
+          console.log(
+            `  scope_id=${scopeResult.scope_id} scope_fingerprint=${scopeResult.scope_fingerprint} full_manuscript=${scopeResult.full_manuscript}`
           );
         }
-      } else if (!["2.0.0", "3.0.0", "3.1.0", "3.2.0"].includes(manifest?.schema_version) || manifest?.project_type !== "fiction" || manifest?.schema_version === "2.0.0" && manifest?.workflow?.name !== "revise-fiction") {
-        console.error(
-          "  legacy or standalone project detected; run setup-author-toolkit to register or migrate it before revision"
+        check(`${path21.relative(root, file)}#tracker`, await validateTracker2(manifest, file));
+        check(
+          `${path21.relative(root, file)}#backups`,
+          await runtime.validateBackupIndexFile(
+            path21.resolve(path21.dirname(file), "..", manifest.paths.backups, "index.json"),
+            { projectRoot: projectRootFromManifest2(file), now: selection.now ?? void 0 }
+          )
         );
       }
     } catch (error) {
-      check(path23.relative(root, file), {
+      check(path21.relative(root, file), {
         valid: false,
         errors: [{ instancePath: "", message: error.message }]
       });
@@ -21613,52 +20662,18 @@ async function main() {
   }
   for (const file of selection.reports) {
     try {
-      const markdown = await readFile22(file, "utf8");
+      const markdown = await readFile20(file, "utf8");
       const options = { now: selection.now ?? void 0 };
       const parsed = validateMarkdownReport2(markdown, options);
       const needsEvidence = ["draft-baseline", "diagnostics", "current-scope-review"].includes(
         parsed.envelope?.stage
       );
       check(
-        path23.relative(root, file),
+        path21.relative(root, file),
         needsEvidence ? validateEvidenceReport2(markdown, options) : parsed
       );
     } catch (error) {
-      check(path23.relative(root, file), {
-        valid: false,
-        errors: [{ instancePath: "", message: error.message }]
-      });
-    }
-  }
-  for (const file of selection.workflowFixtures) {
-    try {
-      const fixture = await readJson2(file);
-      if (fixture.fixture !== true || !Array.isArray(fixture.snapshots) || !fixture.project) {
-        throw new Error("Workflow fixture requires fixture=true, project, and snapshots");
-      }
-      const base = await readJson2(path23.resolve(path23.dirname(file), fixture.project));
-      const projects = fixture.snapshots.map((snapshot) => {
-        if (!snapshot.label || !snapshot.paths || !snapshot.workflow || !snapshot.updated_at) {
-          throw new Error(
-            "Every workflow snapshot requires label, paths, updated_at, and workflow"
-          );
-        }
-        return {
-          ...base,
-          paths: snapshot.paths,
-          updated_at: snapshot.updated_at,
-          workflow: snapshot.workflow
-        };
-      });
-      projects.forEach((project, index) => {
-        check(
-          `${path23.relative(root, file)}#${fixture.snapshots[index].label}`,
-          validateManifest2(project)
-        );
-      });
-      check(`${path23.relative(root, file)}#sequence`, validateWorkflowSequence2(projects));
-    } catch (error) {
-      check(path23.relative(root, file), {
+      check(path21.relative(root, file), {
         valid: false,
         errors: [{ instancePath: "", message: error.message }]
       });
@@ -21669,10 +20684,10 @@ async function main() {
       try {
         const isMarkdown = type.validateMarkdown && /\.(?:md|markdown)$/i.test(file);
         const options = { now: selection.now ?? void 0 };
-        const result = isMarkdown ? type.validateMarkdown(await readFile22(file, "utf8"), options) : type.validateFile ? await type.validateFile(file, options) : type.validate(await readJson2(file), options);
-        check(path23.relative(root, file), result);
+        const result = isMarkdown ? type.validateMarkdown(await readFile20(file, "utf8"), options) : type.validateFile ? await type.validateFile(file, options) : type.validate(await readJson(file), options);
+        check(path21.relative(root, file), result);
       } catch (error) {
-        check(path23.relative(root, file), {
+        check(path21.relative(root, file), {
           valid: false,
           errors: [{ instancePath: "", message: error.message }]
         });

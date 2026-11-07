@@ -123,9 +123,6 @@ async function readProject(projectRoot) {
   const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
   const validation = validateManifest(manifest);
   if (!validation.valid) throw new Error(formatErrors(validation.errors));
-  if (manifest.schema_version !== "3.2.0") {
-    throw new Error("Revision execution requires a v3.2 project");
-  }
   return { root, manifestPath, manifest };
 }
 

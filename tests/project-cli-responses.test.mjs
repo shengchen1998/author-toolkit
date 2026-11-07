@@ -82,7 +82,7 @@ test("installed init creates fresh operational state from manuscript only", asyn
     path.join(projectRoot, ".author-toolkit", "project.json"),
     "utf8",
   ));
-  assert.equal(manifest.schema_version, "3.2.0");
+  assert.equal(manifest.schema_version, "4.0.0");
   assert.equal(manifest.language, "en");
   assert.equal(Object.hasOwn(manifest, "current_scope"), false);
   assert.equal(Object.hasOwn(manifest, "pending_action"), false);

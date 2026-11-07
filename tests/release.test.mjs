@@ -9,7 +9,7 @@ async function readJson(relativePath) {
   return JSON.parse(await readFile(path.join(root, relativePath), "utf8"));
 }
 
-test("3.2.0 release metadata and the neutral project template agree", async () => {
+test("4.0.0 release metadata and the neutral project template agree", async () => {
   const [packageMetadata, packageLock, kimiPlugin, claudePlugin, marketplace, template] =
     await Promise.all([
       readJson("package.json"),
@@ -29,7 +29,7 @@ test("3.2.0 release metadata and the neutral project template agree", async () =
     ".claude-plugin/marketplace.json": marketplace.plugins[0].version,
   };
   for (const [location, version] of Object.entries(versions)) {
-    assert.equal(version, "3.2.0", location);
+    assert.equal(version, "4.0.0", location);
   }
-  assert.equal(template.schema_version, "3.2.0");
+  assert.equal(template.schema_version, "4.0.0");
 });

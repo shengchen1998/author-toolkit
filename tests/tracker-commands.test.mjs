@@ -144,6 +144,14 @@ function reportEnvelope(findings, overrides = {}) {
       degraded: false,
       notes: "language coverage=full scope_id=scope-draft-001 operation_coverage=full subchecks=causality",
     },
+    scope_id: "scope-draft-001",
+    scope_fingerprint: "a".repeat(64),
+    requested_pass: {
+      pass_id: "pass-draft-001",
+      pass_fingerprint: "b".repeat(64),
+      path: ".author-toolkit/convergence/passes/pass-draft-001.json",
+      sha256: "c".repeat(64),
+    },
     findings,
     ...overrides,
   };
