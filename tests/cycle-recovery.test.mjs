@@ -6,15 +6,15 @@ import path from "node:path";
 import test from "node:test";
 
 import {
-  completeCycle,
-  evaluateCycle,
-  evaluateDraft,
-  prepareRevisionExecution,
-  reconcileManuscript,
-  recordScope,
-  startCycle,
-  transitionCycle,
-  verifyRevisionExecution,
+  completeCycle as completeCycleOperation,
+  evaluateCycle as evaluateCycleOperation,
+  evaluateDraft as evaluateDraftOperation,
+  prepareRevisionExecution as prepareRevisionExecutionOperation,
+  reconcileManuscript as reconcileManuscriptOperation,
+  recordScope as recordScopeOperation,
+  startCycle as startCycleOperation,
+  transitionCycle as transitionCycleOperation,
+  verifyRevisionExecution as verifyRevisionExecutionOperation,
 } from "../scripts/lib/index.mjs";
 import {
   appendRevisionExecutionApprovals,
@@ -24,11 +24,52 @@ import {
   createFirstPublicationArtifacts,
   createNoEditEvidence,
   currentScopeReference,
+  projectClock,
   runAuthorProject,
   timestamp,
   writeBackupEvidence,
   writeJson,
 } from "./convergence-helpers.mjs";
+
+async function operationOptions(projectRoot, options = {}) {
+  return { ...options, now: await projectClock(projectRoot) };
+}
+
+async function completeCycle(projectRoot, request, options) {
+  return completeCycleOperation(projectRoot, request, await operationOptions(projectRoot, options));
+}
+
+async function evaluateCycle(projectRoot, request, options) {
+  return evaluateCycleOperation(projectRoot, request, await operationOptions(projectRoot, options));
+}
+
+async function evaluateDraft(projectRoot, request, options) {
+  return evaluateDraftOperation(projectRoot, request, await operationOptions(projectRoot, options));
+}
+
+async function prepareRevisionExecution(projectRoot, request, options) {
+  return prepareRevisionExecutionOperation(projectRoot, request, await operationOptions(projectRoot, options));
+}
+
+async function reconcileManuscript(projectRoot, request, options) {
+  return reconcileManuscriptOperation(projectRoot, request, await operationOptions(projectRoot, options));
+}
+
+async function recordScope(projectRoot, request, options) {
+  return recordScopeOperation(projectRoot, request, await operationOptions(projectRoot, options));
+}
+
+async function startCycle(projectRoot, request, options) {
+  return startCycleOperation(projectRoot, request, await operationOptions(projectRoot, options));
+}
+
+async function transitionCycle(projectRoot, request, options) {
+  return transitionCycleOperation(projectRoot, request, await operationOptions(projectRoot, options));
+}
+
+async function verifyRevisionExecution(projectRoot, request, options) {
+  return verifyRevisionExecutionOperation(projectRoot, request, await operationOptions(projectRoot, options));
+}
 
 async function exitedProcess() {
   const child = spawn(process.execPath, ["-e", ""]);

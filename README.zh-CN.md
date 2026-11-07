@@ -90,9 +90,9 @@ node <setup-skill>/assets/runtime/author-project.mjs timestamp
 
 `record-finding` 将精确的 finding v2 对象绑定到当前操作报告并记录为 `open`. `record-finding-decision` 要求与状态对应的当前执行记录或无修改跳过证据以及已批准的作者决定; `stale` 使用等价的完整复核和明确的发现项决定. `record-approval` 绑定操作, 范围, 完整有序路径, 动作, 输入与输出版本, 状态和原因, 包括规范的修订批准指纹. 三个命令都拒绝重复 ID, 在共享周期锁内复核可选的 tracker hash, 通过共享时钟生成 UTC 时间, 并在写入中断后保留实际恢复状态. 外部 tracker 编辑只接收校验诊断, 不自动合并, 重编号, 删除或修复. 未决定的 `open` 发现项阻断 satisfied 评估; 当前 deferred 和 dismissed 决定保留既有资格.
 
-`record-backup` 先校验精确批准, 操作, 当前已确认范围, 有序动作, 输入 hash 和 create 缺失状态, 再保存原始字节并发布封闭的备份清单与备份索引. 修订准备消费同一索引, 清单和字节证据, 不跳过当前输入或输出检查. `record-restore` 要求独立的精确恢复批准和当前安全备份, 通过经过校验的写入处理 create, modify, delete 和 reorder 的逆向恢复, 追加恢复记录而不改写来源备份或已提交日志. 恢复会报告范围与证据失效, 不会静默确认新范围. 项目校验和 `--backup-index` 会拒绝悬空清单, 被篡改的字节和不一致的恢复记录.
+`record-backup` 先校验精确批准, 操作, 当前已确认范围, 有序动作, 输入 hash 和 create 缺失状态, 再保存原始字节并发布封闭的备份清单与备份索引. 每个备份和恢复动作都必须指向注册正文根目录下且位于操作目录之外的合法正文路径; 现有输入必须匹配适用的已确认范围, 恢复输入还必须匹配来源备份的范围. 修订准备消费同一索引, 清单和字节证据, 不跳过当前输入或输出检查. `record-restore` 要求独立的精确恢复批准和当前安全备份, 通过经过校验的写入处理 create, modify, delete 和 reorder 的逆向恢复, 追加恢复记录而不改写来源备份或已提交日志. 恢复会报告范围与证据失效, 不会静默确认新范围. 项目校验和 `--backup-index` 会拒绝悬空清单, 被篡改的字节和不一致的恢复记录.
 
-所有公共项目命令, 包括 cycle, reconciliation, execution, evaluation 和 completion, 都返回统一 JSON 项目响应信封: `response_contract_version: "1.0"`, `command`, 布尔值 `valid`, 命令对应的 `result` 和结构化 `errors`. 原操作结果位于 `result` 内, 错误以 stdout 上的 JSON 返回, 不再提供并行文本错误契约. 成功命令和有效的只读状态查询退出码为 0, 包括 `not_satisfied` 和 `indeterminate` 生命周期状态. 项目, 操作, 证据或门禁校验失败退出码为 1. 参数, 输入文件或输入结构用法错误退出码为 2.
+所有公共项目命令以及 validator 校验和状态与门禁查询都返回统一 JSON 响应信封: `response_contract_version: "1.0"`, `command`, 布尔值 `valid`, 命令对应的 `result` 和结构化 `errors`. 原项目操作结果位于 `result` 内. 普通 validator 结果包含 `mode`, `checks` 和逐项 `results`; 状态与门禁查询直接在 `result` 中返回状态对象, 因此读取 `result.outcome` 和 `result.current`. 错误以 stdout 上的 JSON 返回, 不再提供并行文本错误契约. 成功命令和有效的只读状态查询退出码为 0, 包括 `not_satisfied` 和 `indeterminate` 生命周期状态. 项目, 操作, 证据, 产物或门禁校验失败退出码为 1. 参数, 输入文件或输入结构用法错误退出码为 2. 无参数帮助仍输出普通用法文本.
 
 默认 `read` 和 `status` 返回精简项目状态, 包含项目与引用校验, 范围标识与文件数, 待处理操作, 活跃周期与恢复位置, 评估结果与阻断项, 决定计数和准确的下一操作. 完整 manifest, 有序路径哈希, 评估标识, 证据图和历史只在显式 `--full` 或专用 cycle 和产物查询中返回.
 

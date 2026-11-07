@@ -2,7 +2,7 @@
 
 - **Release:** 4.0.0
 - **Date:** 2026-11-07
-- **Integration base:** `b40bd8bf3380d69d43adaaba050826f4ca3c931c`
+- **Integration base:** `044b94c964e19e1307f2560aaa670e39ba933a42`
 - **Scope:** Repository contracts, the tracked developer hook, real generic installation, disposable writing-project behavior through installed public CLIs, and a minimal Kimi Code installed-skill smoke
 
 Repository tests, installation checks, disposable-project commands, and the
@@ -14,12 +14,17 @@ structural evidence only.
 
 | Check | Status | Evidence |
 | --- | --- | --- |
-| Complete repository tests | **Pass** | `npm test`: 422 tests passed, 0 failed. Coverage includes the single 4.0.0 manifest, greenfield rejection, generated and isolated installed runtimes, pending and scope commands, typed tracker writes, backups/restores, UTC evidence time, dependency exceptions, creation and import lifecycles, independent execution, convergence evaluation and completion, cross-file recovery, deployment mirrors, Chinese procedures, the real generic-installer smoke, the tracked pre-commit behavior, and the million-character inventory regression. |
-| Repository validation | **Pass** | `npm run validate`: 11 checks passed, 0 failures. Explicit `--repository` mode compiled the current schemas and validated both current example manifests, their registered state, trackers, backup indexes, and English and Chinese report fixtures. |
+| Complete repository tests | **Pass** | `npm test`: 558 tests passed, 0 failed. Coverage includes the single 4.0.0 manifest, greenfield rejection, generated and isolated installed runtimes, pending and scope commands, typed tracker writes and external-decision bindings, manuscript-only backups/restores, deployed-reference guards, current-index evidence, UTC evidence time, dependency roles and exceptions, creation and import lifecycles, independent execution, convergence evaluation and completion, cross-file recovery, deployment mirrors, Chinese procedures, the real generic-installer smoke, the tracked pre-commit behavior, and the million-character inventory regression. |
+| Repository validation | **Pass** | `npm run validate`: 11 checks passed, 0 failures. Explicit `--repository` mode compiled the current schemas and validated both current example manifests, their registered state, trackers, backup indexes, and English and Chinese report fixtures through the versioned JSON response envelope. |
 | Generated runtime consistency | **Pass** | `npm run check:runtime`: both checked-in self-contained ESM bundles matched a fresh build from source. |
 | Existing real-installer smoke | **Pass** | `npm run smoke:installed`: the real generic installer deployed the setup skill into an isolated directory. With the temporary source removed and no development dependency resolution, both help paths, manuscript-only `init`, pending and proposed/confirmed scope writes, compact and full reads, status, project validation, usage errors, and missing/mismatched-reference diagnostics passed. |
-| Tracked pre-commit checks | **Pass** | `.githooks/pre-commit` ran from a non-root working directory and completed repository validation, generated-runtime consistency, and 77 focused public CLI/evidence-contract tests with 0 failures. A temporary clone also completed a real commit with one-shot `git -c core.hooksPath=.githooks`; the same 77 tests passed. Neither that invocation nor direct hook execution wrote persistent Git configuration. |
+| Tracked pre-commit checks | **Pass** | `.githooks/pre-commit` ran from a non-root working directory and completed repository validation, generated-runtime consistency, and 71 focused public CLI/evidence-contract tests with 0 failures, or 148 tests including subtests. Direct hook execution wrote no persistent Git configuration. |
 | One-time hook opt-in | **Pass (documentation and tracked mode)** | Both READMEs document `git config --local core.hooksPath .githooks` as a manual, one-time toolkit-developer opt-in and `.githooks/pre-commit` as the configuration-free alternative. The hook is tracked as mode `100755`. Installer and setup payloads contain no hook enablement or Git-configuration write. Local and global `core.hooksPath` remained unset during acceptance. |
+
+The current rows cover the integrated issue-14 review fixes and their merged
+integration base. The disposable-project and Kimi Code sections below retain
+the earlier host-acceptance record; the new contract regressions do not claim a
+new host-driven creative workflow.
 
 The full suite and the hook are separate checks. The hook is a fast commit-time
 subset; it does not replace `npm test`, `npm run smoke:installed`, or the other

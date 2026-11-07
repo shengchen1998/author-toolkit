@@ -40,14 +40,14 @@ function utcDate(now) {
   if (Number.isNaN(value.getTime())) throw new Error("Invalid UTC time");
   return value;
 }
-function utcTimestamp(options2 = {}) {
-  return utcDate(options2.now).toISOString();
+function utcTimestamp(options = {}) {
+  return utcDate(options.now).toISOString();
 }
-function timestampResult(options2 = {}) {
-  const json = utcTimestamp(options2);
+function timestampResult(options = {}) {
+  const json = utcTimestamp(options);
   return { json, filename: json.replace(/[-:.]/g, "") };
 }
-function validateTimestamp(value, instancePath, options2 = {}) {
+function validateTimestamp(value, instancePath, options = {}) {
   if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/.test(value) || !Number.isFinite(Date.parse(value))) {
     return [{
       instancePath,
@@ -56,7 +56,7 @@ function validateTimestamp(value, instancePath, options2 = {}) {
       params: {}
     }];
   }
-  const current = utcDate(options2.now);
+  const current = utcDate(options.now);
   if (Date.parse(value) <= current.getTime() + 6e4) return [];
   return [{
     instancePath,
@@ -71,8 +71,8 @@ function validateTimestamp(value, instancePath, options2 = {}) {
 function pointerPart(value) {
   return value.replaceAll("~", "~0").replaceAll("/", "~1");
 }
-function validateEvidenceTimestamps(value, options2 = {}) {
-  const current = utcDate(options2.now);
+function validateEvidenceTimestamps(value, options = {}) {
+  const current = utcDate(options.now);
   const currentTime = current.toISOString();
   const maximum = current.getTime() + 6e4;
   const errors = [];
@@ -3784,49 +3784,49 @@ var require_schemes = __commonJS({
       wsComponent.fragment = void 0;
       return wsComponent;
     }
-    function urnParse(urnComponent, options2) {
+    function urnParse(urnComponent, options) {
       if (!urnComponent.path) {
         urnComponent.error = "URN can not be parsed";
         return urnComponent;
       }
       const matches = urnComponent.path.match(URN_REG);
       if (matches && matches[0] === urnComponent.path) {
-        const scheme = options2.scheme || urnComponent.scheme || "urn";
+        const scheme = options.scheme || urnComponent.scheme || "urn";
         urnComponent.nid = matches[1].toLowerCase();
         urnComponent.nss = matches[2];
-        const urnScheme = `${scheme}:${options2.nid || urnComponent.nid}`;
+        const urnScheme = `${scheme}:${options.nid || urnComponent.nid}`;
         const schemeHandler = getSchemeHandler(urnScheme);
         urnComponent.path = void 0;
         if (schemeHandler) {
-          urnComponent = schemeHandler.parse(urnComponent, options2);
+          urnComponent = schemeHandler.parse(urnComponent, options);
         }
       } else {
         urnComponent.error = urnComponent.error || "URN can not be parsed.";
       }
       return urnComponent;
     }
-    function urnSerialize(urnComponent, options2) {
+    function urnSerialize(urnComponent, options) {
       if (urnComponent.nid === void 0) {
         throw new Error("URN without nid cannot be serialized");
       }
-      const scheme = options2.scheme || urnComponent.scheme || "urn";
+      const scheme = options.scheme || urnComponent.scheme || "urn";
       const nid = urnComponent.nid.toLowerCase();
-      const urnScheme = `${scheme}:${options2.nid || nid}`;
+      const urnScheme = `${scheme}:${options.nid || nid}`;
       const schemeHandler = getSchemeHandler(urnScheme);
       if (schemeHandler) {
-        urnComponent = schemeHandler.serialize(urnComponent, options2);
+        urnComponent = schemeHandler.serialize(urnComponent, options);
       }
       const uriComponent = urnComponent;
       const nss = urnComponent.nss;
-      uriComponent.path = `${nid || options2.nid}:${nss}`;
-      options2.skipEscape = true;
+      uriComponent.path = `${nid || options.nid}:${nss}`;
+      options.skipEscape = true;
       return uriComponent;
     }
-    function urnuuidParse(urnComponent, options2) {
+    function urnuuidParse(urnComponent, options) {
       const uuidComponent = urnComponent;
       uuidComponent.uuid = uuidComponent.nss;
       uuidComponent.nss = void 0;
-      if (!options2.tolerant && (!uuidComponent.uuid || !isUUID(uuidComponent.uuid))) {
+      if (!options.tolerant && (!uuidComponent.uuid || !isUUID(uuidComponent.uuid))) {
         uuidComponent.error = uuidComponent.error || "UUID is not valid.";
       }
       return uuidComponent;
@@ -3937,18 +3937,18 @@ var require_fast_uri = __commonJS({
       }
       return stringScheme;
     }
-    function normalize(uri, options2) {
+    function normalize(uri, options) {
       if (typeof uri === "string") {
         uri = /** @type {T} */
-        normalizeString(uri, options2);
+        normalizeString(uri, options);
       } else if (typeof uri === "object") {
         uri = /** @type {T} */
-        parse(serialize(uri, options2), options2);
+        parse(serialize(uri, options), options);
       }
       return uri;
     }
-    function resolve(baseURI, relativeURI, options2) {
-      const schemelessOptions = options2 ? Object.assign({ scheme: "null" }, options2) : { scheme: "null" };
+    function resolve(baseURI, relativeURI, options) {
+      const schemelessOptions = options ? Object.assign({ scheme: "null" }, options) : { scheme: "null" };
       const {
         parsed: baseParsed,
         malformedAuthorityOrPort: baseMalformed,
@@ -3969,13 +3969,13 @@ var require_fast_uri = __commonJS({
         throw new Error(baseParsed.error || relativeParsed.error || "URI is malformed.");
       }
       const resolved = resolveComponent(baseParsed, relativeParsed, schemelessOptions, true);
-      const resolvedSchemeHandler = getSchemeHandler(options2 && options2.scheme || resolved.scheme);
+      const resolvedSchemeHandler = getSchemeHandler(options && options.scheme || resolved.scheme);
       const resolvedHost = resolved.host;
       const resolvedHostIsIP = resolvedHost !== void 0 && resolvedHost !== "" && (isIPv4(resolvedHost) || normalizeIPv6(resolvedHost).isIPV6);
-      if (hasForbiddenDomainHost(resolved, options2 || {}, resolvedSchemeHandler, resolvedHostIsIP)) {
+      if (hasForbiddenDomainHost(resolved, options || {}, resolvedSchemeHandler, resolvedHostIsIP)) {
         throw new Error(MALFORMED_HOST_ERROR);
       }
-      canonicalizeHost(resolved, options2 || {}, resolvedSchemeHandler, resolvedHostIsIP);
+      canonicalizeHost(resolved, options || {}, resolvedSchemeHandler, resolvedHostIsIP);
       const encodedASCIIHost = resolvedHost && resolvedHost.indexOf("%") !== -1 && !new RegExp("\\P{ASCII}", "u").test(resolvedHost);
       if (resolved.error && !encodedASCIIHost) {
         throw new Error(resolved.error);
@@ -3983,14 +3983,14 @@ var require_fast_uri = __commonJS({
       schemelessOptions.skipEscape = true;
       return serialize(resolved, schemelessOptions);
     }
-    function resolveComponent(base, relative, options2, skipNormalization) {
+    function resolveComponent(base, relative, options, skipNormalization) {
       const target = {};
       if (!skipNormalization) {
-        base = parse(serialize(base, options2), options2);
-        relative = parse(serialize(relative, options2), options2);
+        base = parse(serialize(base, options), options);
+        relative = parse(serialize(relative, options), options);
       }
-      options2 = options2 || {};
-      if (!options2.tolerant && relative.scheme) {
+      options = options || {};
+      if (!options.tolerant && relative.scheme) {
         target.scheme = relative.scheme;
         target.userinfo = relative.userinfo;
         target.host = relative.host;
@@ -4037,9 +4037,9 @@ var require_fast_uri = __commonJS({
       target.fragment = relative.fragment;
       return target;
     }
-    function equal(uriA, uriB, options2) {
-      const normalizedA = normalizeComparableURI(uriA, options2);
-      const normalizedB = normalizeComparableURI(uriB, options2);
+    function equal(uriA, uriB, options) {
+      const normalizedA = normalizeComparableURI(uriA, options);
+      const normalizedB = normalizeComparableURI(uriB, options);
       return normalizedA !== void 0 && normalizedB !== void 0 && normalizedA === normalizedB;
     }
     function serialize(cmpts, opts) {
@@ -4059,30 +4059,30 @@ var require_fast_uri = __commonJS({
         secure: cmpts.secure,
         error: ""
       };
-      const options2 = Object.assign({}, opts);
+      const options = Object.assign({}, opts);
       const uriTokens = [];
       if (component.scheme) {
         component.scheme = validateScheme(component.scheme);
       }
-      const schemeHandler = getSchemeHandler(options2.scheme || component.scheme);
-      if (schemeHandler && schemeHandler.serialize) schemeHandler.serialize(component, options2);
+      const schemeHandler = getSchemeHandler(options.scheme || component.scheme);
+      if (schemeHandler && schemeHandler.serialize) schemeHandler.serialize(component, options);
       const hasAuthority = component.userinfo !== void 0 || component.host !== void 0 || component.port !== void 0;
-      const schemelessReference = (component.scheme === void 0 || options2.reference === "suffix") && !hasAuthority;
-      const pathNoScheme = !options2.skipEscape && schemelessReference;
+      const schemelessReference = (component.scheme === void 0 || options.reference === "suffix") && !hasAuthority;
+      const pathNoScheme = !options.skipEscape && schemelessReference;
       if (component.path !== void 0) {
-        if (!options2.skipEscape) {
+        if (!options.skipEscape) {
           component.path = serializePathEncoding(component.path, pathNoScheme);
         } else {
           component.path = normalizePercentEncoding(component.path);
         }
       }
-      if (options2.reference !== "suffix" && component.scheme) {
+      if (options.reference !== "suffix" && component.scheme) {
         component.scheme = validateScheme(component.scheme);
         uriTokens.push(component.scheme, ":");
       }
       const authority = recomposeAuthority(component);
       if (authority !== void 0) {
-        if (options2.reference !== "suffix") {
+        if (options.reference !== "suffix") {
           uriTokens.push("//");
         }
         uriTokens.push(authority);
@@ -4092,7 +4092,7 @@ var require_fast_uri = __commonJS({
       }
       if (component.path !== void 0) {
         let s = component.path;
-        if (!options2.absolutePath && (!schemeHandler || !schemeHandler.absolutePath)) {
+        if (!options.absolutePath && (!schemeHandler || !schemeHandler.absolutePath)) {
           s = schemelessReference && s[0] !== "/" ? removeDotSegmentsRelative(s) : removeDotSegments(s);
         }
         if (schemelessReference) {
@@ -4141,12 +4141,12 @@ var require_fast_uri = __commonJS({
       const host = matches[4];
       return hasMalformedPercentEncoding(matches[3]) || host !== void 0 && !isIPLiteral(host) && hasMalformedPercentEncoding(host) || hasMalformedPercentEncoding(matches[6]) || hasMalformedPercentEncoding(matches[7]) || hasMalformedPercentEncoding(matches[8]);
     }
-    function canonicalizeHost(parsed, options2, schemeHandler, isIP) {
-      if (hasForbiddenDomainHost(parsed, options2, schemeHandler, isIP)) {
+    function canonicalizeHost(parsed, options, schemeHandler, isIP) {
+      if (hasForbiddenDomainHost(parsed, options, schemeHandler, isIP)) {
         parsed.error = parsed.error || MALFORMED_HOST_ERROR;
         return true;
       }
-      if (!options2.unicodeSupport && (!schemeHandler || !schemeHandler.unicodeSupport) && parsed.host && !isIPLiteral(parsed.host) && (options2.domainHost || schemeHandler && schemeHandler.domainHost) && isIP === false && nonSimpleDomain(parsed.host)) {
+      if (!options.unicodeSupport && (!schemeHandler || !schemeHandler.unicodeSupport) && parsed.host && !isIPLiteral(parsed.host) && (options.domainHost || schemeHandler && schemeHandler.domainHost) && isIP === false && nonSimpleDomain(parsed.host)) {
         let url;
         try {
           url = new URL("http://" + parsed.host);
@@ -4162,16 +4162,16 @@ var require_fast_uri = __commonJS({
       }
       return false;
     }
-    function hasForbiddenDomainHost(parsed, options2, schemeHandler, isIP) {
+    function hasForbiddenDomainHost(parsed, options, schemeHandler, isIP) {
       return Boolean(
-        parsed.host && isIP === false && !isIPLiteral(parsed.host) && (options2.domainHost || schemeHandler && schemeHandler.domainHost) && FORBIDDEN_DOMAIN_HOST_CHARACTER.test(parsed.host)
+        parsed.host && isIP === false && !isIPLiteral(parsed.host) && (options.domainHost || schemeHandler && schemeHandler.domainHost) && FORBIDDEN_DOMAIN_HOST_CHARACTER.test(parsed.host)
       );
     }
     function isHostOnlyURL(url) {
       return url.username === "" && url.password === "" && url.port === "" && url.pathname === "/" && url.search === "" && url.hash === "" && url.hostname !== "";
     }
     function parseWithStatus(uri, opts) {
-      const options2 = Object.assign({}, opts);
+      const options = Object.assign({}, opts);
       const parsed = {
         scheme: void 0,
         userinfo: void 0,
@@ -4188,9 +4188,9 @@ var require_fast_uri = __commonJS({
       let malformedIPLiteral = false;
       let malformedScheme = false;
       let isIP = false;
-      if (options2.reference === "suffix") {
-        if (options2.scheme) {
-          uri = options2.scheme + ":" + uri;
+      if (options.reference === "suffix") {
+        if (options.scheme) {
+          uri = options.scheme + ":" + uri;
         } else {
           uri = "//" + uri;
         }
@@ -4269,19 +4269,19 @@ var require_fast_uri = __commonJS({
         } else {
           parsed.reference = "uri";
         }
-        if (options2.reference && options2.reference !== "suffix" && options2.reference !== parsed.reference) {
-          parsed.error = parsed.error || "URI is not a " + options2.reference + " reference.";
+        if (options.reference && options.reference !== "suffix" && options.reference !== parsed.reference) {
+          parsed.error = parsed.error || "URI is not a " + options.reference + " reference.";
         }
-        const schemeHandler = getSchemeHandler(options2.scheme || parsed.scheme);
+        const schemeHandler = getSchemeHandler(options.scheme || parsed.scheme);
         if (!malformedIPLiteral) {
-          malformedHost = canonicalizeHost(parsed, options2, schemeHandler, isIP);
+          malformedHost = canonicalizeHost(parsed, options, schemeHandler, isIP);
         }
         if (uri.indexOf("%") !== -1 && parsed.host !== void 0 && !malformedIPLiteral) {
           let host = isIP ? parsed.host : normalizePercentEncoding(parsed.host, true);
           if (!isIP) {
             host = normalizePercentEncoding(host.toLowerCase());
           }
-          parsed.host = isIP || options2.scheme !== "null" ? reescapeHostDelimiters(host, isIP) : host;
+          parsed.host = isIP || options.scheme !== "null" ? reescapeHostDelimiters(host, isIP) : host;
         }
         if (!schemeHandler || schemeHandler && !schemeHandler.skipNormalize) {
           if (parsed.path) {
@@ -4295,7 +4295,7 @@ var require_fast_uri = __commonJS({
           }
         }
         if (schemeHandler && schemeHandler.parse) {
-          schemeHandler.parse(parsed, options2);
+          schemeHandler.parse(parsed, options);
           if (schemeHandler === SCHEMES.urn && parsed.nid === void 0) {
             malformedSchemeSpecific = true;
           }
@@ -4842,10 +4842,10 @@ var require_core = __commonJS({
     Ajv.ValidationError = validation_error_1.default;
     Ajv.MissingRefError = ref_error_1.default;
     exports.default = Ajv;
-    function checkOptions(checkOpts, options2, msg, log = "error") {
+    function checkOptions(checkOpts, options, msg, log = "error") {
       for (const key in checkOpts) {
         const opt = key;
-        if (opt in options2)
+        if (opt in options)
           this.logger[log](`${msg}: option ${key}. ${checkOpts[opt]}`);
       }
     }
@@ -8157,52 +8157,52 @@ function readSchema(name) {
   const schemaUrl = packagedReferences ? new URL(name, packagedReferences) : new URL(`../../references/${name}`, import.meta.url);
   return JSON.parse(readFileSync(schemaUrl, "utf8"));
 }
-function evaluate(validator, value, options2 = {}) {
+function evaluate(validator, value, options = {}) {
   const schemaValid = validator(value);
   const errors = [
     ...schemaValid ? [] : validator.errors.map((error) => ({ ...error })),
-    ...validateEvidenceTimestamps(value, options2)
+    ...validateEvidenceTimestamps(value, options)
   ];
   return { valid: errors.length === 0, errors };
 }
-function validateFindingV1(value, options2 = {}) {
-  return evaluate(findingV1Validator, value, options2);
+function validateFindingV1(value, options = {}) {
+  return evaluate(findingV1Validator, value, options);
 }
-function validateFindingV2(value, options2 = {}) {
-  return evaluate(findingV2Validator, value, options2);
+function validateFindingV2(value, options = {}) {
+  return evaluate(findingV2Validator, value, options);
 }
-function validateProjectV4Schema(value, options2 = {}) {
-  return evaluate(projectV4Validator, value, options2);
+function validateProjectV4Schema(value, options = {}) {
+  return evaluate(projectV4Validator, value, options);
 }
-function validateScopeSnapshotSchema(value, options2 = {}) {
-  return evaluate(scopeSnapshotValidator, value, options2);
+function validateScopeSnapshotSchema(value, options = {}) {
+  return evaluate(scopeSnapshotValidator, value, options);
 }
-function validateInventorySnapshotSchema(value, options2 = {}) {
-  return evaluate(inventorySnapshotValidator, value, options2);
+function validateInventorySnapshotSchema(value, options = {}) {
+  return evaluate(inventorySnapshotValidator, value, options);
 }
-function validateConvergenceCycleSchema(value, options2 = {}) {
-  return evaluate(convergenceCycleValidator, value, options2);
+function validateConvergenceCycleSchema(value, options = {}) {
+  return evaluate(convergenceCycleValidator, value, options);
 }
-function validateRequestedPassSchema(value, options2 = {}) {
-  return evaluate(requestedPassValidator, value, options2);
+function validateRequestedPassSchema(value, options = {}) {
+  return evaluate(requestedPassValidator, value, options);
 }
-function validateNoEditSkipSchema(value, options2 = {}) {
-  return evaluate(noEditSkipValidator, value, options2);
+function validateNoEditSkipSchema(value, options = {}) {
+  return evaluate(noEditSkipValidator, value, options);
 }
-function validateReviewGroupSchema(value, options2 = {}) {
-  return evaluate(reviewGroupValidator, value, options2);
+function validateReviewGroupSchema(value, options = {}) {
+  return evaluate(reviewGroupValidator, value, options);
 }
-function validateSemanticAttestationSchema(value, options2 = {}) {
-  return evaluate(semanticAttestationValidator, value, options2);
+function validateSemanticAttestationSchema(value, options = {}) {
+  return evaluate(semanticAttestationValidator, value, options);
 }
-function validateConvergenceEvaluationSchema(value, options2 = {}) {
-  return evaluate(convergenceEvaluationValidator, value, options2);
+function validateConvergenceEvaluationSchema(value, options = {}) {
+  return evaluate(convergenceEvaluationValidator, value, options);
 }
-function validateRevisionExecutionSchema(value, options2 = {}) {
-  return evaluate(revisionExecutionValidator, value, options2);
+function validateRevisionExecutionSchema(value, options = {}) {
+  return evaluate(revisionExecutionValidator, value, options);
 }
-function validateManuscriptReconciliationSchema(value, options2 = {}) {
-  return evaluate(manuscriptReconciliationValidator, value, options2);
+function validateManuscriptReconciliationSchema(value, options = {}) {
+  return evaluate(manuscriptReconciliationValidator, value, options);
 }
 function legacySharedArtifactError(artifact, instancePath, missingField) {
   return {
@@ -8230,20 +8230,20 @@ function withLegacyReportDiagnostic(value, result) {
     errors: [legacySharedArtifactError("report v2", `/${missingField}`, missingField), ...result.errors]
   };
 }
-function validateReportEnvelope(value, options2 = {}) {
-  return withLegacyReportDiagnostic(value, evaluate(reportValidator, value, options2));
+function validateReportEnvelope(value, options = {}) {
+  return withLegacyReportDiagnostic(value, evaluate(reportValidator, value, options));
 }
-function validateRelativePath(value, options2 = {}) {
-  return evaluate(relativePathValidator, value, options2);
+function validateRelativePath(value, options = {}) {
+  return evaluate(relativePathValidator, value, options);
 }
-function validateStoryState(value, options2 = {}) {
-  return evaluate(storyStateValidator, value, options2);
+function validateStoryState(value, options = {}) {
+  return evaluate(storyStateValidator, value, options);
 }
-function validateCreationBatchSchema(value, options2 = {}) {
-  return evaluate(creationBatchValidator, value, options2);
+function validateCreationBatchSchema(value, options = {}) {
+  return evaluate(creationBatchValidator, value, options);
 }
-function validateCreationCommitSchema(value, options2 = {}) {
-  return evaluate(creationCommitValidator, value, options2);
+function validateCreationCommitSchema(value, options = {}) {
+  return evaluate(creationCommitValidator, value, options);
 }
 function withLegacyCoverageUnitDiagnostic(value, result) {
   if (value?.schema_version !== "1.0.0" || value.source_report_sha256 !== void 0) {
@@ -8290,38 +8290,38 @@ function withLegacyCoverageIndexDiagnostic(value, result) {
   }
   return result;
 }
-function validateCoverageUnitSchema(value, options2 = {}) {
-  return withLegacyCoverageUnitDiagnostic(value, evaluate(coverageUnitValidator, value, options2));
+function validateCoverageUnitSchema(value, options = {}) {
+  return withLegacyCoverageUnitDiagnostic(value, evaluate(coverageUnitValidator, value, options));
 }
-function validateCoverageIndexSchema(value, options2 = {}) {
-  return withLegacyCoverageIndexDiagnostic(value, evaluate(coverageIndexValidator, value, options2));
+function validateCoverageIndexSchema(value, options = {}) {
+  return withLegacyCoverageIndexDiagnostic(value, evaluate(coverageIndexValidator, value, options));
 }
-function validateReviewJobSchema(value, options2 = {}) {
-  return evaluate(reviewJobValidator, value, options2);
+function validateReviewJobSchema(value, options = {}) {
+  return evaluate(reviewJobValidator, value, options);
 }
-function validateReaderStateSchema(value, options2 = {}) {
-  return evaluate(readerStateValidator, value, options2);
+function validateReaderStateSchema(value, options = {}) {
+  return evaluate(readerStateValidator, value, options);
 }
-function validateRecordFindingCommand(value, options2 = {}) {
-  return evaluate(recordFindingCommandValidator, value, options2);
+function validateRecordFindingCommand(value, options = {}) {
+  return evaluate(recordFindingCommandValidator, value, options);
 }
-function validateRecordApprovalCommand(value, options2 = {}) {
-  return evaluate(recordApprovalCommandValidator, value, options2);
+function validateRecordApprovalCommand(value, options = {}) {
+  return evaluate(recordApprovalCommandValidator, value, options);
 }
-function validateRecordFindingDecisionCommand(value, options2 = {}) {
-  return evaluate(recordFindingDecisionCommandValidator, value, options2);
+function validateRecordFindingDecisionCommand(value, options = {}) {
+  return evaluate(recordFindingDecisionCommandValidator, value, options);
 }
-function validateBackupManifestSchema(value, options2 = {}) {
-  return evaluate(backupManifestValidator, value, options2);
+function validateBackupManifestSchema(value, options = {}) {
+  return evaluate(backupManifestValidator, value, options);
 }
-function validateBackupIndexSchema(value, options2 = {}) {
-  return evaluate(backupIndexValidator, value, options2);
+function validateBackupIndexSchema(value, options = {}) {
+  return evaluate(backupIndexValidator, value, options);
 }
-function validateRecordBackupCommand(value, options2 = {}) {
-  return evaluate(recordBackupCommandValidator, value, options2);
+function validateRecordBackupCommand(value, options = {}) {
+  return evaluate(recordBackupCommandValidator, value, options);
 }
-function validateRecordRestoreCommand(value, options2 = {}) {
-  return evaluate(recordRestoreCommandValidator, value, options2);
+function validateRecordRestoreCommand(value, options = {}) {
+  return evaluate(recordRestoreCommandValidator, value, options);
 }
 function validateSchemaDefinitions() {
   const errors = [];
@@ -8522,7 +8522,7 @@ function extractReportEnvelope(markdown) {
     throw new ReportEnvelopeError(`Report envelope is not valid JSON: ${error.message}`);
   }
 }
-function validateMarkdownEnvelope(markdown, validate, options2 = {}) {
+function validateMarkdownEnvelope(markdown, validate, options = {}) {
   let envelope;
   try {
     envelope = extractReportEnvelope(markdown);
@@ -8533,7 +8533,7 @@ function validateMarkdownEnvelope(markdown, validate, options2 = {}) {
       errors: [{ instancePath: "", keyword: "markdown", message: error.message, params: {} }]
     };
   }
-  return { ...validate(envelope, options2), envelope };
+  return { ...validate(envelope, options), envelope };
 }
 function languageCoverageHeadingCount(markdown) {
   let count = 0;
@@ -8544,7 +8544,7 @@ function languageCoverageHeadingCount(markdown) {
   });
   return count;
 }
-function validateMarkdownReport(markdown, options2 = {}) {
+function validateMarkdownReport(markdown, options = {}) {
   let envelope;
   try {
     envelope = extractReportEnvelope(markdown);
@@ -8555,7 +8555,7 @@ function validateMarkdownReport(markdown, options2 = {}) {
       errors: [{ instancePath: "", keyword: "markdown", message: error.message, params: {} }]
     };
   }
-  const result = validateReportEnvelope(envelope, options2);
+  const result = validateReportEnvelope(envelope, options);
   const errors = [...result.errors];
   const coverageHeadings = languageCoverageHeadingCount(markdown);
   if (coverageHeadings !== 1) {
@@ -8589,8 +8589,8 @@ function evidenceError(message) {
 function evidenceValue(notes, name) {
   return notes.match(new RegExp(`(?:^|\\s)${name}=([^\\s]+)`))?.[1];
 }
-function validateEvidenceReport(markdown, options2 = {}) {
-  const result = validateMarkdownReport(markdown, options2);
+function validateEvidenceReport(markdown, options = {}) {
+  const result = validateMarkdownReport(markdown, options);
   if (!result.envelope) return result;
   const errors = [...result.errors];
   const notes = result.envelope.engine?.notes ?? "";
@@ -8803,8 +8803,8 @@ var init_state_io = __esm({
 });
 
 // scripts/lib/artifacts.mjs
-function validateStoryStateMarkdown(markdown, options2 = {}) {
-  return validateMarkdownEnvelope(markdown, validateStoryState, options2);
+function validateStoryStateMarkdown(markdown, options = {}) {
+  return validateMarkdownEnvelope(markdown, validateStoryState, options);
 }
 function validateFileHashes(file, index, errors, contract) {
   const creation = contract === "creation";
@@ -8869,8 +8869,8 @@ function creationApprovalBindingMatches(approval, batch, scopeFingerprint) {
 function sameApprovalPaths(actual, expected) {
   return JSON.stringify(actual) === JSON.stringify(expected);
 }
-function validateCreationBatch(value, options2 = {}) {
-  const result = validateCreationBatchSchema(value, options2);
+function validateCreationBatch(value, options = {}) {
+  const result = validateCreationBatchSchema(value, options);
   const errors = [...result.errors];
   for (const [index, file] of (value?.files ?? []).entries()) {
     validateFileHashes(file, index, errors, "creation");
@@ -8907,8 +8907,8 @@ function validateCreationBatch(value, options2 = {}) {
   }
   return { ...result, valid: errors.length === 0, errors };
 }
-function validateCreationCommit(value, options2 = {}) {
-  const result = validateCreationCommitSchema(value, options2);
+function validateCreationCommit(value, options = {}) {
+  const result = validateCreationCommitSchema(value, options);
   const errors = [...result.errors];
   const files = Array.isArray(value?.files) ? value.files : [];
   for (const [index, file] of files.entries()) {
@@ -8967,8 +8967,8 @@ function canReuseCoverageUnit(unit, requested) {
   const requestedSubchecks = [...requested.subchecks].sort();
   return unitSubchecks.every((subcheck, index) => subcheck === requestedSubchecks[index]) && sameVersionedPaths(unit.dependencies, requested.dependencies, false);
 }
-function validateCoverageIndex(value, options2 = {}) {
-  const result = validateCoverageIndexSchema(value, options2);
+function validateCoverageIndex(value, options = {}) {
+  const result = validateCoverageIndexSchema(value, options);
   const errors = [...result.errors];
   const entries = Array.isArray(value?.entries) ? value.entries : [];
   const operations = /* @__PURE__ */ new Set();
@@ -9073,8 +9073,8 @@ function deriveRequestedPassBaseline(lastSatisfiedFullPass, newRequests = []) {
     subchecks: [...requirement.subchecks].sort()
   }));
 }
-function validateRequestedPass(value, options2 = {}) {
-  const schema = validateRequestedPassSchema(value, options2);
+function validateRequestedPass(value, options = {}) {
+  const schema = validateRequestedPassSchema(value, options);
   const errors = [...schema.errors];
   if (value?.target_scope && Array.isArray(value?.required_operations) && Array.isArray(value?.paths) && Array.isArray(value?.dependencies) && Array.isArray(value?.inapplicability) && Array.isArray(value?.requested_subchecks)) {
     const expected = computeRequestedPassFingerprint(value);
@@ -9133,8 +9133,8 @@ function validateRequestedPass(value, options2 = {}) {
   }
   return { valid: errors.length === 0, errors };
 }
-function validateNoEditSkip(value, options2 = {}) {
-  const schema = validateNoEditSkipSchema(value, options2);
+function validateNoEditSkip(value, options = {}) {
+  const schema = validateNoEditSkipSchema(value, options);
   const errors = [...schema.errors];
   for (const operation of ["revision-plan", "chapter-revision"]) {
     if (!value?.operations?.includes(operation)) {
@@ -9147,8 +9147,8 @@ function validateNoEditSkip(value, options2 = {}) {
   }
   return { valid: errors.length === 0, errors };
 }
-function validateReviewGroup(value, options2 = {}) {
-  const schema = validateReviewGroupSchema(value, options2);
+function validateReviewGroup(value, options = {}) {
+  const schema = validateReviewGroupSchema(value, options);
   const errors = [...schema.errors];
   const perspectives = new Set((value?.jobs ?? []).map((entry) => entry.perspective));
   for (const perspective of PERSPECTIVES) {
@@ -9169,8 +9169,8 @@ function validateReviewGroup(value, options2 = {}) {
   }
   return { valid: errors.length === 0, errors };
 }
-function validateSemanticAttestation(value, options2 = {}) {
-  const schema = validateSemanticAttestationSchema(value, options2);
+function validateSemanticAttestation(value, options = {}) {
+  const schema = validateSemanticAttestationSchema(value, options);
   const errors = [...schema.errors];
   const claims = /* @__PURE__ */ new Set();
   for (const [index, claim] of (value?.claims ?? []).entries()) {
@@ -9185,8 +9185,8 @@ function validateSemanticAttestation(value, options2 = {}) {
   }
   return { valid: errors.length === 0, errors };
 }
-function validateConvergenceEvaluation(value, options2 = {}) {
-  const schema = validateConvergenceEvaluationSchema(value, options2);
+function validateConvergenceEvaluation(value, options = {}) {
+  const schema = validateConvergenceEvaluationSchema(value, options);
   const errors = [...schema.errors];
   if (value?.outcome === "satisfied" && value?.blockers?.length > 0) {
     errors.push(artifactError(
@@ -9240,9 +9240,9 @@ function greenfieldInitializationError(value) {
     }
   };
 }
-function validateManifest(value, options2 = {}) {
+function validateManifest(value, options = {}) {
   if (value?.schema_version === CURRENT_PROJECT_SCHEMA_VERSION) {
-    return validateProjectV4Schema(value, options2);
+    return validateProjectV4Schema(value, options);
   }
   return { valid: false, errors: [greenfieldInitializationError(value)] };
 }
@@ -9564,11 +9564,11 @@ function coordinationBlockers(project, active, { allowOperationId = null } = {})
   }
   return [];
 }
-async function runCheckpoint(options2, point) {
-  if (typeof options2.checkpoint === "function") await options2.checkpoint(point);
+async function runCheckpoint(options, point) {
+  if (typeof options.checkpoint === "function") await options.checkpoint(point);
 }
-function timestamp(options2) {
-  return utcTimestamp(options2);
+function timestamp(options) {
+  return utcTimestamp(options);
 }
 async function writeManifest(project, manifest) {
   const validation = validateManifest(manifest);
@@ -9579,10 +9579,10 @@ async function writeManifest(project, manifest) {
 `);
   project.manifest = manifest;
 }
-async function beginCycleOperation(project, active, definition, options2 = {}) {
+async function beginCycleOperation(project, active, definition, options = {}) {
   const existing = project.manifest.cycle_operation;
   if (existing) {
-    if (options2.recoveryOperationId === definition.operationId && existing.operation_id === definition.operationId && existing.kind === definition.kind && existing.cycle_id === active.value.cycle_id && existing.expected_revision === active.value.revision && existing.intended_revision === active.value.revision + 1 && (existing.artifact_id ?? null) === (definition.artifactId ?? null)) {
+    if (options.recoveryOperationId === definition.operationId && existing.operation_id === definition.operationId && existing.kind === definition.kind && existing.cycle_id === active.value.cycle_id && existing.expected_revision === active.value.revision && existing.intended_revision === active.value.revision + 1 && (existing.artifact_id ?? null) === (definition.artifactId ?? null)) {
       return existing;
     }
     throw new Error(`Cannot begin ${definition.operationId} while ${existing.operation_id} awaits reconciliation`);
@@ -9594,25 +9594,25 @@ async function beginCycleOperation(project, active, definition, options2 = {}) {
     expected_revision: active.value.revision,
     intended_revision: active.value.revision + 1,
     ...definition.artifactId ? { artifact_id: definition.artifactId } : {},
-    created_at: timestamp(options2)
+    created_at: timestamp(options)
   };
   await writeManifest(project, {
     ...project.manifest,
     cycle_operation: operation,
     updated_at: operation.created_at
   });
-  await runCheckpoint(options2, "manifest-written");
+  await runCheckpoint(options, "manifest-written");
   return operation;
 }
-async function finishCycleOperation(project, cycle, operationId, options2 = {}) {
+async function finishCycleOperation(project, cycle, operationId, options = {}) {
   const operation = project.manifest.cycle_operation;
-  if (!operation && !options2.allowMissingOperation || operation && (operation.operation_id !== operationId || operation.cycle_id !== cycle.cycle_id || operation.intended_revision !== cycle.revision)) {
+  if (!operation && !options.allowMissingOperation || operation && (operation.operation_id !== operationId || operation.cycle_id !== cycle.cycle_id || operation.intended_revision !== cycle.revision)) {
     throw new Error(`Cannot finish unrecorded cycle operation ${operationId} at revision ${cycle.revision}`);
   }
   const { cycle_operation: removed, ...withoutOperation } = project.manifest;
   let pending = project.manifest.pending_action;
   if (pending?.cycle_id === cycle.cycle_id) {
-    if (options2.complete) {
+    if (options.complete) {
       pending = null;
     } else {
       pending = {
@@ -9620,7 +9620,7 @@ async function finishCycleOperation(project, cycle, operationId, options2 = {}) 
         operation: cycle.recovery_position?.operation ?? pending.operation,
         cycle_revision: cycle.revision,
         operation_id: cycle.recovery_position?.operation_id ?? operationId,
-        updated_at: timestamp(options2)
+        updated_at: timestamp(options)
       };
       if (cycle.target_scope) {
         pending.scope_id = cycle.target_scope.scope_id;
@@ -9633,23 +9633,23 @@ async function finishCycleOperation(project, cycle, operationId, options2 = {}) 
   }
   const manifest = {
     ...withoutOperation,
-    ...options2.manifestChanges ?? {},
+    ...options.manifestChanges ?? {},
     ...pending ? { pending_action: pending } : {},
-    updated_at: options2.completedAt ?? cycle.updated_at ?? timestamp(options2)
+    updated_at: options.completedAt ?? cycle.updated_at ?? timestamp(options)
   };
   if (!pending) delete manifest.pending_action;
-  for (const field of options2.removeManifestFields ?? []) delete manifest[field];
+  for (const field of options.removeManifestFields ?? []) delete manifest[field];
   await writeManifest(project, manifest);
-  await runCheckpoint(options2, "manifest-updated");
+  await runCheckpoint(options, "manifest-updated");
   return manifest;
 }
-async function discardCycleOperation(project, operationId, options2 = {}) {
+async function discardCycleOperation(project, operationId, options = {}) {
   const operation = project.manifest.cycle_operation;
   if (!operation || operation.operation_id !== operationId) {
     throw new Error(`Cannot discard unrecorded cycle operation ${operationId}`);
   }
   const { cycle_operation: removed, ...manifest } = project.manifest;
-  manifest.updated_at = timestamp(options2);
+  manifest.updated_at = timestamp(options);
   await writeManifest(project, manifest);
   return manifest;
 }
@@ -9815,11 +9815,11 @@ __export(evaluation_artifacts_exports, {
 });
 import { readdir as readdir4, readFile as readFile5 } from "node:fs/promises";
 import path6 from "node:path";
-async function readProject(projectRoot, options2 = {}) {
+async function readProject(projectRoot, options = {}) {
   const root2 = path6.resolve(projectRoot);
   const manifestPath = path6.join(root2, ".author-toolkit", "project.json");
   const manifest = JSON.parse(await readFile5(manifestPath, "utf8"));
-  const validation = validateManifest(manifest, options2);
+  const validation = validateManifest(manifest, options);
   if (!validation.valid) {
     const error = new Error(`Project validation failed: ${validation.errors.map((error2) => error2.message).join("; ")}`);
     error.projectCode = validation.errors.find(
@@ -9837,7 +9837,7 @@ async function readProject(projectRoot, options2 = {}) {
   }
   return { root: root2, manifestPath, manifest, references };
 }
-async function readActiveCycle(project, options2 = {}) {
+async function readActiveCycle(project, options = {}) {
   const file = path6.resolve(project.root, project.manifest.paths.convergence, "active-cycle.json");
   let value;
   let text;
@@ -9848,14 +9848,14 @@ async function readActiveCycle(project, options2 = {}) {
     if (error.code === "ENOENT") return null;
     throw error;
   }
-  const validation = validateConvergenceCycleSchema(value, options2);
+  const validation = validateConvergenceCycleSchema(value, options);
   if (!validation.valid || value.status !== "active") {
     throw new Error(`Living cycle is invalid: ${file}: ${formatErrors(validation.errors)}`);
   }
   return { value, file, text };
 }
-function operationTime(options2 = {}) {
-  return utcTimestamp(options2);
+function operationTime(options = {}) {
+  return utcTimestamp(options);
 }
 function evaluationReference(evaluation, relativePath, text) {
   return {
@@ -9876,7 +9876,7 @@ async function publishImmutable(file, text) {
 function formatErrors(errors) {
   return errors.map((error) => `${error.instancePath || "/"} ${error.message}`).join("; ");
 }
-async function completedCycles(project, options2 = {}) {
+async function completedCycles(project, options = {}) {
   const directory = path6.resolve(project.root, project.manifest.paths.convergence, "cycles");
   let entries;
   try {
@@ -9889,7 +9889,7 @@ async function completedCycles(project, options2 = {}) {
   for (const entry of entries) {
     if (!entry.isFile() || !entry.name.endsWith(".json")) continue;
     const value = JSON.parse(await readFile5(path6.join(directory, entry.name), "utf8"));
-    const validation = validateConvergenceCycleSchema(value, options2);
+    const validation = validateConvergenceCycleSchema(value, options);
     if (!validation.valid) {
       throw new Error(`Completed cycle is invalid: ${entry.name}: ${formatErrors(validation.errors)}`);
     }
@@ -9901,21 +9901,21 @@ async function completedCycles(project, options2 = {}) {
     ) || left.cycle_id.localeCompare(right.cycle_id)
   );
 }
-async function readEvaluationReference(project, reference, options2 = {}) {
+async function readEvaluationReference(project, reference, options = {}) {
   const text = await readFile5(path6.resolve(project.root, reference.path), "utf8");
   if (sha256Bytes(text) !== reference.sha256) {
     throw new Error(`Evaluation content hash changed: ${reference.path}`);
   }
   const value = JSON.parse(text);
-  const validation = validateConvergenceEvaluation(value, options2);
+  const validation = validateConvergenceEvaluation(value, options);
   if (!validation.valid) throw new Error(formatErrors(validation.errors));
   if (value.evaluation_id !== reference.evaluation_id) {
     throw new Error(`Evaluation identity changed: ${reference.path}`);
   }
   return { value, text };
 }
-async function evaluationSources(project, options2 = {}) {
-  const sources = (await completedCycles(project, options2)).map((cycle) => ({
+async function evaluationSources(project, options = {}) {
+  const sources = (await completedCycles(project, options)).map((cycle) => ({
     cycle,
     evaluationReference: cycle.target_evaluation,
     passReference: cycle.requested_pass,
@@ -9942,7 +9942,7 @@ async function evaluationSources(project, options2 = {}) {
       path: relative,
       sha256: sha256Bytes(text)
     };
-    const { value: evaluation } = await readEvaluationReference(project, evaluationReference2, options2);
+    const { value: evaluation } = await readEvaluationReference(project, evaluationReference2, options);
     if (evaluation.cycle_id !== null) continue;
     sources.push({
       cycle: null,
@@ -9955,16 +9955,16 @@ async function evaluationSources(project, options2 = {}) {
     (left, right) => left.sortAt.localeCompare(right.sortAt) || left.evaluationReference.path.localeCompare(right.evaluationReference.path)
   );
 }
-async function latestSatisfiedPass(project, excludeCycleId = null, excludeEvaluationId = null, options2 = {}) {
-  for (const source of (await evaluationSources(project, options2)).reverse()) {
+async function latestSatisfiedPass(project, excludeCycleId = null, excludeEvaluationId = null, options = {}) {
+  for (const source of (await evaluationSources(project, options)).reverse()) {
     if (source.cycle?.cycle_id === excludeCycleId || source.evaluationReference.evaluation_id === excludeEvaluationId || !source.passReference) continue;
     try {
-      const { value: evaluation } = await readEvaluationReference(project, source.evaluationReference, options2);
+      const { value: evaluation } = await readEvaluationReference(project, source.evaluationReference, options);
       if (evaluation.outcome !== "satisfied") continue;
       const passText = await readFile5(path6.resolve(project.root, source.passReference.path), "utf8");
       if (sha256Bytes(passText) !== source.passReference.sha256) continue;
       const pass = JSON.parse(passText);
-      if (!validateRequestedPass(pass, options2).valid || pass.narrowing !== null) continue;
+      if (!validateRequestedPass(pass, options).valid || pass.narrowing !== null) continue;
       if (pass.pass_id !== source.passReference.pass_id || pass.pass_fingerprint !== source.passReference.pass_fingerprint) continue;
       return {
         cycle: source.cycle,
@@ -10080,14 +10080,14 @@ async function collectVersionedInventory(projectRoot, manifest) {
     inventory_fingerprint: computeInventoryFingerprint(inventory)
   };
 }
-async function recordInventorySnapshot(projectRoot, manifest, options2 = {}) {
+async function recordInventorySnapshot(projectRoot, manifest, options = {}) {
   const observed = await collectVersionedInventory(projectRoot, manifest);
   const record = {
     schema_version: "1.0.0",
     ...observed,
-    created_at: utcTimestamp(options2)
+    created_at: utcTimestamp(options)
   };
-  const validation = validateInventorySnapshot(record, options2);
+  const validation = validateInventorySnapshot(record, options);
   if (!validation.valid) throw validationError(validation);
   const relative = path7.posix.join(
     manifest.paths.convergence,
@@ -10166,22 +10166,22 @@ function scopeStateError(code, message, details = {}) {
   error.projectDetails = details;
   return error;
 }
-async function recordScopeLocked(root2, manifestPath, initialConvergence, scope, options2, progress) {
-  await runCheckpoint(options2, "lock-acquired");
+async function recordScopeLocked(root2, manifestPath, initialConvergence, scope, options, progress) {
+  await runCheckpoint(options, "lock-acquired");
   const manifestText = await readFile6(manifestPath, "utf8");
   const actualManifestHash = sha2562(manifestText);
-  if (options2.expectedManifestSha256 !== void 0 && actualManifestHash !== options2.expectedManifestSha256) {
+  if (options.expectedManifestSha256 !== void 0 && actualManifestHash !== options.expectedManifestSha256) {
     throw scopeStateError(
       "manifest-hash-conflict",
       "The project manifest changed after the scope input was prepared; reread it before retrying.",
       {
-        expected_sha256: options2.expectedManifestSha256,
+        expected_sha256: options.expectedManifestSha256,
         actual_sha256: actualManifestHash
       }
     );
   }
   const manifest = JSON.parse(manifestText);
-  const originalValidation = validateManifest(manifest, options2);
+  const originalValidation = validateManifest(manifest, options);
   if (!originalValidation.valid) throw validationError(originalValidation);
   if (manifest.paths.convergence !== initialConvergence) {
     throw scopeStateError(
@@ -10189,22 +10189,22 @@ async function recordScopeLocked(root2, manifestPath, initialConvergence, scope,
       "The registered convergence path changed while scope recording waited for its lock."
     );
   }
-  const active = await readActiveCycle({ root: root2, manifest }, options2);
-  if (options2.cycleId !== void 0 && !active) {
+  const active = await readActiveCycle({ root: root2, manifest }, options);
+  if (options.cycleId !== void 0 && !active) {
     throw scopeStateError("active-cycle-required", "The named active cycle is unavailable.");
   }
-  if (active && options2.cycleId !== void 0 && (active.value.cycle_id !== options2.cycleId || active.value.revision !== options2.expectedRevision)) {
+  if (active && options.cycleId !== void 0 && (active.value.cycle_id !== options.cycleId || active.value.revision !== options.expectedRevision)) {
     throw scopeStateError(
       "cycle-revision-conflict",
-      `Expected cycle ${options2.cycleId} revision ${options2.expectedRevision}, but the active cycle is ${active.value.cycle_id} revision ${active.value.revision}.`
+      `Expected cycle ${options.cycleId} revision ${options.expectedRevision}, but the active cycle is ${active.value.cycle_id} revision ${active.value.revision}.`
     );
   }
   progress.active = active;
-  const updatedAt = utcTimestamp(options2);
+  const updatedAt = utcTimestamp(options);
   if (!["proposed", "confirmed"].includes(scope.status)) {
     throw new Error(`Unsupported scope status: ${scope.status}`);
   }
-  const confirmation = options2.authorConfirmation;
+  const confirmation = options.authorConfirmation;
   if (scope.status === "confirmed" && (!confirmation || confirmation.reading_order_confirmed !== true)) {
     throw scopeStateError(
       "scope-confirmation-required",
@@ -10270,12 +10270,12 @@ async function recordScopeLocked(root2, manifestPath, initialConvergence, scope,
   };
   if (normalizedScope.status === "proposed") {
     const updated2 = { ...manifest, current_scope: currentScope, updated_at: updatedAt };
-    const validation2 = validateManifest(updated2, options2);
+    const validation2 = validateManifest(updated2, options);
     if (!validation2.valid) throw validationError(validation2);
     await atomicWrite(manifestPath, `${JSON.stringify(updated2, null, 2)}
 `);
     progress.manifestWritten = true;
-    await runCheckpoint(options2, "manifest-updated");
+    await runCheckpoint(options, "manifest-updated");
     return {
       scope_id: normalizedScope.scope_id,
       scope_fingerprint: scopeFingerprint,
@@ -10331,29 +10331,29 @@ async function recordScopeLocked(root2, manifestPath, initialConvergence, scope,
       reading_order_confirmed: true
     }
   };
-  const inventoryValidation = validateInventorySnapshot(inventoryRecord, options2);
+  const inventoryValidation = validateInventorySnapshot(inventoryRecord, options);
   if (!inventoryValidation.valid) throw validationError(inventoryValidation);
-  const snapshotValidation = validateScopeSnapshot(snapshot, options2);
+  const snapshotValidation = validateScopeSnapshot(snapshot, options);
   if (!snapshotValidation.valid) throw validationError(snapshotValidation);
   const snapshotText = `${JSON.stringify(snapshot, null, 2)}
 `;
   currentScope.snapshot_path = snapshotRelative;
   currentScope.snapshot_sha256 = sha2562(snapshotText);
   const updated = { ...manifest, current_scope: currentScope, updated_at: updatedAt };
-  const validation = validateManifest(updated, options2);
+  const validation = validateManifest(updated, options);
   if (!validation.valid) throw validationError(validation);
   await writeImmutable(inventoryPath, inventoryText);
   progress.inventoryPublished = true;
   progress.inventoryPath = inventoryPath;
-  await runCheckpoint(options2, "inventory-published");
+  await runCheckpoint(options, "inventory-published");
   await writeImmutable(snapshotPath, snapshotText);
   progress.snapshotPublished = true;
   progress.snapshotPath = snapshotPath;
-  await runCheckpoint(options2, "snapshot-published");
+  await runCheckpoint(options, "snapshot-published");
   await atomicWrite(manifestPath, `${JSON.stringify(updated, null, 2)}
 `);
   progress.manifestWritten = true;
-  await runCheckpoint(options2, "manifest-updated");
+  await runCheckpoint(options, "manifest-updated");
   return {
     scope_id: normalizedScope.scope_id,
     scope_fingerprint: scopeFingerprint,
@@ -10372,15 +10372,15 @@ async function recordScopeLocked(root2, manifestPath, initialConvergence, scope,
     current_scope: currentScope
   };
 }
-async function recordScope(projectRoot, scope, options2 = {}) {
-  const { root: root2, manifestPath, manifest: initialManifest } = await readProject(projectRoot, options2);
+async function recordScope(projectRoot, scope, options = {}) {
+  const { root: root2, manifestPath, manifest: initialManifest } = await readProject(projectRoot, options);
   await mkdir2(path7.resolve(root2, initialManifest.paths.convergence), { recursive: true });
   const lock = await acquireDirectoryLock(
     path7.resolve(root2, initialManifest.paths.convergence, "active-cycle.lock"),
     {
-      timeoutMs: options2.lockTimeoutMs ?? 1e4,
-      retryMs: options2.lockRetryMs ?? 20,
-      now: options2.now
+      timeoutMs: options.lockTimeoutMs ?? 1e4,
+      retryMs: options.lockRetryMs ?? 20,
+      now: options.now
     }
   );
   if (!lock.acquired) {
@@ -10390,7 +10390,7 @@ async function recordScope(projectRoot, scope, options2 = {}) {
       { lock_path: lock.directory }
     );
   }
-  const progress = options2.progress ?? {};
+  const progress = options.progress ?? {};
   let outcome;
   let operationError;
   try {
@@ -10399,7 +10399,7 @@ async function recordScope(projectRoot, scope, options2 = {}) {
       manifestPath,
       initialManifest.paths.convergence,
       scope,
-      options2,
+      options,
       progress
     );
   } catch (error) {
@@ -10428,7 +10428,7 @@ function sameStrings(left, right) {
 function relevantExclusions(values, paths) {
   return values.filter((value) => !isOperationalManuscriptPath(value, paths));
 }
-async function validateFullManuscriptScope(manifest, manifestPath, options2 = {}) {
+async function validateFullManuscriptScope(manifest, manifestPath, options = {}) {
   const projectRoot = projectRootFromManifest(manifestPath);
   const scope = manifest.current_scope;
   const result = {
@@ -10483,7 +10483,7 @@ async function validateFullManuscriptScope(manifest, manifestPath, options2 = {}
   try {
     snapshotText = await readFile6(path7.resolve(projectRoot, scope.snapshot_path), "utf8");
     snapshot = JSON.parse(snapshotText);
-    result.errors.push(...validateScopeSnapshot(snapshot, options2).errors);
+    result.errors.push(...validateScopeSnapshot(snapshot, options).errors);
     result.inventory_fingerprint = snapshot.inventory?.inventory_fingerprint ?? null;
     if (sha2562(snapshotText) !== scope.snapshot_sha256) {
       result.errors.push(
@@ -10575,7 +10575,7 @@ async function validateFullManuscriptScope(manifest, manifestPath, options2 = {}
         "utf8"
       );
       inventory = JSON.parse(inventoryText);
-      result.errors.push(...validateInventorySnapshot(inventory, options2).errors);
+      result.errors.push(...validateInventorySnapshot(inventory, options).errors);
       if (inventory.manuscript_root !== manifest.manuscript_root) {
         result.errors.push(
           scopeFailure(
@@ -10703,8 +10703,8 @@ async function validateFullManuscriptScope(manifest, manifestPath, options2 = {}
   result.full_manuscript = result.valid;
   return result;
 }
-function validateScopeSnapshot(value, options2 = {}) {
-  const schema = validateScopeSnapshotSchema(value, options2);
+function validateScopeSnapshot(value, options = {}) {
+  const schema = validateScopeSnapshotSchema(value, options);
   const errors = [...schema.errors];
   if (Array.isArray(value?.files) && Array.isArray(value?.excluded_files)) {
     const expected = computeScopeFingerprint(value);
@@ -10733,8 +10733,8 @@ function validateScopeSnapshot(value, options2 = {}) {
   }
   return { valid: errors.length === 0, errors };
 }
-function validateInventorySnapshot(value, options2 = {}) {
-  const schema = validateInventorySnapshotSchema(value, options2);
+function validateInventorySnapshot(value, options = {}) {
+  const schema = validateInventorySnapshotSchema(value, options);
   const errors = [...schema.errors];
   if (typeof value?.manuscript_root === "string" && Array.isArray(value?.files) && Array.isArray(value?.excluded_files)) {
     const expected = computeInventoryFingerprint(value);
@@ -10845,7 +10845,7 @@ function validateDependencySource(source, dependency, operation, contents, error
     (input) => input.path === dependency.path && input.version === dependency.sha256 && input.version_type === "sha256"
   );
 }
-async function validateException(projectRoot, unit, pass, exception, options2, errors) {
+async function validateException(projectRoot, unit, pass, exception, options, errors) {
   const dependency = pass.dependencies.find((candidate) => candidate.path === exception.dependency_path);
   const oldDependency = unit.dependencies.find((candidate) => candidate.path === exception.dependency_path);
   if (exception.unit_id !== unit.unit_id || !samePassReference(exception.requested_pass, pass.requested_pass ?? pass) || !dependency || !oldDependency || oldDependency.sha256 !== exception.old_sha256 || dependency.sha256 !== exception.new_sha256 || exception.old_sha256 === exception.new_sha256 || dependency.role !== exception.operation) {
@@ -10888,7 +10888,7 @@ async function validateException(projectRoot, unit, pass, exception, options2, e
     errors
   );
   if (!attestation) return;
-  const attestationValidation = validateSemanticAttestation(attestation, options2);
+  const attestationValidation = validateSemanticAttestation(attestation, options);
   if (!attestationValidation.valid) {
     errors.push(...attestationValidation.errors.map((error) => ({
       ...error,
@@ -10923,7 +10923,7 @@ async function validateException(projectRoot, unit, pass, exception, options2, e
   }
   const sourceUnit = await readJson(projectRoot, sourceArtifacts[0], "/dependency_exception/source_unit", errors);
   if (!sourceUnit) return;
-  const sourceValidation = validateCoverageUnitSchema(sourceUnit, options2);
+  const sourceValidation = validateCoverageUnitSchema(sourceUnit, options);
   if (!sourceValidation.valid) {
     errors.push(...sourceValidation.errors.map((error) => ({
       ...error,
@@ -10940,16 +10940,16 @@ async function validateException(projectRoot, unit, pass, exception, options2, e
     ));
   }
 }
-async function validateCoverageIndexFile(indexPath, options2 = {}) {
+async function validateCoverageIndexFile(indexPath, options = {}) {
   const errors = [];
   try {
-    const projectRoot = options2.projectRoot ?? await projectRootForIndex(indexPath);
+    const projectRoot = options.projectRoot ?? await projectRootForIndex(indexPath);
     const manifest = JSON.parse(await readFile7(
       path8.join(projectRoot, ".author-toolkit", "project.json"),
       "utf8"
     ));
     const value = JSON.parse(await readFile7(indexPath, "utf8"));
-    const local = validateCoverageIndex(value, options2);
+    const local = validateCoverageIndex(value, options);
     errors.push(...local.errors);
     const reportsRoot = manifest.paths.reports.replace(/\/$/, "");
     const relativeIndex = path8.relative(projectRoot, path8.resolve(indexPath)).split(path8.sep).join("/");
@@ -10970,7 +10970,7 @@ async function validateCoverageIndexFile(indexPath, options2 = {}) {
         sha256: currentScope.snapshot_sha256
       }, "/current_scope/snapshot", errors);
       if (scope) {
-        const validation = validateScopeSnapshot(scope, options2);
+        const validation = validateScopeSnapshot(scope, options);
         errors.push(...validation.errors);
         if (scope.scope_id !== value.scope_id || scope.scope_fingerprint !== value.scope_fingerprint) {
           errors.push(coverageError(
@@ -10983,7 +10983,7 @@ async function validateCoverageIndexFile(indexPath, options2 = {}) {
     }
     const pass = await readJson(projectRoot, value.requested_pass, "/requested_pass", errors);
     if (pass) {
-      const validation = validateRequestedPass(pass, options2);
+      const validation = validateRequestedPass(pass, options);
       errors.push(...validation.errors);
       if (pass.pass_id !== value.requested_pass.pass_id || pass.pass_fingerprint !== value.requested_pass.pass_fingerprint) {
         errors.push(coverageError(
@@ -10998,7 +10998,7 @@ async function validateCoverageIndexFile(indexPath, options2 = {}) {
       for (const [unitIndex, reference] of entry.units.entries()) {
         const unit = await readJson(projectRoot, reference, `/entries/${entryIndex}/units/${unitIndex}`, errors);
         if (!unit) continue;
-        const validation = validateCoverageUnitSchema(unit, options2);
+        const validation = validateCoverageUnitSchema(unit, options);
         errors.push(...validation.errors);
         if (unit.unit_id !== reference.unit_id || unit.operation !== entry.operation) {
           errors.push(coverageError(
@@ -11013,7 +11013,7 @@ async function validateCoverageIndexFile(indexPath, options2 = {}) {
             sha256: unit.source_report_sha256
           }, `/entries/${entryIndex}/units/${unitIndex}/source_report`, errors);
           if (reportContents) {
-            const reportValidation = validateEvidenceReport(reportContents.toString("utf8"), options2);
+            const reportValidation = validateEvidenceReport(reportContents.toString("utf8"), options);
             errors.push(...reportValidation.errors);
             if (reportValidation.envelope?.stage !== unit.operation) {
               errors.push(coverageError(
@@ -11026,7 +11026,7 @@ async function validateCoverageIndexFile(indexPath, options2 = {}) {
         }
         if (pass) {
           if (unit.dependency_exception) {
-            await validateException(projectRoot, unit, pass, unit.dependency_exception, options2, errors);
+            await validateException(projectRoot, unit, pass, unit.dependency_exception, options, errors);
           } else {
             const actual = unit.dependencies.map((dependency) => `${dependency.path}\0${dependency.sha256}`).sort();
             const expected = pass.dependencies.map((dependency) => `${dependency.path}\0${dependency.sha256}`).sort();
@@ -11046,7 +11046,7 @@ async function validateCoverageIndexFile(indexPath, options2 = {}) {
           sha256: entry.synthesis_report_sha256
         }, `/entries/${entryIndex}/synthesis_report`, errors);
         if (contents) {
-          const validation = validateEvidenceReport(contents.toString("utf8"), options2);
+          const validation = validateEvidenceReport(contents.toString("utf8"), options);
           errors.push(...validation.errors);
           if (validation.envelope?.stage !== entry.operation || validation.envelope?.scope_id !== value.scope_id || validation.envelope?.scope_fingerprint !== value.scope_fingerprint || !samePassReference(validation.envelope?.requested_pass, value.requested_pass)) {
             errors.push(coverageError(
@@ -11321,8 +11321,8 @@ function checkReviewCoverage(job) {
     book_complete: bookComplete
   };
 }
-function validateReviewJob(value, options2 = {}) {
-  const result = validateReviewJobSchema(value, options2);
+function validateReviewJob(value, options = {}) {
+  const result = validateReviewJobSchema(value, options);
   const errors = [...result.errors, ...structureErrors(value)];
   const coverage = checkReviewCoverage(value);
   if (value?.coverage === "full" && !coverage.complete) {
@@ -11363,8 +11363,8 @@ function validateReviewJob(value, options2 = {}) {
   }
   return { ...result, valid: errors.length === 0, errors, coverage };
 }
-function validateReaderState(value, options2 = {}) {
-  const result = validateReaderStateSchema(value, options2);
+function validateReaderState(value, options = {}) {
+  const result = validateReaderStateSchema(value, options);
   const errors = [...result.errors];
   const chunks = objectArray(value?.chunks);
   duplicateErrors(chunks, "chunk_id", "/chunks", "reader-chunk", errors);
@@ -11412,8 +11412,8 @@ function validateReaderState(value, options2 = {}) {
   }
   return { ...result, valid: errors.length === 0, errors };
 }
-function validateReaderStateForJob(value, job, options2 = {}) {
-  const result = validateReaderState(value, options2);
+function validateReaderStateForJob(value, job, options = {}) {
+  const result = validateReaderState(value, options);
   const errors = [...result.errors];
   for (const field of ["job_id", "scope_id", "perspective"]) {
     if (value?.[field] !== job?.[field]) {
@@ -11524,8 +11524,8 @@ function validateReaderStateForJob(value, job, options2 = {}) {
   }
   return { ...result, valid: errors.length === 0, errors };
 }
-function validateReaderStateMarkdown(markdown, options2 = {}) {
-  return validateMarkdownEnvelope(markdown, validateReaderState, options2);
+function validateReaderStateMarkdown(markdown, options = {}) {
+  return validateMarkdownEnvelope(markdown, validateReaderState, options);
 }
 var init_review = __esm({
   "scripts/lib/review.mjs"() {
@@ -11596,6 +11596,34 @@ function parseApprovalPaths(cell2) {
 }
 var init_approval_paths = __esm({
   "scripts/lib/approval-paths.mjs"() {
+  }
+});
+
+// scripts/lib/command-result.mjs
+function requiredAction(operation) {
+  return {
+    strategy: "author-project",
+    operation,
+    command: `author-project ${operation}`
+  };
+}
+function failure(code, message, operation, details = {}) {
+  return {
+    valid: false,
+    state_written: false,
+    required_action: requiredAction(operation),
+    blockers: [{ code, message, ...details, required_action: requiredAction(operation) }],
+    ...details
+  };
+}
+function commandError(code, message, details = {}) {
+  const error = new Error(message);
+  error.projectCode = code;
+  error.projectDetails = details;
+  return error;
+}
+var init_command_result = __esm({
+  "scripts/lib/command-result.mjs"() {
   }
 });
 
@@ -11683,7 +11711,7 @@ function requireManuscriptActions(project, files, inputScope, code) {
     });
   }
 }
-async function readRestoreSourceScope(project, sourceManifest, options2) {
+async function readRestoreSourceScope(project, sourceManifest, options) {
   if (sourceManifest.files.every((file) => file.action === "create")) return null;
   const code = "restore-source-scope-mismatch";
   if (!sourceManifest.scope_id || !sourceManifest.scope_fingerprint) {
@@ -11702,7 +11730,7 @@ async function readRestoreSourceScope(project, sourceManifest, options2) {
       path: relative
     });
   }
-  const validation = validateScopeSnapshot(snapshot, options2);
+  const validation = validateScopeSnapshot(snapshot, options);
   if (!validation.valid || snapshot.scope_id !== sourceManifest.scope_id || snapshot.scope_fingerprint !== sourceManifest.scope_fingerprint || computeScopeFingerprint(snapshot) !== sourceManifest.scope_fingerprint) {
     throw commandError(code, "The source backup input scope is not valid confirmed scope evidence.", {
       path: relative,
@@ -11711,8 +11739,8 @@ async function readRestoreSourceScope(project, sourceManifest, options2) {
   }
   return snapshot;
 }
-function validateBackupManifest(value, options2 = {}) {
-  const schema = validateBackupManifestSchema(value, options2);
+function validateBackupManifest(value, options = {}) {
+  const schema = validateBackupManifestSchema(value, options);
   const errors = [...schema.errors, ...validateFileActions(value?.files)];
   return { valid: errors.length === 0, errors };
 }
@@ -11723,12 +11751,12 @@ async function readProjectManifest(projectRoot, candidate = null) {
     "utf8"
   ));
 }
-async function validateBackupIndex(projectRoot, value, options2 = {}) {
+async function validateBackupIndex(projectRoot, value, options = {}) {
   const root2 = path9.resolve(projectRoot);
-  const schema = validateBackupIndexSchema(value, options2);
+  const schema = validateBackupIndexSchema(value, options);
   if (!schema.valid) return schema;
   const errors = [];
-  const manifest = await readProjectManifest(root2, options2.manifest ?? null);
+  const manifest = await readProjectManifest(root2, options.manifest ?? null);
   const backupRoot = manifest.paths.backups;
   const backupIds = /* @__PURE__ */ new Set();
   const backupEntries = /* @__PURE__ */ new Map();
@@ -11780,7 +11808,7 @@ async function validateBackupIndex(projectRoot, value, options2 = {}) {
       ));
       continue;
     }
-    const manifestValidation = validateBackupManifest(backupManifest, options2);
+    const manifestValidation = validateBackupManifest(backupManifest, options);
     errors.push(...manifestValidation.errors.map((error) => ({
       ...error,
       instancePath: `${entryPath}/manifest${error.instancePath}`
@@ -11936,7 +11964,7 @@ async function validateBackupIndex(projectRoot, value, options2 = {}) {
             sha256: restoration.source.manifest.sha256
           },
           value,
-          options2
+          options
         );
         if (sourceManifest.operation !== restoration.operation) {
           errors.push(backupError(
@@ -11988,10 +12016,10 @@ async function projectRootForBackupIndex(indexPath) {
     directory = parent;
   }
 }
-async function validateBackupIndexFile(indexPath, options2 = {}) {
+async function validateBackupIndexFile(indexPath, options = {}) {
   try {
-    const projectRoot = options2.projectRoot ?? await projectRootForBackupIndex(indexPath);
-    const manifest = await readProjectManifest(projectRoot, options2.manifest ?? null);
+    const projectRoot = options.projectRoot ?? await projectRootForBackupIndex(indexPath);
+    const manifest = await readProjectManifest(projectRoot, options.manifest ?? null);
     const expected = path9.resolve(projectRoot, manifest.paths.backups, "index.json");
     if (path9.resolve(indexPath) !== expected) {
       return {
@@ -12000,32 +12028,10 @@ async function validateBackupIndexFile(indexPath, options2 = {}) {
       };
     }
     const value = JSON.parse(await readFile8(indexPath, "utf8"));
-    return await validateBackupIndex(projectRoot, value, options2);
+    return await validateBackupIndex(projectRoot, value, options);
   } catch (error) {
     return { valid: false, errors: [backupError("", error.message, "backup-index-unavailable")] };
   }
-}
-function requiredAction(operation) {
-  return {
-    strategy: "author-project",
-    operation,
-    command: `author-project ${operation}`
-  };
-}
-function failure(code, message, operation, details = {}) {
-  return {
-    valid: false,
-    state_written: false,
-    required_action: requiredAction(operation),
-    blockers: [{ code, message, ...details, required_action: requiredAction(operation) }],
-    ...details
-  };
-}
-function commandError(code, message, details = {}) {
-  const error = new Error(message);
-  error.projectCode = code;
-  error.projectDetails = details;
-  return error;
 }
 function approvalFilesFingerprint(request) {
   return sha256Bytes(JSON.stringify({
@@ -12096,6 +12102,69 @@ async function publishManifest(file, text) {
     return true;
   }
 }
+async function publishOriginalInputs(project, files, backupId, checkpoint, options, progress) {
+  const inputs = [];
+  for (const file of files) inputs.push(await readCurrentInput(project, file));
+  const manifestFiles = [];
+  for (const [index, file] of files.entries()) {
+    const backupPath = file.action === "create" ? null : path9.posix.join(project.manifest.paths.backups, backupId, file.path);
+    if (backupPath !== null) {
+      await publishPreservedBytes(path9.resolve(project.root, backupPath), inputs[index]);
+      progress.bytesPublished = true;
+    }
+    manifestFiles.push({ ...file, backup_path: backupPath });
+  }
+  for (const file of files) await readCurrentInput(project, file);
+  await runCheckpoint(options, checkpoint);
+  return manifestFiles;
+}
+async function publishValidatedManifest(project, request, files, createdAt, relativeManifest, invalidMessage, options, progress) {
+  const manifest = {
+    schema_version: "1.0.0",
+    backup_id: request.backup_id,
+    operation: request.operation,
+    approval_id: request.approval_id,
+    scope_id: request.scope_id,
+    scope_fingerprint: request.scope_fingerprint,
+    files,
+    created_at: createdAt
+  };
+  const validation = validateBackupManifest(manifest, options);
+  if (!validation.valid) {
+    throw commandError("backup-manifest-invalid", invalidMessage, {
+      validation_errors: validation.errors
+    });
+  }
+  const text = `${JSON.stringify(manifest, null, 2)}
+`;
+  await publishManifest(path9.resolve(project.root, relativeManifest), text);
+  progress.manifestPublished = true;
+  await runCheckpoint(options, "manifest-published");
+  return {
+    manifest,
+    text,
+    reference: { path: relativeManifest, sha256: sha256Bytes(text) }
+  };
+}
+async function writeValidatedIndex(project, index, indexPath, entry, invalidMessage, options, progress, restoration = null) {
+  const updated = {
+    ...index,
+    backups: [...index.backups, entry],
+    ...restoration ? { restorations: [...index.restorations, restoration] } : {}
+  };
+  const validation = await validateBackupIndex(project.root, updated, options);
+  if (!validation.valid) {
+    throw commandError("backup-index-invalid", invalidMessage, {
+      validation_errors: validation.errors
+    });
+  }
+  const text = `${JSON.stringify(updated, null, 2)}
+`;
+  await writeAtomicVerified(indexPath, text);
+  progress.indexUpdated = true;
+  await runCheckpoint(options, "index-written");
+  return text;
+}
 function manifestRequestMatches(manifest, request) {
   return manifest && ["backup_id", "operation", "approval_id", "scope_id", "scope_fingerprint"].every((field) => manifest[field] === request[field]) && JSON.stringify(manifest.files?.map(({ backup_path: ignored, ...file }) => file)) === JSON.stringify(request.files);
 }
@@ -12117,7 +12186,7 @@ async function recoveryState(project, operation, progress) {
     index_updated: progress.indexUpdated === true
   };
 }
-async function recordBackup(projectRoot, request, options2 = {}) {
+async function recordBackup(projectRoot, request, options = {}) {
   const operation = "record-backup";
   const references = await validateDeployedReferences(projectRoot);
   if (!references.valid) {
@@ -12134,9 +12203,9 @@ async function recordBackup(projectRoot, request, options2 = {}) {
   const lock = await acquireDirectoryLock(
     path9.resolve(initial.root, initial.manifest.paths.convergence, "active-cycle.lock"),
     {
-      timeoutMs: options2.lockTimeoutMs ?? 1e4,
-      retryMs: options2.lockRetryMs ?? 20,
-      now: options2.now
+      timeoutMs: options.lockTimeoutMs ?? 1e4,
+      retryMs: options.lockRetryMs ?? 20,
+      now: options.now
     }
   );
   if (!lock.acquired) {
@@ -12152,9 +12221,9 @@ async function recordBackup(projectRoot, request, options2 = {}) {
   let operationError;
   const progress = { backupId: request.backup_id };
   try {
-    await runCheckpoint(options2, "lock-acquired");
+    await runCheckpoint(options, "lock-acquired");
     project = await readProject(projectRoot);
-    const validation = validateRecordBackupCommand(request, options2);
+    const validation = validateRecordBackupCommand(request, options);
     if (!validation.valid) {
       throw commandError("backup-command-invalid", "The backup command does not satisfy its typed input contract.", {
         validation_errors: validation.errors
@@ -12212,7 +12281,7 @@ async function recordBackup(projectRoot, request, options2 = {}) {
     const indexPath = path9.resolve(project.root, project.manifest.paths.backups, "index.json");
     const indexText = await readFile8(indexPath, "utf8");
     const index = JSON.parse(indexText);
-    const indexValidation = await validateBackupIndex(project.root, index, options2);
+    const indexValidation = await validateBackupIndex(project.root, index, options);
     if (!indexValidation.valid) {
       throw commandError("backup-index-invalid", "The existing backup index is invalid.", {
         validation_errors: indexValidation.errors
@@ -12249,28 +12318,21 @@ async function recordBackup(projectRoot, request, options2 = {}) {
           actual_sha256: sha256Bytes(indexText)
         });
       }
-      const inputs = [];
-      for (const file of request.files) {
-        inputs.push(await readCurrentInput(project, file));
-      }
-      const manifestFiles = [];
-      for (const [index2, file] of request.files.entries()) {
-        const backupPath = file.action === "create" ? null : path9.posix.join(project.manifest.paths.backups, request.backup_id, file.path);
-        if (backupPath !== null) {
-          await publishPreservedBytes(path9.resolve(project.root, backupPath), inputs[index2]);
-          progress.bytesPublished = true;
-        }
-        manifestFiles.push({ ...file, backup_path: backupPath });
-      }
-      for (const file of request.files) await readCurrentInput(project, file);
-      await runCheckpoint(options2, "backup-bytes-written");
+      const manifestFiles = await publishOriginalInputs(
+        project,
+        request.files,
+        request.backup_id,
+        "backup-bytes-written",
+        options,
+        progress
+      );
       const relativeManifest = path9.posix.join(
         project.manifest.paths.backups,
         request.backup_id,
         "manifest.json"
       );
       progress.manifestPath = relativeManifest;
-      let createdAt = utcTimestamp(options2);
+      let createdAt = utcTimestamp(options);
       try {
         const orphan = JSON.parse(await readFile8(path9.resolve(project.root, relativeManifest), "utf8"));
         if (!manifestRequestMatches(orphan, request)) {
@@ -12280,28 +12342,16 @@ async function recordBackup(projectRoot, request, options2 = {}) {
       } catch (error) {
         if (error.code !== "ENOENT") throw error;
       }
-      const backupManifest = {
-        schema_version: "1.0.0",
-        backup_id: request.backup_id,
-        operation: request.operation,
-        approval_id: request.approval_id,
-        scope_id: request.scope_id,
-        scope_fingerprint: request.scope_fingerprint,
-        files: manifestFiles,
-        created_at: createdAt
-      };
-      const manifestValidation = validateBackupManifest(backupManifest, options2);
-      if (!manifestValidation.valid) {
-        throw commandError("backup-manifest-invalid", "The candidate backup manifest is invalid.", {
-          validation_errors: manifestValidation.errors
-        });
-      }
-      const manifestText = `${JSON.stringify(backupManifest, null, 2)}
-`;
-      await publishManifest(path9.resolve(project.root, relativeManifest), manifestText);
-      progress.manifestPublished = true;
-      await runCheckpoint(options2, "manifest-published");
-      const manifestReference = { path: relativeManifest, sha256: sha256Bytes(manifestText) };
+      const { manifest: backupManifest, reference: manifestReference } = await publishValidatedManifest(
+        project,
+        request,
+        manifestFiles,
+        createdAt,
+        relativeManifest,
+        "The candidate backup manifest is invalid.",
+        options,
+        progress
+      );
       const entry = {
         backup_id: request.backup_id,
         operation: request.operation,
@@ -12311,18 +12361,15 @@ async function recordBackup(projectRoot, request, options2 = {}) {
         manifest: manifestReference,
         created_at: createdAt
       };
-      const updated = { ...index, backups: [...index.backups, entry] };
-      const updatedValidation = await validateBackupIndex(project.root, updated, options2);
-      if (!updatedValidation.valid) {
-        throw commandError("backup-index-invalid", "The candidate backup index is invalid.", {
-          validation_errors: updatedValidation.errors
-        });
-      }
-      const updatedText = `${JSON.stringify(updated, null, 2)}
-`;
-      await writeAtomicVerified(indexPath, updatedText);
-      progress.indexUpdated = true;
-      await runCheckpoint(options2, "index-written");
+      const updatedText = await writeValidatedIndex(
+        project,
+        index,
+        indexPath,
+        entry,
+        "The candidate backup index is invalid.",
+        options,
+        progress
+      );
       outcome = {
         valid: true,
         state_written: true,
@@ -12431,7 +12478,7 @@ function restoreRecoveryState(project, progress, indexPath) {
     index_updated: progress.indexUpdated === true
   };
 }
-async function recordRestore(projectRoot, request, options2 = {}) {
+async function recordRestore(projectRoot, request, options = {}) {
   const operation = "record-restore";
   const references = await validateDeployedReferences(projectRoot);
   if (!references.valid) {
@@ -12448,9 +12495,9 @@ async function recordRestore(projectRoot, request, options2 = {}) {
   const lock = await acquireDirectoryLock(
     path9.resolve(initial.root, initial.manifest.paths.convergence, "active-cycle.lock"),
     {
-      timeoutMs: options2.lockTimeoutMs ?? 1e4,
-      retryMs: options2.lockRetryMs ?? 20,
-      now: options2.now
+      timeoutMs: options.lockTimeoutMs ?? 1e4,
+      retryMs: options.lockRetryMs ?? 20,
+      now: options.now
     }
   );
   if (!lock.acquired) {
@@ -12470,9 +12517,9 @@ async function recordRestore(projectRoot, request, options2 = {}) {
   };
   const indexPath = path9.resolve(initial.root, initial.manifest.paths.backups, "index.json");
   try {
-    await runCheckpoint(options2, "lock-acquired");
+    await runCheckpoint(options, "lock-acquired");
     project = await readProject(projectRoot);
-    const validation = validateRecordRestoreCommand(request, options2);
+    const validation = validateRecordRestoreCommand(request, options);
     if (!validation.valid) {
       throw commandError("restore-command-invalid", "The restore command does not satisfy its typed input contract.", {
         validation_errors: validation.errors
@@ -12502,7 +12549,7 @@ async function recordRestore(projectRoot, request, options2 = {}) {
       if (manifestRequestMatches(candidate, {
         ...request,
         backup_id: request.safety_backup_id
-      }) && validateBackupManifest(candidate, options2).valid) {
+      }) && validateBackupManifest(candidate, options).valid) {
         let outputsReady = true;
         for (const file of request.files) {
           try {
@@ -12556,7 +12603,7 @@ async function recordRestore(projectRoot, request, options2 = {}) {
     );
     const indexText = await readFile8(indexPath, "utf8");
     const index = JSON.parse(indexText);
-    const indexValidation = await validateBackupIndex(project.root, index, options2);
+    const indexValidation = await validateBackupIndex(project.root, index, options);
     if (!indexValidation.valid) {
       throw commandError("backup-index-invalid", "The existing backup index is invalid.", {
         validation_errors: indexValidation.errors
@@ -12586,7 +12633,7 @@ async function recordRestore(projectRoot, request, options2 = {}) {
       sourceEntry = {
         manifest: { path: request.source_commit.path, sha256: request.source_commit.sha256 }
       };
-      sourceManifest = await readCommitSource(project, request.source_commit, index, options2);
+      sourceManifest = await readCommitSource(project, request.source_commit, index, options);
     }
     if (sourceManifest.operation !== request.operation || JSON.stringify(inverseFiles(sourceManifest.files)) !== JSON.stringify(request.files)) {
       throw commandError(
@@ -12594,7 +12641,7 @@ async function recordRestore(projectRoot, request, options2 = {}) {
         "The requested restore files must be the complete ordered inverse of the source backup manifest."
       );
     }
-    const sourceScope = await readRestoreSourceScope(project, sourceManifest, options2);
+    const sourceScope = await readRestoreSourceScope(project, sourceManifest, options);
     if (sourceScope) {
       requireManuscriptActions(
         project,
@@ -12613,41 +12660,27 @@ async function recordRestore(projectRoot, request, options2 = {}) {
       safetyManifest = recoveryManifest;
       safetyManifestText = recoveryManifestText;
     } else {
-      const inputs = [];
-      for (const file of request.files) inputs.push(await readCurrentInput(project, file));
-      safetyFiles = [];
-      for (const [index2, file] of request.files.entries()) {
-        const backupPath = file.action === "create" ? null : path9.posix.join(project.manifest.paths.backups, request.safety_backup_id, file.path);
-        if (backupPath !== null) {
-          await publishPreservedBytes(path9.resolve(project.root, backupPath), inputs[index2]);
-          progress.bytesPublished = true;
-        }
-        safetyFiles.push({ ...file, backup_path: backupPath });
-      }
-      for (const file of request.files) await readCurrentInput(project, file);
-      await runCheckpoint(options2, "safety-backup-written");
-      createdAt = utcTimestamp(options2);
-      safetyManifest = {
-        schema_version: "1.0.0",
-        backup_id: request.safety_backup_id,
-        operation: request.operation,
-        approval_id: request.approval_id,
-        scope_id: request.scope_id,
-        scope_fingerprint: request.scope_fingerprint,
-        files: safetyFiles,
-        created_at: createdAt
-      };
-      const safetyValidation = validateBackupManifest(safetyManifest, options2);
-      if (!safetyValidation.valid) {
-        throw commandError("backup-manifest-invalid", "The safety backup manifest is invalid.", {
-          validation_errors: safetyValidation.errors
-        });
-      }
-      safetyManifestText = `${JSON.stringify(safetyManifest, null, 2)}
-`;
-      await publishManifest(path9.resolve(project.root, safetyManifestRelative), safetyManifestText);
-      progress.manifestPublished = true;
-      await runCheckpoint(options2, "manifest-published");
+      safetyFiles = await publishOriginalInputs(
+        project,
+        request.files,
+        request.safety_backup_id,
+        "safety-backup-written",
+        options,
+        progress
+      );
+      createdAt = utcTimestamp(options);
+      const publication = await publishValidatedManifest(
+        project,
+        { ...request, backup_id: request.safety_backup_id },
+        safetyFiles,
+        createdAt,
+        safetyManifestRelative,
+        "The safety backup manifest is invalid.",
+        options,
+        progress
+      );
+      safetyManifest = publication.manifest;
+      safetyManifestText = publication.text;
       for (const [index2, file] of request.files.entries()) {
         const currentPath = path9.resolve(project.root, file.path);
         const sourceFile = sourceManifest.files[index2];
@@ -12670,7 +12703,7 @@ async function recordRestore(projectRoot, request, options2 = {}) {
         await verifyRestoredOutput(project, file);
       }
       progress.manuscriptRestored = true;
-      await runCheckpoint(options2, "manuscript-restored");
+      await runCheckpoint(options, "manuscript-restored");
     }
     const safetyManifestReference = {
       path: safetyManifestRelative,
@@ -12704,22 +12737,16 @@ async function recordRestore(projectRoot, request, options2 = {}) {
       files: safetyFiles,
       created_at: createdAt
     };
-    const updated = {
-      ...index,
-      backups: [...index.backups, safetyEntry],
-      restorations: [...index.restorations, restoration]
-    };
-    const updatedValidation = await validateBackupIndex(project.root, updated, options2);
-    if (!updatedValidation.valid) {
-      throw commandError("backup-index-invalid", "The candidate restoration index is invalid.", {
-        validation_errors: updatedValidation.errors
-      });
-    }
-    const updatedText = `${JSON.stringify(updated, null, 2)}
-`;
-    await writeAtomicVerified(indexPath, updatedText);
-    progress.indexUpdated = true;
-    await runCheckpoint(options2, "index-written");
+    const updatedText = await writeValidatedIndex(
+      project,
+      index,
+      indexPath,
+      safetyEntry,
+      "The candidate restoration index is invalid.",
+      options,
+      progress,
+      restoration
+    );
     const scopeValidation = await validateFullManuscriptScope(project.manifest, project.manifestPath);
     outcome = {
       valid: true,
@@ -12783,7 +12810,7 @@ async function recordRestore(projectRoot, request, options2 = {}) {
 function restoreSourceId(request) {
   return request.source_backup_id ?? request.source_commit?.commit_id;
 }
-async function readCommitSource(project, reference, backupIndex, options2 = {}) {
+async function readCommitSource(project, reference, backupIndex, options = {}) {
   const expectedPath = path9.posix.join(
     project.manifest.paths.creation,
     "batches",
@@ -12805,7 +12832,7 @@ async function readCommitSource(project, reference, backupIndex, options2 = {}) 
     );
   }
   const commit = JSON.parse(contents.toString("utf8"));
-  const validation = validateCreationCommit(commit, options2);
+  const validation = validateCreationCommit(commit, options);
   if (!validation.valid || commit.commit_id !== reference.commit_id || commit.status !== "committed") {
     throw commandError(
       "restore-source-mismatch",
@@ -12872,6 +12899,7 @@ var MANUSCRIPT_EXTENSIONS2;
 var init_backup = __esm({
   "scripts/lib/backup.mjs"() {
     init_artifacts();
+    init_command_result();
     init_cycle_coordination();
     init_evaluation_artifacts();
     init_manuscript();
@@ -12951,12 +12979,12 @@ function buildScopeEventChain(cycle, roots, reconciliations, executionChain, cre
   }
   return visit(startingIdentity, false);
 }
-async function validateImportDecision(project, reconciliation, previousScope, targetScope, inventory, options2 = {}) {
+async function validateImportDecision(project, reconciliation, previousScope, targetScope, inventory, options = {}) {
   const trackerText = await readFile9(
     path10.resolve(project.root, project.manifest.paths.audit_tracker),
     "utf8"
   );
-  const tracker = await parseTrackerState(trackerText, project.root, options2);
+  const tracker = await parseTrackerState(trackerText, project.root, options);
   const decisions = tracker.approvals.filter(
     (approval) => approval.id === reconciliation.author_decision_id
   );
@@ -13124,7 +13152,7 @@ var init_evaluation_chains = __esm({
 // scripts/lib/evaluation-evaluator.mjs
 import { readFile as readFile10 } from "node:fs/promises";
 import path11 from "node:path";
-function newComputation(project, cycle, roots, evaluationId, createdAt, options2 = {}) {
+function newComputation(project, cycle, roots, evaluationId, createdAt, options = {}) {
   const artifacts = /* @__PURE__ */ new Map();
   const blockers = [];
   const blockerKeys = /* @__PURE__ */ new Set();
@@ -13210,7 +13238,7 @@ function newComputation(project, cycle, roots, evaluationId, createdAt, options2
       return null;
     }
     if (validate) {
-      const validation = validate(value, options2);
+      const validation = validate(value, options);
       if (!validation.valid) {
         block(
           "artifact-contract-invalid",
@@ -13223,7 +13251,7 @@ function newComputation(project, cycle, roots, evaluationId, createdAt, options2
     }
     return value;
   }
-  return { project, cycle, roots, evaluationId, createdAt, options: options2, artifacts, blockers, block, record, bytes, json };
+  return { project, cycle, roots, evaluationId, createdAt, options, artifacts, blockers, block, record, bytes, json };
 }
 function targetFiles(scope, paths = null) {
   const selected = paths ? new Set(paths) : null;
@@ -13328,8 +13356,8 @@ async function loadDependencySource(computation, reference) {
   if (!validation.valid || validation.envelope?.report_id !== reference.report_id) return null;
   return validation.envelope;
 }
-async function computeEvaluation(project, cycle, roots, evaluationId, createdAt, options2 = {}) {
-  const computation = newComputation(project, cycle, roots, evaluationId, createdAt, options2);
+async function computeEvaluation(project, cycle, roots, evaluationId, createdAt, options = {}) {
+  const computation = newComputation(project, cycle, roots, evaluationId, createdAt, options);
   const { block, record } = computation;
   const relatedArtifacts = cycle?.related_artifacts ?? {
     revision_executions: roots.revision_executions ?? [],
@@ -13360,7 +13388,7 @@ async function computeEvaluation(project, cycle, roots, evaluationId, createdAt,
       `The previous manuscript inventory cannot be compared with current disk state: ${error.message}`
     );
   }
-  const fullScope = await validateFullManuscriptScope(project.manifest, project.manifestPath, options2);
+  const fullScope = await validateFullManuscriptScope(project.manifest, project.manifestPath, options);
   const inventory = await collectManuscriptInventory(
     project.root,
     project.manifest.manuscript_root,
@@ -13502,7 +13530,7 @@ async function computeEvaluation(project, cycle, roots, evaluationId, createdAt,
       for (const storyReference of reconciliation.story_state) {
         const contents = await computation.bytes(storyReference, "story-state", storyReference.path);
         if (!contents) continue;
-        const storyValidation = validateStoryStateMarkdown(contents.toString("utf8"), options2);
+        const storyValidation = validateStoryStateMarkdown(contents.toString("utf8"), options);
         if (!storyValidation.valid) {
           block(
             "story-state-contract-invalid",
@@ -13676,7 +13704,7 @@ async function computeEvaluation(project, cycle, roots, evaluationId, createdAt,
     for (const dependency of pass.dependencies) {
       await computation.bytes(dependency, "dependency", dependency.path);
     }
-    const baseline = await latestSatisfiedPass(project, roots.cycle_id, evaluationId, options2);
+    const baseline = await latestSatisfiedPass(project, roots.cycle_id, evaluationId, options);
     if (baseline && !pass.baseline_pass) {
       block(
         "requested-pass-baseline-missing",
@@ -13747,7 +13775,7 @@ async function computeEvaluation(project, cycle, roots, evaluationId, createdAt,
   const trackerText = await computation.bytes(trackerReference, "tracker", "audit-tracker");
   let tracker = { findings: [], approvals: [], completion_decisions: [], valid: false, errors: [] };
   if (trackerText) {
-    tracker = await parseTrackerState(trackerText.toString("utf8"), project.root, options2);
+    tracker = await parseTrackerState(trackerText.toString("utf8"), project.root, options);
     if (!tracker.valid) {
       block("tracker-invalid", `Tracker is invalid: ${formatErrors(tracker.errors)}`);
     }
@@ -13990,7 +14018,7 @@ async function computeEvaluation(project, cycle, roots, evaluationId, createdAt,
       requireOutputs: currentExecution && execution.status === "verified",
       requireCurrentTarget: currentExecution && execution.status === "verified",
       requireCurrentDecisions: currentExecution,
-      now: options2.now
+      now: options.now
     });
     for (const error of disk.errors) {
       block(error.code, error.message, "indeterminate", {
@@ -14137,7 +14165,7 @@ async function computeEvaluation(project, cycle, roots, evaluationId, createdAt,
       const job = await computation.json(jobInput.job, "review-job", jobInput.job.job_id, validateReviewJobSchema);
       reviewClaimPaths.add(jobInput.job.path);
       if (!job) continue;
-      const jobValidation = validateReviewJob(job, options2);
+      const jobValidation = validateReviewJob(job, options);
       if (!jobValidation.valid) {
         block(
           "review-job-invalid",
@@ -14183,7 +14211,7 @@ async function computeEvaluation(project, cycle, roots, evaluationId, createdAt,
       if (/\.(?:md|markdown)$/i.test(jobInput.reader_state.path)) {
         const contents = await computation.bytes(jobInput.reader_state, "reader-state", jobInput.reader_state.state_id);
         if (contents) {
-          const parsed = validateReaderStateMarkdown(contents.toString("utf8"), options2);
+          const parsed = validateReaderStateMarkdown(contents.toString("utf8"), options);
           if (!parsed.valid || !parsed.envelope) {
             block("reader-state-invalid", `Reader state ${jobInput.reader_state.path} is invalid: ${formatErrors(parsed.errors)}`);
           } else {
@@ -14203,7 +14231,7 @@ async function computeEvaluation(project, cycle, roots, evaluationId, createdAt,
         if (state.state_id !== jobInput.reader_state.state_id) {
           block("reader-state-identity-mismatch", `Reader state identity differs from ${jobInput.reader_state.path}.`);
         }
-        const stateValidation = validateReaderStateForJob(state, job, options2);
+        const stateValidation = validateReaderStateForJob(state, job, options);
         if (!stateValidation.valid) {
           block("reader-state-chain-invalid", `Reader state ${state.state_id} does not match its job: ${formatErrors(stateValidation.errors)}`);
         }
@@ -14493,7 +14521,7 @@ async function computeEvaluation(project, cycle, roots, evaluationId, createdAt,
     },
     created_at: createdAt
   };
-  const validation = validateConvergenceEvaluation(evaluation, options2);
+  const validation = validateConvergenceEvaluation(evaluation, options);
   if (!validation.valid) throw new Error(`Generated evaluation is invalid: ${formatErrors(validation.errors)}`);
   return evaluation;
 }
@@ -14545,8 +14573,8 @@ function targetEvaluationIdentityBlockers(cycle, stored, reference) {
   }
   return blockers;
 }
-async function recomputeStoredEvaluation(project, cycle, reference, options2 = {}) {
-  const { value: stored } = await readEvaluationReference(project, reference, options2);
+async function recomputeStoredEvaluation(project, cycle, reference, options = {}) {
+  const { value: stored } = await readEvaluationReference(project, reference, options);
   const identityBlockers = targetEvaluationIdentityBlockers(cycle, stored, reference);
   if (identityBlockers.length > 0) {
     return {
@@ -14586,7 +14614,7 @@ async function recomputeStoredEvaluation(project, cycle, reference, options2 = {
     },
     stored.evaluation_id,
     stored.created_at,
-    options2
+    options
   );
   return {
     stored,
@@ -14594,7 +14622,7 @@ async function recomputeStoredEvaluation(project, cycle, reference, options2 = {
     current: stored.outcome === recomputed.outcome && sameEvidenceGraph(stored.evidence_graph, recomputed.evidence_graph)
   };
 }
-async function recomputeCompletedCycleForRecovery(project, completed, options2 = {}) {
+async function recomputeCompletedCycleForRecovery(project, completed, options = {}) {
   if (completed?.status !== "completed" || !completed.target_evaluation) {
     throw new Error("A completed cycle and target evaluation are required for recovery");
   }
@@ -14602,13 +14630,13 @@ async function recomputeCompletedCycleForRecovery(project, completed, options2 =
     project,
     completed,
     completed.target_evaluation,
-    options2
+    options
   );
   const trackerText = await readFile11(
     path12.resolve(project.root, project.manifest.paths.audit_tracker),
     "utf8"
   );
-  const tracker = await parseTrackerState(trackerText, project.root, options2);
+  const tracker = await parseTrackerState(trackerText, project.root, options);
   const decision = tracker.completion_decisions.find(
     (candidate) => candidate.id === completed.completion?.decision_id
   );
@@ -14617,8 +14645,8 @@ async function recomputeCompletedCycleForRecovery(project, completed, options2 =
   }
   return result;
 }
-async function recomputeCycleEvaluationForRecovery(project, cycle, reference, options2 = {}) {
-  const result = await recomputeStoredEvaluation(project, cycle, reference, options2);
+async function recomputeCycleEvaluationForRecovery(project, cycle, reference, options = {}) {
+  const result = await recomputeStoredEvaluation(project, cycle, reference, options);
   if (result.stored.cycle_id !== cycle.cycle_id || !sameScopeReference(result.stored.target_scope, cycle.target_scope) || !samePassReference(result.stored.requested_pass, cycle.requested_pass)) {
     throw new Error("Published evaluation cycle, pass, or target scope does not match the interrupted cycle");
   }
@@ -14654,8 +14682,8 @@ function publicFailure(code, message, cycle = null, details = {}) {
     ...details
   };
 }
-function coordinationFailure(project, active, options2 = {}) {
-  const blockers = coordinationBlockers(project, active, options2);
+function coordinationFailure(project, active, options = {}) {
+  const blockers = coordinationBlockers(project, active, options);
   if (blockers.length === 0) return null;
   return {
     valid: false,
@@ -14709,13 +14737,13 @@ function validateEvaluationRequest(request, { independent = false } = {}) {
     }
   }
 }
-async function lockProjectCycle(project, options2, operation) {
+async function lockProjectCycle(project, options, operation) {
   const lock = await acquireDirectoryLock(
     path13.resolve(project.root, project.manifest.paths.convergence, "active-cycle.lock"),
     {
-      timeoutMs: options2.lockTimeoutMs ?? 1e4,
-      retryMs: options2.lockRetryMs ?? 20,
-      now: options2.now
+      timeoutMs: options.lockTimeoutMs ?? 1e4,
+      retryMs: options.lockRetryMs ?? 20,
+      now: options.now
     }
   );
   if (!lock.acquired) {
@@ -14754,13 +14782,13 @@ async function lockProjectCycle(project, options2, operation) {
   if (operationError) throw operationError;
   return { value };
 }
-async function evaluateCycle(projectRoot, request, options2 = {}) {
+async function evaluateCycle(projectRoot, request, options = {}) {
   validateEvaluationRequest(request);
-  const project = await readProject(projectRoot, options2);
-  const initial = await readActiveCycle(project, options2);
+  const project = await readProject(projectRoot, options);
+  const initial = await readActiveCycle(project, options);
   if (!initial) return publicFailure("active-cycle-required", "An active cycle is required for evaluation.");
-  const locked = await lockProjectCycle(project, options2, async () => {
-    const active = await readActiveCycle(project, options2);
+  const locked = await lockProjectCycle(project, options, async () => {
+    const active = await readActiveCycle(project, options);
     if (!active) return publicFailure("active-cycle-required", "An active cycle is required for evaluation.");
     const cycle = active.value;
     if (cycle.cycle_id !== request.cycle_id) {
@@ -14777,14 +14805,14 @@ async function evaluateCycle(projectRoot, request, options2 = {}) {
       return publicFailure("evaluation-input-unavailable", "The active cycle requires target scope and requested-pass references before evaluation.", cycle);
     }
     const coordination = coordinationFailure(project, active, {
-      allowOperationId: options2.recoveryOperationId ?? null
+      allowOperationId: options.recoveryOperationId ?? null
     });
     if (coordination) return coordination;
     await beginCycleOperation(project, active, {
       kind: "evaluation",
       operationId: request.evaluation_id,
       artifactId: request.evaluation_id
-    }, options2);
+    }, options);
     const roots = {
       cycle_id: cycle.cycle_id,
       requested_pass: cycle.requested_pass,
@@ -14799,8 +14827,8 @@ async function evaluateCycle(projectRoot, request, options2 = {}) {
       cycle,
       roots,
       request.evaluation_id,
-      operationTime(options2),
-      options2
+      operationTime(options),
+      options
     );
     const relative = path13.posix.join(
       project.manifest.paths.convergence,
@@ -14811,7 +14839,7 @@ async function evaluateCycle(projectRoot, request, options2 = {}) {
     const text = `${JSON.stringify(evaluation, null, 2)}
 `;
     await publishImmutable(absolute, text);
-    await runCheckpoint(options2, "evaluation-published");
+    await runCheckpoint(options, "evaluation-published");
     const reference = evaluationReference(evaluation, relative, text);
     const updated = {
       ...cycle,
@@ -14826,12 +14854,12 @@ async function evaluateCycle(projectRoot, request, options2 = {}) {
         ...cycle.recovery_position,
         operation_id: request.evaluation_id
       },
-      updated_at: operationTime(options2)
+      updated_at: operationTime(options)
     };
     await writeAtomicVerified(active.file, `${JSON.stringify(updated, null, 2)}
 `);
-    await runCheckpoint(options2, "cycle-written");
-    await finishCycleOperation(project, updated, request.evaluation_id, options2);
+    await runCheckpoint(options, "cycle-written");
+    await finishCycleOperation(project, updated, request.evaluation_id, options);
     return {
       valid: evaluation.outcome === "satisfied",
       cycle: updated,
@@ -14844,10 +14872,10 @@ async function evaluateCycle(projectRoot, request, options2 = {}) {
   });
   return locked.lockFailure ?? locked.value;
 }
-async function evaluateDraft(projectRoot, request, options2 = {}) {
+async function evaluateDraft(projectRoot, request, options = {}) {
   validateEvaluationRequest(request, { independent: true });
-  const project = await readProject(projectRoot, options2);
-  const initial = await readActiveCycle(project, options2);
+  const project = await readProject(projectRoot, options);
+  const initial = await readActiveCycle(project, options);
   if (initial) {
     return publicFailure(
       "active-cycle-exists",
@@ -14855,8 +14883,8 @@ async function evaluateDraft(projectRoot, request, options2 = {}) {
       initial.value
     );
   }
-  const locked = await lockProjectCycle(project, options2, async () => {
-    const active = await readActiveCycle(project, options2);
+  const locked = await lockProjectCycle(project, options, async () => {
+    const active = await readActiveCycle(project, options);
     if (active) {
       return publicFailure(
         "active-cycle-exists",
@@ -14880,8 +14908,8 @@ async function evaluateDraft(projectRoot, request, options2 = {}) {
       null,
       roots,
       request.evaluation_id,
-      operationTime(options2),
-      options2
+      operationTime(options),
+      options
     );
     const relative = path13.posix.join(
       project.manifest.paths.convergence,
@@ -14892,7 +14920,7 @@ async function evaluateDraft(projectRoot, request, options2 = {}) {
     const text = `${JSON.stringify(evaluation, null, 2)}
 `;
     await publishImmutable(absolute, text);
-    await runCheckpoint(options2, "evaluation-published");
+    await runCheckpoint(options, "evaluation-published");
     return {
       valid: evaluation.outcome === "satisfied",
       cycle: null,
@@ -14920,13 +14948,13 @@ function validateCompletionRequest(request) {
     throw new Error("complete-cycle requires exact cycle, revision, new evaluation, decision ID, and explicit author confirmation");
   }
 }
-async function completeCycle(projectRoot, request, options2 = {}) {
+async function completeCycle(projectRoot, request, options = {}) {
   validateCompletionRequest(request);
-  const project = await readProject(projectRoot, options2);
-  const initial = await readActiveCycle(project, options2);
+  const project = await readProject(projectRoot, options);
+  const initial = await readActiveCycle(project, options);
   if (!initial) return publicFailure("active-cycle-required", "An active cycle is required for completion.");
-  const locked = await lockProjectCycle(project, options2, async () => {
-    const active = await readActiveCycle(project, options2);
+  const locked = await lockProjectCycle(project, options, async () => {
+    const active = await readActiveCycle(project, options);
     if (!active) return publicFailure("active-cycle-required", "An active cycle is required for completion.");
     const cycle = active.value;
     if (cycle.cycle_id !== request.cycle_id) {
@@ -14943,12 +14971,12 @@ async function completeCycle(projectRoot, request, options2 = {}) {
       return publicFailure("completion-evaluation-not-satisfied", "A current satisfied target evaluation is required before completion.", cycle);
     }
     const coordination = coordinationFailure(project, active, {
-      allowOperationId: options2.recoveryOperationId ?? null
+      allowOperationId: options.recoveryOperationId ?? null
     });
     if (coordination) return coordination;
     let current;
     try {
-      current = await recomputeStoredEvaluation(project, cycle, cycle.target_evaluation, options2);
+      current = await recomputeStoredEvaluation(project, cycle, cycle.target_evaluation, options);
     } catch (error) {
       return publicFailure("completion-evaluation-not-satisfied", `Target evaluation cannot be trusted: ${error.message}`, cycle);
     }
@@ -14964,7 +14992,7 @@ async function completeCycle(projectRoot, request, options2 = {}) {
     }
     const trackerPath = path13.resolve(project.root, project.manifest.paths.audit_tracker);
     const trackerBefore = await readFile12(trackerPath, "utf8");
-    const trackerState = await parseTrackerState(trackerBefore, project.root, options2);
+    const trackerState = await parseTrackerState(trackerBefore, project.root, options);
     const existingDecision = trackerState.completion_decisions.find(
       (decision) => decision.id === request.decision_id
     );
@@ -14985,8 +15013,8 @@ async function completeCycle(projectRoot, request, options2 = {}) {
       kind: "completion",
       operationId: request.decision_id,
       artifactId: request.evaluation_id
-    }, options2);
-    const completedAt = operationTime(options2);
+    }, options);
+    const completedAt = operationTime(options);
     if (!existingDecision) {
       const trackerAfter = appendCycleCompletionDecision(trackerBefore, {
         decision_id: request.decision_id,
@@ -14997,7 +15025,7 @@ async function completeCycle(projectRoot, request, options2 = {}) {
       });
       await writeAtomicVerified(trackerPath, trackerAfter);
     }
-    await runCheckpoint(options2, "completion-decision-written");
+    await runCheckpoint(options, "completion-decision-written");
     const relative = path13.posix.join(
       project.manifest.paths.convergence,
       "evaluations",
@@ -15019,7 +15047,7 @@ async function completeCycle(projectRoot, request, options2 = {}) {
         path: relative,
         sha256: sha256Bytes(text)
       };
-      const recovered = await recomputeCycleEvaluationForRecovery(project, cycle, reference, options2);
+      const recovered = await recomputeCycleEvaluationForRecovery(project, cycle, reference, options);
       evaluation = recovered.stored;
       reference = evaluationReference(evaluation, relative, text);
     } else {
@@ -15038,14 +15066,14 @@ async function completeCycle(projectRoot, request, options2 = {}) {
         },
         request.evaluation_id,
         completedAt,
-        options2
+        options
       );
       text = `${JSON.stringify(evaluation, null, 2)}
 `;
       await publishImmutable(absolute, text);
       reference = evaluationReference(evaluation, relative, text);
     }
-    await runCheckpoint(options2, "evaluation-published");
+    await runCheckpoint(options, "evaluation-published");
     if (evaluation.outcome !== "satisfied") {
       const updated = {
         ...cycle,
@@ -15059,8 +15087,8 @@ async function completeCycle(projectRoot, request, options2 = {}) {
       };
       await writeAtomicVerified(active.file, `${JSON.stringify(updated, null, 2)}
 `);
-      await runCheckpoint(options2, "cycle-written");
-      await finishCycleOperation(project, updated, request.decision_id, options2);
+      await runCheckpoint(options, "cycle-written");
+      await finishCycleOperation(project, updated, request.decision_id, options);
       return {
         valid: false,
         cycle: updated,
@@ -15099,9 +15127,9 @@ async function completeCycle(projectRoot, request, options2 = {}) {
       path13.resolve(project.root, completedRelative),
       completedText
     );
-    await runCheckpoint(options2, "completed-cycle-published");
+    await runCheckpoint(options, "completed-cycle-published");
     await finishCycleOperation(project, completed, request.decision_id, {
-      ...options2,
+      ...options,
       complete: true,
       completedAt,
       manifestChanges: {
@@ -15114,7 +15142,7 @@ async function completeCycle(projectRoot, request, options2 = {}) {
       }
     });
     await removeVerified(active.file, sha256Bytes(active.text));
-    await runCheckpoint(options2, "active-cycle-removed");
+    await runCheckpoint(options, "active-cycle-removed");
     return {
       valid: true,
       cycle: completed,
@@ -15145,7 +15173,7 @@ var init_evaluation_operations = __esm({
 import { readFile as readFile13 } from "node:fs/promises";
 import path14 from "node:path";
 function missingEvaluationStatus(cycle, pendingAction = null, requestCompletion = null) {
-  const requiredAction6 = cycle?.recovery_position ? {
+  const requiredAction4 = cycle?.recovery_position ? {
     strategy: cycle.recovery_position.required_strategy,
     operation: cycle.recovery_position.operation,
     command: cycle.recovery_position.required_strategy
@@ -15158,15 +15186,15 @@ function missingEvaluationStatus(cycle, pendingAction = null, requestCompletion 
     cycle: cycle ?? null,
     pending_action: pendingAction,
     request_completion: requestCompletion,
-    required_action: requiredAction6,
+    required_action: requiredAction4,
     blockers: [{
       code: "current-evaluation-unavailable",
       message: "No current satisfied full-manuscript evaluation is available.",
-      required_action: requiredAction6
+      required_action: requiredAction4
     }]
   };
 }
-async function computeConvergenceStatus(project, active, options2) {
+async function computeConvergenceStatus(project, active, options) {
   const coordination = coordinationBlockers(project, active);
   if (coordination.length > 0) {
     return {
@@ -15234,18 +15262,18 @@ async function computeConvergenceStatus(project, active, options2) {
   let cycle = active?.value ?? null;
   let reference = cycle?.target_evaluation ?? null;
   if (!reference && !cycle) {
-    const source = (await evaluationSources(project, options2)).at(-1) ?? null;
+    const source = (await evaluationSources(project, options)).at(-1) ?? null;
     cycle = source?.cycle ?? null;
     reference = source?.evaluationReference ?? null;
   }
-  const requestCompletion = await getRequestCompletion(project.root, cycle, options2);
+  const requestCompletion = await getRequestCompletion(project.root, cycle, options);
   const observedInventory = await collectManuscriptInventory(
     project.root,
     project.manifest.manuscript_root,
     project.manifest.paths
   );
   if (observedInventory.files.length === 0 && (reference || (active?.value.related_artifacts.reconciliations ?? []).length > 0)) {
-    const requiredAction6 = active?.value.recovery_position ? {
+    const requiredAction4 = active?.value.recovery_position ? {
       strategy: active.value.recovery_position.required_strategy,
       operation: active.value.recovery_position.operation,
       command: active.value.recovery_position.required_strategy
@@ -15263,11 +15291,11 @@ async function computeConvergenceStatus(project, active, options2) {
       cycle: active?.value ?? null,
       pending_action: project.manifest.pending_action ?? null,
       request_completion: requestCompletion,
-      required_action: requiredAction6,
+      required_action: requiredAction4,
       blockers: [{
         code: "empty-manuscript",
         message: "An empty manuscript cannot satisfy current-draft revision convergence; restore or import nonempty manuscript before full-manuscript revise-draft recovery.",
-        required_action: requiredAction6
+        required_action: requiredAction4
       }]
     };
   }
@@ -15333,8 +15361,8 @@ async function computeConvergenceStatus(project, active, options2) {
     }
   }
   try {
-    const result = await recomputeStoredEvaluation(project, cycle, reference, options2);
-    const requiredAction6 = active?.value?.recovery_position ? {
+    const result = await recomputeStoredEvaluation(project, cycle, reference, options);
+    const requiredAction4 = active?.value?.recovery_position ? {
       strategy: active.value.recovery_position.required_strategy,
       operation: active.value.recovery_position.operation,
       command: active.value.recovery_position.required_strategy
@@ -15349,7 +15377,7 @@ async function computeConvergenceStatus(project, active, options2) {
       cycle: active?.value ?? null,
       pending_action: project.manifest.pending_action ?? null,
       request_completion: requestCompletion,
-      required_action: requiredAction6,
+      required_action: requiredAction4,
       blockers: result.recomputed.blockers
     };
   } catch (error) {
@@ -15371,13 +15399,13 @@ async function computeConvergenceStatus(project, active, options2) {
     };
   }
 }
-async function getConvergenceStatus(projectRoot, options2 = {}) {
+async function getConvergenceStatus(projectRoot, options = {}) {
   let project;
   let active;
   try {
-    project = await readProject(projectRoot, options2);
-    active = await readActiveCycle(project, options2);
-    return await computeConvergenceStatus(project, active, options2);
+    project = await readProject(projectRoot, options);
+    active = await readActiveCycle(project, options);
+    return await computeConvergenceStatus(project, active, options);
   } catch (error) {
     return {
       query_valid: false,
@@ -15398,15 +15426,15 @@ async function getConvergenceStatus(projectRoot, options2 = {}) {
     };
   }
 }
-async function findSatisfiedStartingEvaluation(project, scopeReference, options2 = {}) {
-  const source = (await evaluationSources(project, options2)).at(-1);
+async function findSatisfiedStartingEvaluation(project, scopeReference, options = {}) {
+  const source = (await evaluationSources(project, options)).at(-1);
   if (!source) return null;
   try {
     const result = await recomputeStoredEvaluation(
       project,
       source.cycle,
       source.evaluationReference,
-      options2
+      options
     );
     if (sameScopeReference(result.stored.target_scope, scopeReference) && result.stored.outcome === "satisfied" && result.current && result.recomputed.outcome === "satisfied") {
       return {
@@ -15421,11 +15449,11 @@ async function findSatisfiedStartingEvaluation(project, scopeReference, options2
   }
   return null;
 }
-async function findHistoricalSatisfiedEvaluation(project, scopeReference, preferredReference = null, options2 = {}) {
-  for (const source of (await evaluationSources(project, options2)).reverse()) {
+async function findHistoricalSatisfiedEvaluation(project, scopeReference, preferredReference = null, options = {}) {
+  for (const source of (await evaluationSources(project, options)).reverse()) {
     if (preferredReference && (source.evaluationReference.evaluation_id !== preferredReference.evaluation_id || source.evaluationReference.path !== preferredReference.path || source.evaluationReference.sha256 !== preferredReference.sha256)) continue;
     try {
-      const { value: evaluation } = await readEvaluationReference(project, source.evaluationReference, options2);
+      const { value: evaluation } = await readEvaluationReference(project, source.evaluationReference, options);
       if (evaluation.outcome !== "satisfied" || !sameScopeReference(evaluation.target_scope, scopeReference)) {
         continue;
       }
@@ -15437,11 +15465,11 @@ async function findHistoricalSatisfiedEvaluation(project, scopeReference, prefer
       const scopeText = await readFile13(path14.resolve(project.root, scopeReference.snapshot_path), "utf8");
       if (sha256Bytes(scopeText) !== scopeReference.snapshot_sha256) continue;
       const scope = JSON.parse(scopeText);
-      if (!validateScopeSnapshot(scope, options2).valid) continue;
+      if (!validateScopeSnapshot(scope, options).valid) continue;
       const inventoryText = await readFile13(path14.resolve(project.root, scope.inventory.path), "utf8");
       if (sha256Bytes(inventoryText) !== scope.inventory.sha256) continue;
       const inventory = JSON.parse(inventoryText);
-      if (!validateInventorySnapshot(inventory, options2).valid) continue;
+      if (!validateInventorySnapshot(inventory, options).valid) continue;
       const scopeFiles = scope.files.map((file) => `${file.path}\0${file.sha256}`).sort();
       const inventoryFiles = inventory.files.map((file) => `${file.path}\0${file.sha256}`).sort();
       if (JSON.stringify(scopeFiles) !== JSON.stringify(inventoryFiles)) continue;
@@ -15503,8 +15531,8 @@ import path15 from "node:path";
 function cycleError(instancePath, message, keyword = "cycle-identity") {
   return { instancePath, keyword, message, params: {} };
 }
-function validateConvergenceCycle(value, options2 = {}) {
-  const schema = validateConvergenceCycleSchema(value, options2);
+function validateConvergenceCycle(value, options = {}) {
+  const schema = validateConvergenceCycleSchema(value, options);
   const errors = [...schema.errors];
   if (value?.completion && value?.target_evaluation && value.completion.target_evaluation_id !== value.target_evaluation.evaluation_id) {
     errors.push(
@@ -15532,14 +15560,14 @@ function validationError2(result) {
 ${result.errors.map((error) => `${error.instancePath || "/"} ${error.message}`).join("\n")}`
   );
 }
-async function readProject2(projectRoot, options2 = {}) {
+async function readProject2(projectRoot, options = {}) {
   const { readProject: readProjectWithReferences } = await Promise.resolve().then(() => (init_evaluation_artifacts(), evaluation_artifacts_exports));
-  return readProjectWithReferences(projectRoot, options2);
+  return readProjectWithReferences(projectRoot, options);
 }
 function activeCyclePath(root2, manifest) {
   return path15.resolve(root2, manifest.paths.convergence, "active-cycle.json");
 }
-async function readActiveCycle2(root2, manifest, options2 = {}) {
+async function readActiveCycle2(root2, manifest, options = {}) {
   const file = activeCyclePath(root2, manifest);
   let value;
   try {
@@ -15548,7 +15576,7 @@ async function readActiveCycle2(root2, manifest, options2 = {}) {
     if (error.code === "ENOENT") return null;
     throw error;
   }
-  const validation = validateConvergenceCycle(value, options2);
+  const validation = validateConvergenceCycle(value, options);
   if (!validation.valid) throw validationError2(validation);
   if (value.status !== "active") {
     throw new Error(`The living cycle record must be active: ${file}`);
@@ -15573,8 +15601,8 @@ function blocked(code, message, cycle) {
     blockers: [{ code, message, required_action: action3 }]
   };
 }
-function coordinationFailure2(project, active, options2 = {}) {
-  const blockers = coordinationBlockers(project, active, options2);
+function coordinationFailure2(project, active, options = {}) {
+  const blockers = coordinationBlockers(project, active, options);
   if (blockers.length === 0) return null;
   return {
     valid: false,
@@ -15647,8 +15675,8 @@ function emptyChangeSet() {
     dependency_affected: []
   };
 }
-function operationTime2(options2) {
-  return utcTimestamp(options2);
+function operationTime2(options) {
+  return utcTimestamp(options);
 }
 function validateStartRequest(request) {
   const allowed = /* @__PURE__ */ new Set(["cycle_id", "initiating_strategy", "bootstrap", "starting_scope"]);
@@ -15668,7 +15696,7 @@ function validateStartRequest(request) {
     throw new Error("start-cycle requires starting_scope, which may be null only for bootstrap");
   }
 }
-async function completedBootstrapExists(root2, manifest, options2 = {}) {
+async function completedBootstrapExists(root2, manifest, options = {}) {
   const directory = path15.resolve(root2, manifest.paths.convergence, "cycles");
   let entries;
   try {
@@ -15680,17 +15708,17 @@ async function completedBootstrapExists(root2, manifest, options2 = {}) {
   for (const entry of entries) {
     if (!entry.isFile() || !entry.name.endsWith(".json")) continue;
     const value = JSON.parse(await readFile14(path15.join(directory, entry.name), "utf8"));
-    const validation = validateConvergenceCycle(value, options2);
+    const validation = validateConvergenceCycle(value, options);
     if (!validation.valid) throw validationError2(validation);
     if (value.status === "completed" && value.bootstrap) return true;
   }
   return false;
 }
-async function startCycle(projectRoot, request, options2 = {}) {
+async function startCycle(projectRoot, request, options = {}) {
   validateStartRequest(request);
-  const project = await readProject2(projectRoot, options2);
+  const project = await readProject2(projectRoot, options);
   const { root: root2, manifest } = project;
-  const active = await readActiveCycle2(root2, manifest, options2);
+  const active = await readActiveCycle2(root2, manifest, options);
   if (active) {
     return blocked(
       "active-cycle-exists",
@@ -15742,10 +15770,10 @@ async function startCycle(projectRoot, request, options2 = {}) {
       if (!request.starting_scope) throw new Error("A starting scope snapshot is required");
       await verifyScopeReference(project, request.starting_scope, {
         requireCurrent: !reconciledStart,
-        ...options2
+        ...options
       });
       if (reconciledStart) {
-        await verifyScopeReference(project, reconciledStart.target_scope, options2);
+        await verifyScopeReference(project, reconciledStart.target_scope, options);
       }
     } catch (error) {
       return blocked(
@@ -15767,8 +15795,8 @@ async function startCycle(projectRoot, request, options2 = {}) {
       project,
       request.starting_scope,
       reconciledStart.previous_evaluation,
-      options2
-    ) : await findSatisfiedStartingEvaluation2(project, request.starting_scope, options2);
+      options
+    ) : await findSatisfiedStartingEvaluation2(project, request.starting_scope, options);
     if (!starting) {
       return blocked(
         "starting-evaluation-indeterminate",
@@ -15801,7 +15829,7 @@ async function startCycle(projectRoot, request, options2 = {}) {
       manifest.manuscript_root,
       manifest.paths
     );
-    if (inventory.files.length > 0 || await completedBootstrapExists(root2, manifest, options2)) {
+    if (inventory.files.length > 0 || await completedBootstrapExists(root2, manifest, options)) {
       return blocked(
         "bootstrap-requires-empty-project",
         "Bootstrap is available only for the first empty manuscript; use the full-manuscript recovery path instead.",
@@ -15811,7 +15839,7 @@ async function startCycle(projectRoot, request, options2 = {}) {
       );
     }
   }
-  const timestamp2 = operationTime2(options2);
+  const timestamp2 = operationTime2(options);
   const cycle = {
     schema_version: "1.0.0",
     cycle_id: request.cycle_id,
@@ -15841,7 +15869,7 @@ async function startCycle(projectRoot, request, options2 = {}) {
     created_at: timestamp2,
     updated_at: timestamp2
   };
-  const validation = validateConvergenceCycle(cycle, options2);
+  const validation = validateConvergenceCycle(cycle, options);
   if (!validation.valid) throw validationError2(validation);
   const file = activeCyclePath(root2, manifest);
   try {
@@ -15849,7 +15877,7 @@ async function startCycle(projectRoot, request, options2 = {}) {
 `);
   } catch (error) {
     if (error.code !== "EEXIST") throw error;
-    const concurrent = await readActiveCycle2(root2, manifest, options2);
+    const concurrent = await readActiveCycle2(root2, manifest, options);
     return blocked(
       "active-cycle-exists",
       `Cycle ${concurrent.value.cycle_id} is active; finish its required recovery action before starting another manuscript-changing cycle.`,
@@ -15871,18 +15899,18 @@ function recoveryActionOrDefault(cycle) {
     command: "revise-draft"
   };
 }
-async function getCycleStatus(projectRoot, options2 = {}) {
+async function getCycleStatus(projectRoot, options = {}) {
   const { getConvergenceStatus: getConvergenceStatus2 } = await Promise.resolve().then(() => (init_convergence(), convergence_exports));
-  return getConvergenceStatus2(projectRoot, options2);
+  return getConvergenceStatus2(projectRoot, options);
 }
-async function checkConvergenceGate(projectRoot, options2 = {}) {
-  const status = await getCycleStatus(projectRoot, options2);
+async function checkConvergenceGate(projectRoot, options = {}) {
+  const status = await getCycleStatus(projectRoot, options);
   return {
     valid: status.query_valid && status.outcome === "satisfied" && status.current,
     ...status
   };
 }
-async function assertCycleAllowsOperation(projectRoot, request, options2 = {}) {
+async function assertCycleAllowsOperation(projectRoot, request, options = {}) {
   if (!STRATEGIES.has(request.strategy)) throw new Error("A valid strategy is required");
   if (typeof request.operation !== "string" || request.operation.length === 0) {
     throw new Error("An operation is required");
@@ -15890,9 +15918,9 @@ async function assertCycleAllowsOperation(projectRoot, request, options2 = {}) {
   if (typeof request.manuscript_change !== "boolean") {
     throw new Error("manuscript_change must be explicit");
   }
-  const project = await readProject2(projectRoot, options2);
+  const project = await readProject2(projectRoot, options);
   const { root: root2, manifest } = project;
-  const active = await readActiveCycle2(root2, manifest, options2);
+  const active = await readActiveCycle2(root2, manifest, options);
   if (!request.manuscript_change) {
     return {
       valid: true,
@@ -16034,14 +16062,14 @@ async function verifyArtifactReference(root2, reference) {
     throw new Error(`Referenced artifact hash does not match: ${reference.path}`);
   }
 }
-async function verifyScopeReference(project, reference, { requireCurrent = true, ...options2 } = {}) {
+async function verifyScopeReference(project, reference, { requireCurrent = true, ...options } = {}) {
   const { root: root2, manifestPath, manifest } = project;
   await verifyArtifactReference(root2, {
     path: reference.snapshot_path,
     sha256: reference.snapshot_sha256
   });
   const snapshot = JSON.parse(await readFile14(path15.resolve(root2, reference.snapshot_path), "utf8"));
-  const validation = validateScopeSnapshot(snapshot, options2);
+  const validation = validateScopeSnapshot(snapshot, options);
   if (!validation.valid) throw validationError2(validation);
   const expectedPath = path15.posix.join(
     manifest.paths.convergence,
@@ -16076,7 +16104,7 @@ function creationFileIdentity(file) {
     status: file.status
   };
 }
-async function deriveCreationChangeSet(project, cycle, candidate, request, options2 = {}) {
+async function deriveCreationChangeSet(project, cycle, candidate, request, options = {}) {
   if (!request.related_artifacts?.creation_commits) return null;
   const batchReferences = candidate.related_artifacts.creation_batches;
   const commitReferences = candidate.related_artifacts.creation_commits;
@@ -16093,8 +16121,8 @@ async function deriveCreationChangeSet(project, cycle, candidate, request, optio
   const [commitReference] = commitReferences;
   const batch = await readReferencedJson(project.root, batchReference);
   const commit = await readReferencedJson(project.root, commitReference);
-  const batchValidation = validateCreationBatch(batch, options2);
-  const commitValidation = validateCreationCommit(commit, options2);
+  const batchValidation = validateCreationBatch(batch, options);
+  const commitValidation = validateCreationCommit(commit, options);
   if (!batchValidation.valid || !commitValidation.valid) {
     throw new Error(
       `Creation artifacts are invalid: ${[...batchValidation.errors, ...commitValidation.errors].map((error) => error.message).join("; ")}`
@@ -16121,7 +16149,7 @@ async function deriveCreationChangeSet(project, cycle, candidate, request, optio
     path15.resolve(project.root, project.manifest.paths.audit_tracker),
     "utf8"
   );
-  const tracker = await parseTrackerState(trackerText, project.root, options2);
+  const tracker = await parseTrackerState(trackerText, project.root, options);
   const acceptances = batch.approvals.map(
     (approvalId) => tracker.approvals.find((approval) => approval.id === approvalId)
   );
@@ -16214,12 +16242,12 @@ async function deriveCreationChangeSet(project, cycle, candidate, request, optio
     dependency_affected: []
   };
 }
-async function deriveRejectedCreationChangeSet(project, cycle, candidate, request, options2 = {}) {
+async function deriveRejectedCreationChangeSet(project, cycle, candidate, request, options = {}) {
   if (!request.related_artifacts?.creation_batches || candidate.related_artifacts.creation_commits.length > 0) return null;
   const references = candidate.related_artifacts.creation_batches;
   if (references.length !== 1) return null;
   const batch = await readReferencedJson(project.root, references[0]);
-  const validation = validateCreationBatch(batch, options2);
+  const validation = validateCreationBatch(batch, options);
   if (!validation.valid) throw validationError2(validation);
   if (batch.status !== "rejected") return null;
   if (cycle.initiating_strategy !== "write-fiction" || !cycle.starting_scope) {
@@ -16232,7 +16260,7 @@ async function deriveRejectedCreationChangeSet(project, cycle, candidate, reques
     path15.resolve(project.root, project.manifest.paths.audit_tracker),
     "utf8"
   );
-  const tracker = await parseTrackerState(trackerText, project.root, options2);
+  const tracker = await parseTrackerState(trackerText, project.root, options);
   const rejectionApprovals = batch.approvals.map((approvalId) => tracker.approvals.find((approval2) => approval2.id === approvalId)).filter((approval2) => approval2?.type === "creation-rejection");
   const approval = rejectionApprovals.length === 1 ? rejectionApprovals[0] : null;
   const approved = tracker.valid && approval && approval.status === "approved" && approval.operation === "chapter-review" && approval.scopeId === cycle.starting_scope.scope_id && sameApprovalPaths(approval.paths, batch.files.map((file) => file.path)) && creationApprovalBindingMatches(approval, batch, cycle.starting_scope.scope_fingerprint);
@@ -16254,8 +16282,8 @@ async function deriveRejectedCreationChangeSet(project, cycle, candidate, reques
     dependency_affected: []
   };
 }
-async function transitionCycleLocked(project, request, options2) {
-  const active = await readActiveCycle2(project.root, project.manifest, options2);
+async function transitionCycleLocked(project, request, options) {
+  const active = await readActiveCycle2(project.root, project.manifest, options);
   if (!active) {
     return {
       stateWritten: false,
@@ -16290,7 +16318,7 @@ async function transitionCycleLocked(project, request, options2) {
     };
   }
   const coordination = coordinationFailure2(project, active, {
-    allowOperationId: options2.recoveryOperationId ?? null
+    allowOperationId: options.recoveryOperationId ?? null
   });
   if (coordination) return { stateWritten: false, result: coordination };
   const creationDiagnosticLink = cycle.initiating_strategy === "write-fiction" && (request.related_artifacts?.creation_batches?.length ?? 0) > 0;
@@ -16349,22 +16377,22 @@ async function transitionCycleLocked(project, request, options2) {
     related_artifacts: mergeRelatedArtifacts(cycle.related_artifacts, request.related_artifacts),
     change_set: request.change_set ?? cycle.change_set,
     work_set: request.work_set ?? cycle.work_set,
-    updated_at: operationTime2(options2)
+    updated_at: operationTime2(options)
   };
-  const validation = validateConvergenceCycle(candidate, options2);
+  const validation = validateConvergenceCycle(candidate, options);
   if (!validation.valid) throw validationError2(validation);
   try {
     if (candidate.target_scope) {
       await verifyScopeReference(project, candidate.target_scope, {
         requireCurrent: Object.hasOwn(request, "target_scope"),
-        ...options2
+        ...options
       });
     }
     if (candidate.change_set.from_scope) {
-      await verifyScopeReference(project, candidate.change_set.from_scope, { requireCurrent: false, ...options2 });
+      await verifyScopeReference(project, candidate.change_set.from_scope, { requireCurrent: false, ...options });
     }
     if (candidate.change_set.to_scope) {
-      await verifyScopeReference(project, candidate.change_set.to_scope, { requireCurrent: false, ...options2 });
+      await verifyScopeReference(project, candidate.change_set.to_scope, { requireCurrent: false, ...options });
     }
     if (candidate.requested_pass) {
       await verifyArtifactReference(project.root, candidate.requested_pass);
@@ -16374,11 +16402,11 @@ async function transitionCycleLocked(project, request, options2) {
         await verifyArtifactReference(project.root, reference);
       }
     }
-    const creationChangeSet = await deriveCreationChangeSet(project, cycle, candidate, request, options2);
+    const creationChangeSet = await deriveCreationChangeSet(project, cycle, candidate, request, options);
     if (creationChangeSet) candidate.change_set = creationChangeSet;
-    const rejectedChangeSet = await deriveRejectedCreationChangeSet(project, cycle, candidate, request, options2);
+    const rejectedChangeSet = await deriveRejectedCreationChangeSet(project, cycle, candidate, request, options);
     if (rejectedChangeSet) candidate.change_set = rejectedChangeSet;
-    const validated = validateConvergenceCycle(candidate, options2);
+    const validated = validateConvergenceCycle(candidate, options);
     if (!validated.valid) throw validationError2(validated);
   } catch (error) {
     return {
@@ -16389,11 +16417,11 @@ async function transitionCycleLocked(project, request, options2) {
   await beginCycleOperation(project, active, {
     kind: request.related_artifacts?.creation_commits ? "creation-publication" : "cycle-transition",
     operationId
-  }, options2);
+  }, options);
   await writeAtomicVerified(active.file, `${JSON.stringify(candidate, null, 2)}
 `);
-  await runCheckpoint(options2, "cycle-written");
-  await finishCycleOperation(project, candidate, operationId, options2);
+  await runCheckpoint(options, "cycle-written");
+  await finishCycleOperation(project, candidate, operationId, options);
   return {
     stateWritten: true,
     result: {
@@ -16405,10 +16433,10 @@ async function transitionCycleLocked(project, request, options2) {
     }
   };
 }
-async function transitionCycle(projectRoot, request, options2 = {}) {
+async function transitionCycle(projectRoot, request, options = {}) {
   validateTransitionRequest(request);
-  const project = await readProject2(projectRoot, options2);
-  const initial = await readActiveCycle2(project.root, project.manifest, options2);
+  const project = await readProject2(projectRoot, options);
+  const initial = await readActiveCycle2(project.root, project.manifest, options);
   if (!initial) {
     return {
       ...blocked(
@@ -16424,9 +16452,9 @@ async function transitionCycle(projectRoot, request, options2 = {}) {
   const lock = await acquireDirectoryLock(
     path15.resolve(project.root, project.manifest.paths.convergence, "active-cycle.lock"),
     {
-      timeoutMs: options2.lockTimeoutMs ?? 1e4,
-      retryMs: options2.lockRetryMs ?? 20,
-      now: options2.now
+      timeoutMs: options.lockTimeoutMs ?? 1e4,
+      retryMs: options.lockRetryMs ?? 20,
+      now: options.now
     }
   );
   if (!lock.acquired) {
@@ -16445,7 +16473,7 @@ async function transitionCycle(projectRoot, request, options2 = {}) {
   let operationError;
   try {
     const completedProblem = await completedPointerFailure(project, initial);
-    outcome = completedProblem ? { stateWritten: false, result: completedProblem } : await transitionCycleLocked(project, request, options2);
+    outcome = completedProblem ? { stateWritten: false, result: completedProblem } : await transitionCycleLocked(project, request, options);
   } catch (error) {
     operationError = error;
   }
@@ -16527,8 +16555,8 @@ function pathWithin(root2, candidate) {
 function formatErrors3(errors) {
   return errors.map((error) => `${error.instancePath || "/"} ${error.message}`).join("; ");
 }
-function validateRevisionExecution(value, options2 = {}) {
-  const schema = validateRevisionExecutionSchema(value, options2);
+function validateRevisionExecution(value, options = {}) {
+  const schema = validateRevisionExecutionSchema(value, options);
   const errors = [...schema.errors];
   const files = /* @__PURE__ */ new Set();
   for (const [index, file] of (value?.files ?? []).entries()) {
@@ -16580,14 +16608,14 @@ function validateRevisionExecution(value, options2 = {}) {
   }
   return { valid: errors.length === 0, errors };
 }
-async function readProject3(projectRoot, options2 = {}) {
+async function readProject3(projectRoot, options = {}) {
   const { readProject: readProjectWithReferences } = await Promise.resolve().then(() => (init_evaluation_artifacts(), evaluation_artifacts_exports));
-  return readProjectWithReferences(projectRoot, options2);
+  return readProjectWithReferences(projectRoot, options);
 }
-async function readActiveCycle3(project, options2 = {}) {
+async function readActiveCycle3(project, options = {}) {
   const file = path16.resolve(project.root, project.manifest.paths.convergence, "active-cycle.json");
   const value = JSON.parse(await readFile15(file, "utf8"));
-  const validation = validateConvergenceCycleSchema(value, options2);
+  const validation = validateConvergenceCycleSchema(value, options);
   if (!validation.valid || value.status !== "active") {
     throw new Error(`Living cycle is invalid: ${formatErrors3(validation.errors)}`);
   }
@@ -16600,20 +16628,20 @@ async function readVerifiedArtifact(project, reference) {
   }
   return contents;
 }
-async function readCurrentScope(project, reference, options2 = {}) {
+async function readCurrentScope(project, reference, options = {}) {
   const contents = await readVerifiedArtifact(project, scopeArtifact(reference));
   const snapshot = JSON.parse(contents.toString("utf8"));
-  const validation = validateScopeSnapshotSchema(snapshot, options2);
+  const validation = validateScopeSnapshotSchema(snapshot, options);
   if (!validation.valid) throw new Error(formatErrors3(validation.errors));
   if (snapshot.scope_id !== reference.scope_id || snapshot.scope_fingerprint !== reference.scope_fingerprint) {
     throw new Error("Scope snapshot identity differs from its reference");
   }
   return snapshot;
 }
-async function readCurrentPass(project, reference, options2 = {}) {
+async function readCurrentPass(project, reference, options = {}) {
   const contents = await readVerifiedArtifact(project, reference);
   const pass = JSON.parse(contents.toString("utf8"));
-  const validation = validateRequestedPassSchema(pass, options2);
+  const validation = validateRequestedPassSchema(pass, options);
   if (!validation.valid) throw new Error(formatErrors3(validation.errors));
   if (pass.pass_id !== reference.pass_id || pass.pass_fingerprint !== reference.pass_fingerprint) {
     throw new Error("Requested-pass identity differs from its reference");
@@ -16667,38 +16695,38 @@ function revisionApprovalBindingMatches(approval, execution, operation) {
     ([token, value]) => tokens.filter((candidate) => candidate.startsWith(`${token}=`)).length === 1 && tokens.includes(`${token}=${value}`)
   );
 }
-async function validateExecutionContext(project, execution, options2 = {}) {
+async function validateExecutionContext(project, execution, options = {}) {
   const errors = [];
-  const structural = validateRevisionExecution(execution, options2);
+  const structural = validateRevisionExecution(execution, options);
   if (!structural.valid) return { valid: false, errors: structural.errors.map(
     (error) => contextError("revision-execution-contract-invalid", error.message)
   ) };
   try {
     await readVerifiedArtifact(project, execution.plan);
     await readVerifiedArtifact(project, execution.batch);
-    const pass = await readCurrentPass(project, execution.requested_pass, options2);
-    const inputScope = await readCurrentScope(project, execution.input_scope, options2);
-    const targetScope = await readCurrentScope(project, execution.target_scope, options2);
+    const pass = await readCurrentPass(project, execution.requested_pass, options);
+    const inputScope = await readCurrentScope(project, execution.input_scope, options);
+    const targetScope = await readCurrentScope(project, execution.target_scope, options);
     if (!sameScopeReference2(pass.target_scope, execution.target_scope)) {
       errors.push(contextError(
         "revision-pass-target-mismatch",
         "The execution requested pass must name its target scope."
       ));
     }
-    if (options2.expectedPass && !samePassReference2(execution.requested_pass, options2.expectedPass)) {
+    if (options.expectedPass && !samePassReference2(execution.requested_pass, options.expectedPass)) {
       errors.push(contextError("revision-pass-mismatch", "The execution pass differs from the active requested pass."));
     }
-    if (options2.expectedScope && !sameScopeReference2(execution.target_scope, options2.expectedScope)) {
+    if (options.expectedScope && !sameScopeReference2(execution.target_scope, options.expectedScope)) {
       errors.push(contextError("revision-target-mismatch", "The execution target differs from the active target scope."));
     }
-    if (options2.requireCurrentTarget) {
+    if (options.requireCurrentTarget) {
       if (!sameScopeReference2(execution.target_scope, project.manifest.current_scope)) {
         errors.push(contextError(
           "revision-target-mismatch",
           "The verified execution target is not manifest current_scope."
         ));
       }
-      const full = await validateFullManuscriptScope(project.manifest, project.manifestPath, options2);
+      const full = await validateFullManuscriptScope(project.manifest, project.manifestPath, options);
       if (!full.valid) {
         errors.push(contextError(
           "revision-target-not-current",
@@ -16706,11 +16734,11 @@ async function validateExecutionContext(project, execution, options2 = {}) {
         ));
       }
     }
-    if (options2.requireCurrentDecisions !== false) {
-      const tracker = options2.trackerState ?? await parseTrackerState(
+    if (options.requireCurrentDecisions !== false) {
+      const tracker = options.trackerState ?? await parseTrackerState(
         await readFile15(path16.resolve(project.root, project.manifest.paths.audit_tracker), "utf8"),
         project.root,
-        options2
+        options
       );
       if (!tracker.valid) {
         errors.push(contextError("revision-tracker-invalid", formatErrors3(tracker.errors)));
@@ -16768,7 +16796,7 @@ async function validateExecutionContext(project, execution, options2 = {}) {
           defer: "deferred",
           dismiss: "dismissed"
         }[finding.disposition];
-        const pendingDecision = options2.pendingFindingDecision?.findingId === finding.finding_id && options2.pendingFindingDecision.status === expectedStatus && tracked?.status === "open";
+        const pendingDecision = options.pendingFindingDecision?.findingId === finding.finding_id && options.pendingFindingDecision.status === expectedStatus && tracked?.status === "open";
         if (tracked && finding.disposition !== "execute" && tracked.status !== expectedStatus && !pendingDecision) {
           errors.push(contextError(
             "revision-finding-disposition-mismatch",
@@ -16791,7 +16819,7 @@ async function validateExecutionContext(project, execution, options2 = {}) {
     let backupIndex = null;
     try {
       backupIndex = JSON.parse(await readFile15(backupIndexPath, "utf8"));
-      const indexValidation = await validateBackupIndex(project.root, backupIndex, options2);
+      const indexValidation = await validateBackupIndex(project.root, backupIndex, options);
       if (!indexValidation.valid) {
         errors.push(contextError(
           "revision-backup-invalid",
@@ -16915,13 +16943,13 @@ async function validateExecutionContext(project, execution, options2 = {}) {
       try {
         const contents = await readFile15(path16.resolve(project.root, file.path));
         const currentHash = sha256Bytes(contents);
-        if (options2.requireInputs && file.action !== "create" && currentHash !== file.input_sha256) {
+        if (options.requireInputs && file.action !== "create" && currentHash !== file.input_sha256) {
           errors.push(contextError("revision-input-mismatch", `Current manuscript input changed for ${file.path}.`, file.path));
         }
-        if (options2.requireInputs && file.action === "create") {
+        if (options.requireInputs && file.action === "create") {
           errors.push(contextError("revision-input-mismatch", `Create target is not absent: ${file.path}.`, file.path));
         }
-        if (options2.requireOutputs) {
+        if (options.requireOutputs) {
           if (file.action === "delete") {
             errors.push(contextError("revision-output-mismatch", `Deleted output still exists: ${file.path}.`, file.path));
           } else if (currentHash !== file.output_sha256) {
@@ -16930,10 +16958,10 @@ async function validateExecutionContext(project, execution, options2 = {}) {
         }
       } catch (error) {
         if (error.code === "ENOENT") {
-          if (options2.requireInputs && file.action !== "create") {
+          if (options.requireInputs && file.action !== "create") {
             errors.push(contextError("revision-input-mismatch", `Input manuscript is unavailable: ${file.path}.`, file.path));
           }
-          if (options2.requireOutputs && file.action !== "delete") {
+          if (options.requireOutputs && file.action !== "delete") {
             errors.push(contextError("revision-output-mismatch", `Output manuscript is unavailable: ${file.path}.`, file.path));
           }
         } else {
@@ -16975,16 +17003,16 @@ async function validateExecutionContext(project, execution, options2 = {}) {
   }
   return { valid: errors.length === 0, errors };
 }
-async function validateRevisionExecutionAgainstDisk(projectRoot, execution, options2 = {}) {
-  const project = await readProject3(projectRoot, options2);
+async function validateRevisionExecutionAgainstDisk(projectRoot, execution, options = {}) {
+  const project = await readProject3(projectRoot, options);
   return validateExecutionContext(project, execution, {
     requireOutputs: execution.status === "verified",
     requireCurrentTarget: execution.status === "verified",
-    ...options2
+    ...options
   });
 }
-function operationTime3(options2) {
-  return utcTimestamp(options2);
+function operationTime3(options) {
+  return utcTimestamp(options);
 }
 function executionReference(execution, relativePath, text) {
   return {
@@ -17014,8 +17042,8 @@ function failure2(code, message, cycle, errors = []) {
     }]
   };
 }
-function coordinationFailure3(project, active, options2 = {}) {
-  const blockers = coordinationBlockers(project, active, options2);
+function coordinationFailure3(project, active, options = {}) {
+  const blockers = coordinationBlockers(project, active, options);
   if (blockers.length === 0) return null;
   return {
     valid: false,
@@ -17039,13 +17067,13 @@ function checkCycleRequest(cycle, request) {
   }
   return null;
 }
-async function withCycleLock(project, options2, operation) {
+async function withCycleLock(project, options, operation) {
   const lock = await acquireDirectoryLock(
     path16.resolve(project.root, project.manifest.paths.convergence, "active-cycle.lock"),
     {
-      timeoutMs: options2.lockTimeoutMs ?? 1e4,
-      retryMs: options2.lockRetryMs ?? 20,
-      now: options2.now
+      timeoutMs: options.lockTimeoutMs ?? 1e4,
+      retryMs: options.lockRetryMs ?? 20,
+      now: options.now
     }
   );
   if (!lock.acquired) {
@@ -17103,9 +17131,9 @@ function validatePrepareRequest(request, { independent = false } = {}) {
     throw new Error(`${operation} requires exact ${independent ? "independent" : "cycle"}, execution, and file batch identities`);
   }
 }
-async function readOptionalActiveCycle(project, options2 = {}) {
+async function readOptionalActiveCycle(project, options = {}) {
   try {
-    return await readActiveCycle3(project, options2);
+    return await readActiveCycle3(project, options);
   } catch (error) {
     if (error.code === "ENOENT") return null;
     throw error;
@@ -17118,11 +17146,11 @@ function independentCycleFailure(active) {
     active.value
   ) : null;
 }
-async function prepareDraftRevisionExecution(projectRoot, request, options2 = {}) {
+async function prepareDraftRevisionExecution(projectRoot, request, options = {}) {
   validatePrepareRequest(request, { independent: true });
-  const project = await readProject3(projectRoot, options2);
-  return withCycleLock(project, options2, async () => {
-    const initial = await readOptionalActiveCycle(project, options2);
+  const project = await readProject3(projectRoot, options);
+  return withCycleLock(project, options, async () => {
+    const initial = await readOptionalActiveCycle(project, options);
     const activeFailure = independentCycleFailure(initial);
     if (activeFailure) return activeFailure;
     const currentScope = project.manifest.current_scope;
@@ -17136,7 +17164,7 @@ async function prepareDraftRevisionExecution(projectRoot, request, options2 = {}
       } : null
     );
     if (external) return external;
-    const createdAt = operationTime3(options2);
+    const createdAt = operationTime3(options);
     const execution = {
       schema_version: "1.0.0",
       execution_id: request.execution_id,
@@ -17164,7 +17192,7 @@ async function prepareDraftRevisionExecution(projectRoot, request, options2 = {}
     if (!validation.valid) {
       return failure2("revision-execution-preparation-invalid", "The approved independent batch, backups, decisions, or current inputs do not validate.", null, validation.errors);
     }
-    const concurrent = await readOptionalActiveCycle(project, options2);
+    const concurrent = await readOptionalActiveCycle(project, options);
     const concurrentFailure = independentCycleFailure(concurrent);
     if (concurrentFailure) return concurrentFailure;
     const relative = path16.posix.join(
@@ -17181,7 +17209,7 @@ async function prepareDraftRevisionExecution(projectRoot, request, options2 = {}
       if (error.code !== "EEXIST") throw error;
       return failure2("revision-execution-already-exists", `Independent revision execution ${execution.execution_id} already exists; prepare a new execution ID instead of replacing it.`, null);
     }
-    await runCheckpoint(options2, "execution-written");
+    await runCheckpoint(options, "execution-written");
     return {
       valid: true,
       cycle: null,
@@ -17193,16 +17221,16 @@ async function prepareDraftRevisionExecution(projectRoot, request, options2 = {}
     };
   });
 }
-async function prepareRevisionExecution(projectRoot, request, options2 = {}) {
+async function prepareRevisionExecution(projectRoot, request, options = {}) {
   validatePrepareRequest(request);
-  const project = await readProject3(projectRoot, options2);
-  return withCycleLock(project, options2, async () => {
-    const active = await readActiveCycle3(project, options2);
+  const project = await readProject3(projectRoot, options);
+  return withCycleLock(project, options, async () => {
+    const active = await readActiveCycle3(project, options);
     const cycle = active.value;
     const cycleFailure = checkCycleRequest(cycle, request);
     if (cycleFailure) return cycleFailure;
     const coordination = coordinationFailure3(project, active, {
-      allowOperationId: options2.recoveryOperationId ?? null
+      allowOperationId: options.recoveryOperationId ?? null
     });
     if (coordination) return coordination;
     const external = await externalReconciliationBlock(
@@ -17220,7 +17248,7 @@ async function prepareRevisionExecution(projectRoot, request, options2 = {}) {
     if (!samePassReference2(cycle.requested_pass, request.requested_pass)) {
       return failure2("revision-pass-mismatch", "The execution must name the active requested pass.", cycle);
     }
-    const createdAt = operationTime3(options2);
+    const createdAt = operationTime3(options);
     let execution = {
       schema_version: "1.0.0",
       execution_id: request.execution_id,
@@ -17254,7 +17282,7 @@ async function prepareRevisionExecution(projectRoot, request, options2 = {}) {
       `${execution.execution_id}.json`
     );
     const absolute = path16.resolve(project.root, relative);
-    if (options2.recoveryOperationId !== execution.execution_id) {
+    if (options.recoveryOperationId !== execution.execution_id) {
       try {
         await readFile15(absolute, "utf8");
         return failure2("revision-execution-already-exists", `Revision execution ${execution.execution_id} already exists; reconcile it explicitly instead of replacing it.`, cycle);
@@ -17266,14 +17294,14 @@ async function prepareRevisionExecution(projectRoot, request, options2 = {}) {
       kind: "revision-preparation",
       operationId: execution.execution_id,
       artifactId: execution.execution_id
-    }, options2);
+    }, options);
     let text = `${JSON.stringify(execution, null, 2)}
 `;
     try {
       await createNoClobberVerified(absolute, text);
     } catch (error) {
       if (error.code !== "EEXIST") throw error;
-      if (options2.recoveryOperationId !== execution.execution_id) {
+      if (options.recoveryOperationId !== execution.execution_id) {
         return failure2("revision-execution-already-exists", `Revision execution ${execution.execution_id} already exists; reconcile it explicitly instead of replacing it.`, cycle);
       }
       const existingText = await readFile15(absolute, "utf8");
@@ -17285,7 +17313,7 @@ async function prepareRevisionExecution(projectRoot, request, options2 = {}) {
       execution = existing;
       text = existingText;
     }
-    await runCheckpoint(options2, "execution-written");
+    await runCheckpoint(options, "execution-written");
     const reference = executionReference(execution, relative, text);
     const updated = {
       ...cycle,
@@ -17305,8 +17333,8 @@ async function prepareRevisionExecution(projectRoot, request, options2 = {}) {
     };
     await writeAtomicVerified(active.file, `${JSON.stringify(updated, null, 2)}
 `);
-    await runCheckpoint(options2, "cycle-written");
-    await finishCycleOperation(project, updated, execution.execution_id, options2);
+    await runCheckpoint(options, "cycle-written");
+    await finishCycleOperation(project, updated, execution.execution_id, options);
     return {
       valid: true,
       cycle: updated,
@@ -17377,16 +17405,16 @@ async function validateFinalPassExtension(project, preparedReference, finalRefer
 function buildChangeSet(inputScope, targetScope) {
   return diffManuscriptInventories(inputScope, targetScope);
 }
-async function verifyRevisionExecution(projectRoot, request, options2 = {}) {
+async function verifyRevisionExecution(projectRoot, request, options = {}) {
   validateVerifyRequest(request);
-  const project = await readProject3(projectRoot, options2);
-  return withCycleLock(project, options2, async () => {
-    const active = await readActiveCycle3(project, options2);
+  const project = await readProject3(projectRoot, options);
+  return withCycleLock(project, options, async () => {
+    const active = await readActiveCycle3(project, options);
     const cycle = active.value;
     const cycleFailure = checkCycleRequest(cycle, request);
     if (cycleFailure) return cycleFailure;
     const coordination = coordinationFailure3(project, active, {
-      allowOperationId: options2.recoveryOperationId ?? null
+      allowOperationId: options.recoveryOperationId ?? null
     });
     if (coordination) return coordination;
     const relative = path16.posix.join(
@@ -17396,7 +17424,7 @@ async function verifyRevisionExecution(projectRoot, request, options2 = {}) {
     );
     const absolute = path16.resolve(project.root, relative);
     const prepared = JSON.parse(await readFile15(absolute, "utf8"));
-    if (prepared.execution_id !== request.execution_id || prepared.cycle_id !== request.cycle_id || !["prepared", ...options2.recoveryOperationId === request.execution_id ? ["verified"] : []].includes(prepared.status) || !cycle.related_artifacts.revision_executions.some((reference2) => reference2.execution_id === request.execution_id)) {
+    if (prepared.execution_id !== request.execution_id || prepared.cycle_id !== request.cycle_id || !["prepared", ...options.recoveryOperationId === request.execution_id ? ["verified"] : []].includes(prepared.status) || !cycle.related_artifacts.revision_executions.some((reference2) => reference2.execution_id === request.execution_id)) {
       return failure2("revision-execution-identity-mismatch", "The prepared execution is not linked to this active cycle.", cycle);
     }
     let passReductions;
@@ -17412,7 +17440,7 @@ async function verifyRevisionExecution(projectRoot, request, options2 = {}) {
     if (passReductions.length > 0) {
       return failure2("revision-pass-requirements-reduced", "The final pass must preserve every prepared operation and subcheck; it may only add requirements.", cycle, passReductions);
     }
-    const verifiedAt = prepared.status === "verified" ? prepared.verified_at : operationTime3(options2);
+    const verifiedAt = prepared.status === "verified" ? prepared.verified_at : operationTime3(options);
     const execution = {
       ...prepared,
       requested_pass: request.requested_pass,
@@ -17434,11 +17462,11 @@ async function verifyRevisionExecution(projectRoot, request, options2 = {}) {
       kind: "revision-verification",
       operationId: execution.execution_id,
       artifactId: execution.execution_id
-    }, options2);
+    }, options);
     const text = `${JSON.stringify(execution, null, 2)}
 `;
     if (prepared.status === "prepared") await writeAtomicVerified(absolute, text);
-    await runCheckpoint(options2, "execution-written");
+    await runCheckpoint(options, "execution-written");
     const reference = executionReference(execution, relative, text);
     const changeFromReference = cycle.bootstrap ? null : cycle.starting_scope ?? execution.input_scope;
     const changeFromScope = cycle.bootstrap ? { files: [] } : await readCurrentScope(project, changeFromReference);
@@ -17472,8 +17500,8 @@ async function verifyRevisionExecution(projectRoot, request, options2 = {}) {
     if (!cycleValidation.valid) throw new Error(formatErrors3(cycleValidation.errors));
     await writeAtomicVerified(active.file, `${JSON.stringify(updated, null, 2)}
 `);
-    await runCheckpoint(options2, "cycle-written");
-    await finishCycleOperation(project, updated, execution.execution_id, options2);
+    await runCheckpoint(options, "cycle-written");
+    await finishCycleOperation(project, updated, execution.execution_id, options);
     return {
       valid: true,
       cycle: updated,
@@ -17485,11 +17513,11 @@ async function verifyRevisionExecution(projectRoot, request, options2 = {}) {
     };
   });
 }
-async function verifyDraftRevisionExecution(projectRoot, request, options2 = {}) {
+async function verifyDraftRevisionExecution(projectRoot, request, options = {}) {
   validateVerifyRequest(request, { independent: true });
-  const project = await readProject3(projectRoot, options2);
-  return withCycleLock(project, options2, async () => {
-    const initial = await readOptionalActiveCycle(project, options2);
+  const project = await readProject3(projectRoot, options);
+  return withCycleLock(project, options, async () => {
+    const initial = await readOptionalActiveCycle(project, options);
     const activeFailure = independentCycleFailure(initial);
     if (activeFailure) return activeFailure;
     const relative = path16.posix.join(
@@ -17520,7 +17548,7 @@ async function verifyDraftRevisionExecution(projectRoot, request, options2 = {})
     if (passReductions.length > 0) {
       return failure2("revision-pass-requirements-reduced", "The final pass must preserve every prepared operation and subcheck; it may only add requirements.", null, passReductions);
     }
-    const verifiedAt = operationTime3(options2);
+    const verifiedAt = operationTime3(options);
     const execution = {
       ...prepared,
       requested_pass: request.requested_pass,
@@ -17538,13 +17566,13 @@ async function verifyDraftRevisionExecution(projectRoot, request, options2 = {})
       const code = validation.errors.some((error) => error.code === "revision-output-mismatch") ? "revision-output-mismatch" : "revision-execution-verification-invalid";
       return failure2(code, "The independent prepared batch cannot be verified against current manuscript and target evidence.", null, validation.errors);
     }
-    const concurrent = await readOptionalActiveCycle(project, options2);
+    const concurrent = await readOptionalActiveCycle(project, options);
     const concurrentFailure = independentCycleFailure(concurrent);
     if (concurrentFailure) return concurrentFailure;
     const text = `${JSON.stringify(execution, null, 2)}
 `;
     await writeAtomicVerified(absolute, text);
-    await runCheckpoint(options2, "execution-written");
+    await runCheckpoint(options, "execution-written");
     return {
       valid: true,
       cycle: null,
@@ -17556,9 +17584,9 @@ async function verifyDraftRevisionExecution(projectRoot, request, options2 = {})
     };
   });
 }
-async function getRequestCompletion(projectRoot, cycle, options2 = {}) {
+async function getRequestCompletion(projectRoot, cycle, options = {}) {
   if (!cycle || cycle.initiating_strategy !== "revise-request") return null;
-  const project = await readProject3(projectRoot, options2);
+  const project = await readProject3(projectRoot, options);
   const blockers = [];
   const action3 = requiredAction3(cycle);
   function block(code, message) {
@@ -17572,7 +17600,7 @@ async function getRequestCompletion(projectRoot, cycle, options2 = {}) {
       path16.resolve(project.root, project.manifest.paths.audit_tracker),
       "utf8"
     );
-    tracker = await parseTrackerState(trackerText, project.root, options2);
+    tracker = await parseTrackerState(trackerText, project.root, options);
     if (!tracker.valid) block("request-tracker-invalid", formatErrors3(tracker.errors));
   } catch (error) {
     block("request-tracker-invalid", error.message);
@@ -17582,7 +17610,7 @@ async function getRequestCompletion(projectRoot, cycle, options2 = {}) {
     try {
       const contents = await readVerifiedArtifact(project, reference);
       const execution = JSON.parse(contents.toString("utf8"));
-      if (execution.execution_id !== reference.execution_id || execution.cycle_id !== cycle.cycle_id || !validateRevisionExecution(execution, options2).valid) {
+      if (execution.execution_id !== reference.execution_id || execution.cycle_id !== cycle.cycle_id || !validateRevisionExecution(execution, options).valid) {
         block("revision-execution-identity-mismatch", `Revision execution ${reference.execution_id} is invalid or belongs to another cycle.`);
         continue;
       }
@@ -17729,7 +17757,7 @@ async function readDecisionArtifact(project, reference, identityField) {
   }
   return value;
 }
-async function validateExecutionDecision(project, tracker, request, report, existing, options2 = {}) {
+async function validateExecutionDecision(project, tracker, request, report, existing, options = {}) {
   if (request.no_edit_skip) {
     throw commandError2("finding-decision-evidence-mismatch", "Choose exactly one current evidence record for a finding decision.");
   }
@@ -17757,9 +17785,9 @@ async function validateExecutionDecision(project, tracker, request, report, exis
     requireOutputs: true,
     requireCurrentTarget: true,
     requireCurrentDecisions: true,
-    pendingFindingDecision: options2.pendingFindingDecision,
+    pendingFindingDecision: options.pendingFindingDecision,
     trackerState: tracker,
-    now: options2.now
+    now: options.now
   });
   if (!disk.valid) {
     throw commandError2("finding-decision-evidence-mismatch", "The verified execution is not current for its approved inputs, decisions, outputs, and target.", {
@@ -17814,12 +17842,12 @@ async function readDecisionArtifact2(project, reference, identityField) {
   }
   return value;
 }
-async function validateNoEditDecision(project, tracker, request, report, options2 = {}) {
+async function validateNoEditDecision(project, tracker, request, report, options = {}) {
   if (!["deferred", "dismissed"].includes(request.status) || request.revision_execution) {
     throw commandError3("finding-decision-evidence-mismatch", "A no-edit skip supports only deferred or dismissed finding decisions.");
   }
   const skip = await readDecisionArtifact2(project, request.no_edit_skip, "skip_id");
-  const skipValidation = validateNoEditSkip(skip, options2);
+  const skipValidation = validateNoEditSkip(skip, options);
   if (!skipValidation.valid) {
     throw commandError3("finding-decision-evidence-mismatch", "The no-edit skip is invalid.", {
       validation_errors: skipValidation.errors
@@ -17829,7 +17857,7 @@ async function validateNoEditDecision(project, tracker, request, report, options
     throw commandError3("finding-decision-evidence-mismatch", "The no-edit skip does not cover this finding and author decision.");
   }
   const pass = await readDecisionArtifact2(project, skip.requested_pass, "pass_id");
-  const passValidation = validateRequestedPass(pass, options2);
+  const passValidation = validateRequestedPass(pass, options);
   if (!passValidation.valid || pass.pass_fingerprint !== skip.requested_pass.pass_fingerprint) {
     throw commandError3("finding-decision-evidence-mismatch", "The no-edit skip requested pass is invalid.", {
       validation_errors: passValidation.errors
@@ -17897,7 +17925,7 @@ async function readDecisionArtifact3(project, reference, identityField) {
   }
   return value;
 }
-async function validateStaleDecision(project, tracker, request, report, existing, options2 = {}) {
+async function validateStaleDecision(project, tracker, request, report, existing, options = {}) {
   if (request.revision_execution || request.no_edit_skip) {
     throw commandError4("finding-decision-evidence-mismatch", "A stale decision uses its equivalent current report, not execution or no-edit evidence.");
   }
@@ -17926,7 +17954,7 @@ async function validateStaleDecision(project, tracker, request, report, existing
   } catch (error) {
     throw commandError4("finding-decision-evidence-mismatch", error.message);
   }
-  const passValidation = validateRequestedPass(pass, options2);
+  const passValidation = validateRequestedPass(pass, options);
   if (!passValidation.valid || !samePassReference(passReference, {
     pass_id: pass.pass_id,
     pass_fingerprint: pass.pass_fingerprint,
@@ -17941,12 +17969,12 @@ async function validateStaleDecision(project, tracker, request, report, existing
   if (activeCycle && !samePassReference(passReference, activeCycle.value.requested_pass)) {
     throw commandError4("finding-decision-evidence-mismatch", "The stale rerun requested pass differs from the active cycle's requested pass.");
   }
-  const originalReport = options2.originalReport ?? existing.report;
+  const originalReport = options.originalReport ?? existing.report;
   let originalFinding;
   try {
     const originalValidation = validateEvidenceReport(
       await readFile18(path19.resolve(project.root, originalReport), "utf8"),
-      options2
+      options
     );
     originalFinding = originalValidation.envelope?.findings.find((finding) => finding.id === existing.id);
     if (!originalValidation.valid || !originalFinding || originalFinding.audit !== existing.audit || findingLocation2(originalFinding.location) !== existing.location) {
@@ -18054,7 +18082,7 @@ function reportCell(value) {
   const link2 = value.match(/\[[^\]]+\]\(([^)]+)\)/);
   return pathCell(link2?.[1] ?? value);
 }
-async function validateTrackerMarkdown(markdown, projectRoot, options2 = {}) {
+async function validateTrackerMarkdown(markdown, projectRoot, options = {}) {
   const errors = [];
   const section = findingsSection(markdown);
   if (section.error !== void 0) {
@@ -18116,7 +18144,7 @@ async function validateTrackerMarkdown(markdown, projectRoot, options2 = {}) {
       if (!get(field)) errors.push(trackerError(`${rowPath}/${field}`, `${field} is required`));
     }
     if (get("updated")) {
-      errors.push(...validateTimestamp(get("updated"), `${rowPath}/updated`, options2).map((error) => ({
+      errors.push(...validateTimestamp(get("updated"), `${rowPath}/updated`, options).map((error) => ({
         ...error,
         code: error.keyword,
         keyword: "tracker"
@@ -18174,7 +18202,7 @@ function approvalsSection(markdown) {
   }
   return { lines: lines.slice(start, end) };
 }
-function validateApprovalsMarkdown(markdown, options2 = {}) {
+function validateApprovalsMarkdown(markdown, options = {}) {
   const errors = [];
   const section = approvalsSection(markdown);
   if (section.error !== void 0) {
@@ -18249,7 +18277,7 @@ function validateApprovalsMarkdown(markdown, options2 = {}) {
       if (!get(field)) errors.push(trackerError(`${rowPath}/${field}`, `${field} is required`));
     }
     if (get("updated")) {
-      errors.push(...validateTimestamp(get("updated"), `${rowPath}/updated`, options2).map((error) => ({
+      errors.push(...validateTimestamp(get("updated"), `${rowPath}/updated`, options).map((error) => ({
         ...error,
         code: error.keyword,
         keyword: "tracker"
@@ -18379,7 +18407,7 @@ function oneDecisionToken(tokens, name) {
   const matches = tokens.filter((token) => token.startsWith(`${name}=`));
   return matches.length === 1 ? matches[0].slice(name.length + 1) : null;
 }
-async function externalStaleDecisionErrors(findings, approvals, projectRoot, options2) {
+async function externalStaleDecisionErrors(findings, approvals, projectRoot, options) {
   const candidates = findings.filter((finding) => {
     if (finding.status !== "stale") return false;
     const tokens = finding.reason.split(/\s+/).filter(Boolean);
@@ -18426,7 +18454,7 @@ async function externalStaleDecisionErrors(findings, approvals, projectRoot, opt
       errors.push(trackerError(rowPath, error.message));
       continue;
     }
-    const validation = validateEvidenceReport(currentMarkdown, options2);
+    const validation = validateEvidenceReport(currentMarkdown, options);
     const reported = validation.envelope?.findings.find((candidate) => candidate.id === finding.id);
     if (!validation.valid || validation.envelope.stage !== finding.stage || reported || !/(?:^|\s)operation_coverage=full(?:\s|$)/.test(validation.envelope.engine.notes)) {
       errors.push(trackerError(
@@ -18447,7 +18475,7 @@ async function externalStaleDecisionErrors(findings, approvals, projectRoot, opt
         },
         { envelope: validation.envelope, reported: null },
         finding,
-        { ...options2, originalReport: previousReport }
+        { ...options, originalReport: previousReport }
       );
     } catch (error) {
       errors.push(trackerError(rowPath, error.message));
@@ -18461,7 +18489,7 @@ function externalFindingLocation(location) {
   if (location.scope === "line") return `${location.file}:${location.line}`;
   return `${location.file}: ${location.quote}`;
 }
-async function externalNoEditDecisionErrors(findings, approvals, projectRoot, options2) {
+async function externalNoEditDecisionErrors(findings, approvals, projectRoot, options) {
   const candidates = findings.filter((finding) => {
     if (!["deferred", "dismissed"].includes(finding.status)) return false;
     const tokens = finding.reason.split(/\s+/).filter(Boolean);
@@ -18505,7 +18533,7 @@ async function externalNoEditDecisionErrors(findings, approvals, projectRoot, op
       errors.push(trackerError(rowPath, error.message));
       continue;
     }
-    const validation = validateEvidenceReport(currentMarkdown, options2);
+    const validation = validateEvidenceReport(currentMarkdown, options);
     const reported = validation.envelope?.findings.find((candidate) => candidate.id === finding.id);
     if (!validation.valid || validation.envelope.stage !== finding.stage || !reported || reported.audit !== finding.audit || externalFindingLocation(reported.location) !== finding.location) {
       errors.push(trackerError(rowPath, "no-edit decision current report does not preserve the exact finding"));
@@ -18523,7 +18551,7 @@ async function externalNoEditDecisionErrors(findings, approvals, projectRoot, op
           no_edit_skip: { skip_id: evidenceId, path: evidencePath, sha256: evidenceSha256 }
         },
         { envelope: validation.envelope, reported },
-        options2
+        options
       );
     } catch (error) {
       errors.push(trackerError(rowPath, error.message));
@@ -18531,7 +18559,7 @@ async function externalNoEditDecisionErrors(findings, approvals, projectRoot, op
   }
   return errors;
 }
-async function externalExecutionDecisionErrors(findings, approvals, projectRoot, options2) {
+async function externalExecutionDecisionErrors(findings, approvals, projectRoot, options) {
   const candidates = findings.filter((finding) => {
     if (!["resolved", "deferred", "dismissed"].includes(finding.status)) return false;
     const tokens = finding.reason.split(/\s+/).filter(Boolean);
@@ -18575,7 +18603,7 @@ async function externalExecutionDecisionErrors(findings, approvals, projectRoot,
       errors.push(trackerError(rowPath, error.message));
       continue;
     }
-    const validation = validateEvidenceReport(currentMarkdown, options2);
+    const validation = validateEvidenceReport(currentMarkdown, options);
     const reported = validation.envelope?.findings.find((candidate) => candidate.id === finding.id) ?? null;
     if (!validation.valid || validation.envelope.stage !== finding.stage) {
       errors.push(trackerError(rowPath, "execution decision current report is invalid or uses another operation"));
@@ -18594,7 +18622,7 @@ async function externalExecutionDecisionErrors(findings, approvals, projectRoot,
         },
         { envelope: validation.envelope, reported },
         finding,
-        options2
+        options
       );
     } catch (error) {
       errors.push(trackerError(rowPath, error.message));
@@ -18602,9 +18630,9 @@ async function externalExecutionDecisionErrors(findings, approvals, projectRoot,
   }
   return errors;
 }
-async function parseTrackerState(markdown, projectRoot, options2 = {}) {
-  const findingValidation = await validateTrackerMarkdown(markdown, projectRoot, options2);
-  const approvalValidation = validateApprovalsMarkdown(markdown, options2);
+async function parseTrackerState(markdown, projectRoot, options = {}) {
+  const findingValidation = await validateTrackerMarkdown(markdown, projectRoot, options);
+  const approvalValidation = validateApprovalsMarkdown(markdown, options);
   const errors = [...findingValidation.errors, ...approvalValidation.errors];
   const findings = [];
   const findingSection = findingsSection(markdown);
@@ -18672,7 +18700,7 @@ async function parseTrackerState(markdown, projectRoot, options2 = {}) {
           errors.push(trackerError(rowPath, "completion decision reason and updated time are required"));
         }
         if (row.updated) {
-          errors.push(...validateTimestamp(row.updated, `${rowPath}/updated`, options2).map((error) => ({
+          errors.push(...validateTimestamp(row.updated, `${rowPath}/updated`, options).map((error) => ({
             ...error,
             code: error.keyword,
             keyword: "tracker"
@@ -18686,9 +18714,9 @@ async function parseTrackerState(markdown, projectRoot, options2 = {}) {
     errors.push(trackerError("/Cycle completions", "expected at most one ## Cycle completions heading"));
   }
   errors.push(...typedFindingDecisionErrors(findings, approvals));
-  errors.push(...await externalStaleDecisionErrors(findings, approvals, projectRoot, options2));
-  errors.push(...await externalNoEditDecisionErrors(findings, approvals, projectRoot, options2));
-  errors.push(...await externalExecutionDecisionErrors(findings, approvals, projectRoot, options2));
+  errors.push(...await externalStaleDecisionErrors(findings, approvals, projectRoot, options));
+  errors.push(...await externalNoEditDecisionErrors(findings, approvals, projectRoot, options));
+  errors.push(...await externalExecutionDecisionErrors(findings, approvals, projectRoot, options));
   return {
     valid: errors.length === 0,
     errors,
@@ -18730,11 +18758,11 @@ ${markdown.slice(openQuestions.index)}`;
 
 ${block}`;
 }
-async function validateTrackerV3Markdown(markdown, projectRoot, options2 = {}) {
-  const state = await parseTrackerState(markdown, projectRoot, options2);
+async function validateTrackerV3Markdown(markdown, projectRoot, options = {}) {
+  const state = await parseTrackerState(markdown, projectRoot, options);
   return { valid: state.valid, errors: state.errors };
 }
-async function validateTracker(manifest, manifestPath, options2 = {}) {
+async function validateTracker(manifest, manifestPath, options = {}) {
   if (isUninitializedProjectTemplate(manifest)) {
     return { valid: true, errors: [] };
   }
@@ -18742,7 +18770,7 @@ async function validateTracker(manifest, manifestPath, options2 = {}) {
   const trackerPath = path20.resolve(projectRoot, manifest.paths.audit_tracker);
   try {
     const markdown = await readFile19(trackerPath, "utf8");
-    return validateTrackerV3Markdown(markdown, projectRoot, options2);
+    return validateTrackerV3Markdown(markdown, projectRoot, options);
   } catch (error) {
     return {
       valid: false,
@@ -18814,25 +18842,25 @@ function action2(strategy, operation) {
   return { strategy, operation, command: strategy };
 }
 function failure3(code, message, cycle = null, details = {}) {
-  const requiredAction6 = cycle?.recovery_position ? action2(cycle.recovery_position.required_strategy, cycle.recovery_position.operation) : action2("write-fiction", "creation-import");
+  const requiredAction4 = cycle?.recovery_position ? action2(cycle.recovery_position.required_strategy, cycle.recovery_position.operation) : action2("write-fiction", "creation-import");
   return {
     valid: false,
     cycle,
     reconciliation: null,
     state_written: false,
-    required_action: requiredAction6,
-    blockers: [{ code, message, required_action: requiredAction6 }],
+    required_action: requiredAction4,
+    blockers: [{ code, message, required_action: requiredAction4 }],
     ...details
   };
 }
-async function readProject4(projectRoot, options2 = {}) {
+async function readProject4(projectRoot, options = {}) {
   const { readProject: readProjectWithReferences } = await Promise.resolve().then(() => (init_evaluation_artifacts(), evaluation_artifacts_exports));
-  return readProjectWithReferences(projectRoot, options2);
+  return readProjectWithReferences(projectRoot, options);
 }
-async function readActiveCycle4(project, options2 = {}) {
+async function readActiveCycle4(project, options = {}) {
   const file = path21.resolve(project.root, project.manifest.paths.convergence, "active-cycle.json");
   const value = JSON.parse(await readFile20(file, "utf8"));
-  const validation = validateConvergenceCycleSchema(value, options2);
+  const validation = validateConvergenceCycleSchema(value, options);
   if (!validation.valid || value.status !== "active") {
     throw new Error(`Living cycle is invalid: ${file}`);
   }
@@ -18856,13 +18884,13 @@ async function readArtifact2(project, reference) {
   }
   return contents;
 }
-async function readScope(project, reference, options2 = {}) {
+async function readScope(project, reference, options = {}) {
   const contents = await readArtifact2(project, {
     path: reference.snapshot_path,
     sha256: reference.snapshot_sha256
   });
   const snapshot = JSON.parse(contents.toString("utf8"));
-  const validation = validateScopeSnapshot(snapshot, options2);
+  const validation = validateScopeSnapshot(snapshot, options);
   if (!validation.valid) throw new Error(`Scope snapshot is invalid: ${reference.snapshot_path}`);
   if (snapshot.scope_id !== reference.scope_id || snapshot.scope_fingerprint !== reference.scope_fingerprint) {
     throw new Error("Scope snapshot identity differs from its reference");
@@ -18896,11 +18924,11 @@ function validateRequest(request) {
     throw new Error("reconcile-manuscript cycle identity requires both cycle_id and integer expected_revision");
   }
 }
-async function validateStoryState2(project, references, target, options2 = {}) {
+async function validateStoryState2(project, references, target, options = {}) {
   const states = [];
   for (const reference of references) {
     const contents = await readArtifact2(project, reference);
-    const validation = validateStoryStateMarkdown(contents.toString("utf8"), options2);
+    const validation = validateStoryStateMarkdown(contents.toString("utf8"), options);
     if (!validation.valid || !validation.envelope) {
       throw new Error(`Reconciled story state is invalid: ${reference.path}`);
     }
@@ -18961,12 +18989,12 @@ async function validateStoryState2(project, references, target, options2 = {}) {
     }
   }
 }
-async function validateImportDecision2(project, request, previous, target, inventory, options2 = {}) {
+async function validateImportDecision2(project, request, previous, target, inventory, options = {}) {
   const trackerText = await readFile20(
     path21.resolve(project.root, project.manifest.paths.audit_tracker),
     "utf8"
   );
-  const tracker = await parseTrackerState(trackerText, project.root, options2);
+  const tracker = await parseTrackerState(trackerText, project.root, options);
   const decisions = tracker.approvals.filter((approval) => approval.id === request.author_decision_id);
   const decision = decisions.length === 1 ? decisions[0] : null;
   const tokens = new Set(decision?.reason.split(/\s+/) ?? []);
@@ -19018,15 +19046,15 @@ function workSetForChanges(target, changes) {
     }))
   };
 }
-async function reconcileManuscript(projectRoot, request, options2 = {}) {
+async function reconcileManuscript(projectRoot, request, options = {}) {
   validateRequest(request);
-  const project = await readProject4(projectRoot, options2);
+  const project = await readProject4(projectRoot, options);
   const lock = await acquireDirectoryLock(
     path21.resolve(project.root, project.manifest.paths.convergence, "active-cycle.lock"),
     {
-      timeoutMs: options2.lockTimeoutMs ?? 1e4,
-      retryMs: options2.lockRetryMs ?? 20,
-      now: options2.now
+      timeoutMs: options.lockTimeoutMs ?? 1e4,
+      retryMs: options.lockRetryMs ?? 20,
+      now: options.now
     }
   );
   if (!lock.acquired) {
@@ -19038,14 +19066,14 @@ async function reconcileManuscript(projectRoot, request, options2 = {}) {
   try {
     let active = null;
     try {
-      active = await readActiveCycle4(project, options2);
+      active = await readActiveCycle4(project, options);
       cycle = active.value;
     } catch (error) {
       if (error.code !== "ENOENT") throw error;
     }
     const completedPointer = await completedPointerBlocker(project);
     const coordination = coordinationBlockers(project, active, {
-      allowOperationId: options2.recoveryOperationId ?? null
+      allowOperationId: options.recoveryOperationId ?? null
     });
     if (completedPointer) {
       outcome = {
@@ -19082,7 +19110,7 @@ async function reconcileManuscript(projectRoot, request, options2 = {}) {
       let previous = { files: [], excluded_files: [] };
       if (previousReference) {
         try {
-          previous = await readScope(project, previousReference, options2);
+          previous = await readScope(project, previousReference, options);
         } catch (error) {
           error.reconciliationCode = "starting-scope-indeterminate";
           error.reconciliationAction = action2("revise-draft", "intake");
@@ -19090,8 +19118,8 @@ async function reconcileManuscript(projectRoot, request, options2 = {}) {
         }
       }
       const targetReference = request.target_scope;
-      const target = targetReference ? await readScope(project, targetReference, options2) : null;
-      let createdAt = utcTimestamp(options2);
+      const target = targetReference ? await readScope(project, targetReference, options) : null;
+      let createdAt = utcTimestamp(options);
       let inventoryEvidence;
       let observedInventory = null;
       if (target) {
@@ -19099,7 +19127,7 @@ async function reconcileManuscript(projectRoot, request, options2 = {}) {
         if (current?.scope_id !== targetReference.scope_id || current?.scope_fingerprint !== targetReference.scope_fingerprint || current?.snapshot_path !== targetReference.snapshot_path || current?.snapshot_sha256 !== targetReference.snapshot_sha256) {
           throw new Error("The imported target must be manifest current_scope");
         }
-        const full = await validateFullManuscriptScope(project.manifest, project.manifestPath, options2);
+        const full = await validateFullManuscriptScope(project.manifest, project.manifestPath, options);
         if (!full.valid) throw new Error("The imported target is not a current full-manuscript scope");
         inventoryEvidence = target.inventory;
       } else {
@@ -19112,13 +19140,13 @@ async function reconcileManuscript(projectRoot, request, options2 = {}) {
         })).reference;
       }
       try {
-        await validateStoryState2(project, request.story_state, target, options2);
+        await validateStoryState2(project, request.story_state, target, options);
       } catch (error) {
         error.reconciliationCode = "story-state-reconciliation-required";
         error.reconciliationAction = action2("write-fiction", "creation-import");
         throw error;
       }
-      await validateImportDecision2(project, request, previous, target, inventoryEvidence, options2);
+      await validateImportDecision2(project, request, previous, target, inventoryEvidence, options);
       const bootstrapRecovery = Boolean(cycle?.bootstrap);
       const preferredEvaluation = cycle?.target_evaluation ?? cycle?.starting_evaluation ?? null;
       const proofScopeReference = cycle?.target_evaluation ? previousReference : cycle?.starting_scope ?? previousReference;
@@ -19133,7 +19161,7 @@ async function reconcileManuscript(projectRoot, request, options2 = {}) {
       const requiredStrategy = !target ? "write-fiction" : bootstrapRecovery || recoveringFromEmpty ? "revise-draft" : previousEvaluation ? "revise-increment" : "revise-draft";
       const recoveryOperation = target ? "intake" : "creation-import";
       const cumulativeReference = bootstrapRecovery ? null : cycle?.starting_scope ?? previousReference;
-      const cumulative = bootstrapRecovery ? { files: [], excluded_files: [] } : cumulativeReference ? await readScope(project, cumulativeReference, options2) : previous;
+      const cumulative = bootstrapRecovery ? { files: [], excluded_files: [] } : cumulativeReference ? await readScope(project, cumulativeReference, options) : previous;
       const changes = diffManuscriptInventories(cumulative, target ?? observedInventory);
       const workSet = !target ? { entries: [] } : previousEvaluation && !recoveringFromEmpty ? workSetForChanges(target, changes) : {
         entries: target.files.map((file) => ({
@@ -19190,14 +19218,14 @@ async function reconcileManuscript(projectRoot, request, options2 = {}) {
           kind: "manuscript-reconciliation",
           operationId: reconciliation.reconciliation_id,
           artifactId: reconciliation.reconciliation_id
-        }, options2);
+        }, options);
       }
       let text = `${JSON.stringify(reconciliation, null, 2)}
 `;
       try {
         await createNoClobberVerified(absolute, text);
       } catch (error) {
-        if (error.code !== "EEXIST" || options2.recoveryOperationId !== reconciliation.reconciliation_id) {
+        if (error.code !== "EEXIST" || options.recoveryOperationId !== reconciliation.reconciliation_id) {
           throw error;
         }
         const existingText = await readFile20(absolute, "utf8");
@@ -19210,7 +19238,7 @@ async function reconcileManuscript(projectRoot, request, options2 = {}) {
         reconciliation = existing;
         text = existingText;
       }
-      await runCheckpoint(options2, "reconciliation-published");
+      await runCheckpoint(options, "reconciliation-published");
       const reference = {
         reconciliation_id: reconciliation.reconciliation_id,
         path: relative,
@@ -19245,9 +19273,9 @@ async function reconcileManuscript(projectRoot, request, options2 = {}) {
         }
         await writeAtomicVerified(active.file, `${JSON.stringify(updated, null, 2)}
 `);
-        await runCheckpoint(options2, "cycle-written");
+        await runCheckpoint(options, "cycle-written");
         await finishCycleOperation(project, updated, reconciliation.reconciliation_id, {
-          ...options2,
+          ...options,
           manifestChanges: { manuscript_reconciliation: reference },
           removeManifestFields: target ? [] : ["current_scope"]
         });
@@ -19260,7 +19288,7 @@ async function reconcileManuscript(projectRoot, request, options2 = {}) {
         if (!target) delete updatedManifest.current_scope;
         await writeAtomicVerified(project.manifestPath, `${JSON.stringify(updatedManifest, null, 2)}
 `);
-        await runCheckpoint(options2, "manifest-updated");
+        await runCheckpoint(options, "manifest-updated");
       }
       outcome = {
         valid: true,
@@ -19318,30 +19346,8 @@ var init_reconciliation = __esm({
 // scripts/lib/project-commands.mjs
 import { readFile as readFile21 } from "node:fs/promises";
 import path22 from "node:path";
-function requiredAction4(operation) {
-  return {
-    strategy: "author-project",
-    operation,
-    command: `author-project ${operation}`
-  };
-}
-function failure4(code, message, operation, details = {}) {
-  return {
-    valid: false,
-    state_written: false,
-    required_action: requiredAction4(operation),
-    blockers: [{ code, message, ...details, required_action: requiredAction4(operation) }],
-    ...details
-  };
-}
-function stateError(code, message, details = {}) {
-  const error = new Error(message);
-  error.projectCode = code;
-  error.projectDetails = details;
-  return error;
-}
-function operationTime4(options2) {
-  return utcTimestamp(options2);
+function operationTime4(options) {
+  return utcTimestamp(options);
 }
 function validatePendingRequest(request) {
   const allowed = /* @__PURE__ */ new Set([
@@ -19375,7 +19381,7 @@ async function recoveryState2(project, active, operation) {
   } catch {
   }
   return {
-    required_action: requiredAction4(operation),
+    required_action: requiredAction(operation),
     manifest_path: project.manifestPath,
     manifest_sha256: manifestText === null ? null : sha256Bytes(manifestText),
     current_scope: manifest?.current_scope ?? null,
@@ -19385,12 +19391,12 @@ async function recoveryState2(project, active, operation) {
     cycle_revision: active?.value.revision ?? null
   };
 }
-async function setPendingAction(projectRoot, request, options2 = {}) {
+async function setPendingAction(projectRoot, request, options = {}) {
   validatePendingRequest(request);
   const references = await validateDeployedReferences(projectRoot);
   if (!references.valid) {
     return {
-      ...failure4(
+      ...failure(
         "reference-version-conflict",
         "Shared references are missing or do not match the installed payload; run setup-author-toolkit.",
         "set-pending"
@@ -19402,14 +19408,14 @@ async function setPendingAction(projectRoot, request, options2 = {}) {
   const lock = await acquireDirectoryLock(
     path22.resolve(initial.root, initial.manifest.paths.convergence, "active-cycle.lock"),
     {
-      timeoutMs: options2.lockTimeoutMs ?? 1e4,
-      retryMs: options2.lockRetryMs ?? 20,
-      now: options2.now
+      timeoutMs: options.lockTimeoutMs ?? 1e4,
+      retryMs: options.lockRetryMs ?? 20,
+      now: options.now
     }
   );
   if (!lock.acquired) {
     return {
-      ...failure4(
+      ...failure(
         lock.code === "timeout" ? "project-lock-timeout" : "project-lock-error",
         `Cannot coordinate pending-action recording at ${lock.directory}: ${lock.error.message}`,
         "set-pending",
@@ -19424,30 +19430,30 @@ async function setPendingAction(projectRoot, request, options2 = {}) {
   let project = initial;
   let active = null;
   try {
-    await runCheckpoint(options2, "lock-acquired");
+    await runCheckpoint(options, "lock-acquired");
     project = await readProject(projectRoot);
     active = await readActiveCycle(project);
     const manifestText = await readFile21(project.manifestPath, "utf8");
     if (request.expected_manifest_sha256 !== void 0 && sha256Bytes(manifestText) !== request.expected_manifest_sha256) {
-      throw stateError(
+      throw commandError(
         "manifest-hash-conflict",
         "The project manifest changed after the pending-action input was prepared; reread it before retrying.",
         { expected_sha256: request.expected_manifest_sha256, actual_sha256: sha256Bytes(manifestText) }
       );
     }
     if (active && request.cycle_id !== void 0 && (active.value.cycle_id !== request.cycle_id || active.value.revision !== request.expected_revision)) {
-      throw stateError(
+      throw commandError(
         "cycle-revision-conflict",
         `Expected cycle ${request.cycle_id} revision ${request.expected_revision}, but the active cycle is ${active.value.cycle_id} revision ${active.value.revision}.`
       );
     }
     if (!active && request.cycle_id !== void 0) {
-      throw stateError("active-cycle-required", "The named active cycle is unavailable.");
+      throw commandError("active-cycle-required", "The named active cycle is unavailable.");
     }
     const coordination = coordinationBlockers(project, active);
     if (coordination.length > 0) {
       outcome = {
-        ...failure4(
+        ...failure(
           coordination[0].code,
           coordination[0].message,
           "set-pending"
@@ -19459,25 +19465,25 @@ async function setPendingAction(projectRoot, request, options2 = {}) {
       const cycle = active?.value ?? null;
       const trackedScope = cycle?.target_scope ?? project.manifest.current_scope ?? null;
       if (request.scope_id !== void 0 && trackedScope && request.scope_id !== trackedScope.scope_id) {
-        throw stateError(
+        throw commandError(
           "pending-scope-conflict",
           `Pending scope ${request.scope_id} does not match current scope ${trackedScope.scope_id}.`
         );
       }
       if (request.scope_fingerprint !== void 0 && trackedScope && request.scope_fingerprint !== trackedScope.scope_fingerprint) {
-        throw stateError(
+        throw commandError(
           "pending-scope-conflict",
           "The pending scope fingerprint does not match the current scope fingerprint."
         );
       }
       if (request.operation_id !== void 0 && cycle && request.operation_id !== cycle.recovery_position?.operation_id) {
-        throw stateError(
+        throw commandError(
           "cycle-operation-id-mismatch",
           "The pending operation ID does not match the active cycle recovery position."
         );
       }
       if (cycle && request.operation !== cycle.recovery_position?.operation) {
-        throw stateError(
+        throw commandError(
           "cycle-operation-mismatch",
           `Pending operation ${request.operation} does not match active recovery operation ${cycle.recovery_position?.operation ?? "null"}.`
         );
@@ -19502,7 +19508,7 @@ async function setPendingAction(projectRoot, request, options2 = {}) {
         } : request.operation_id ? { operation_id: request.operation_id } : {},
         reason: request.reason,
         ...artifacts.length > 0 ? { artifacts } : {},
-        updated_at: operationTime4(options2)
+        updated_at: operationTime4(options)
       };
       const updated = {
         ...project.manifest,
@@ -19513,7 +19519,7 @@ async function setPendingAction(projectRoot, request, options2 = {}) {
       const fileValidation = manifestValidation.valid ? await validateProjectFiles(updated, project.manifestPath) : { valid: false, errors: [] };
       if (!manifestValidation.valid || !fileValidation.valid) {
         outcome = {
-          ...failure4(
+          ...failure(
             "pending-action-invalid",
             "The requested pending action does not satisfy the project contract.",
             "set-pending"
@@ -19525,14 +19531,14 @@ async function setPendingAction(projectRoot, request, options2 = {}) {
         await writeAtomicVerified(project.manifestPath, `${JSON.stringify(updated, null, 2)}
 `);
         manifestWritten = true;
-        await runCheckpoint(options2, "manifest-updated");
+        await runCheckpoint(options, "manifest-updated");
         outcome = {
           valid: true,
           state_written: true,
           pending_action: pending,
           manifest_sha256: sha256Bytes(`${JSON.stringify(updated, null, 2)}
 `),
-          required_action: requiredAction4("set-pending"),
+          required_action: requiredAction("set-pending"),
           blockers: []
         };
       }
@@ -19543,7 +19549,7 @@ async function setPendingAction(projectRoot, request, options2 = {}) {
   const released = await releaseDirectoryLock(lock);
   if (!released.released) {
     return {
-      ...failure4(
+      ...failure(
         "project-lock-release-error",
         `Cannot release pending-action lock ${lock.directory}: ${released.error.message}`,
         "set-pending",
@@ -19555,7 +19561,7 @@ async function setPendingAction(projectRoot, request, options2 = {}) {
   }
   if (operationError) {
     return {
-      ...failure4(
+      ...failure(
         operationError.projectCode ?? "pending-action-write-interrupted",
         operationError.message,
         "set-pending",
@@ -19599,12 +19605,12 @@ function validationBlockers(errors) {
     message: error.message
   }));
 }
-async function recordProjectScope(projectRoot, request, options2 = {}) {
+async function recordProjectScope(projectRoot, request, options = {}) {
   validateScopeRequest(request);
   const references = await validateDeployedReferences(projectRoot);
   if (!references.valid) {
     return {
-      ...failure4(
+      ...failure(
         "reference-version-conflict",
         "Shared references are missing or do not match the installed payload; run setup-author-toolkit.",
         "record-scope"
@@ -19629,18 +19635,18 @@ async function recordProjectScope(projectRoot, request, options2 = {}) {
       expectedManifestSha256: request.expected_manifest_sha256,
       cycleId: request.cycle_id,
       expectedRevision: request.expected_revision,
-      now: options2.now,
-      checkpoint: options2.checkpoint ? async (point) => {
+      now: options.now,
+      checkpoint: options.checkpoint ? async (point) => {
         try {
-          await options2.checkpoint(point);
+          await options.checkpoint(point);
         } catch (error) {
           error.projectCode ??= "scope-write-interrupted";
           error.projectDetails ??= { checkpoint: point };
           throw error;
         }
       } : void 0,
-      lockTimeoutMs: options2.lockTimeoutMs,
-      lockRetryMs: options2.lockRetryMs,
+      lockTimeoutMs: options.lockTimeoutMs,
+      lockRetryMs: options.lockRetryMs,
       progress
     });
     const manifestText = await readFile21(initial.manifestPath, "utf8");
@@ -19665,12 +19671,12 @@ async function recordProjectScope(projectRoot, request, options2 = {}) {
         blockers: validationBlockers(validation.errors)
       },
       manifest_sha256: sha256Bytes(manifestText),
-      required_action: requiredAction4("record-scope"),
+      required_action: requiredAction("record-scope"),
       blockers: []
     };
   } catch (error) {
     return {
-      ...failure4(
+      ...failure(
         error.projectCode ?? "scope-recording-failed",
         error.message,
         "record-scope",
@@ -19692,6 +19698,7 @@ async function recordProjectScope(projectRoot, request, options2 = {}) {
 }
 var init_project_commands = __esm({
   "scripts/lib/project-commands.mjs"() {
+    init_command_result();
     init_cycle_coordination();
     init_evaluation_artifacts();
     init_manifest();
@@ -19707,28 +19714,6 @@ var init_project_commands = __esm({
 import { readFile as readFile22 } from "node:fs/promises";
 import path23 from "node:path";
 import { isDeepStrictEqual } from "node:util";
-function requiredAction5(operation) {
-  return {
-    strategy: "author-project",
-    operation,
-    command: `author-project ${operation}`
-  };
-}
-function failure5(code, message, operation, details = {}) {
-  return {
-    valid: false,
-    state_written: false,
-    required_action: requiredAction5(operation),
-    blockers: [{ code, message, ...details, required_action: requiredAction5(operation) }],
-    ...details
-  };
-}
-function commandError5(code, message, details = {}) {
-  const error = new Error(message);
-  error.projectCode = code;
-  error.projectDetails = details;
-  return error;
-}
 function cell(value) {
   return String(value).replace(/\r?\n/g, " ").replaceAll("|", "\\|").trim();
 }
@@ -19742,10 +19727,11 @@ function findingLocation3(location) {
   if (location.scope === "line") return `${location.file}:${location.line}`;
   return `${location.file}: ${location.quote}`;
 }
-function appendFinding(markdown, row) {
+function appendSectionRow(markdown, section, row) {
   const eol = markdown.includes("\r\n") ? "\r\n" : "\n";
   const lines = markdown.split(/\r?\n/);
-  const heading = lines.findIndex((line) => /^ {0,3}##[ \t]+Findings[ \t]*$/.test(line));
+  const headingPattern = new RegExp(`^ {0,3}##[ \\t]+${section}[ \\t]*$`);
+  const heading = lines.findIndex((line) => headingPattern.test(line));
   for (let index = heading + 1; index < lines.length; index += 1) {
     if (/^ {0,3}##[ \t]+/.test(lines[index])) break;
     if (/^\|(?:\s*:?-{3,}:?\s*\|)+$/.test(lines[index])) {
@@ -19753,7 +19739,7 @@ function appendFinding(markdown, row) {
       return lines.join(eol);
     }
   }
-  throw commandError5("tracker-invalid", "The Findings table separator is unavailable.");
+  throw commandError("tracker-invalid", `The ${section} table separator is unavailable.`);
 }
 async function recoveryState3(project, operation) {
   const trackerPath = path23.resolve(project.root, project.manifest.paths.audit_tracker);
@@ -19763,46 +19749,46 @@ async function recoveryState3(project, operation) {
   } catch {
   }
   return {
-    required_action: requiredAction5(operation),
+    required_action: requiredAction(operation),
     tracker_path: trackerPath,
     tracker_sha256: trackerSha256
   };
 }
-async function validateFindingReport(project, request, options2) {
+async function validateFindingReport(project, request, options) {
   if (!validateRelativePath(request.finding.location.file).valid) {
-    throw commandError5("finding-location-invalid", "Finding location.file must be a portable project-relative path.");
+    throw commandError("finding-location-invalid", "Finding location.file must be a portable project-relative path.");
   }
   const reportsRoot = project.manifest.paths.reports.replace(/\/?$/, "/");
   if (!request.report.startsWith(reportsRoot)) {
-    throw commandError5("finding-report-invalid", "The current report must be beneath the registered reports path.");
+    throw commandError("finding-report-invalid", "The current report must be beneath the registered reports path.");
   }
   let markdown;
   try {
     markdown = await readFile22(path23.resolve(project.root, request.report), "utf8");
   } catch (error) {
-    throw commandError5("finding-report-unavailable", `Cannot read current report ${request.report}: ${error.message}`);
+    throw commandError("finding-report-unavailable", `Cannot read current report ${request.report}: ${error.message}`);
   }
-  const validation = validateEvidenceReport(markdown, options2);
+  const validation = validateEvidenceReport(markdown, options);
   if (!validation.valid) {
-    throw commandError5("finding-report-invalid", "The current report does not satisfy report v2 evidence requirements.", {
+    throw commandError("finding-report-invalid", "The current report does not satisfy report v2 evidence requirements.", {
       validation_errors: validation.errors
     });
   }
   const envelope = validation.envelope;
   const reported = envelope.findings.find((candidate) => candidate.id === request.finding.id);
   if (envelope.stage !== request.operation || !reported || !isDeepStrictEqual(reported, request.finding)) {
-    throw commandError5(
+    throw commandError(
       "finding-report-mismatch",
       "The current report must contain the exact finding with the same operation and audit identity."
     );
   }
 }
-async function recordFinding(projectRoot, request, options2 = {}) {
+async function recordFinding(projectRoot, request, options = {}) {
   const operation = "record-finding";
   const references = await validateDeployedReferences(projectRoot);
   if (!references.valid) {
     return {
-      ...failure5(
+      ...failure(
         "reference-version-conflict",
         "Shared references are missing or do not match the installed payload; run setup-author-toolkit.",
         operation
@@ -19814,13 +19800,13 @@ async function recordFinding(projectRoot, request, options2 = {}) {
   const lock = await acquireDirectoryLock(
     path23.resolve(initial.root, initial.manifest.paths.convergence, "active-cycle.lock"),
     {
-      timeoutMs: options2.lockTimeoutMs ?? 1e4,
-      retryMs: options2.lockRetryMs ?? 20,
-      now: options2.now
+      timeoutMs: options.lockTimeoutMs ?? 1e4,
+      retryMs: options.lockRetryMs ?? 20,
+      now: options.now
     }
   );
   if (!lock.acquired) {
-    return failure5(
+    return failure(
       lock.code === "timeout" ? "project-lock-timeout" : "project-lock-error",
       `Cannot coordinate tracker recording at ${lock.directory}: ${lock.error.message}`,
       operation,
@@ -19832,12 +19818,12 @@ async function recordFinding(projectRoot, request, options2 = {}) {
   let operationError;
   let stateWritten = false;
   try {
-    await runCheckpoint(options2, "lock-acquired");
+    await runCheckpoint(options, "lock-acquired");
     project = await readProject(projectRoot);
     const trackerPath = path23.resolve(project.root, project.manifest.paths.audit_tracker);
     const trackerBefore = await readFile22(trackerPath, "utf8");
     if (request.expected_tracker_sha256 !== void 0 && sha256Bytes(trackerBefore) !== request.expected_tracker_sha256) {
-      throw commandError5(
+      throw commandError(
         "tracker-hash-conflict",
         "The tracker changed after the finding input was prepared; reread it before retrying.",
         {
@@ -19846,21 +19832,21 @@ async function recordFinding(projectRoot, request, options2 = {}) {
         }
       );
     }
-    const validation = validateRecordFindingCommand(request, options2);
+    const validation = validateRecordFindingCommand(request, options);
     if (!validation.valid) {
-      throw commandError5("finding-command-invalid", "The finding command does not satisfy its typed input contract.", {
+      throw commandError("finding-command-invalid", "The finding command does not satisfy its typed input contract.", {
         validation_errors: validation.errors
       });
     }
     const tracker = await parseTrackerState(trackerBefore, project.root);
     if (!tracker.valid) {
-      throw commandError5("tracker-invalid", "The existing tracker is invalid; diagnose the external edit before recording a finding.", {
+      throw commandError("tracker-invalid", "The existing tracker is invalid; diagnose the external edit before recording a finding.", {
         validation_errors: tracker.errors
       });
     }
     const duplicateIndex = tracker.findings.findIndex((candidate2) => candidate2.id === request.finding.id);
     if (duplicateIndex >= 0) {
-      throw commandError5("duplicate-finding-id", `Finding ID already exists: ${request.finding.id}`, {
+      throw commandError("duplicate-finding-id", `Finding ID already exists: ${request.finding.id}`, {
         finding_id: request.finding.id,
         conflicts: [{
           finding_id: request.finding.id,
@@ -19869,19 +19855,19 @@ async function recordFinding(projectRoot, request, options2 = {}) {
         }]
       });
     }
-    await validateFindingReport(project, request, options2);
-    const updatedAt = utcTimestamp(options2);
+    await validateFindingReport(project, request, options);
+    const updatedAt = utcTimestamp(options);
     const row = `| ${cell(request.finding.id)} | ${cell(request.operation)} | ${cell(request.finding.audit)} | ${referenceCell(findingLocation3(request.finding.location))} | open | ${referenceCell(request.report)} | ${updatedAt} | ${cell(request.reason)} |`;
-    const trackerAfter = appendFinding(trackerBefore, row);
+    const trackerAfter = appendSectionRow(trackerBefore, "Findings", row);
     const candidate = await parseTrackerState(trackerAfter, project.root);
     if (!candidate.valid) {
-      throw commandError5("finding-command-invalid", "The finding row does not satisfy the living tracker contract.", {
+      throw commandError("finding-command-invalid", "The finding row does not satisfy the living tracker contract.", {
         validation_errors: candidate.errors
       });
     }
     await writeAtomicVerified(trackerPath, trackerAfter);
     stateWritten = true;
-    await runCheckpoint(options2, "tracker-written");
+    await runCheckpoint(options, "tracker-written");
     outcome = {
       valid: true,
       state_written: true,
@@ -19890,7 +19876,7 @@ async function recordFinding(projectRoot, request, options2 = {}) {
       status: "open",
       updated_at: updatedAt,
       tracker_sha256: sha256Bytes(trackerAfter),
-      required_action: requiredAction5(operation),
+      required_action: requiredAction(operation),
       blockers: []
     };
   } catch (error) {
@@ -19899,7 +19885,7 @@ async function recordFinding(projectRoot, request, options2 = {}) {
   const released = await releaseDirectoryLock(lock);
   if (!released.released) {
     return {
-      ...failure5(
+      ...failure(
         "project-lock-release-error",
         `Cannot release tracker lock ${lock.directory}: ${released.error.message}`,
         operation,
@@ -19911,7 +19897,7 @@ async function recordFinding(projectRoot, request, options2 = {}) {
   }
   if (operationError) {
     return {
-      ...failure5(
+      ...failure(
         operationError.projectCode ?? "tracker-write-interrupted",
         operationError.message,
         operation,
@@ -19923,21 +19909,8 @@ async function recordFinding(projectRoot, request, options2 = {}) {
   }
   return outcome;
 }
-function appendApproval(markdown, row) {
-  const eol = markdown.includes("\r\n") ? "\r\n" : "\n";
-  const lines = markdown.split(/\r?\n/);
-  const heading = lines.findIndex((line) => /^ {0,3}##[ \t]+Approvals[ \t]*$/.test(line));
-  for (let index = heading + 1; index < lines.length; index += 1) {
-    if (/^ {0,3}##[ \t]+/.test(lines[index])) break;
-    if (/^\|(?:\s*:?-{3,}:?\s*\|)+$/.test(lines[index])) {
-      lines.splice(index + 1, 0, row);
-      return lines.join(eol);
-    }
-  }
-  throw commandError5("tracker-invalid", "The Approvals table separator is unavailable.");
-}
 function approvalValidationError(message) {
-  return commandError5("approval-command-invalid", message);
+  return commandError("approval-command-invalid", message);
 }
 async function validateRevisionArtifact(project, reference) {
   let contents;
@@ -20017,12 +19990,12 @@ async function approvalReason(project, request) {
   }
   return `${request.reason.trim()} ${tokens.join(" ")}`;
 }
-async function recordApproval(projectRoot, request, options2 = {}) {
+async function recordApproval(projectRoot, request, options = {}) {
   const operation = "record-approval";
   const references = await validateDeployedReferences(projectRoot);
   if (!references.valid) {
     return {
-      ...failure5(
+      ...failure(
         "reference-version-conflict",
         "Shared references are missing or do not match the installed payload; run setup-author-toolkit.",
         operation
@@ -20034,13 +20007,13 @@ async function recordApproval(projectRoot, request, options2 = {}) {
   const lock = await acquireDirectoryLock(
     path23.resolve(initial.root, initial.manifest.paths.convergence, "active-cycle.lock"),
     {
-      timeoutMs: options2.lockTimeoutMs ?? 1e4,
-      retryMs: options2.lockRetryMs ?? 20,
-      now: options2.now
+      timeoutMs: options.lockTimeoutMs ?? 1e4,
+      retryMs: options.lockRetryMs ?? 20,
+      now: options.now
     }
   );
   if (!lock.acquired) {
-    return failure5(
+    return failure(
       lock.code === "timeout" ? "project-lock-timeout" : "project-lock-error",
       `Cannot coordinate tracker recording at ${lock.directory}: ${lock.error.message}`,
       operation,
@@ -20052,12 +20025,12 @@ async function recordApproval(projectRoot, request, options2 = {}) {
   let operationError;
   let stateWritten = false;
   try {
-    await runCheckpoint(options2, "lock-acquired");
+    await runCheckpoint(options, "lock-acquired");
     project = await readProject(projectRoot);
     const trackerPath = path23.resolve(project.root, project.manifest.paths.audit_tracker);
     const trackerBefore = await readFile22(trackerPath, "utf8");
     if (request.expected_tracker_sha256 !== void 0 && sha256Bytes(trackerBefore) !== request.expected_tracker_sha256) {
-      throw commandError5(
+      throw commandError(
         "tracker-hash-conflict",
         "The tracker changed after the approval input was prepared; reread it before retrying.",
         {
@@ -20066,21 +20039,21 @@ async function recordApproval(projectRoot, request, options2 = {}) {
         }
       );
     }
-    const validation = validateRecordApprovalCommand(request, options2);
+    const validation = validateRecordApprovalCommand(request, options);
     if (!validation.valid) {
-      throw commandError5("approval-command-invalid", "The approval command does not satisfy its typed input contract.", {
+      throw commandError("approval-command-invalid", "The approval command does not satisfy its typed input contract.", {
         validation_errors: validation.errors
       });
     }
     const tracker = await parseTrackerState(trackerBefore, project.root);
     if (!tracker.valid) {
-      throw commandError5("tracker-invalid", "The existing tracker is invalid; diagnose the external edit before recording an approval.", {
+      throw commandError("tracker-invalid", "The existing tracker is invalid; diagnose the external edit before recording an approval.", {
         validation_errors: tracker.errors
       });
     }
     const duplicateIndex = tracker.approvals.findIndex((candidate2) => candidate2.id === request.approval_id);
     if (duplicateIndex >= 0) {
-      throw commandError5("duplicate-approval-id", `Approval ID already exists: ${request.approval_id}`, {
+      throw commandError("duplicate-approval-id", `Approval ID already exists: ${request.approval_id}`, {
         approval_id: request.approval_id,
         conflicts: [{
           approval_id: request.approval_id,
@@ -20091,18 +20064,18 @@ async function recordApproval(projectRoot, request, options2 = {}) {
       });
     }
     const reason = await approvalReason(project, request);
-    const updatedAt = utcTimestamp(options2);
+    const updatedAt = utcTimestamp(options);
     const row = `| ${cell(request.approval_id)} | ${cell(request.type)} | ${cell(request.operation)} | ${cell(request.scope_id)} | ${cell(formatApprovalPaths(request.paths))} | ${request.status} | ${cell(reason)} | ${updatedAt} |`;
-    const trackerAfter = appendApproval(trackerBefore, row);
+    const trackerAfter = appendSectionRow(trackerBefore, "Approvals", row);
     const candidate = await parseTrackerState(trackerAfter, project.root);
     if (!candidate.valid) {
-      throw commandError5("approval-command-invalid", "The approval row does not satisfy the living tracker contract.", {
+      throw commandError("approval-command-invalid", "The approval row does not satisfy the living tracker contract.", {
         validation_errors: candidate.errors
       });
     }
     await writeAtomicVerified(trackerPath, trackerAfter);
     stateWritten = true;
-    await runCheckpoint(options2, "tracker-written");
+    await runCheckpoint(options, "tracker-written");
     outcome = {
       valid: true,
       state_written: true,
@@ -20110,7 +20083,7 @@ async function recordApproval(projectRoot, request, options2 = {}) {
       approval: candidate.approvals.find((candidateApproval) => candidateApproval.id === request.approval_id),
       updated_at: updatedAt,
       tracker_sha256: sha256Bytes(trackerAfter),
-      required_action: requiredAction5(operation),
+      required_action: requiredAction(operation),
       blockers: []
     };
   } catch (error) {
@@ -20119,7 +20092,7 @@ async function recordApproval(projectRoot, request, options2 = {}) {
   const released = await releaseDirectoryLock(lock);
   if (!released.released) {
     return {
-      ...failure5(
+      ...failure(
         "project-lock-release-error",
         `Cannot release tracker lock ${lock.directory}: ${released.error.message}`,
         operation,
@@ -20131,7 +20104,7 @@ async function recordApproval(projectRoot, request, options2 = {}) {
   }
   if (operationError) {
     return {
-      ...failure5(
+      ...failure(
         operationError.projectCode ?? "tracker-write-interrupted",
         operationError.message,
         operation,
@@ -20154,50 +20127,50 @@ function replaceFinding(markdown, findingId, row) {
       return lines.join(eol);
     }
   }
-  throw commandError5("finding-decision-target-missing", `Finding is unavailable: ${findingId}`);
+  throw commandError("finding-decision-target-missing", `Finding is unavailable: ${findingId}`);
 }
-async function validateDecisionReport(project, request, existing, options2) {
+async function validateDecisionReport(project, request, existing, options) {
   const reportsRoot = project.manifest.paths.reports.replace(/\/?$/, "/");
   if (!request.report.startsWith(reportsRoot)) {
-    throw commandError5("finding-decision-report-invalid", "The current report must be beneath the registered reports path.");
+    throw commandError("finding-decision-report-invalid", "The current report must be beneath the registered reports path.");
   }
   let markdown;
   try {
     markdown = await readFile22(path23.resolve(project.root, request.report), "utf8");
   } catch (error) {
-    throw commandError5("finding-decision-report-unavailable", `Cannot read current report ${request.report}: ${error.message}`);
+    throw commandError("finding-decision-report-unavailable", `Cannot read current report ${request.report}: ${error.message}`);
   }
-  const validation = validateEvidenceReport(markdown, options2);
+  const validation = validateEvidenceReport(markdown, options);
   if (!validation.valid) {
-    throw commandError5("finding-decision-report-invalid", "The current report does not satisfy report v2 evidence requirements.", {
+    throw commandError("finding-decision-report-invalid", "The current report does not satisfy report v2 evidence requirements.", {
       validation_errors: validation.errors
     });
   }
   if (validation.envelope.stage !== existing.stage) {
-    throw commandError5("finding-decision-report-mismatch", "The current report operation differs from the tracked finding.");
+    throw commandError("finding-decision-report-mismatch", "The current report operation differs from the tracked finding.");
   }
   const reported = validation.envelope.findings.find((candidate) => candidate.id === request.finding_id) ?? null;
   if (["deferred", "dismissed"].includes(request.status)) {
     if (!reported || reported.audit !== existing.audit || findingLocation3(reported.location) !== existing.location) {
-      throw commandError5("finding-decision-report-mismatch", "The current report must retain the exact finding audit and location.");
+      throw commandError("finding-decision-report-mismatch", "The current report must retain the exact finding audit and location.");
     }
   }
   if (request.status === "stale") {
     if (reported) {
-      throw commandError5("finding-decision-report-mismatch", "A stale decision requires an equivalent current report that no longer observes the finding.");
+      throw commandError("finding-decision-report-mismatch", "A stale decision requires an equivalent current report that no longer observes the finding.");
     }
     if (!/(?:^|\s)operation_coverage=full(?:\s|$)/.test(validation.envelope.engine.notes)) {
-      throw commandError5("finding-decision-report-mismatch", "A stale decision requires an equivalent complete rerun.");
+      throw commandError("finding-decision-report-mismatch", "A stale decision requires an equivalent complete rerun.");
     }
   }
   return { envelope: validation.envelope, reported, markdown };
 }
-async function recordFindingDecision(projectRoot, request, options2 = {}) {
+async function recordFindingDecision(projectRoot, request, options = {}) {
   const operation = "record-finding-decision";
   const references = await validateDeployedReferences(projectRoot);
   if (!references.valid) {
     return {
-      ...failure5(
+      ...failure(
         "reference-version-conflict",
         "Shared references are missing or do not match the installed payload; run setup-author-toolkit.",
         operation
@@ -20209,13 +20182,13 @@ async function recordFindingDecision(projectRoot, request, options2 = {}) {
   const lock = await acquireDirectoryLock(
     path23.resolve(initial.root, initial.manifest.paths.convergence, "active-cycle.lock"),
     {
-      timeoutMs: options2.lockTimeoutMs ?? 1e4,
-      retryMs: options2.lockRetryMs ?? 20,
-      now: options2.now
+      timeoutMs: options.lockTimeoutMs ?? 1e4,
+      retryMs: options.lockRetryMs ?? 20,
+      now: options.now
     }
   );
   if (!lock.acquired) {
-    return failure5(
+    return failure(
       lock.code === "timeout" ? "project-lock-timeout" : "project-lock-error",
       `Cannot coordinate tracker recording at ${lock.directory}: ${lock.error.message}`,
       operation,
@@ -20227,12 +20200,12 @@ async function recordFindingDecision(projectRoot, request, options2 = {}) {
   let operationError;
   let stateWritten = false;
   try {
-    await runCheckpoint(options2, "lock-acquired");
+    await runCheckpoint(options, "lock-acquired");
     project = await readProject(projectRoot);
     const trackerPath = path23.resolve(project.root, project.manifest.paths.audit_tracker);
     const trackerBefore = await readFile22(trackerPath, "utf8");
     if (request.expected_tracker_sha256 !== void 0 && sha256Bytes(trackerBefore) !== request.expected_tracker_sha256) {
-      throw commandError5(
+      throw commandError(
         "tracker-hash-conflict",
         "The tracker changed after the finding-decision input was prepared; reread it before retrying.",
         {
@@ -20241,42 +20214,42 @@ async function recordFindingDecision(projectRoot, request, options2 = {}) {
         }
       );
     }
-    const validation = validateRecordFindingDecisionCommand(request, options2);
+    const validation = validateRecordFindingDecisionCommand(request, options);
     if (!validation.valid) {
-      throw commandError5("finding-decision-command-invalid", "The finding-decision command does not satisfy its typed input contract.", {
+      throw commandError("finding-decision-command-invalid", "The finding-decision command does not satisfy its typed input contract.", {
         validation_errors: validation.errors
       });
     }
     const tracker = await parseTrackerState(trackerBefore, project.root);
     if (!tracker.valid) {
-      throw commandError5("tracker-invalid", "The existing tracker is invalid; diagnose the external edit before recording a finding decision.", {
+      throw commandError("tracker-invalid", "The existing tracker is invalid; diagnose the external edit before recording a finding decision.", {
         validation_errors: tracker.errors
       });
     }
     const existing = tracker.findings.find((candidate2) => candidate2.id === request.finding_id);
     if (!existing) {
-      throw commandError5("finding-decision-target-missing", `Finding is unavailable: ${request.finding_id}`);
+      throw commandError("finding-decision-target-missing", `Finding is unavailable: ${request.finding_id}`);
     }
     if (existing.status === request.status || existing.status === "stale" || existing.status === "resolved" && request.status !== "stale") {
-      throw commandError5(
+      throw commandError(
         "finding-decision-transition-invalid",
         `Cannot record ${request.status} after ${existing.status} for ${request.finding_id}.`
       );
     }
-    const report = await validateDecisionReport(project, request, existing, options2);
+    const report = await validateDecisionReport(project, request, existing, options);
     if (request.status === "stale") {
-      await validateStaleDecision(project, tracker, request, report, existing, options2);
+      await validateStaleDecision(project, tracker, request, report, existing, options);
     } else if (request.revision_execution) {
       await validateExecutionDecision(project, tracker, request, report, existing, {
-        ...options2,
+        ...options,
         pendingFindingDecision: { findingId: request.finding_id, status: request.status }
       });
     } else if (request.no_edit_skip) {
-      await validateNoEditDecision(project, tracker, request, report, options2);
+      await validateNoEditDecision(project, tracker, request, report, options);
     } else {
-      throw commandError5("finding-decision-evidence-required", "The requested finding decision requires current evidence.");
+      throw commandError("finding-decision-evidence-required", "The requested finding decision requires current evidence.");
     }
-    const updatedAt = utcTimestamp(options2);
+    const updatedAt = utcTimestamp(options);
     const previousReportSha256 = sha256Bytes(await readFile22(path23.resolve(project.root, existing.report)));
     const evidence = request.revision_execution ? { reference: request.revision_execution, id: request.revision_execution.execution_id, type: "revision-execution" } : request.no_edit_skip ? { reference: request.no_edit_skip, id: request.no_edit_skip.skip_id, type: "no-edit-skip" } : null;
     const evidenceReason = evidence ? ` evidence_type=${evidence.type} evidence_id=${evidence.id} evidence_path=${encodeURIComponent(evidence.reference.path)} evidence_sha256=${evidence.reference.sha256}` : "";
@@ -20285,13 +20258,13 @@ async function recordFindingDecision(projectRoot, request, options2 = {}) {
     const trackerAfter = replaceFinding(trackerBefore, existing.id, row);
     const candidate = await parseTrackerState(trackerAfter, project.root);
     if (!candidate.valid) {
-      throw commandError5("finding-decision-command-invalid", "The finding decision does not satisfy the living tracker contract.", {
+      throw commandError("finding-decision-command-invalid", "The finding decision does not satisfy the living tracker contract.", {
         validation_errors: candidate.errors
       });
     }
     await writeAtomicVerified(trackerPath, trackerAfter);
     stateWritten = true;
-    await runCheckpoint(options2, "tracker-written");
+    await runCheckpoint(options, "tracker-written");
     outcome = {
       valid: true,
       state_written: true,
@@ -20300,7 +20273,7 @@ async function recordFindingDecision(projectRoot, request, options2 = {}) {
       author_decision_id: request.author_decision_id,
       updated_at: updatedAt,
       tracker_sha256: sha256Bytes(trackerAfter),
-      required_action: requiredAction5(operation),
+      required_action: requiredAction(operation),
       blockers: []
     };
   } catch (error) {
@@ -20309,7 +20282,7 @@ async function recordFindingDecision(projectRoot, request, options2 = {}) {
   const released = await releaseDirectoryLock(lock);
   if (!released.released) {
     return {
-      ...failure5(
+      ...failure(
         "project-lock-release-error",
         `Cannot release tracker lock ${lock.directory}: ${released.error.message}`,
         operation,
@@ -20321,7 +20294,7 @@ async function recordFindingDecision(projectRoot, request, options2 = {}) {
   }
   if (operationError) {
     return {
-      ...failure5(
+      ...failure(
         operationError.projectCode ?? "tracker-write-interrupted",
         operationError.message,
         operation,
@@ -20336,6 +20309,7 @@ async function recordFindingDecision(projectRoot, request, options2 = {}) {
 var init_tracker_commands = __esm({
   "scripts/lib/tracker-commands.mjs"() {
     init_approval_paths();
+    init_command_result();
     init_cycle_coordination();
     init_execution_decision();
     init_evaluation_artifacts();
@@ -20354,9 +20328,9 @@ var init_tracker_commands = __esm({
 // scripts/lib/cycle-recovery.mjs
 import { readFile as readFile23 } from "node:fs/promises";
 import path24 from "node:path";
-async function readProject5(projectRoot, options2 = {}) {
+async function readProject5(projectRoot, options = {}) {
   const { readProject: readProjectWithReferences } = await Promise.resolve().then(() => (init_evaluation_artifacts(), evaluation_artifacts_exports));
-  return readProjectWithReferences(projectRoot, options2);
+  return readProjectWithReferences(projectRoot, options);
 }
 function recoveryAction() {
   return {
@@ -20567,7 +20541,7 @@ async function completionDiagnostic(project, active) {
     }]
   };
 }
-function failure6(code, message, cycle, details = {}) {
+function failure4(code, message, cycle, details = {}) {
   return {
     valid: false,
     diagnostic_only: false,
@@ -20615,7 +20589,7 @@ async function unsafeDiscardResult(project, active, operation, artifacts) {
   ];
   if (blockers.length === 0) return null;
   const directions = discardDirections(operation);
-  const requiredAction6 = directionAction(directions[0]);
+  const requiredAction4 = directionAction(directions[0]);
   return {
     valid: false,
     diagnostic_only: false,
@@ -20625,21 +20599,21 @@ async function unsafeDiscardResult(project, active, operation, artifacts) {
     available_directions: directions,
     blockers: blockers.map((blocker2) => ({
       ...blocker2,
-      required_action: requiredAction6
+      required_action: requiredAction4
     })),
-    required_action: requiredAction6
+    required_action: requiredAction4
   };
 }
-async function finishCompletion(project, active, completed, request) {
+async function finishCompletion(project, active, completed, request, options = {}) {
   if (!active || !completed) {
-    return failure6("cycle-completion-unavailable", "The active and completed records needed for completion recovery are not both present.", active?.value ?? completed?.value ?? null);
+    return failure4("cycle-completion-unavailable", "The active and completed records needed for completion recovery are not both present.", active?.value ?? completed?.value ?? null);
   }
   if (request.cycle_id !== active.value.cycle_id) {
-    return failure6("cycle-id-mismatch", "The reconciliation direction must name the interrupted cycle explicitly.", active.value);
+    return failure4("cycle-id-mismatch", "The reconciliation direction must name the interrupted cycle explicitly.", active.value);
   }
   const diagnostic = await completionDiagnostic(project, active);
   if (diagnostic.blockers[0]?.code !== "cycle-completion-reconcile-required") {
-    return failure6(
+    return failure4(
       diagnostic.blockers[0]?.code ?? "cycle-completion-unavailable",
       diagnostic.blockers[0]?.message ?? "The completed cycle cannot be reconciled.",
       active.value
@@ -20649,10 +20623,10 @@ async function finishCompletion(project, active, completed, request) {
   try {
     evaluation = await recomputeCompletedCycleForRecovery(project, completed.value, options);
   } catch (error) {
-    return failure6("completion-evaluation-unavailable", error.message, active.value);
+    return failure4("completion-evaluation-unavailable", error.message, active.value);
   }
   if (!evaluation.current || evaluation.recomputed.outcome !== "satisfied") {
-    return failure6(
+    return failure4(
       "completion-evaluation-not-satisfied",
       "The completed cycle's post-decision evaluation is not current and satisfied; active state was not removed.",
       active.value,
@@ -20669,9 +20643,10 @@ async function finishCompletion(project, active, completed, request) {
   const operation = project.manifest.cycle_operation;
   if (operation) {
     if (operation.kind !== "completion" || operation.cycle_id !== completed.value.cycle_id || operation.intended_revision !== completed.value.revision || request.operation_id && request.operation_id !== operation.operation_id) {
-      return failure6("cycle-operation-id-mismatch", "The completed history does not match the interrupted completion operation.", active.value);
+      return failure4("cycle-operation-id-mismatch", "The completed history does not match the interrupted completion operation.", active.value);
     }
     await finishCycleOperation(project, completed.value, operation.operation_id, {
+      ...options,
       complete: true,
       completedAt: completed.value.updated_at,
       manifestChanges: { last_completed_cycle: lastCompleted }
@@ -20685,9 +20660,9 @@ async function finishCompletion(project, active, completed, request) {
     if (manifest.pending_action?.cycle_id === completed.value.cycle_id) {
       delete manifest.pending_action;
     }
-    const manifestValidation = validateManifest(manifest);
+    const manifestValidation = validateManifest(manifest, options);
     if (!manifestValidation.valid) {
-      return failure6("manifest-update-invalid", formatErrors4(manifestValidation.errors), active.value);
+      return failure4("manifest-update-invalid", formatErrors4(manifestValidation.errors), active.value);
     }
     await writeAtomicVerified(project.manifestPath, `${JSON.stringify(manifest, null, 2)}
 `);
@@ -20695,7 +20670,7 @@ async function finishCompletion(project, active, completed, request) {
   try {
     await removeVerified(active.file, sha256Bytes(active.text));
   } catch (error) {
-    return failure6(
+    return failure4(
       "cycle-active-content-changed",
       `The active record changed during reconciliation; active removal was refused after the manifest update: ${error.message}`,
       active.value,
@@ -20712,12 +20687,12 @@ async function finishCompletion(project, active, completed, request) {
     required_action: null
   };
 }
-async function reconcileCycle(projectRoot, request = {}, options2 = {}) {
+async function reconcileCycle(projectRoot, request = {}, options = {}) {
   const allowed = /* @__PURE__ */ new Set(["cycle_id", "operation_id", "direction", "lock_owner"]);
   for (const key of Object.keys(request)) {
     if (!allowed.has(key)) throw new Error(`Unknown reconcile-cycle input field: ${key}`);
   }
-  const project = await readProject5(projectRoot, options2);
+  const project = await readProject5(projectRoot, options);
   const lockPath = path24.resolve(
     project.root,
     project.manifest.paths.convergence,
@@ -20766,12 +20741,12 @@ async function reconcileCycle(projectRoot, request = {}, options2 = {}) {
   let recoveryLock = null;
   if (needsLock) {
     recoveryLock = await acquireDirectoryLock(lockPath, {
-      timeoutMs: options2.lockTimeoutMs ?? 1e4,
-      retryMs: options2.lockRetryMs ?? 20,
-      now: options2.now
+      timeoutMs: options.lockTimeoutMs ?? 1e4,
+      retryMs: options.lockRetryMs ?? 20,
+      now: options.now
     });
     if (!recoveryLock.acquired) {
-      return failure6(
+      return failure4(
         recoveryLock.code === "timeout" ? "cycle-transition-lock-timeout" : "cycle-transition-lock-error",
         `Cannot serialize cycle reconciliation at ${lockPath}: ${recoveryLock.error.message}`,
         active?.value ?? null
@@ -20784,7 +20759,7 @@ async function reconcileCycle(projectRoot, request = {}, options2 = {}) {
       currentActiveText = active ? await readFile23(active.file, "utf8") : null;
     } catch (error) {
       await releaseDirectoryLock(recoveryLock);
-      return failure6(
+      return failure4(
         "cycle-recovery-state-changed",
         `Cannot reconfirm cycle state after acquiring the recovery lock: ${error.message}`,
         active?.value ?? null
@@ -20792,7 +20767,7 @@ async function reconcileCycle(projectRoot, request = {}, options2 = {}) {
     }
     if (JSON.stringify(currentManifest) !== JSON.stringify(project.manifest) || currentActiveText !== (active?.text ?? null)) {
       await releaseDirectoryLock(recoveryLock);
-      return failure6(
+      return failure4(
         "cycle-recovery-state-changed",
         "Manifest or active cycle content changed after diagnosis; rerun reconcile-cycle before choosing a direction.",
         active?.value ?? null
@@ -20804,31 +20779,31 @@ async function reconcileCycle(projectRoot, request = {}, options2 = {}) {
     if (request.direction === "repair-completed-pointer") {
       const pointer = project.manifest.last_completed_cycle;
       if (!pointer || pointer.cycle_id !== request.cycle_id || active?.value.cycle_id === pointer.cycle_id) {
-        return failure6("cycle-completed-pointer-unavailable", "Pointer repair requires the mismatched completed cycle and no active record for that cycle.", active?.value ?? null);
+        return failure4("cycle-completed-pointer-unavailable", "Pointer repair requires the mismatched completed cycle and no active record for that cycle.", active?.value ?? null);
       }
       const completedPath = completedCyclePath(project, pointer.cycle_id);
       const completed = parseCycle(await readJsonIfPresent(completedPath.absolute));
       if (!completed || completed.value.status !== "completed") {
-        return failure6("cycle-completed-pointer-unavailable", `No valid completed cycle exists at ${completedPath.relative}.`, active?.value ?? null);
+        return failure4("cycle-completed-pointer-unavailable", `No valid completed cycle exists at ${completedPath.relative}.`, active?.value ?? null);
       }
       if (sha256Bytes(completed.text) !== pointer.sha256) {
-        return failure6(
+        return failure4(
           "cycle-completed-pointer-hash-mismatch",
           "Completed history bytes differ from the manifest pointer; recovery will not rehash or relabel potentially changed history.",
           completed.value
         );
       }
       if (request.operation_id && request.operation_id !== completed.value.target_evaluation?.evaluation_id) {
-        return failure6("cycle-operation-id-mismatch", "Pointer repair operation ID must name the completed target evaluation when supplied.", completed.value);
+        return failure4("cycle-operation-id-mismatch", "Pointer repair operation ID must name the completed target evaluation when supplied.", completed.value);
       }
       let evaluation;
       try {
-        evaluation = await recomputeCompletedCycleForRecovery(project, completed.value, options2);
+        evaluation = await recomputeCompletedCycleForRecovery(project, completed.value, options);
       } catch (error) {
-        return failure6("completion-evaluation-unavailable", error.message, completed.value);
+        return failure4("completion-evaluation-unavailable", error.message, completed.value);
       }
       if (!evaluation.current || evaluation.recomputed.outcome !== "satisfied") {
-        return failure6("completion-evaluation-not-satisfied", "The completed history no longer has a current satisfied post-decision evaluation; its pointer was not changed.", completed.value);
+        return failure4("completion-evaluation-not-satisfied", "The completed history no longer has a current satisfied post-decision evaluation; its pointer was not changed.", completed.value);
       }
       const manifest = {
         ...project.manifest,
@@ -20855,7 +20830,7 @@ async function reconcileCycle(projectRoot, request = {}, options2 = {}) {
     if (request.direction === "resume-creation-publication") {
       const operation = project.manifest.cycle_operation;
       if (inspected.present || !active || operation && (operation.kind !== "creation-publication" || operation.operation_id !== request.operation_id || operation.cycle_id !== request.cycle_id || active.value.revision !== operation.expected_revision) || !operation && active.value.cycle_id !== request.cycle_id) {
-        return failure6("creation-publication-identity-mismatch", "Creation recovery requires the exact cycle, commit ID, pre-link active revision, and no leftover lock.", active?.value ?? null);
+        return failure4("creation-publication-identity-mismatch", "Creation recovery requires the exact cycle, commit ID, pre-link active revision, and no leftover lock.", active?.value ?? null);
       }
       try {
         const commitRelative = path24.posix.join(
@@ -20902,15 +20877,15 @@ async function reconcileCycle(projectRoot, request = {}, options2 = {}) {
               sha256: sha256Bytes(commitText)
             }]
           }
-        }, { ...options2, recoveryOperationId: request.operation_id });
+        }, { ...options, recoveryOperationId: request.operation_id });
       } catch (error) {
-        return failure6("creation-publication-evidence-unavailable", error.message, active.value);
+        return failure4("creation-publication-evidence-unavailable", error.message, active.value);
       }
     }
     if (request.direction === "resume-manuscript-reconciliation") {
       const operation = project.manifest.cycle_operation;
       if (inspected.present || !operation || operation.kind !== "manuscript-reconciliation" || operation.operation_id !== request.operation_id || operation.cycle_id !== request.cycle_id || active?.value.revision !== operation.expected_revision) {
-        return failure6("reconciliation-identity-mismatch", "Manuscript reconciliation recovery requires the exact interrupted record, active revision, and no leftover lock.", active?.value ?? null);
+        return failure4("reconciliation-identity-mismatch", "Manuscript reconciliation recovery requires the exact interrupted record, active revision, and no leftover lock.", active?.value ?? null);
       }
       const relative = path24.posix.join(
         project.manifest.paths.convergence,
@@ -20921,7 +20896,7 @@ async function reconcileCycle(projectRoot, request = {}, options2 = {}) {
       try {
         reconciliation = JSON.parse(await readFile23(path24.resolve(project.root, relative), "utf8"));
       } catch (error) {
-        return failure6("reconciliation-artifact-unavailable", error.message, active.value);
+        return failure4("reconciliation-artifact-unavailable", error.message, active.value);
       }
       return reconcileManuscript(projectRoot, {
         reconciliation_id: reconciliation.reconciliation_id,
@@ -20930,12 +20905,12 @@ async function reconcileCycle(projectRoot, request = {}, options2 = {}) {
         author_decision_id: reconciliation.author_decision_id,
         target_scope: reconciliation.target_scope,
         story_state: reconciliation.story_state
-      }, { ...options2, recoveryOperationId: operation.operation_id });
+      }, { ...options, recoveryOperationId: operation.operation_id });
     }
     if (request.direction === "resume-revision-execution") {
       const operation = project.manifest.cycle_operation;
       if (inspected.present || !operation || !["revision-preparation", "revision-verification"].includes(operation.kind) || operation.operation_id !== request.operation_id || operation.cycle_id !== request.cycle_id || active?.value.revision !== operation.expected_revision) {
-        return failure6("revision-execution-identity-mismatch", "Revision recovery requires the exact interrupted execution, active revision, and no leftover lock.", active?.value ?? null);
+        return failure4("revision-execution-identity-mismatch", "Revision recovery requires the exact interrupted execution, active revision, and no leftover lock.", active?.value ?? null);
       }
       const relative = path24.posix.join(
         project.manifest.paths.convergence,
@@ -20946,9 +20921,9 @@ async function reconcileCycle(projectRoot, request = {}, options2 = {}) {
       try {
         execution = JSON.parse(await readFile23(path24.resolve(project.root, relative), "utf8"));
       } catch (error) {
-        return failure6("revision-execution-unavailable", error.message, active.value);
+        return failure4("revision-execution-unavailable", error.message, active.value);
       }
-      const recoveryOptions = { ...options2, recoveryOperationId: operation.operation_id };
+      const recoveryOptions = { ...options, recoveryOperationId: operation.operation_id };
       if (operation.kind === "revision-verification") {
         return verifyRevisionExecution(projectRoot, {
           cycle_id: operation.cycle_id,
@@ -20976,7 +20951,7 @@ async function reconcileCycle(projectRoot, request = {}, options2 = {}) {
     if (request.direction === "resume-completion") {
       const operation = project.manifest.cycle_operation;
       if (inspected.present || !operation || operation.kind !== "completion" || operation.operation_id !== request.operation_id || operation.cycle_id !== request.cycle_id || active?.value.revision !== operation.expected_revision || completion.completed || !operation.artifact_id) {
-        return failure6(
+        return failure4(
           "cycle-operation-id-mismatch",
           "Completion recovery requires the exact unfinished completion operation, its evaluation ID, no completed history, and no leftover lock.",
           active?.value ?? null
@@ -20988,15 +20963,15 @@ async function reconcileCycle(projectRoot, request = {}, options2 = {}) {
         evaluation_id: operation.artifact_id,
         decision_id: operation.operation_id,
         author_confirmed: true
-      }, { ...options2, recoveryOperationId: operation.operation_id });
+      }, { ...options, recoveryOperationId: operation.operation_id });
     }
     if (request.direction === "attach-interrupted-evaluation") {
       if (inspected.present) {
-        return failure6("cycle-lock-owner-active", "Resolve the existing lock before linking the published evaluation.", active?.value ?? null);
+        return failure4("cycle-lock-owner-active", "Resolve the existing lock before linking the published evaluation.", active?.value ?? null);
       }
       const operation = project.manifest.cycle_operation;
       if (!operation || operation.kind !== "evaluation" || operation.operation_id !== request.operation_id || operation.cycle_id !== request.cycle_id || active?.value.revision !== operation.expected_revision) {
-        return failure6("evaluation-identity-mismatch", "The evaluation recovery direction does not match the interrupted evaluation and active revision.", active?.value ?? null);
+        return failure4("evaluation-identity-mismatch", "The evaluation recovery direction does not match the interrupted evaluation and active revision.", active?.value ?? null);
       }
       try {
         const relative = path24.posix.join(
@@ -21010,7 +20985,7 @@ async function reconcileCycle(projectRoot, request = {}, options2 = {}) {
           path: relative,
           sha256: sha256Bytes(text)
         };
-        const evaluation = await recomputeCycleEvaluationForRecovery(project, active.value, reference, options2);
+        const evaluation = await recomputeCycleEvaluationForRecovery(project, active.value, reference, options);
         const updated = {
           ...active.value,
           revision: active.value.revision + 1,
@@ -21024,11 +20999,11 @@ async function reconcileCycle(projectRoot, request = {}, options2 = {}) {
             ...active.value.recovery_position,
             operation_id: operation.operation_id
           },
-          updated_at: utcTimestamp(options2)
+          updated_at: utcTimestamp(options)
         };
         await writeAtomicVerified(active.file, `${JSON.stringify(updated, null, 2)}
 `);
-        await finishCycleOperation(project, updated, operation.operation_id, options2);
+        await finishCycleOperation(project, updated, operation.operation_id, options);
         return {
           valid: true,
           diagnostic_only: false,
@@ -21039,12 +21014,12 @@ async function reconcileCycle(projectRoot, request = {}, options2 = {}) {
           required_action: null
         };
       } catch (error) {
-        return failure6("evaluation-identity-mismatch", error.message, active.value);
+        return failure4("evaluation-identity-mismatch", error.message, active.value);
       }
     }
     if (["accept-active-cycle", "discard-interrupted-operation"].includes(request.direction)) {
       if (inspected.present) {
-        return failure6(
+        return failure4(
           inspected.running ? "cycle-lock-owner-active" : "cycle-lock-owner-not-running",
           "Resolve the existing lock through its owner-verified recovery before changing cycle state.",
           active?.value ?? null
@@ -21052,14 +21027,14 @@ async function reconcileCycle(projectRoot, request = {}, options2 = {}) {
       }
       const operation = project.manifest.cycle_operation;
       if (!active || active.value.cycle_id !== request.cycle_id) {
-        return failure6("cycle-id-mismatch", "The reconciliation direction must name the active cycle explicitly.", active?.value ?? null);
+        return failure4("cycle-id-mismatch", "The reconciliation direction must name the active cycle explicitly.", active?.value ?? null);
       }
       if (request.direction === "discard-interrupted-operation") {
         if (!operation || operation.operation_id !== request.operation_id || operation.cycle_id !== request.cycle_id) {
-          return failure6("cycle-operation-id-mismatch", "Discard requires the exact interrupted cycle and operation IDs.", active.value);
+          return failure4("cycle-operation-id-mismatch", "Discard requires the exact interrupted cycle and operation IDs.", active.value);
         }
         if (active.value.revision !== operation.expected_revision || completion.completed) {
-          return failure6(
+          return failure4(
             "cycle-operation-already-advanced",
             "The interrupted operation cannot be discarded after its cycle advanced or completed history was published.",
             active.value
@@ -21067,24 +21042,24 @@ async function reconcileCycle(projectRoot, request = {}, options2 = {}) {
         }
         const unsafe = await unsafeDiscardResult(project, active, operation, artifacts);
         if (unsafe) return unsafe;
-        await discardCycleOperation(project, operation.operation_id, options2);
+        await discardCycleOperation(project, operation.operation_id, options);
       } else {
         if (artifacts.length > 0) {
           return {
-            ...failure6(artifacts[0].code, artifacts[0].message, active.value),
+            ...failure4(artifacts[0].code, artifacts[0].message, active.value),
             blockers: artifacts
           };
         }
         if (operation) {
           if (operation.operation_id !== request.operation_id || operation.cycle_id !== request.cycle_id || active.value.revision !== operation.intended_revision || active.value.recovery_position?.operation_id !== operation.operation_id) {
-            return failure6(
+            return failure4(
               "cycle-operation-revision-mismatch",
               "The active cycle has not advanced to the intended revision with the same operation ID; choose discard or another explicit recovery path.",
               active.value
             );
           }
         } else if (completion.completed || active.value.recovery_position?.operation_id !== request.operation_id) {
-          return failure6(
+          return failure4(
             "cycle-operation-id-mismatch",
             "Accepting active state without an interrupted operation record requires the current recovery operation ID and no completed history awaiting removal.",
             active.value
@@ -21093,7 +21068,7 @@ async function reconcileCycle(projectRoot, request = {}, options2 = {}) {
         const reconciliation = active.value.related_artifacts.reconciliations?.at(-1) ?? null;
         const operationKind = operation?.kind ?? (reconciliation && project.manifest.manuscript_reconciliation?.path !== reconciliation.path ? "manuscript-reconciliation" : "cycle-transition");
         await finishCycleOperation(project, active.value, request.operation_id, {
-          ...options2,
+          ...options,
           allowMissingOperation: true,
           ...operationKind === "manuscript-reconciliation" && reconciliation ? {
             manifestChanges: { manuscript_reconciliation: reconciliation },
@@ -21113,13 +21088,13 @@ async function reconcileCycle(projectRoot, request = {}, options2 = {}) {
     }
     if (request.direction === "finish-completion") {
       if (inspected.present) {
-        return failure6(
+        return failure4(
           inspected.running ? "cycle-lock-owner-active" : "cycle-lock-owner-not-running",
           "Resolve the existing lock through its owner-verified recovery before changing completion state.",
           active?.value ?? null
         );
       }
-      return finishCompletion(project, active, completion.completed, request);
+      return finishCompletion(project, active, completion.completed, request, options);
     }
     if (request.direction !== "release-stale-lock") {
       throw new Error(`Unsupported reconcile-cycle direction: ${request.direction}`);
@@ -21617,14 +21592,14 @@ async function main() {
   for (const file of selection.reports) {
     try {
       const markdown = await readFile24(file, "utf8");
-      const options2 = { now: selection.now ?? void 0 };
-      const parsed = validateMarkdownReport2(markdown, options2);
+      const options = { now: selection.now ?? void 0 };
+      const parsed = validateMarkdownReport2(markdown, options);
       const needsEvidence = ["draft-baseline", "diagnostics", "current-scope-review"].includes(
         parsed.envelope?.stage
       );
       check(
         path25.relative(root, file),
-        needsEvidence ? validateEvidenceReport2(markdown, options2) : parsed
+        needsEvidence ? validateEvidenceReport2(markdown, options) : parsed
       );
     } catch (error) {
       check(path25.relative(root, file), {
@@ -21637,8 +21612,8 @@ async function main() {
     for (const file of selection[type.key]) {
       try {
         const isMarkdown = type.validateMarkdown && /\.(?:md|markdown)$/i.test(file);
-        const options2 = { now: selection.now ?? void 0 };
-        const result = isMarkdown ? type.validateMarkdown(await readFile24(file, "utf8"), options2) : type.validateFile ? await type.validateFile(file, options2) : type.validate(await readJson2(file), options2);
+        const options = { now: selection.now ?? void 0 };
+        const result = isMarkdown ? type.validateMarkdown(await readFile24(file, "utf8"), options) : type.validateFile ? await type.validateFile(file, options) : type.validate(await readJson2(file), options);
         check(path25.relative(root, file), result);
       } catch (error) {
         check(path25.relative(root, file), {

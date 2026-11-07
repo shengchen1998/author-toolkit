@@ -165,6 +165,23 @@ export async function currentScopeReference(projectRoot) {
   };
 }
 
+export async function projectClock(projectRoot) {
+  const manifest = JSON.parse(
+    await readFile(path.join(projectRoot, ".author-toolkit", "project.json"), "utf8"),
+  );
+  let latest = Date.parse(manifest.updated_at);
+  try {
+    const active = JSON.parse(await readFile(
+      path.join(projectRoot, ".author-toolkit", "convergence", "active-cycle.json"),
+      "utf8",
+    ));
+    latest = Math.max(latest, Date.parse(active.updated_at));
+  } catch (error) {
+    if (error.code !== "ENOENT") throw error;
+  }
+  return new Date(latest);
+}
+
 function requestedPassFingerprint(pass) {
   return createHash("sha256").update(JSON.stringify({
     target_scope: {

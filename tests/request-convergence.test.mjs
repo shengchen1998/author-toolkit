@@ -13,6 +13,7 @@ import {
   createFirstPublicationArtifacts,
   createNoEditEvidence,
   currentScopeReference,
+  projectClock,
   runAuthorProjectAsync,
   runInput,
   runValidator,
@@ -63,7 +64,7 @@ async function preparedProject(t, { actions = null, inputOrder = null, inputs = 
       confirmed_at: timestamp,
       reading_order_confirmed: true,
     },
-    now: new Date(timestamp),
+    now: await projectClock(projectRoot),
   });
   const scope = await currentScopeReference(projectRoot);
   const firstPublication = await createFirstPublicationArtifacts(projectRoot);
@@ -332,7 +333,7 @@ test("verification preserves prepared requested subchecks and rejects a reduced 
       confirmed_at: timestamp,
       reading_order_confirmed: true,
     },
-    now: new Date(timestamp),
+    now: await projectClock(fixture.projectRoot),
   });
   const targetScope = await currentScopeReference(fixture.projectRoot);
   const reduced = await createNoEditEvidence(fixture.projectRoot, {
@@ -586,7 +587,7 @@ test("revision verification compares retained paths by relative order for insert
         confirmed_at: timestamp,
         reading_order_confirmed: true,
       },
-      now: new Date(timestamp),
+      now: await projectClock(fixture.projectRoot),
     });
     const targetScope = await currentScopeReference(fixture.projectRoot);
     const finalEvidence = await createNoEditEvidence(fixture.projectRoot, {
@@ -681,7 +682,7 @@ test("an edited request preserves its base and completes only after full-target 
       confirmed_at: timestamp,
       reading_order_confirmed: true,
     },
-    now: new Date("2026-11-05T01:00:00Z"),
+    now: await projectClock(fixture.projectRoot),
   });
   const target = await currentScopeReference(fixture.projectRoot);
   assert.notEqual(target.scope_fingerprint, fixture.scope.scope_fingerprint);
@@ -716,7 +717,7 @@ test("an edited request preserves its base and completes only after full-target 
     path.join(fixture.projectRoot, ".author-toolkit", "project.json"),
   ]);
   assert.equal(requestStatus.status, 0, requestStatus.stderr);
-  const independentStatus = JSON.parse(requestStatus.stdout);
+  const independentStatus = JSON.parse(requestStatus.stdout).result;
   assert.equal(independentStatus.outcome, "indeterminate");
   assert.equal(independentStatus.request_completion.status, "complete");
 
@@ -864,7 +865,7 @@ test("an edited request preserves its base and completes only after full-target 
       confirmed_at: timestamp,
       reading_order_confirmed: true,
     },
-    now: new Date("2026-11-05T02:00:00Z"),
+    now: await projectClock(fixture.projectRoot),
   });
   const reworkTarget = await currentScopeReference(fixture.projectRoot);
   const reworkEvidence = await createNoEditEvidence(fixture.projectRoot, {
@@ -949,7 +950,7 @@ test("an edited request preserves its base and completes only after full-target 
     path.join(fixture.projectRoot, ".author-toolkit", "project.json"),
   ]);
   assert.equal(invalidated.status, 0, invalidated.stderr);
-  const invalidatedStatus = JSON.parse(invalidated.stdout);
+  const invalidatedStatus = JSON.parse(invalidated.stdout).result;
   assert.equal(invalidatedStatus.outcome, "indeterminate");
   assert.equal(invalidatedStatus.current, false);
   assert.ok(invalidatedStatus.blockers.some((blocker) => blocker.code === "target-scope-not-current"));
@@ -1089,7 +1090,7 @@ test("a narrow no-change request keeps full-target coverage and reuses eligible 
       confirmed_at: timestamp,
       reading_order_confirmed: true,
     },
-    now: new Date(timestamp),
+    now: await projectClock(projectRoot),
   });
   const baseScope = await currentScopeReference(projectRoot);
   const firstPublication = await createFirstPublicationArtifacts(projectRoot, {
@@ -1259,7 +1260,7 @@ test("a narrow no-change request keeps full-target coverage and reuses eligible 
     path.join(projectRoot, ".author-toolkit", "project.json"),
   ]);
   assert.equal(status.status, 0, status.stderr);
-  assert.equal(JSON.parse(status.stdout).request_completion.status, "complete");
+  assert.equal(JSON.parse(status.stdout).result.request_completion.status, "complete");
 
   const completed = await runInput(projectRoot, "complete-cycle", {
     cycle_id: "cycle-request-202",
@@ -1370,7 +1371,7 @@ async function evaluateEditedRequestFinding(t, findingStatus, { withNoEditDecisi
       confirmed_at: timestamp,
       reading_order_confirmed: true,
     },
-    now: new Date("2026-11-05T03:00:00Z"),
+    now: await projectClock(fixture.projectRoot),
   });
   const target = await currentScopeReference(fixture.projectRoot);
   const evidence = await createNoEditEvidence(fixture.projectRoot, {
@@ -1481,7 +1482,7 @@ async function evaluateEditedRequestFinding(t, findingStatus, { withNoEditDecisi
     evaluated,
     evaluationResult: JSON.parse(evaluated.stdout),
     status,
-    requestCompletion: JSON.parse(status.stdout).request_completion,
+    requestCompletion: JSON.parse(status.stdout).result.request_completion,
   };
 }
 

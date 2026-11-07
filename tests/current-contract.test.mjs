@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import test from "node:test";
 
@@ -70,6 +70,11 @@ async function createProject(t, { manuscriptRoot = "manuscript", chapterCount = 
   ]) {
     await mkdir(path.join(projectRoot, directory), { recursive: true });
   }
+  await cp(
+    path.join(root, "skills", "setup-author-toolkit", "assets", "references"),
+    path.join(projectRoot, ".author-toolkit", "references"),
+    { recursive: true },
+  );
   await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
   await writeJson(path.join(projectRoot, ".author-toolkit", "backups", "index.json"), {
     schema_version: "1.0.0",

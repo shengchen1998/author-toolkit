@@ -16,6 +16,7 @@ import {
   createConvergenceProject,
   createNoEditEvidence,
   currentScopeReference,
+  projectClock,
   runInput,
   timestamp,
   writeBackupEvidence,
@@ -107,7 +108,7 @@ async function publishFirstCreation(projectRoot) {
       confirmed_at: timestamp,
       reading_order_confirmed: true,
     },
-    now: new Date(timestamp),
+    now: await projectClock(projectRoot),
   });
   const targetScope = await currentScopeReference(projectRoot);
 
@@ -665,7 +666,7 @@ test("bootstrap revise-draft preserves first creation in the cumulative change s
       confirmed_at: timestamp,
       reading_order_confirmed: true,
     },
-    now: new Date(timestamp),
+    now: await projectClock(projectRoot),
   });
   const revisedTarget = await currentScopeReference(projectRoot);
   const finalEvidence = await createNoEditEvidence(projectRoot, {
@@ -844,7 +845,7 @@ test("a rejected empty bootstrap cannot complete before its first approved impor
       confirmed_at: timestamp,
       reading_order_confirmed: true,
     },
-    now: new Date(timestamp),
+    now: await projectClock(projectRoot),
   });
   const targetScope = await currentScopeReference(projectRoot);
   const chapterState = {

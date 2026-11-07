@@ -175,7 +175,7 @@ test("a public transition resumes the same cycle with versioned refs and preserv
     initiating_strategy: "write-fiction",
     bootstrap: true,
     starting_scope: null,
-  });
+  }, { now: new Date(timestamp) });
   const manuscript = "First chapter\n";
   await writeFile(path.join(projectRoot, "manuscript", "chapter-001.md"), manuscript, "utf8");
   const manuscriptHash = createHash("sha256").update(manuscript).digest("hex");

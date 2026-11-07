@@ -397,10 +397,17 @@ test("installed validation applies one fixed UTC clock and 60-second allowance t
             ? manifestPath
             : artifactCase.backupIndex
               ? path.join(projectRoot, ".author-toolkit", "backups", "index.json")
-              : path.join(
-                  fixtures,
-                  `${offset > 60 ? "2000" : "2099"}-${caseIndex}-${field.replaceAll("/", "-")}.${artifactCase.markdown ? "md" : "json"}`,
-                );
+              : artifactCase.option === "--coverage-index"
+                ? path.join(
+                    projectRoot,
+                    "reports",
+                    "coverage",
+                    `time-${offset}-${caseIndex}.json`,
+                  )
+                : path.join(
+                    fixtures,
+                    `${offset > 60 ? "2000" : "2099"}-${caseIndex}-${field.replaceAll("/", "-")}.${artifactCase.markdown ? "md" : "json"}`,
+                  );
           if (artifactCase.backupIndex) {
             const manifestReference = artifactCase.value.backups[0].manifest;
             const backupManifest = await readJson(projectRoot, manifestReference.path);
@@ -421,11 +428,12 @@ test("installed validation applies one fixed UTC clock and 60-second allowance t
             assert.deepEqual(response.errors, []);
           } else {
             assert.equal(result.status, 1, `${result.stdout}\n${result.stderr}`);
+            const output = `${result.stdout}\n${result.stderr}`;
             assert.ok(
-              result.stderr.includes(field),
-              `expected a concrete ${field} diagnostic, received: ${result.stderr}`,
+              output.includes(field),
+              `expected a concrete ${field} diagnostic, received: ${output}`,
             );
-            assert.match(result.stderr, /60 seconds/);
+            assert.match(output, /60 seconds/);
           }
         }
       });
@@ -478,8 +486,9 @@ test("tracker findings, approvals, and cycle completions share the fixed clock a
             assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
           } else {
             assert.equal(result.status, 1, `${result.stdout}\n${result.stderr}`);
-            assert.ok(result.stderr.includes(family.path), result.stderr);
-            assert.match(result.stderr, offset === "invalid" ? /date-time|timestamp/i : /60 seconds/);
+            const output = `${result.stdout}\n${result.stderr}`;
+            assert.ok(output.includes(family.path), output);
+            assert.match(output, offset === "invalid" ? /date-time|timestamp/i : /60 seconds/);
           }
         });
       }

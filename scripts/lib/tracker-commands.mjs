@@ -3,6 +3,7 @@ import path from "node:path";
 import { isDeepStrictEqual } from "node:util";
 
 import { formatApprovalPaths } from "./approval-paths.mjs";
+import { commandError, failure, requiredAction } from "./command-result.mjs";
 import { runCheckpoint } from "./cycle-coordination.mjs";
 import { validateExecutionDecision as validateExecutionDecisionEvidence } from "./execution-decision.mjs";
 import { readProject } from "./evaluation-artifacts.mjs";
@@ -26,31 +27,6 @@ import {
 import { utcTimestamp } from "./time.mjs";
 import { parseTrackerState } from "./tracker.mjs";
 
-function requiredAction(operation) {
-  return {
-    strategy: "author-project",
-    operation,
-    command: `author-project ${operation}`,
-  };
-}
-
-function failure(code, message, operation, details = {}) {
-  return {
-    valid: false,
-    state_written: false,
-    required_action: requiredAction(operation),
-    blockers: [{ code, message, ...details, required_action: requiredAction(operation) }],
-    ...details,
-  };
-}
-
-function commandError(code, message, details = {}) {
-  const error = new Error(message);
-  error.projectCode = code;
-  error.projectDetails = details;
-  return error;
-}
-
 function cell(value) {
   return String(value).replace(/\r?\n/g, " ").replaceAll("|", "\\|").trim();
 }
@@ -67,10 +43,11 @@ function findingLocation(location) {
   return `${location.file}: ${location.quote}`;
 }
 
-function appendFinding(markdown, row) {
+function appendSectionRow(markdown, section, row) {
   const eol = markdown.includes("\r\n") ? "\r\n" : "\n";
   const lines = markdown.split(/\r?\n/);
-  const heading = lines.findIndex((line) => /^ {0,3}##[ \t]+Findings[ \t]*$/.test(line));
+  const headingPattern = new RegExp(`^ {0,3}##[ \\t]+${section}[ \\t]*$`);
+  const heading = lines.findIndex((line) => headingPattern.test(line));
   for (let index = heading + 1; index < lines.length; index += 1) {
     if (/^ {0,3}##[ \t]+/.test(lines[index])) break;
     if (/^\|(?:\s*:?-{3,}:?\s*\|)+$/.test(lines[index])) {
@@ -78,7 +55,7 @@ function appendFinding(markdown, row) {
       return lines.join(eol);
     }
   }
-  throw commandError("tracker-invalid", "The Findings table separator is unavailable.");
+  throw commandError("tracker-invalid", `The ${section} table separator is unavailable.`);
 }
 
 async function recoveryState(project, operation) {
@@ -208,7 +185,7 @@ export async function recordFinding(projectRoot, request, options = {}) {
     await validateFindingReport(project, request, options);
     const updatedAt = utcTimestamp(options);
     const row = `| ${cell(request.finding.id)} | ${cell(request.operation)} | ${cell(request.finding.audit)} | ${referenceCell(findingLocation(request.finding.location))} | open | ${referenceCell(request.report)} | ${updatedAt} | ${cell(request.reason)} |`;
-    const trackerAfter = appendFinding(trackerBefore, row);
+    const trackerAfter = appendSectionRow(trackerBefore, "Findings", row);
     const candidate = await parseTrackerState(trackerAfter, project.root);
     if (!candidate.valid) {
       throw commandError("finding-command-invalid", "The finding row does not satisfy the living tracker contract.", {
@@ -260,20 +237,6 @@ export async function recordFinding(projectRoot, request, options = {}) {
   return outcome;
 }
 
-
-function appendApproval(markdown, row) {
-  const eol = markdown.includes("\r\n") ? "\r\n" : "\n";
-  const lines = markdown.split(/\r?\n/);
-  const heading = lines.findIndex((line) => /^ {0,3}##[ \t]+Approvals[ \t]*$/.test(line));
-  for (let index = heading + 1; index < lines.length; index += 1) {
-    if (/^ {0,3}##[ \t]+/.test(lines[index])) break;
-    if (/^\|(?:\s*:?-{3,}:?\s*\|)+$/.test(lines[index])) {
-      lines.splice(index + 1, 0, row);
-      return lines.join(eol);
-    }
-  }
-  throw commandError("tracker-invalid", "The Approvals table separator is unavailable.");
-}
 
 function approvalValidationError(message) {
   return commandError("approval-command-invalid", message);
@@ -443,7 +406,7 @@ export async function recordApproval(projectRoot, request, options = {}) {
     const reason = await approvalReason(project, request);
     const updatedAt = utcTimestamp(options);
     const row = `| ${cell(request.approval_id)} | ${cell(request.type)} | ${cell(request.operation)} | ${cell(request.scope_id)} | ${cell(formatApprovalPaths(request.paths))} | ${request.status} | ${cell(reason)} | ${updatedAt} |`;
-    const trackerAfter = appendApproval(trackerBefore, row);
+    const trackerAfter = appendSectionRow(trackerBefore, "Approvals", row);
     const candidate = await parseTrackerState(trackerAfter, project.root);
     if (!candidate.valid) {
       throw commandError("approval-command-invalid", "The approval row does not satisfy the living tracker contract.", {

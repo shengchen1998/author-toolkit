@@ -12,6 +12,7 @@ import {
   createNoEditEvidence,
   createRevisionExecutionFixture,
   currentScopeReference,
+  projectClock,
   runInput,
   runValidator,
   timestamp,
@@ -41,7 +42,7 @@ async function confirmCurrentScope(
       confirmed_at: timestamp,
       reading_order_confirmed: true,
     },
-    now: new Date(timestamp),
+    now: await projectClock(projectRoot),
   });
 }
 
@@ -134,9 +135,9 @@ test("an independent full-manuscript revise-draft evaluation restores the gate w
 
   const status = runValidator(["--convergence-status", manifestPath]);
   assert.equal(status.status, 0, `${status.stdout}\n${status.stderr}`);
-  assert.equal(JSON.parse(status.stdout).outcome, "satisfied");
-  assert.equal(JSON.parse(status.stdout).current, true);
-  assert.equal(JSON.parse(status.stdout).evaluation.cycle_id, null);
+  assert.equal(JSON.parse(status.stdout).result.outcome, "satisfied");
+  assert.equal(JSON.parse(status.stdout).result.current, true);
+  assert.equal(JSON.parse(status.stdout).result.evaluation.cycle_id, null);
   const gate = runValidator(["--convergence-gate", manifestPath]);
   assert.equal(gate.status, 0, `${gate.stdout}\n${gate.stderr}`);
 
@@ -223,7 +224,7 @@ test("a narrowed independent pass blocks dependent entries without reducing the 
   assert.ok(narrowedResult.blockers.some((blocker) => blocker.code === "narrowed-requested-pass"));
   const gate = runValidator(["--convergence-gate", manifestPath]);
   assert.equal(gate.status, 1, `${gate.stdout}\n${gate.stderr}`);
-  assert.equal(JSON.parse(gate.stdout).outcome, "not_satisfied");
+  assert.equal(JSON.parse(gate.stdout).result.outcome, "not_satisfied");
 
   const blocked = await runInput(projectRoot, "check-operation", {
     strategy: "revise-request",

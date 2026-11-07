@@ -10,6 +10,7 @@ import {
   createConvergenceProject,
   createNoEditEvidence,
   currentScopeReference,
+  projectClock,
   runAuthorProject,
   runInput,
   runValidator,
@@ -46,7 +47,7 @@ async function establishSatisfiedProject(t, manuscripts = [{
       confirmed_at: timestamp,
       reading_order_confirmed: true,
     },
-    now: new Date(timestamp),
+    now: await projectClock(projectRoot),
   });
   const evidence = await createNoEditEvidence(projectRoot);
   const evaluated = await runInput(projectRoot, "evaluate-draft", {
@@ -202,7 +203,7 @@ async function confirmImportedScope(projectRoot, decisionId, scopeId = "scope-00
       confirmed_at: timestamp,
       reading_order_confirmed: true,
     },
-    now: new Date(timestamp),
+    now: await projectClock(projectRoot),
   });
   return currentScopeReference(projectRoot);
 }
@@ -411,7 +412,7 @@ async function confirmImportedFiles(projectRoot, decisionId, files, scopeId) {
       confirmed_at: timestamp,
       reading_order_confirmed: true,
     },
-    now: new Date(timestamp),
+    now: await projectClock(projectRoot),
   });
   return currentScopeReference(projectRoot);
 }

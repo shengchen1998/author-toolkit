@@ -337,7 +337,7 @@ async function unsafeDiscardResult(project, active, operation, artifacts) {
   };
 }
 
-async function finishCompletion(project, active, completed, request) {
+async function finishCompletion(project, active, completed, request, options = {}) {
   if (!active || !completed) {
     return failure("cycle-completion-unavailable", "The active and completed records needed for completion recovery are not both present.", active?.value ?? completed?.value ?? null);
   }
@@ -384,6 +384,7 @@ async function finishCompletion(project, active, completed, request) {
       return failure("cycle-operation-id-mismatch", "The completed history does not match the interrupted completion operation.", active.value);
     }
     await finishCycleOperation(project, completed.value, operation.operation_id, {
+      ...options,
       complete: true,
       completedAt: completed.value.updated_at,
       manifestChanges: { last_completed_cycle: lastCompleted },
@@ -397,7 +398,7 @@ async function finishCompletion(project, active, completed, request) {
     if (manifest.pending_action?.cycle_id === completed.value.cycle_id) {
       delete manifest.pending_action;
     }
-    const manifestValidation = validateManifest(manifest);
+    const manifestValidation = validateManifest(manifest, options);
     if (!manifestValidation.valid) {
       return failure("manifest-update-invalid", formatErrors(manifestValidation.errors), active.value);
     }
@@ -890,7 +891,7 @@ export async function reconcileCycle(projectRoot, request = {}, options = {}) {
         active?.value ?? null,
       );
     }
-    return finishCompletion(project, active, completion.completed, request);
+    return finishCompletion(project, active, completion.completed, request, options);
   }
   if (request.direction !== "release-stale-lock") {
     throw new Error(`Unsupported reconcile-cycle direction: ${request.direction}`);
