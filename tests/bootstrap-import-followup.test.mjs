@@ -12,6 +12,7 @@ import {
   createFirstPublicationArtifacts,
   createNoEditEvidence,
   currentScopeReference,
+  projectClock,
   runInput,
   timestamp,
   writeBackupEvidence,
@@ -36,7 +37,7 @@ async function confirmScope(projectRoot, decisionId, scopeId, files, description
       confirmed_at: timestamp,
       reading_order_confirmed: true,
     },
-    now: new Date(timestamp),
+    now: await projectClock(projectRoot),
   });
   return currentScopeReference(projectRoot);
 }

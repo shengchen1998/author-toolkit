@@ -53,7 +53,7 @@ import {
   validateSemanticAttestation,
 } from "./evaluation-contracts.mjs";
 
-function newComputation(project, cycle, roots, evaluationId, createdAt) {
+function newComputation(project, cycle, roots, evaluationId, createdAt, options = {}) {
   const artifacts = new Map();
   const blockers = [];
   const blockerKeys = new Set();
@@ -145,7 +145,7 @@ function newComputation(project, cycle, roots, evaluationId, createdAt) {
       return null;
     }
     if (validate) {
-      const validation = validate(value);
+      const validation = validate(value, options);
       if (!validation.valid) {
         block(
           "artifact-contract-invalid",
@@ -159,7 +159,7 @@ function newComputation(project, cycle, roots, evaluationId, createdAt) {
     return value;
   }
 
-  return { project, cycle, roots, evaluationId, createdAt, artifacts, blockers, block, record, bytes, json };
+  return { project, cycle, roots, evaluationId, createdAt, options, artifacts, blockers, block, record, bytes, json };
 }
 
 function targetFiles(scope, paths = null) {
@@ -186,7 +186,7 @@ async function loadReport(computation, reference, { currentPass = true, inputFil
   const contents = await computation.bytes(reference, "report", referenceId ?? reference.path);
   if (!contents) return null;
   const markdown = contents.toString("utf8");
-  const validation = validateEvidenceReport(markdown);
+  const validation = validateEvidenceReport(markdown, computation.options);
   if (!validation.valid || !validation.envelope) {
     block(
       "report-contract-invalid",
@@ -264,8 +264,17 @@ async function loadReport(computation, reference, { currentPass = true, inputFil
   return { report, reference: { ...reference, report_id: report.report_id }, markdown };
 }
 
-export async function computeEvaluation(project, cycle, roots, evaluationId, createdAt) {
-  const computation = newComputation(project, cycle, roots, evaluationId, createdAt);
+async function loadDependencySource(computation, reference) {
+  if (!reference?.report_id || !reference?.path || !reference?.sha256) return null;
+  const contents = await computation.bytes(reference, "dependency-source", reference.report_id);
+  if (!contents) return null;
+  const validation = validateEvidenceReport(contents.toString("utf8"), computation.options);
+  if (!validation.valid || validation.envelope?.report_id !== reference.report_id) return null;
+  return validation.envelope;
+}
+
+export async function computeEvaluation(project, cycle, roots, evaluationId, createdAt, options = {}) {
+  const computation = newComputation(project, cycle, roots, evaluationId, createdAt, options);
   const { block, record } = computation;
   const relatedArtifacts = cycle?.related_artifacts ?? {
     revision_executions: roots.revision_executions ?? [],
@@ -298,7 +307,7 @@ export async function computeEvaluation(project, cycle, roots, evaluationId, cre
       `The previous manuscript inventory cannot be compared with current disk state: ${error.message}`,
     );
   }
-  const fullScope = await validateFullManuscriptScope(project.manifest, project.manifestPath);
+  const fullScope = await validateFullManuscriptScope(project.manifest, project.manifestPath, options);
   const inventory = await collectManuscriptInventory(
     project.root,
     project.manifest.manuscript_root,
@@ -460,7 +469,7 @@ export async function computeEvaluation(project, cycle, roots, evaluationId, cre
       for (const storyReference of reconciliation.story_state) {
         const contents = await computation.bytes(storyReference, "story-state", storyReference.path);
         if (!contents) continue;
-        const storyValidation = validateStoryStateMarkdown(contents.toString("utf8"));
+        const storyValidation = validateStoryStateMarkdown(contents.toString("utf8"), options);
         if (!storyValidation.valid) {
           block(
             "story-state-contract-invalid",
@@ -653,7 +662,7 @@ export async function computeEvaluation(project, cycle, roots, evaluationId, cre
     for (const dependency of pass.dependencies) {
       await computation.bytes(dependency, "dependency", dependency.path);
     }
-    const baseline = await latestSatisfiedPass(project, roots.cycle_id, evaluationId);
+    const baseline = await latestSatisfiedPass(project, roots.cycle_id, evaluationId, options);
     if (baseline && !pass.baseline_pass) {
       block(
         "requested-pass-baseline-missing",
@@ -728,7 +737,7 @@ export async function computeEvaluation(project, cycle, roots, evaluationId, cre
   const trackerText = await computation.bytes(trackerReference, "tracker", "audit-tracker");
   let tracker = { findings: [], approvals: [], completion_decisions: [], valid: false, errors: [] };
   if (trackerText) {
-    tracker = await parseTrackerState(trackerText.toString("utf8"), project.root);
+    tracker = await parseTrackerState(trackerText.toString("utf8"), project.root, options);
     if (!tracker.valid) {
       block("tracker-invalid", `Tracker is invalid: ${formatErrors(tracker.errors)}`);
     }
@@ -997,6 +1006,7 @@ export async function computeEvaluation(project, cycle, roots, evaluationId, cre
       requireOutputs: currentExecution && execution.status === "verified",
       requireCurrentTarget: currentExecution && execution.status === "verified",
       requireCurrentDecisions: currentExecution,
+      now: options.now,
     });
     for (const error of disk.errors) {
       block(error.code, error.message, "indeterminate", {
@@ -1167,7 +1177,7 @@ export async function computeEvaluation(project, cycle, roots, evaluationId, cre
       const job = await computation.json(jobInput.job, "review-job", jobInput.job.job_id, validateReviewJobSchema);
       reviewClaimPaths.add(jobInput.job.path);
       if (!job) continue;
-      const jobValidation = validateReviewJob(job);
+      const jobValidation = validateReviewJob(job, options);
       if (!jobValidation.valid) {
         block(
           "review-job-invalid",
@@ -1219,7 +1229,7 @@ export async function computeEvaluation(project, cycle, roots, evaluationId, cre
       if (/\.(?:md|markdown)$/i.test(jobInput.reader_state.path)) {
         const contents = await computation.bytes(jobInput.reader_state, "reader-state", jobInput.reader_state.state_id);
         if (contents) {
-          const parsed = validateReaderStateMarkdown(contents.toString("utf8"));
+          const parsed = validateReaderStateMarkdown(contents.toString("utf8"), options);
           if (!parsed.valid || !parsed.envelope) {
             block("reader-state-invalid", `Reader state ${jobInput.reader_state.path} is invalid: ${formatErrors(parsed.errors)}`);
           } else {
@@ -1239,7 +1249,7 @@ export async function computeEvaluation(project, cycle, roots, evaluationId, cre
         if (state.state_id !== jobInput.reader_state.state_id) {
           block("reader-state-identity-mismatch", `Reader state identity differs from ${jobInput.reader_state.path}.`);
         }
-        const stateValidation = validateReaderStateForJob(state, job);
+        const stateValidation = validateReaderStateForJob(state, job, options);
         if (!stateValidation.valid) {
           block("reader-state-chain-invalid", `Reader state ${state.state_id} does not match its job: ${formatErrors(stateValidation.errors)}`);
         }
@@ -1338,7 +1348,7 @@ export async function computeEvaluation(project, cycle, roots, evaluationId, cre
       project.manifest.paths.convergence,
     ];
     const otherEvidenceRoles = [...computation.artifacts.values()].filter((artifact) =>
-      artifact.path === dependencyPath && !["dependency", "attested-artifact"].includes(artifact.role)
+      artifact.path === dependencyPath && !["dependency", "dependency-source", "attested-artifact"].includes(artifact.role)
     );
     const ineligibleReport = within(project.manifest.paths.reports) &&
       !within(`${project.manifest.paths.reports}/${exception.operation}`);
@@ -1388,6 +1398,24 @@ export async function computeEvaluation(project, cycle, roots, evaluationId, cre
         `Dependency exception ${unit.unit_id} must bind exactly one old and new dependency hash.`,
       );
     }
+    const sourceReport = newDependency?.role === exception.operation
+      ? await loadDependencySource(computation, newDependency.source)
+      : null;
+    const sourceIsDependency = sameReference(newDependency?.source, newDependency);
+    const sourceBindsDependency = sourceIsDependency || sourceReport?.inputs.some((input) =>
+      input.path === dependencyPath && input.version === newDependency?.sha256 && input.version_type === "sha256"
+    );
+    if (
+      !sourceReport ||
+      sourceReport.stage !== exception.operation ||
+      !sourceBindsDependency
+    ) {
+      exceptionBlock(
+        "dependency-exception-ineligible",
+        `Dependency exception ${unit.unit_id} requires a verifiable ${exception.operation} report source for ${dependencyPath}.`,
+      );
+      continue;
+    }
 
     const matchingAttestations = attestationRecords.filter(({ attestation, reference }) =>
       attestation.attestation_id === exception.semantic_attestation.attestation_id &&
@@ -1415,10 +1443,18 @@ export async function computeEvaluation(project, cycle, roots, evaluationId, cre
       );
       continue;
     }
-    const sourceReferences = claims[0].artifacts.filter((artifact) =>
-      artifact.path !== roots.requested_pass.path && artifact.path !== exception.dependency_path
+    const claimArtifacts = claims[0].artifacts;
+    const passArtifacts = claimArtifacts.filter((artifact) => sameReference(artifact, roots.requested_pass));
+    const dependencyArtifacts = claimArtifacts.filter((artifact) => sameReference(artifact, newDependency));
+    const sourceReferences = claimArtifacts.filter((artifact) =>
+      !sameReference(artifact, roots.requested_pass) && !sameReference(artifact, newDependency)
     );
-    if (sourceReferences.length !== 1) {
+    if (
+      claimArtifacts.length !== 3 ||
+      passArtifacts.length !== 1 ||
+      dependencyArtifacts.length !== 1 ||
+      sourceReferences.length !== 1
+    ) {
       exceptionBlock(
         "dependency-exception-attestation-mismatch",
         `Dependency exception ${unit.unit_id} must attest one source unit, the requested pass, and the current dependency.`,
@@ -1577,7 +1613,7 @@ export async function computeEvaluation(project, cycle, roots, evaluationId, cre
     },
     created_at: createdAt,
   };
-  const validation = validateConvergenceEvaluation(evaluation);
+  const validation = validateConvergenceEvaluation(evaluation, options);
   if (!validation.valid) throw new Error(`Generated evaluation is invalid: ${formatErrors(validation.errors)}`);
   return evaluation;
 }

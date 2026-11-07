@@ -561,6 +561,20 @@ test("record-finding-decision resolves through typed approvals and a verified ex
   );
   assert.equal(evaluated.processResult.status, 0, `${evaluated.processResult.stdout}\n${evaluated.processResult.stderr}`);
   assert.equal(evaluated.response.result.evaluation.outcome, "satisfied");
+  const validStatus = project.run(["status", "--project-root", project.projectRoot]);
+  assert.equal(validStatus.status, 0, `${validStatus.stdout}\n${validStatus.stderr}`);
+  const trackerPath = path.join(project.projectRoot, "audit-tracker.md");
+  const tracker = await readFile(trackerPath, "utf8");
+  const externallyEdited = tracker.replace(
+    /evidence_path=[^ ]+/,
+    "evidence_path=.author-toolkit%2Fconvergence%2Frevision-executions%2Fmissing.json",
+  );
+  assert.notEqual(externallyEdited, tracker);
+  await writeFile(trackerPath, externallyEdited, "utf8");
+  const status = project.run(["status", "--project-root", project.projectRoot]);
+  assert.equal(status.status, 1, `${status.stdout}\n${status.stderr}`);
+  assert.ok(JSON.parse(status.stdout).errors.some((error) => error.keyword === "tracker"), status.stdout);
+  assert.equal(await readFile(trackerPath, "utf8"), externallyEdited);
 });
 
 
@@ -601,7 +615,7 @@ test("record-finding-decision marks a finding stale only with a complete rerun a
       output_sha256: manuscriptHash,
     }],
     status: "approved",
-    reason: "Author confirmed the equivalent complete rerun stale decision. finding_id=DIAG-303 finding_status=stale",
+    reason: `Author confirmed the equivalent complete rerun stale decision. finding_id=DIAG-303 finding_status=stale scope_fingerprint=${scope.scope_fingerprint} pass_id=${evidence.pass.pass_id} pass_fingerprint=${evidence.pass.pass_fingerprint} pass_path=${encodeURIComponent(evidence.passReference.path)} pass_sha256=${evidence.passReference.sha256}`,
   });
   assert.equal(approval.processResult.status, 0, approval.processResult.stdout);
 
@@ -1070,4 +1084,337 @@ test("external duplicate completion IDs block validation and later typed writes 
   assert.equal(approval.processResult.status, 1, approval.processResult.stdout);
   assert.equal(approval.response.errors[0].code, "tracker-invalid");
   assert.equal(await readFile(trackerPath, "utf8"), externallyEdited);
+});
+
+
+test("stale decisions reject mismatched current scope, pass identity, and reduced subchecks", async (t) => {
+  const cases = [
+    ["scope fingerprint", (envelope) => {
+      envelope.scope_fingerprint = "0".repeat(64);
+    }],
+    ["pass path", (envelope) => {
+      envelope.requested_pass.path = ".author-toolkit/convergence/passes/wrong-pass.json";
+    }],
+    ["pass hash", (envelope) => {
+      envelope.requested_pass.sha256 = "0".repeat(64);
+    }],
+    ["pass fingerprint", (envelope) => {
+      envelope.requested_pass.pass_fingerprint = "0".repeat(64);
+    }],
+    ["reduced subchecks", (envelope) => {
+      envelope.engine.notes = envelope.engine.notes.replace("subchecks=causality", "subchecks=scene");
+    }],
+  ];
+  for (const [name, mutate] of cases) {
+    await t.test(name, async (t) => {
+      const project = await installedProject(t);
+      const scope = await confirmScope(project);
+      const currentFinding = {
+        ...finding("DIAG-303"),
+        location: { file: "manuscript/chapter-001.md", scope: "file" },
+      };
+      await writeReport(
+        project.projectRoot,
+        "reports/diagnostics/original-001.md",
+        reportEnvelope([currentFinding], { report_id: "original-001" }),
+      );
+      const recorded = await project.command("record-finding", {
+        finding: currentFinding,
+        operation: "diagnostics",
+        report: "reports/diagnostics/original-001.md",
+        status: "open",
+        reason: "Author review is required before the equivalent rerun.",
+      });
+      assert.equal(recorded.processResult.status, 0, recorded.processResult.stdout);
+      const evidence = await createNoEditEvidence(project.projectRoot, { passId: "pass-001" });
+      const manuscriptHash = sha256(await readFile(
+        path.join(project.projectRoot, "manuscript", "chapter-001.md"),
+      ));
+      const approval = await project.command("record-approval", {
+        approval_id: "STALE-001",
+        type: "finding-decision",
+        operation: "diagnostics",
+        scope_id: scope.scope_id,
+        paths: ["manuscript/chapter-001.md"],
+        files: [{
+          path: "manuscript/chapter-001.md",
+          action: "review",
+          input_sha256: manuscriptHash,
+          output_sha256: manuscriptHash,
+        }],
+        status: "approved",
+        reason: `Author confirmed the equivalent complete rerun stale decision. finding_id=DIAG-303 finding_status=stale scope_fingerprint=${scope.scope_fingerprint} pass_id=${evidence.pass.pass_id} pass_fingerprint=${evidence.pass.pass_fingerprint} pass_path=${encodeURIComponent(evidence.passReference.path)} pass_sha256=${evidence.passReference.sha256}`,
+      });
+      assert.equal(approval.processResult.status, 0, approval.processResult.stdout);
+      const reportPath = "reports/diagnostics/pass-001-local.md";
+      const markdown = await readFile(path.join(project.projectRoot, reportPath), "utf8");
+      const envelope = JSON.parse(markdown.match(/```json\n([\s\S]*?)\n```/)[1]);
+      mutate(envelope);
+      await writeReport(project.projectRoot, reportPath, envelope);
+      const trackerPath = path.join(project.projectRoot, "audit-tracker.md");
+      const trackerBefore = await readFile(trackerPath, "utf8");
+
+      const decided = await project.command("record-finding-decision", {
+        finding_id: currentFinding.id,
+        status: "stale",
+        report: reportPath,
+        reason: "The equivalent complete rerun no longer observes this finding.",
+        author_decision_id: "STALE-001",
+      });
+
+      assert.equal(decided.processResult.status, 1, decided.processResult.stdout);
+      assert.equal(decided.response.valid, false);
+      assert.ok(decided.response.errors.some((error) => error.code === "finding-decision-evidence-mismatch"));
+      assert.equal(decided.response.result.state_written, false);
+      assert.equal(await readFile(trackerPath, "utf8"), trackerBefore);
+    });
+  }
+});
+
+
+test("an active-cycle stale decision must use the cycle requested pass", async (t) => {
+  const project = await installedProject(t);
+  const scope = await confirmScope(project);
+  const base = await createNoEditEvidence(project.projectRoot, { passId: "pass-001" });
+  const baseEvaluation = await evaluateEvidence(project, base, "evaluation-stale-cycle-base");
+  assert.equal(baseEvaluation.processResult.status, 0, baseEvaluation.processResult.stdout);
+  const started = await project.command("start-cycle", {
+    cycle_id: "cycle-stale-001",
+    initiating_strategy: "revise-increment",
+    bootstrap: false,
+    starting_scope: base.scopeReference,
+  });
+  assert.equal(started.processResult.status, 0, started.processResult.stdout);
+
+  const currentFinding = {
+    ...finding("DIAG-303"),
+    location: { file: "manuscript/chapter-001.md", scope: "file" },
+  };
+  await writeReport(
+    project.projectRoot,
+    "reports/diagnostics/original-001.md",
+    reportEnvelope([currentFinding], { report_id: "original-001" }),
+  );
+  const recorded = await project.command("record-finding", {
+    finding: currentFinding,
+    operation: "diagnostics",
+    report: "reports/diagnostics/original-001.md",
+    status: "open",
+    reason: "Author review is required before the equivalent rerun.",
+  });
+  assert.equal(recorded.processResult.status, 0, recorded.processResult.stdout);
+  const evidence = await createNoEditEvidence(project.projectRoot, {
+    passId: "pass-002",
+    baselinePass: base.passReference,
+  });
+  const manuscriptHash = sha256(await readFile(
+    path.join(project.projectRoot, "manuscript", "chapter-001.md"),
+  ));
+  const approval = await project.command("record-approval", {
+    approval_id: "STALE-001",
+    type: "finding-decision",
+    operation: "diagnostics",
+    scope_id: scope.scope_id,
+    paths: ["manuscript/chapter-001.md"],
+    files: [{
+      path: "manuscript/chapter-001.md",
+      action: "review",
+      input_sha256: manuscriptHash,
+      output_sha256: manuscriptHash,
+    }],
+    status: "approved",
+    reason: `Author confirmed a different pass. finding_id=DIAG-303 finding_status=stale scope_fingerprint=${scope.scope_fingerprint} pass_id=${evidence.pass.pass_id} pass_fingerprint=${evidence.pass.pass_fingerprint} pass_path=${encodeURIComponent(evidence.passReference.path)} pass_sha256=${evidence.passReference.sha256}`,
+  });
+  assert.equal(approval.processResult.status, 0, approval.processResult.stdout);
+  const trackerPath = path.join(project.projectRoot, "audit-tracker.md");
+  const trackerBefore = await readFile(trackerPath, "utf8");
+
+  const decided = await project.command("record-finding-decision", {
+    finding_id: currentFinding.id,
+    status: "stale",
+    report: "reports/diagnostics/pass-002-local.md",
+    reason: "The equivalent rerun used a different requested pass.",
+    author_decision_id: "STALE-001",
+  });
+
+  assert.equal(decided.processResult.status, 1, decided.processResult.stdout);
+  assert.ok(decided.response.errors.some((error) => error.code === "finding-decision-evidence-mismatch"));
+  assert.equal(decided.response.result.state_written, false);
+  assert.equal(await readFile(trackerPath, "utf8"), trackerBefore);
+});
+
+
+test("an external stale finding without decision tokens is invalid and is not repaired", async (t) => {
+  const project = await installedProject(t);
+  await confirmScope(project);
+  const currentFinding = {
+    ...finding("EXTERNAL-303"),
+    location: { file: "manuscript/chapter-001.md", scope: "file" },
+  };
+  await writeReport(
+    project.projectRoot,
+    "reports/diagnostics/original-external-303.md",
+    reportEnvelope([currentFinding], { report_id: "original-external-303" }),
+  );
+  const recorded = await project.command("record-finding", {
+    finding: currentFinding,
+    operation: "diagnostics",
+    report: "reports/diagnostics/original-external-303.md",
+    status: "open",
+    reason: "Author review is required.",
+  });
+  assert.equal(recorded.processResult.status, 0, recorded.processResult.stdout);
+  await createNoEditEvidence(project.projectRoot, { passId: "pass-001" });
+  const trackerPath = path.join(project.projectRoot, "audit-tracker.md");
+  const openTracker = await readFile(trackerPath, "utf8");
+  const externallyEdited = openTracker
+    .replace("| EXTERNAL-303 | diagnostics | narrative diagnostics | manuscript/chapter-001.md | open |", "| EXTERNAL-303 | diagnostics | narrative diagnostics | manuscript/chapter-001.md | stale |")
+    .replace(/(\| EXTERNAL-303 \|[^\n]*\| )[^ |]+( \| Author review is required\. \|)/, (_match, prefix, suffix) => `${prefix}2099-01-01T00:00:00Z${suffix}`);
+  assert.notEqual(externallyEdited, openTracker);
+  assert.match(externallyEdited, /2099-01-01T00:00:00Z/);
+  await writeFile(trackerPath, externallyEdited, "utf8");
+
+  const status = project.run(["status", "--project-root", project.projectRoot]);
+
+  assert.equal(status.status, 1, `${status.stdout}\n${status.stderr}`);
+  const response = JSON.parse(status.stdout);
+  assert.equal(response.valid, false);
+  assert.ok(response.errors.some((error) => error.keyword === "tracker"), status.stdout);
+  assert.match(status.stdout, /author_decision_id|finding_status/);
+  assert.equal(await readFile(trackerPath, "utf8"), externallyEdited);
+});
+
+
+test("external stale findings revalidate report evidence and author-decision bindings", async (t) => {
+  const cases = [
+    ["report pass", async ({ projectRoot, reportPath }) => {
+      const markdown = await readFile(path.join(projectRoot, reportPath), "utf8");
+      const envelope = JSON.parse(markdown.match(/```json\n([\s\S]*?)\n```/)[1]);
+      envelope.requested_pass.pass_fingerprint = "0".repeat(64);
+      await writeReport(projectRoot, reportPath, envelope);
+    }],
+    ["approval type", async ({ trackerPath }) => {
+      const tracker = await readFile(trackerPath, "utf8");
+      await writeFile(trackerPath, tracker.replace("| STALE-001 | finding-decision |", "| STALE-001 | edit |"), "utf8");
+    }],
+    ["approval pass binding", async ({ trackerPath, evidence }) => {
+      const tracker = await readFile(trackerPath, "utf8");
+      await writeFile(trackerPath, tracker.replace(` pass_sha256=${evidence.passReference.sha256}`, ""), "utf8");
+    }],
+  ];
+  for (const [name, tamper] of cases) {
+    await t.test(name, async (t) => {
+      const project = await installedProject(t);
+      const scope = await confirmScope(project);
+      const currentFinding = {
+        ...finding("DIAG-303"),
+        location: { file: "manuscript/chapter-001.md", scope: "file" },
+      };
+      const originalReport = "reports/diagnostics/original-001.md";
+      await writeReport(
+        project.projectRoot,
+        originalReport,
+        reportEnvelope([currentFinding], { report_id: "original-001" }),
+      );
+      const recorded = await project.command("record-finding", {
+        finding: currentFinding,
+        operation: "diagnostics",
+        report: originalReport,
+        status: "open",
+        reason: "Author review is required before the equivalent rerun.",
+      });
+      assert.equal(recorded.processResult.status, 0, recorded.processResult.stdout);
+      const evidence = await createNoEditEvidence(project.projectRoot, { passId: "pass-001" });
+      const manuscriptHash = sha256(await readFile(
+        path.join(project.projectRoot, "manuscript", "chapter-001.md"),
+      ));
+      const approval = await project.command("record-approval", {
+        approval_id: "STALE-001",
+        type: "finding-decision",
+        operation: "diagnostics",
+        scope_id: scope.scope_id,
+        paths: ["manuscript/chapter-001.md"],
+        files: [{
+          path: "manuscript/chapter-001.md",
+          action: "review",
+          input_sha256: manuscriptHash,
+          output_sha256: manuscriptHash,
+        }],
+        status: "approved",
+        reason: `Author confirmed the equivalent complete rerun stale decision. finding_id=DIAG-303 finding_status=stale scope_fingerprint=${scope.scope_fingerprint} pass_id=${evidence.pass.pass_id} pass_fingerprint=${evidence.pass.pass_fingerprint} pass_path=${encodeURIComponent(evidence.passReference.path)} pass_sha256=${evidence.passReference.sha256}`,
+      });
+      assert.equal(approval.processResult.status, 0, approval.processResult.stdout);
+      const reportPath = "reports/diagnostics/pass-001-local.md";
+      const decided = await project.command("record-finding-decision", {
+        finding_id: currentFinding.id,
+        status: "stale",
+        report: reportPath,
+        reason: "The equivalent complete rerun no longer observes this finding.",
+        author_decision_id: "STALE-001",
+      });
+      assert.equal(decided.processResult.status, 0, decided.processResult.stdout);
+      const trackerPath = path.join(project.projectRoot, "audit-tracker.md");
+      await tamper({ projectRoot: project.projectRoot, trackerPath, reportPath, evidence });
+      const trackerBefore = await readFile(trackerPath, "utf8");
+
+      const status = project.run(["status", "--project-root", project.projectRoot]);
+
+      assert.equal(status.status, 1, `${status.stdout}\n${status.stderr}`);
+      const response = JSON.parse(status.stdout);
+      assert.equal(response.valid, false);
+      assert.ok(response.errors.some((error) => error.keyword === "tracker"), status.stdout);
+      assert.equal(await readFile(trackerPath, "utf8"), trackerBefore);
+    });
+  }
+});
+
+
+test("external no-edit decisions revalidate evidence and the approved finding status", async (t) => {
+  const cases = [
+    ["evidence reference", (tracker) => tracker.replace("evidence_path=.author-toolkit%2Fconvergence%2Fno-edit-skips%2Fpass-001-no-edit.json", "evidence_path=.author-toolkit%2Fconvergence%2Fno-edit-skips%2Fmissing.json")],
+    ["finding status", (tracker) => tracker
+      .replace("| EXTERNAL-001 | diagnostics | narrative | manuscript/chapter-001.md | deferred |", "| EXTERNAL-001 | diagnostics | narrative | manuscript/chapter-001.md | dismissed |")
+      .replace("finding_status=deferred", "finding_status=dismissed")],
+  ];
+  for (const [name, tamper] of cases) {
+    await t.test(name, async (t) => {
+      const project = await installedProject(t);
+      await confirmScope(project);
+      const currentFinding = {
+        ...finding("EXTERNAL-001"),
+        audit: "narrative",
+        location: { file: "manuscript/chapter-001.md", scope: "file" },
+      };
+      const evidence = await createNoEditEvidence(project.projectRoot, {
+        findings: [currentFinding],
+        findingStatuses: {
+          [currentFinding.id]: { status: "open", reason: "Author decision is required." },
+        },
+      });
+      const decided = await project.command("record-finding-decision", {
+        finding_id: currentFinding.id,
+        status: "deferred",
+        report: "reports/diagnostics/pass-001-local.md",
+        reason: "Author deferred the finding with its consequence recorded.",
+        author_decision_id: evidence.noEditSkip.author_decision_id,
+        no_edit_skip: evidence.noEditReference,
+      });
+      assert.equal(decided.processResult.status, 0, decided.processResult.stdout);
+      const validStatus = project.run(["status", "--project-root", project.projectRoot]);
+      assert.equal(validStatus.status, 0, `${validStatus.stdout}\n${validStatus.stderr}`);
+      const trackerPath = path.join(project.projectRoot, "audit-tracker.md");
+      const tracker = await readFile(trackerPath, "utf8");
+      const externallyEdited = tamper(tracker);
+      assert.notEqual(externallyEdited, tracker);
+      await writeFile(trackerPath, externallyEdited, "utf8");
+
+      const status = project.run(["status", "--project-root", project.projectRoot]);
+
+      assert.equal(status.status, 1, `${status.stdout}\n${status.stderr}`);
+      const response = JSON.parse(status.stdout);
+      assert.equal(response.valid, false);
+      assert.ok(response.errors.some((error) => error.keyword === "tracker"), status.stdout);
+      assert.equal(await readFile(trackerPath, "utf8"), externallyEdited);
+    });
+  }
 });

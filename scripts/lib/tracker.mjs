@@ -2,8 +2,15 @@ import { readFile, stat } from "node:fs/promises";
 import path from "node:path";
 
 import { parseApprovalPaths } from "./approval-paths.mjs";
+import { readProject } from "./evaluation-artifacts.mjs";
+import { validateExecutionDecision } from "./execution-decision.mjs";
+import { validateEvidenceReport } from "./markdown.mjs";
+import { validateNoEditDecision } from "./no-edit-decision.mjs";
 import { isUninitializedProjectTemplate, projectRootFromManifest } from "./project-files.mjs";
 import { validateRelativePath } from "./schemas.mjs";
+import { sha256Bytes } from "./state-io.mjs";
+import { validateStaleDecision } from "./stale-decision.mjs";
+import { validateTimestamp } from "./time.mjs";
 
 export const TRACKER_STATUSES = Object.freeze([
   "open",
@@ -97,7 +104,7 @@ function reportCell(value) {
   return pathCell(link?.[1] ?? value);
 }
 
-export async function validateTrackerMarkdown(markdown, projectRoot) {
+export async function validateTrackerMarkdown(markdown, projectRoot, options = {}) {
   const errors = [];
   const section = findingsSection(markdown);
   if (section.error !== undefined) {
@@ -163,6 +170,13 @@ export async function validateTrackerMarkdown(markdown, projectRoot) {
 
     for (const field of ["stage", "audit", "location", "updated", "reason"]) {
       if (!get(field)) errors.push(trackerError(`${rowPath}/${field}`, `${field} is required`));
+    }
+    if (get("updated")) {
+      errors.push(...validateTimestamp(get("updated"), `${rowPath}/updated`, options).map((error) => ({
+        ...error,
+        code: error.keyword,
+        keyword: "tracker",
+      })));
     }
     if (!/^[A-Z][A-Z0-9]*-[0-9]{3,}$/.test(id)) {
       errors.push(trackerError(`${rowPath}/id`, "finding ID must have an uppercase prefix and at least three digits"));
@@ -240,7 +254,7 @@ function approvalsSection(markdown) {
   return { lines: lines.slice(start, end) };
 }
 
-export function validateApprovalsMarkdown(markdown) {
+export function validateApprovalsMarkdown(markdown, options = {}) {
   const errors = [];
   const section = approvalsSection(markdown);
   if (section.error !== undefined) {
@@ -322,6 +336,13 @@ export function validateApprovalsMarkdown(markdown) {
 
     for (const field of ["type", "operation", "scopeId", "paths", "reason", "updated"]) {
       if (!get(field)) errors.push(trackerError(`${rowPath}/${field}`, `${field} is required`));
+    }
+    if (get("updated")) {
+      errors.push(...validateTimestamp(get("updated"), `${rowPath}/updated`, options).map((error) => ({
+        ...error,
+        code: error.keyword,
+        keyword: "tracker",
+      })));
     }
 
     const status = get("status");
@@ -414,7 +435,15 @@ function typedFindingDecisionErrors(findings, approvals) {
     const tokens = finding.reason.split(/\s+/).filter(Boolean);
     const decisionTokens = tokens.filter((token) => token.startsWith("author_decision_id="));
     const statusTokens = tokens.filter((token) => token.startsWith("finding_status="));
-    if (decisionTokens.length === 0 && statusTokens.length === 0) continue;
+    if (decisionTokens.length === 0 && statusTokens.length === 0) {
+      if (finding.status !== "open") {
+        errors.push(trackerError(
+          `/Findings/${index}/reason`,
+          "every non-open finding requires exactly one author_decision_id and one finding_status token",
+        ));
+      }
+      continue;
+    }
     const rowPath = `/Findings/${index}/reason`;
     if (decisionTokens.length !== 1 || statusTokens.length !== 1) {
       errors.push(trackerError(
@@ -434,6 +463,21 @@ function typedFindingDecisionErrors(findings, approvals) {
         `typed finding decision status mismatch: row=${finding.status}, token=${decisionStatus}`,
       ));
     }
+    if (finding.status !== "stale") {
+      const evidenceTypes = tokens.filter((token) => token.startsWith("evidence_type="));
+      const allowed = finding.status === "resolved"
+        ? ["revision-execution"]
+        : ["no-edit-skip", "revision-execution"];
+      if (
+        evidenceTypes.length !== 1 ||
+        !allowed.includes(evidenceTypes[0].slice("evidence_type=".length))
+      ) {
+        errors.push(trackerError(
+          rowPath,
+          `finding status ${finding.status} requires one compatible evidence_type token`,
+        ));
+      }
+    }
     const decision = approvals.find((approval) => approval.id === decisionId);
     if (!decision || decision.status !== "approved") {
       errors.push(trackerError(
@@ -445,9 +489,292 @@ function typedFindingDecisionErrors(findings, approvals) {
   return errors;
 }
 
-export async function parseTrackerState(markdown, projectRoot) {
-  const findingValidation = await validateTrackerMarkdown(markdown, projectRoot);
-  const approvalValidation = validateApprovalsMarkdown(markdown);
+function oneDecisionToken(tokens, name) {
+  const matches = tokens.filter((token) => token.startsWith(`${name}=`));
+  return matches.length === 1 ? matches[0].slice(name.length + 1) : null;
+}
+
+async function externalStaleDecisionErrors(findings, approvals, projectRoot, options) {
+  const candidates = findings.filter((finding) => {
+    if (finding.status !== "stale") return false;
+    const tokens = finding.reason.split(/\s+/).filter(Boolean);
+    return oneDecisionToken(tokens, "author_decision_id") &&
+      oneDecisionToken(tokens, "finding_status") === finding.status;
+  });
+  if (candidates.length === 0) return [];
+  const project = await readProject(projectRoot);
+  const errors = [];
+  for (const finding of candidates) {
+    const rowPath = `/Findings/${findings.indexOf(finding)}/reason`;
+    const tokens = finding.reason.split(/\s+/).filter(Boolean);
+    const authorDecisionId = oneDecisionToken(tokens, "author_decision_id");
+    const previousReportToken = oneDecisionToken(tokens, "previous_report");
+    const previousReportSha256 = oneDecisionToken(tokens, "previous_report_sha256");
+    const reportSha256 = oneDecisionToken(tokens, "report_sha256");
+    let previousReport = null;
+    try {
+      previousReport = previousReportToken ? decodeURIComponent(previousReportToken) : null;
+    } catch {
+    }
+    if (
+      !previousReport ||
+      !validateRelativePath(previousReport).valid ||
+      !/^[0-9a-f]{64}$/.test(previousReportSha256 ?? "") ||
+      !/^[0-9a-f]{64}$/.test(reportSha256 ?? "")
+    ) {
+      errors.push(trackerError(
+        rowPath,
+        "stale decisions require exact previous_report, previous_report_sha256, and report_sha256 bindings",
+      ));
+      continue;
+    }
+    const reportsRoot = project.manifest.paths.reports.replace(/\/$/, "");
+    if (
+      finding.report !== reportsRoot && !finding.report.startsWith(`${reportsRoot}/`) ||
+      previousReport !== reportsRoot && !previousReport.startsWith(`${reportsRoot}/`)
+    ) {
+      errors.push(trackerError(rowPath, "stale decision reports must be beneath the registered reports path"));
+      continue;
+    }
+    let currentMarkdown;
+    let previousMarkdown;
+    try {
+      [currentMarkdown, previousMarkdown] = await Promise.all([
+        readFile(path.resolve(project.root, finding.report), "utf8"),
+        readFile(path.resolve(project.root, previousReport), "utf8"),
+      ]);
+      if (
+        sha256Bytes(currentMarkdown) !== reportSha256 ||
+        sha256Bytes(previousMarkdown) !== previousReportSha256
+      ) {
+        throw new Error("stale decision report bytes do not match their recorded hashes");
+      }
+    } catch (error) {
+      errors.push(trackerError(rowPath, error.message));
+      continue;
+    }
+    const validation = validateEvidenceReport(currentMarkdown, options);
+    const reported = validation.envelope?.findings.find((candidate) => candidate.id === finding.id);
+    if (
+      !validation.valid ||
+      validation.envelope.stage !== finding.stage ||
+      reported ||
+      !/(?:^|\s)operation_coverage=full(?:\s|$)/.test(validation.envelope.engine.notes)
+    ) {
+      errors.push(trackerError(
+        rowPath,
+        "stale decision requires a valid equivalent complete rerun in the same operation that no longer observes the finding",
+      ));
+      continue;
+    }
+    try {
+      await validateStaleDecision(
+        project,
+        { approvals },
+        {
+          finding_id: finding.id,
+          status: finding.status,
+          report: finding.report,
+          author_decision_id: authorDecisionId,
+        },
+        { envelope: validation.envelope, reported: null },
+        finding,
+        { ...options, originalReport: previousReport },
+      );
+    } catch (error) {
+      errors.push(trackerError(rowPath, error.message));
+    }
+  }
+  return errors;
+}
+
+function externalFindingLocation(location) {
+  if (location.scope === "file") return location.file;
+  if (location.scope === "chapter") return `${location.file}#chapter-${location.chapter}`;
+  if (location.scope === "line") return `${location.file}:${location.line}`;
+  return `${location.file}: ${location.quote}`;
+}
+
+async function externalNoEditDecisionErrors(findings, approvals, projectRoot, options) {
+  const candidates = findings.filter((finding) => {
+    if (!["deferred", "dismissed"].includes(finding.status)) return false;
+    const tokens = finding.reason.split(/\s+/).filter(Boolean);
+    return oneDecisionToken(tokens, "author_decision_id") &&
+      oneDecisionToken(tokens, "finding_status") === finding.status &&
+      oneDecisionToken(tokens, "evidence_type") === "no-edit-skip";
+  });
+  if (candidates.length === 0) return [];
+  const project = await readProject(projectRoot);
+  const errors = [];
+  for (const finding of candidates) {
+    const rowPath = `/Findings/${findings.indexOf(finding)}/reason`;
+    const tokens = finding.reason.split(/\s+/).filter(Boolean);
+    const authorDecisionId = oneDecisionToken(tokens, "author_decision_id");
+    const evidenceId = oneDecisionToken(tokens, "evidence_id");
+    const evidencePathToken = oneDecisionToken(tokens, "evidence_path");
+    const evidenceSha256 = oneDecisionToken(tokens, "evidence_sha256");
+    const previousReportToken = oneDecisionToken(tokens, "previous_report");
+    const previousReportSha256 = oneDecisionToken(tokens, "previous_report_sha256");
+    const reportSha256 = oneDecisionToken(tokens, "report_sha256");
+    let evidencePath = null;
+    let previousReport = null;
+    try {
+      evidencePath = evidencePathToken ? decodeURIComponent(evidencePathToken) : null;
+      previousReport = previousReportToken ? decodeURIComponent(previousReportToken) : null;
+    } catch {
+    }
+    if (
+      !evidenceId ||
+      !evidencePath ||
+      !validateRelativePath(evidencePath).valid ||
+      !/^[0-9a-f]{64}$/.test(evidenceSha256 ?? "") ||
+      !previousReport ||
+      !validateRelativePath(previousReport).valid ||
+      !/^[0-9a-f]{64}$/.test(previousReportSha256 ?? "") ||
+      !/^[0-9a-f]{64}$/.test(reportSha256 ?? "")
+    ) {
+      errors.push(trackerError(rowPath, "no-edit decisions require complete report and evidence identity bindings"));
+      continue;
+    }
+    let currentMarkdown;
+    let previousMarkdown;
+    try {
+      [currentMarkdown, previousMarkdown] = await Promise.all([
+        readFile(path.resolve(project.root, finding.report), "utf8"),
+        readFile(path.resolve(project.root, previousReport), "utf8"),
+      ]);
+      if (
+        sha256Bytes(currentMarkdown) !== reportSha256 ||
+        sha256Bytes(previousMarkdown) !== previousReportSha256
+      ) {
+        throw new Error("no-edit decision report bytes do not match their recorded hashes");
+      }
+    } catch (error) {
+      errors.push(trackerError(rowPath, error.message));
+      continue;
+    }
+    const validation = validateEvidenceReport(currentMarkdown, options);
+    const reported = validation.envelope?.findings.find((candidate) => candidate.id === finding.id);
+    if (
+      !validation.valid ||
+      validation.envelope.stage !== finding.stage ||
+      !reported ||
+      reported.audit !== finding.audit ||
+      externalFindingLocation(reported.location) !== finding.location
+    ) {
+      errors.push(trackerError(rowPath, "no-edit decision current report does not preserve the exact finding"));
+      continue;
+    }
+    try {
+      await validateNoEditDecision(
+        project,
+        { approvals },
+        {
+          finding_id: finding.id,
+          status: finding.status,
+          report: finding.report,
+          author_decision_id: authorDecisionId,
+          no_edit_skip: { skip_id: evidenceId, path: evidencePath, sha256: evidenceSha256 },
+        },
+        { envelope: validation.envelope, reported },
+        options,
+      );
+    } catch (error) {
+      errors.push(trackerError(rowPath, error.message));
+    }
+  }
+  return errors;
+}
+
+async function externalExecutionDecisionErrors(findings, approvals, projectRoot, options) {
+  const candidates = findings.filter((finding) => {
+    if (!["resolved", "deferred", "dismissed"].includes(finding.status)) return false;
+    const tokens = finding.reason.split(/\s+/).filter(Boolean);
+    return oneDecisionToken(tokens, "author_decision_id") &&
+      oneDecisionToken(tokens, "finding_status") === finding.status &&
+      oneDecisionToken(tokens, "evidence_type") === "revision-execution";
+  });
+  if (candidates.length === 0) return [];
+  const project = await readProject(projectRoot);
+  const errors = [];
+  for (const finding of candidates) {
+    const rowPath = `/Findings/${findings.indexOf(finding)}/reason`;
+    const tokens = finding.reason.split(/\s+/).filter(Boolean);
+    const authorDecisionId = oneDecisionToken(tokens, "author_decision_id");
+    const evidenceId = oneDecisionToken(tokens, "evidence_id");
+    const evidencePathToken = oneDecisionToken(tokens, "evidence_path");
+    const evidenceSha256 = oneDecisionToken(tokens, "evidence_sha256");
+    const previousReportToken = oneDecisionToken(tokens, "previous_report");
+    const previousReportSha256 = oneDecisionToken(tokens, "previous_report_sha256");
+    const reportSha256 = oneDecisionToken(tokens, "report_sha256");
+    let evidencePath = null;
+    let previousReport = null;
+    try {
+      evidencePath = evidencePathToken ? decodeURIComponent(evidencePathToken) : null;
+      previousReport = previousReportToken ? decodeURIComponent(previousReportToken) : null;
+    } catch {
+    }
+    if (
+      !evidenceId ||
+      !evidencePath ||
+      !validateRelativePath(evidencePath).valid ||
+      !/^[0-9a-f]{64}$/.test(evidenceSha256 ?? "") ||
+      !previousReport ||
+      !validateRelativePath(previousReport).valid ||
+      !/^[0-9a-f]{64}$/.test(previousReportSha256 ?? "") ||
+      !/^[0-9a-f]{64}$/.test(reportSha256 ?? "")
+    ) {
+      errors.push(trackerError(rowPath, "execution decisions require complete report and evidence identity bindings"));
+      continue;
+    }
+    let currentMarkdown;
+    let previousMarkdown;
+    try {
+      [currentMarkdown, previousMarkdown] = await Promise.all([
+        readFile(path.resolve(project.root, finding.report), "utf8"),
+        readFile(path.resolve(project.root, previousReport), "utf8"),
+      ]);
+      if (
+        sha256Bytes(currentMarkdown) !== reportSha256 ||
+        sha256Bytes(previousMarkdown) !== previousReportSha256
+      ) {
+        throw new Error("execution decision report bytes do not match their recorded hashes");
+      }
+    } catch (error) {
+      errors.push(trackerError(rowPath, error.message));
+      continue;
+    }
+    const validation = validateEvidenceReport(currentMarkdown, options);
+    const reported = validation.envelope?.findings.find((candidate) => candidate.id === finding.id) ?? null;
+    if (!validation.valid || validation.envelope.stage !== finding.stage) {
+      errors.push(trackerError(rowPath, "execution decision current report is invalid or uses another operation"));
+      continue;
+    }
+    try {
+      await validateExecutionDecision(
+        project,
+        { findings, approvals, valid: true },
+        {
+          finding_id: finding.id,
+          status: finding.status,
+          report: finding.report,
+          author_decision_id: authorDecisionId,
+          revision_execution: { execution_id: evidenceId, path: evidencePath, sha256: evidenceSha256 },
+        },
+        { envelope: validation.envelope, reported },
+        finding,
+        options,
+      );
+    } catch (error) {
+      errors.push(trackerError(rowPath, error.message));
+    }
+  }
+  return errors;
+}
+
+export async function parseTrackerState(markdown, projectRoot, options = {}) {
+  const findingValidation = await validateTrackerMarkdown(markdown, projectRoot, options);
+  const approvalValidation = validateApprovalsMarkdown(markdown, options);
   const errors = [...findingValidation.errors, ...approvalValidation.errors];
   const findings = [];
   const findingSection = findingsSection(markdown);
@@ -516,6 +843,13 @@ export async function parseTrackerState(markdown, projectRoot) {
         if (!row.reason || !row.updated) {
           errors.push(trackerError(rowPath, "completion decision reason and updated time are required"));
         }
+        if (row.updated) {
+          errors.push(...validateTimestamp(row.updated, `${rowPath}/updated`, options).map((error) => ({
+            ...error,
+            code: error.keyword,
+            keyword: "tracker",
+          })));
+        }
         delete row.cellCount;
         completionDecisions.push(row);
       }
@@ -524,6 +858,9 @@ export async function parseTrackerState(markdown, projectRoot) {
     errors.push(trackerError("/Cycle completions", "expected at most one ## Cycle completions heading"));
   }
   errors.push(...typedFindingDecisionErrors(findings, approvals));
+  errors.push(...await externalStaleDecisionErrors(findings, approvals, projectRoot, options));
+  errors.push(...await externalNoEditDecisionErrors(findings, approvals, projectRoot, options));
+  errors.push(...await externalExecutionDecisionErrors(findings, approvals, projectRoot, options));
 
   return {
     valid: errors.length === 0,
@@ -561,12 +898,12 @@ export function appendCycleCompletionDecision(markdown, decision) {
   return `${markdown.trimEnd()}\n\n${block}`;
 }
 
-export async function validateTrackerV3Markdown(markdown, projectRoot) {
-  const state = await parseTrackerState(markdown, projectRoot);
+export async function validateTrackerV3Markdown(markdown, projectRoot, options = {}) {
+  const state = await parseTrackerState(markdown, projectRoot, options);
   return { valid: state.valid, errors: state.errors };
 }
 
-export async function validateTracker(manifest, manifestPath) {
+export async function validateTracker(manifest, manifestPath, options = {}) {
   if (isUninitializedProjectTemplate(manifest)) {
     return { valid: true, errors: [] };
   }
@@ -575,7 +912,7 @@ export async function validateTracker(manifest, manifestPath) {
   const trackerPath = path.resolve(projectRoot, manifest.paths.audit_tracker);
   try {
     const markdown = await readFile(trackerPath, "utf8");
-    return validateTrackerV3Markdown(markdown, projectRoot);
+    return validateTrackerV3Markdown(markdown, projectRoot, options);
   } catch (error) {
     return {
       valid: false,

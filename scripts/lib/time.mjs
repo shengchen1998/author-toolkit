@@ -13,6 +13,32 @@ export function timestampResult(options = {}) {
   return { json, filename: json.replace(/[-:.]/g, "") };
 }
 
+export function validateTimestamp(value, instancePath, options = {}) {
+  if (
+    typeof value !== "string" ||
+    !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/.test(value) ||
+    !Number.isFinite(Date.parse(value))
+  ) {
+    return [{
+      instancePath,
+      keyword: "date-time",
+      message: "timestamp must be an ISO date-time string",
+      params: {},
+    }];
+  }
+  const current = utcDate(options.now);
+  if (Date.parse(value) <= current.getTime() + 60_000) return [];
+  return [{
+    instancePath,
+    keyword: "future-timestamp",
+    message: `timestamp must not be more than 60 seconds after the current UTC time (${current.toISOString()})`,
+    params: {
+      current_time: current.toISOString(),
+      future_tolerance_seconds: 60,
+    },
+  }];
+}
+
 function pointerPart(value) {
   return value.replaceAll("~", "~0").replaceAll("/", "~1");
 }

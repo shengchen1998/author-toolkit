@@ -2,7 +2,7 @@ import { mkdir, readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { validateBackupIndexFile } from "./backup.mjs";
+import { validateBackupIndex, validateBackupIndexFile } from "./backup.mjs";
 import { getCycleStatus } from "./cycles.mjs";
 import { validateManifest } from "./manifest.mjs";
 import { validateProjectFiles, validateScopeCurrency } from "./project-files.mjs";
@@ -63,8 +63,122 @@ async function deployReferences(projectRoot) {
 }
 
 async function createFile(projectRoot, relativePath, contents, created) {
-  await createNoClobberVerified(path.join(projectRoot, relativePath), contents);
+  await createNoClobberVerified(path.resolve(projectRoot, relativePath), contents);
   created.push(relativePath);
+}
+
+function initializationConflict(relativePath, message, details = {}) {
+  return {
+    code: "initialization-conflict",
+    instancePath: `/${relativePath}`,
+    message,
+    ...details,
+  };
+}
+
+async function preflightSkeletons(root, manifest, manifestPath) {
+  const existing = {
+    storyBible: null,
+    tracker: null,
+    backupIndex: null,
+  };
+  for (const [key, relativePath] of [
+    ["storyBible", manifest.paths.story_bible],
+    ["tracker", manifest.paths.audit_tracker],
+    ["backupIndex", path.posix.join(manifest.paths.backups, "index.json")],
+  ]) {
+    try {
+      existing[key] = await readFile(path.resolve(root, relativePath), "utf8");
+    } catch (error) {
+      if (error.code !== "ENOENT") {
+        return { errors: [initializationConflict(relativePath, error.message)] };
+      }
+    }
+  }
+  const errors = [];
+  if (existing.storyBible !== null && existing.storyBible.trim().length === 0) {
+    errors.push(initializationConflict(manifest.paths.story_bible, "Existing Story Bible must not be empty"));
+  }
+  if (existing.tracker !== null) {
+    const validation = await validateTracker(manifest, manifestPath);
+    errors.push(...validation.errors.map((error) => initializationConflict(
+      manifest.paths.audit_tracker,
+      error.message,
+      { validation_error: error },
+    )));
+  }
+  if (existing.backupIndex !== null) {
+    let candidate;
+    try {
+      candidate = JSON.parse(existing.backupIndex);
+    } catch (error) {
+      return { existing, errors: [initializationConflict(
+        path.posix.join(manifest.paths.backups, "index.json"),
+        error.message,
+      )] };
+    }
+    const validation = await validateBackupIndex(root, candidate, { manifest });
+    errors.push(...validation.errors.map((error) => initializationConflict(
+      path.posix.join(manifest.paths.backups, "index.json"),
+      error.message,
+      { validation_error: error },
+    )));
+  }
+  return { existing, errors };
+}
+
+async function preflightImportedState(root, manifest, manifestPath) {
+  const errors = [];
+  const allowed = new Set([
+    "AGENTS.md",
+    path.relative(root, manifestPath).split(path.sep).join("/"),
+    manifest.paths.story_bible,
+    manifest.paths.audit_tracker,
+    path.posix.join(manifest.paths.backups, "index.json"),
+  ]);
+  const operationalRoots = [
+    ".author-toolkit",
+    manifest.paths.reports,
+    manifest.paths.sessions,
+    manifest.paths.backups,
+    manifest.paths.handoffs,
+    manifest.paths.creation,
+    manifest.paths.convergence,
+  ].map((value) => value.replace(/\/$/, ""));
+  let entries;
+  try {
+    entries = await readdir(root, { recursive: true, withFileTypes: true });
+  } catch (error) {
+    if (error.code === "ENOENT") return { errors };
+    throw error;
+  }
+  for (const entry of entries) {
+    if (!entry.isFile()) continue;
+    const relativePath = path.relative(root, path.join(entry.parentPath, entry.name)).split(path.sep).join("/");
+    if (relativePath === manifest.manuscript_root.replace(/\/$/, "") || relativePath.startsWith(`${manifest.manuscript_root.replace(/\/$/, "")}/`)) continue;
+    if (relativePath.startsWith(".author-toolkit/references/") || allowed.has(relativePath)) continue;
+    if (operationalRoots.some((operational) => relativePath === operational || relativePath.startsWith(`${operational}/`))) {
+      errors.push(initializationConflict(
+        relativePath,
+        "Imported operational state is not allowed during manuscript-only initialization",
+      ));
+    }
+  }
+  return { errors };
+}
+
+async function publishMissingSkeletons(root, manifest, manifestPath, existing, contents, created) {
+  try {
+    await createFile(root, "AGENTS.md", contents.agents, created);
+  } catch (error) {
+    if (error.code !== "EEXIST") throw error;
+  }
+  if (existing.manifest === null) await createFile(root, manifestPath, contents.manifest, created);
+  if (existing.storyBible === null) await createFile(root, manifest.paths.story_bible, contents.storyBible, created);
+  if (existing.tracker === null) await createFile(root, manifest.paths.audit_tracker, contents.tracker, created);
+  if (existing.backupIndex === null) {
+    await createFile(root, path.posix.join(manifest.paths.backups, "index.json"), contents.backupIndex, created);
+  }
 }
 
 export async function initializeProject(projectRoot, input = {}, options = {}) {
@@ -82,6 +196,16 @@ export async function initializeProject(projectRoot, input = {}, options = {}) {
         errors: validation.errors,
       };
     }
+    const preflight = await preflightSkeletons(root, existing, manifestPath);
+    if (preflight.errors.length > 0) {
+      return {
+        valid: false,
+        initialized: false,
+        manifest_path: manifestPath,
+        created: [],
+        errors: preflight.errors,
+      };
+    }
     const references = await deployReferences(root);
     if (!references.valid) {
       return {
@@ -92,6 +216,20 @@ export async function initializeProject(projectRoot, input = {}, options = {}) {
         errors: references.errors,
       };
     }
+    const timestamp = utcTimestamp(options);
+    await publishMissingSkeletons(root, existing, manifestPath, {
+      ...preflight.existing,
+      manifest: existing,
+    }, {
+      agents: await readTemplate("AGENTS.md"),
+      manifest: null,
+      storyBible: (await readTemplate("story-bible-template.md"))
+        .replace("PROJECT_TITLE", input.project_title ?? "Untitled Book"),
+      tracker: (await readTemplate("audit-tracker-template.md"))
+        .replace("- Project root:", `- Project root: ${root}`)
+        .replace("- Manifest created at:", `- Manifest created at: ${timestamp}`),
+      backupIndex: await readTemplate("backup-index-template.json"),
+    }, references.created);
     const errors = [
       ...(await validateProjectFiles(existing, manifestPath)).errors,
       ...(await validateTracker(existing, manifestPath)).errors,
@@ -143,6 +281,19 @@ export async function initializeProject(projectRoot, input = {}, options = {}) {
     };
   }
 
+  const preflight = await preflightSkeletons(root, manifest, manifestPath);
+  const imported = await preflightImportedState(root, manifest, manifestPath);
+  const preflightErrors = [...preflight.errors, ...imported.errors];
+  if (preflightErrors.length > 0) {
+    return {
+      valid: false,
+      initialized: false,
+      manifest_path: manifestPath,
+      created: [],
+      errors: preflightErrors,
+    };
+  }
+
   const references = await deployReferences(root);
   if (!references.valid) {
     return {
@@ -172,20 +323,16 @@ export async function initializeProject(projectRoot, input = {}, options = {}) {
     .replace("- Manifest created at:", `- Manifest created at: ${timestamp}`);
   const storyBible = (await readTemplate("story-bible-template.md"))
     .replace("PROJECT_TITLE", input.project_title ?? "Untitled Book");
-  const files = [
-    [".author-toolkit/project.json", `${JSON.stringify(manifest, null, 2)}\n`],
-    [manifest.paths.story_bible, storyBible],
-    [manifest.paths.audit_tracker, tracker],
-    [path.posix.join(manifest.paths.backups, "index.json"), await readTemplate("backup-index-template.json")],
-  ];
-  try {
-    await createFile(root, "AGENTS.md", await readTemplate("AGENTS.md"), created);
-  } catch (error) {
-    if (error.code !== "EEXIST") throw error;
-  }
-  for (const [relativePath, contents] of files) {
-    await createFile(root, relativePath, contents, created);
-  }
+  await publishMissingSkeletons(root, manifest, manifestPath, {
+    ...preflight.existing,
+    manifest: null,
+  }, {
+    agents: await readTemplate("AGENTS.md"),
+    manifest: `${JSON.stringify(manifest, null, 2)}\n`,
+    storyBible,
+    tracker,
+    backupIndex: await readTemplate("backup-index-template.json"),
+  }, created);
 
   const checks = [
     validateManifest(manifest),

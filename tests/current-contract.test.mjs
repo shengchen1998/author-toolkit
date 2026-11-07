@@ -1,11 +1,12 @@
 import assert from "node:assert/strict";
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import test from "node:test";
 
 import {
   extractReportEnvelope,
   recordScope,
+  timestampResult,
   validateEvidenceReport,
   validateManifest,
   validateMarkdownReport,
@@ -69,6 +70,11 @@ async function createProject(t, { manuscriptRoot = "manuscript", chapterCount = 
   ]) {
     await mkdir(path.join(projectRoot, directory), { recursive: true });
   }
+  await cp(
+    path.join(root, "skills", "setup-author-toolkit", "assets", "references"),
+    path.join(projectRoot, ".author-toolkit", "references"),
+    { recursive: true },
+  );
   await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
   await writeJson(path.join(projectRoot, ".author-toolkit", "backups", "index.json"), {
     schema_version: "1.0.0",
@@ -355,4 +361,20 @@ test("project-root inventory excludes operational Markdown and detects new manus
   const added = await validateScopeCurrency(manifest, manifestPath);
   assert.equal(added.valid, false);
   assert.ok(added.errors.some((error) => error.message.includes("manuscript/chapter-04.md")));
+});
+
+
+test("the documented timestamp filename form is a valid report ID while ISO stays in JSON", async () => {
+  const timestamp = timestampResult({ now: "2026-11-06T01:02:03.456Z" });
+  const envelope = extractReportEnvelope(await readReport("en"));
+  envelope.report_id = timestamp.filename;
+  envelope.created_at = timestamp.json;
+  envelope.engine.degraded = false;
+  envelope.engine.notes = "language coverage=full scope_id=fixture-scope-en operation_coverage=full";
+  const markdown = `# ${envelope.report_id}\n\n## Language coverage\n\nfull\n\n\`\`\`json\n${JSON.stringify(envelope, null, 2)}\n\`\`\`\n`;
+
+  assert.equal(timestamp.filename, "20261106T010203456Z");
+  assert.equal(timestamp.json, "2026-11-06T01:02:03.456Z");
+  assert.match(envelope.report_id, /^[A-Za-z0-9][A-Za-z0-9._-]*$/);
+  assert.equal(validateEvidenceReport(markdown).valid, true);
 });

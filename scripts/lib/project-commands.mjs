@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 
+import { commandError as stateError, failure, requiredAction } from "./command-result.mjs";
 import { coordinationBlockers, runCheckpoint } from "./cycle-coordination.mjs";
 import { readActiveCycle, readProject } from "./evaluation-artifacts.mjs";
 import { validateManifest } from "./manifest.mjs";
@@ -14,31 +15,6 @@ import {
   writeAtomicVerified,
 } from "./state-io.mjs";
 import { utcTimestamp } from "./time.mjs";
-
-function requiredAction(operation) {
-  return {
-    strategy: "author-project",
-    operation,
-    command: `author-project ${operation}`,
-  };
-}
-
-function failure(code, message, operation, details = {}) {
-  return {
-    valid: false,
-    state_written: false,
-    required_action: requiredAction(operation),
-    blockers: [{ code, message, ...details, required_action: requiredAction(operation) }],
-    ...details,
-  };
-}
-
-function stateError(code, message, details = {}) {
-  const error = new Error(message);
-  error.projectCode = code;
-  error.projectDetails = details;
-  return error;
-}
 
 function operationTime(options) {
   return utcTimestamp(options);

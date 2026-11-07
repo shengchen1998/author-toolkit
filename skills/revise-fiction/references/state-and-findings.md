@@ -19,7 +19,7 @@ Use the controlled workflow terminology in `<project-root>/.author-toolkit/refer
 
 Use `<project-root>/.author-toolkit/references/report-schema-v2.json` as the authoritative envelope contract and resolve its reference to `finding-schema-v2.json`. Read both schemas before writing. Standalone skills use their skill-local finding v1 `finding-schema.json`; do not substitute it for shared finding v2.
 
-Write each report beneath the registered shared `reports/` path using an operation directory and a unique UTC-stamped filename. Before assigning the report ID, filename, and `created_at`, run `node <setup-skill>/assets/runtime/author-project.mjs timestamp` once as documented in [Timestamp](../../author-project/references/operations.md#timestamp). Use `result.json` for the ID and JSON field and `result.filename` for the filename so all three describe one UTC instant. Include human-readable context, a `Language coverage` heading, and exactly one fenced `json` block containing one report v2 object.
+Write each report beneath the registered shared `reports/` path using an operation directory and a unique UTC-stamped filename. Before assigning the report ID, filename, and `created_at`, run `node <setup-skill>/assets/runtime/author-project.mjs timestamp` once as documented in [Timestamp](../../author-project/references/operations.md#timestamp). Use `result.filename` for the ID and filename and `result.json` for `created_at`, so all three describe one UTC instant and the ID satisfies the report v2 pattern. Include human-readable context, a `Language coverage` heading, and exactly one fenced `json` block containing one report v2 object.
 
 Populate the actual v2 fields:
 

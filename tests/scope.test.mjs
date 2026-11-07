@@ -3,6 +3,7 @@ import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import {
   copyFile,
+  cp,
   mkdir,
   mkdtemp,
   readFile,
@@ -105,6 +106,11 @@ async function createProject(t) {
   );
   await writeFile(path.join(projectRoot, "manuscript", "cover.png"), "cover", "utf8");
   const manifestPath = path.join(projectRoot, ".author-toolkit", "project.json");
+  await cp(
+    path.join(root, "skills", "setup-author-toolkit", "assets", "references"),
+    path.join(projectRoot, ".author-toolkit", "references"),
+    { recursive: true },
+  );
   await writeFile(manifestPath, `${JSON.stringify(currentManifest(), null, 2)}\n`, "utf8");
   await writeFile(path.join(projectRoot, ".author-toolkit", "backups", "index.json"), `${JSON.stringify({
     schema_version: "1.0.0",
@@ -334,12 +340,14 @@ test("the public CLI validates scope and inventory snapshots and exposes scope i
     project.recorded.inventory_path,
   ]);
   assert.equal(result.status, 0, result.stderr);
-  assert.match(result.stdout, /7 checks, 0 failures/);
-  assert.match(
-    result.stdout,
-    new RegExp(`scope_id=scope-1 scope_fingerprint=${project.recorded.scope_fingerprint}`),
-  );
-  assert.match(result.stdout, /full_manuscript=true/);
+  const response = JSON.parse(result.stdout);
+  assert.equal(response.valid, true);
+  assert.equal(response.result.checks, 7);
+  assert.deepEqual(response.errors, []);
+  const scopeResult = response.result.results.find((entry) => entry.label.endsWith("#scope"));
+  assert.equal(scopeResult.scope_id, "scope-1");
+  assert.equal(scopeResult.scope_fingerprint, project.recorded.scope_fingerprint);
+  assert.equal(scopeResult.full_manuscript, true);
 
   const help = runValidator(["--help"]);
   assert.match(help.stdout, /--scope-snapshot FILE/);
@@ -351,7 +359,7 @@ test("the public CLI validates scope and inventory snapshots and exposes scope i
   await writeFile(invalidPath, JSON.stringify(snapshot), "utf8");
   const invalid = runValidator(["--scope-snapshot", invalidPath]);
   assert.equal(invalid.status, 1);
-  assert.match(invalid.stderr, /scope_fingerprint|canonical content/);
+  assert.match(invalid.stdout, /scope_fingerprint|canonical content/);
 });
 
 test("the public CLI rejects a proposed scope as less than full-manuscript evidence", async (t) => {
@@ -362,13 +370,12 @@ test("the public CLI rejects a proposed scope as less than full-manuscript evide
   });
   const result = runValidator(["--manifest", project.manifestPath]);
   assert.equal(result.status, 1);
-  assert.match(result.stderr, /full-manuscript validation requires a confirmed scope/);
+  assert.match(result.stdout, /full-manuscript validation requires a confirmed scope/);
   const manifest = JSON.parse(await readFile(project.manifestPath, "utf8"));
-  assert.match(
-    result.stdout,
-    new RegExp(`scope_fingerprint=${manifest.current_scope.scope_fingerprint}`),
-  );
-  assert.match(result.stdout, /full_manuscript=false/);
+  const response = JSON.parse(result.stdout);
+  const scopeResult = response.result.results.find((entry) => entry.label.endsWith("#scope"));
+  assert.equal(scopeResult.scope_fingerprint, manifest.current_scope.scope_fingerprint);
+  assert.equal(scopeResult.full_manuscript, false);
 });
 
 test("scope fingerprints preserve author reading order independently of inventory sort order", async (t) => {
@@ -482,13 +489,7 @@ test("snapshot writes do not stale a project-root manuscript inventory", async (
   await writeFile(project.manifestPath, JSON.stringify(initial), "utf8");
   const scope = {
     ...confirmedScope(),
-    excluded_files: [
-      ".author-toolkit/backups/index.json",
-      ".author-toolkit/project.json",
-      "audit-tracker.md",
-      "manuscript/cover.png",
-      "story-bible.md",
-    ],
+    excluded_files: undefined,
   };
   await recordScope(project.projectRoot, scope, {
     authorConfirmation: authorConfirmation(),

@@ -17,14 +17,57 @@ import {
 const manuscript = "The ferry leaves at dawn.\nMara watches it go.\n";
 const dependencyPath = "reports/draft-baseline/baseline.md";
 
+function dependencyRole(filePath) {
+  if (filePath === "story-bible.md") return "story-bible";
+  if (filePath.includes("draft-baseline")) return "draft-baseline";
+  if (filePath.includes("revision-plan")) return "revision-plan";
+  return "other";
+}
+
+function dependencyReport(operation, copyedited = false) {
+  const envelope = {
+    schema_version: "2.0.0",
+    report_id: `${operation}-source`,
+    audit: `${operation} dependency audit${copyedited ? "!" : "."}`,
+    stage: operation,
+    created_at: timestamp,
+    language: "en",
+    skill: { name: "revise-draft", version: "4.0.0" },
+    inputs: [{
+      path: "manuscript/chapter-001.md",
+      version: createHash("sha256").update(manuscript).digest("hex"),
+      version_type: "sha256",
+    }],
+    engine: {
+      name: "conversational",
+      version: "test",
+      degraded: false,
+      notes: "scope_id=scope-001 operation_coverage=full language coverage=full",
+    },
+    scope_id: "scope-001",
+    scope_fingerprint: "0".repeat(64),
+    requested_pass: {
+      pass_id: "pass-source",
+      pass_fingerprint: "0".repeat(64),
+      path: ".author-toolkit/convergence/passes/pass-source.json",
+      sha256: "0".repeat(64),
+    },
+    findings: [],
+  };
+  return `# ${operation} dependency\n\n## Language coverage\n\nfull\n\n\`\`\`json\n${JSON.stringify(envelope, null, 2)}\n\`\`\`\n`;
+}
+
 async function createProject(t, selectedDependencyPath = dependencyPath) {
   const { projectRoot } = await createConvergenceProject(t, {
     manuscripts: [{ name: "chapter-001.md", contents: manuscript }],
   });
   await mkdir(path.dirname(path.join(projectRoot, selectedDependencyPath)), { recursive: true });
+  const role = dependencyRole(selectedDependencyPath);
   await writeFile(
     path.join(projectRoot, selectedDependencyPath),
-    "Observed fact: Mara watches the ferry.\n",
+    ["draft-baseline", "revision-plan"].includes(role)
+      ? dependencyReport(role)
+      : "Observed fact: Mara watches the ferry.\n",
     "utf8",
   );
   await recordScope(projectRoot, {
@@ -226,20 +269,25 @@ async function refreshPublication(projectRoot, evidence, published) {
 
 async function copyeditEvaluation(t, options) {
   const projectRoot = await createProject(t, options.dependencyPath);
+  const role = options.dependencyRole ?? dependencyRole(options.dependencyPath);
   const sourceEvidence = await createNoEditEvidence(projectRoot, {
     passId: "pass-001",
     dependencyPath: options.dependencyPath,
+    dependencyRole: role,
   });
   const sourceEvaluation = await evaluate(projectRoot, sourceEvidence, "evaluation-001");
   assert.equal(sourceEvaluation.status, 0, `${sourceEvaluation.stdout}\n${sourceEvaluation.stderr}`);
   await writeFile(
     path.join(projectRoot, options.dependencyPath),
-    "Observed fact: Mara watches the ferry!\n",
+    role === dependencyRole(options.dependencyPath) && ["draft-baseline", "revision-plan"].includes(role)
+      ? dependencyReport(role, true)
+      : "Observed fact: Mara watches the ferry!\n",
     "utf8",
   );
   const evidence = await createNoEditEvidence(projectRoot, {
     passId: "pass-002",
     dependencyPath: options.dependencyPath,
+    dependencyRole: role,
     baselinePass: sourceEvidence.passReference,
     reusedCoverageUnits: [sourceEvidence.coverageUnits.find(
       ({ unit }) => unit.operation === "diagnostics",
@@ -309,7 +357,7 @@ test("an attested baseline copyedit publishes a new unit version without rewriti
 
   await writeFile(
     path.join(projectRoot, dependencyPath),
-    "Observed fact: Mara watches the ferry!\n",
+    dependencyReport("draft-baseline", true),
     "utf8",
   );
   const evidence = await createNoEditEvidence(projectRoot, {
@@ -463,6 +511,21 @@ const invalidExceptionBindings = [
   ["refuted attestation", "dependency-exception-attestation-mismatch", ({ published }) => {
     published.attestation.claims[0].verdict = "refuted";
   }],
+  ["source-only attestation", "dependency-exception-attestation-mismatch", ({ published }) => {
+    published.attestation.claims[0].artifacts = published.attestation.claims[0].artifacts.filter(
+      (artifact) => artifact.path === published.source.reference.path
+    );
+  }],
+  ["missing pass attestation", "dependency-exception-attestation-mismatch", ({ published, evidence }) => {
+    published.attestation.claims[0].artifacts = published.attestation.claims[0].artifacts.filter(
+      (artifact) => artifact.path !== evidence.passReference.path
+    );
+  }],
+  ["missing dependency attestation", "dependency-exception-attestation-mismatch", ({ published }) => {
+    published.attestation.claims[0].artifacts = published.attestation.claims[0].artifacts.filter(
+      (artifact) => artifact.path !== published.unit.dependency_exception.dependency_path
+    );
+  }],
   ["attested source unit", "dependency-exception-source-mismatch", ({ published, sourceEvidence }) => {
     const wrongSource = sourceEvidence.coverageUnits.find(
       ({ unit }) => unit.operation === "characters",
@@ -570,3 +633,20 @@ test("ordinary reuse without an exception still rejects a changed dependency has
     blocker.code === "coverage-unit-not-current"
   ));
 });
+
+
+for (const operation of ["draft-baseline", "revision-plan"]) {
+  test(`an arbitrary path cannot acquire ${operation} dependency exception eligibility by declaration`, async (t) => {
+    const { evaluated } = await copyeditEvaluation(t, {
+      dependencyPath: "notes/arbitrary.md",
+      dependencyRole: operation,
+      operation,
+    });
+    assert.equal(evaluated.status, 1, `${evaluated.stdout}\n${evaluated.stderr}`);
+    const result = JSON.parse(evaluated.stdout);
+    assert.equal(result.evaluation.outcome, "indeterminate", result.stdout);
+    assert.ok(result.evaluation.blockers.some((blocker) =>
+      blocker.code === "dependency-exception-ineligible"
+    ), result.stdout);
+  });
+}

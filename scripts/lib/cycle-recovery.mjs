@@ -31,15 +31,9 @@ import {
   writeAtomicVerified,
 } from "./state-io.mjs";
 
-async function readProject(projectRoot) {
-  const root = path.resolve(projectRoot);
-  const manifestPath = path.join(root, ".author-toolkit", "project.json");
-  const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
-  const validation = validateManifest(manifest);
-  if (!validation.valid) {
-    throw new Error(validation.errors.map((error) => error.message).join("; "));
-  }
-  return { root, manifestPath, manifest };
+async function readProject(projectRoot, options = {}) {
+  const { readProject: readProjectWithReferences } = await import("./evaluation-artifacts.mjs");
+  return readProjectWithReferences(projectRoot, options);
 }
 
 function recoveryAction() {
@@ -343,7 +337,7 @@ async function unsafeDiscardResult(project, active, operation, artifacts) {
   };
 }
 
-async function finishCompletion(project, active, completed, request) {
+async function finishCompletion(project, active, completed, request, options = {}) {
   if (!active || !completed) {
     return failure("cycle-completion-unavailable", "The active and completed records needed for completion recovery are not both present.", active?.value ?? completed?.value ?? null);
   }
@@ -360,7 +354,7 @@ async function finishCompletion(project, active, completed, request) {
   }
   let evaluation;
   try {
-    evaluation = await recomputeCompletedCycleForRecovery(project, completed.value);
+    evaluation = await recomputeCompletedCycleForRecovery(project, completed.value, options);
   } catch (error) {
     return failure("completion-evaluation-unavailable", error.message, active.value);
   }
@@ -390,6 +384,7 @@ async function finishCompletion(project, active, completed, request) {
       return failure("cycle-operation-id-mismatch", "The completed history does not match the interrupted completion operation.", active.value);
     }
     await finishCycleOperation(project, completed.value, operation.operation_id, {
+      ...options,
       complete: true,
       completedAt: completed.value.updated_at,
       manifestChanges: { last_completed_cycle: lastCompleted },
@@ -403,7 +398,7 @@ async function finishCompletion(project, active, completed, request) {
     if (manifest.pending_action?.cycle_id === completed.value.cycle_id) {
       delete manifest.pending_action;
     }
-    const manifestValidation = validateManifest(manifest);
+    const manifestValidation = validateManifest(manifest, options);
     if (!manifestValidation.valid) {
       return failure("manifest-update-invalid", formatErrors(manifestValidation.errors), active.value);
     }
@@ -435,7 +430,7 @@ export async function reconcileCycle(projectRoot, request = {}, options = {}) {
   for (const key of Object.keys(request)) {
     if (!allowed.has(key)) throw new Error(`Unknown reconcile-cycle input field: ${key}`);
   }
-  const project = await readProject(projectRoot);
+  const project = await readProject(projectRoot, options);
   const lockPath = path.resolve(
     project.root,
     project.manifest.paths.convergence,
@@ -553,7 +548,7 @@ export async function reconcileCycle(projectRoot, request = {}, options = {}) {
     }
     let evaluation;
     try {
-      evaluation = await recomputeCompletedCycleForRecovery(project, completed.value);
+      evaluation = await recomputeCompletedCycleForRecovery(project, completed.value, options);
     } catch (error) {
       return failure("completion-evaluation-unavailable", error.message, completed.value);
     }
@@ -770,7 +765,7 @@ export async function reconcileCycle(projectRoot, request = {}, options = {}) {
         path: relative,
         sha256: sha256Bytes(text),
       };
-      const evaluation = await recomputeCycleEvaluationForRecovery(project, active.value, reference);
+      const evaluation = await recomputeCycleEvaluationForRecovery(project, active.value, reference, options);
       const updated = {
         ...active.value,
         revision: active.value.revision + 1,
@@ -896,7 +891,7 @@ export async function reconcileCycle(projectRoot, request = {}, options = {}) {
         active?.value ?? null,
       );
     }
-    return finishCompletion(project, active, completion.completed, request);
+    return finishCompletion(project, active, completion.completed, request, options);
   }
   if (request.direction !== "release-stale-lock") {
     throw new Error(`Unsupported reconcile-cycle direction: ${request.direction}`);

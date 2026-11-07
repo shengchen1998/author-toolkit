@@ -361,12 +361,17 @@ async function main() {
 try {
   await main();
 } catch (error) {
+  const projectFailure = Boolean(error.projectCode);
   console.log(JSON.stringify({
     response_contract_version: "1.0",
     command: process.argv[2] ?? null,
     valid: false,
     result: null,
-    errors: [{ code: "usage-error", message: error.message }],
+    errors: [{
+      code: projectFailure ? error.projectCode : "usage-error",
+      message: error.message,
+      ...(error.projectDetails ?? {}),
+    }],
   }, null, 2));
-  process.exitCode = 2;
+  process.exitCode = projectFailure ? 1 : 2;
 }

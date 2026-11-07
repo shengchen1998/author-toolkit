@@ -13,6 +13,7 @@ import {
   createFirstPublicationArtifacts,
   createNoEditEvidence,
   currentScopeReference,
+  projectClock,
   runAuthorProjectAsync,
   runInput,
   runValidator,
@@ -63,7 +64,7 @@ async function preparedProject(t, { actions = null, inputOrder = null, inputs = 
       confirmed_at: timestamp,
       reading_order_confirmed: true,
     },
-    now: new Date(timestamp),
+    now: await projectClock(projectRoot),
   });
   const scope = await currentScopeReference(projectRoot);
   const firstPublication = await createFirstPublicationArtifacts(projectRoot);
@@ -332,7 +333,7 @@ test("verification preserves prepared requested subchecks and rejects a reduced 
       confirmed_at: timestamp,
       reading_order_confirmed: true,
     },
-    now: new Date(timestamp),
+    now: await projectClock(fixture.projectRoot),
   });
   const targetScope = await currentScopeReference(fixture.projectRoot);
   const reduced = await createNoEditEvidence(fixture.projectRoot, {
@@ -586,7 +587,7 @@ test("revision verification compares retained paths by relative order for insert
         confirmed_at: timestamp,
         reading_order_confirmed: true,
       },
-      now: new Date(timestamp),
+      now: await projectClock(fixture.projectRoot),
     });
     const targetScope = await currentScopeReference(fixture.projectRoot);
     const finalEvidence = await createNoEditEvidence(fixture.projectRoot, {
@@ -681,7 +682,7 @@ test("an edited request preserves its base and completes only after full-target 
       confirmed_at: timestamp,
       reading_order_confirmed: true,
     },
-    now: new Date("2026-11-05T01:00:00Z"),
+    now: await projectClock(fixture.projectRoot),
   });
   const target = await currentScopeReference(fixture.projectRoot);
   assert.notEqual(target.scope_fingerprint, fixture.scope.scope_fingerprint);
@@ -716,7 +717,7 @@ test("an edited request preserves its base and completes only after full-target 
     path.join(fixture.projectRoot, ".author-toolkit", "project.json"),
   ]);
   assert.equal(requestStatus.status, 0, requestStatus.stderr);
-  const independentStatus = JSON.parse(requestStatus.stdout);
+  const independentStatus = JSON.parse(requestStatus.stdout).result;
   assert.equal(independentStatus.outcome, "indeterminate");
   assert.equal(independentStatus.request_completion.status, "complete");
 
@@ -864,7 +865,7 @@ test("an edited request preserves its base and completes only after full-target 
       confirmed_at: timestamp,
       reading_order_confirmed: true,
     },
-    now: new Date("2026-11-05T02:00:00Z"),
+    now: await projectClock(fixture.projectRoot),
   });
   const reworkTarget = await currentScopeReference(fixture.projectRoot);
   const reworkEvidence = await createNoEditEvidence(fixture.projectRoot, {
@@ -874,8 +875,8 @@ test("an edited request preserves its base and completes only after full-target 
     findings: [finding],
     findingStatuses: {
       [finding.id]: {
-        status: "resolved",
-        reason: "Author accepted the finding and execution-101 verified the approved fix.",
+        status: "open",
+        reason: "Author will accept the finding after execution-101 verifies the approved fix.",
       },
     },
   });
@@ -887,6 +888,15 @@ test("an edited request preserves its base and completes only after full-target 
     target_scope: reworkTarget,
   });
   assert.equal(reworkVerified.status, 0, `${reworkVerified.stdout}\n${reworkVerified.stderr}`);
+  const decided = await runInput(fixture.projectRoot, "record-finding-decision", {
+    finding_id: finding.id,
+    status: "resolved",
+    report: "reports/diagnostics/pass-request-rework-002-local.md",
+    reason: "Author accepted the finding and execution-101 verified the approved fix.",
+    author_decision_id: "RESOLVE-101",
+    revision_execution: JSON.parse(reworkVerified.stdout).execution_reference,
+  });
+  assert.equal(decided.status, 0, `${decided.stdout}\n${decided.stderr}`);
   const cumulative = JSON.parse(reworkVerified.stdout).cycle.change_set;
   assert.equal(cumulative.from_scope.scope_fingerprint, fixture.scope.scope_fingerprint);
   assert.deepEqual(cumulative.modified, [{
@@ -940,7 +950,7 @@ test("an edited request preserves its base and completes only after full-target 
     path.join(fixture.projectRoot, ".author-toolkit", "project.json"),
   ]);
   assert.equal(invalidated.status, 0, invalidated.stderr);
-  const invalidatedStatus = JSON.parse(invalidated.stdout);
+  const invalidatedStatus = JSON.parse(invalidated.stdout).result;
   assert.equal(invalidatedStatus.outcome, "indeterminate");
   assert.equal(invalidatedStatus.current, false);
   assert.ok(invalidatedStatus.blockers.some((blocker) => blocker.code === "target-scope-not-current"));
@@ -1036,7 +1046,7 @@ async function injectOpenReviewFinding(projectRoot, evidence, finding) {
   const tracker = await readFile(trackerPath, "utf8");
   const separator = "|---|---|---|---|---|---|---|---|\n";
   const index = tracker.indexOf(separator, tracker.indexOf("## Findings"));
-  const row = `| ${finding.id} | current-scope-review | intent | manuscript/chapter-001.md | open | ${reportReference.path} | ${timestamp} | Author decision is required after full-target review. |\n`;
+  const row = `| ${finding.id} | current-scope-review | ${finding.audit} | ${finding.location.file} | open | ${reportReference.path} | ${timestamp} | Author decision is required after full-target review. |\n`;
   await writeFile(
     trackerPath,
     tracker.slice(0, index + separator.length) + row + tracker.slice(index + separator.length),
@@ -1080,7 +1090,7 @@ test("a narrow no-change request keeps full-target coverage and reuses eligible 
       confirmed_at: timestamp,
       reading_order_confirmed: true,
     },
-    now: new Date(timestamp),
+    now: await projectClock(projectRoot),
   });
   const baseScope = await currentScopeReference(projectRoot);
   const firstPublication = await createFirstPublicationArtifacts(projectRoot, {
@@ -1178,18 +1188,26 @@ test("a narrow no-change request keeps full-target coverage and reuses eligible 
   await injectOpenReviewFinding(projectRoot, target, deferredReviewFinding);
   const trackerPath = path.join(projectRoot, "audit-tracker.md");
   const tracker = await readFile(trackerPath, "utf8");
-  await writeFile(
-    trackerPath,
-    tracker.replace(
-      `| ${deferredReviewFinding.id} | current-scope-review | intent | manuscript/chapter-001.md | open | ${target.reviewReports[0].path} | ${timestamp} | Author decision is required after full-target review. |`,
-      `| ${deferredReviewFinding.id} | current-scope-review | intent | manuscript/chapter-001.md | deferred | ${target.reviewReports[0].path} | ${timestamp} | Author deferred the review suggestion with its consequence recorded. |`,
-    ),
-    "utf8",
+  const approvalRow = tracker.split("\n").find((line) => line.startsWith("| NOEDIT-202 |"));
+  assert.ok(approvalRow);
+  const boundApprovalRow = approvalRow.replace(
+    "Author confirmed that no accepted finding requires a manuscript edit.",
+    `Author confirmed that no accepted finding requires a manuscript edit. finding_id=${deferredReviewFinding.id} finding_status=deferred`,
   );
+  await writeFile(trackerPath, tracker.replace(approvalRow, boundApprovalRow), "utf8");
   target.noEditSkip.covered_findings.push(deferredReviewFinding.id);
   const skipPath = path.join(projectRoot, target.noEditReference.path);
   await writeJson(skipPath, target.noEditSkip);
   target.noEditReference.sha256 = createHash("sha256").update(await readFile(skipPath)).digest("hex");
+  const decided = await runInput(projectRoot, "record-finding-decision", {
+    finding_id: deferredReviewFinding.id,
+    status: "deferred",
+    report: target.reviewReports[0].path,
+    reason: "Author deferred the review suggestion with its consequence recorded.",
+    author_decision_id: target.noEditSkip.author_decision_id,
+    no_edit_skip: target.noEditReference,
+  });
+  assert.equal(decided.status, 0, `${decided.stdout}\n${decided.stderr}`);
 
   const linked = await runInput(projectRoot, "transition-cycle", {
     cycle_id: "cycle-request-202",
@@ -1242,7 +1260,7 @@ test("a narrow no-change request keeps full-target coverage and reuses eligible 
     path.join(projectRoot, ".author-toolkit", "project.json"),
   ]);
   assert.equal(status.status, 0, status.stderr);
-  assert.equal(JSON.parse(status.stdout).request_completion.status, "complete");
+  assert.equal(JSON.parse(status.stdout).result.request_completion.status, "complete");
 
   const completed = await runInput(projectRoot, "complete-cycle", {
     cycle_id: "cycle-request-202",
@@ -1353,7 +1371,7 @@ async function evaluateEditedRequestFinding(t, findingStatus, { withNoEditDecisi
       confirmed_at: timestamp,
       reading_order_confirmed: true,
     },
-    now: new Date("2026-11-05T03:00:00Z"),
+    now: await projectClock(fixture.projectRoot),
   });
   const target = await currentScopeReference(fixture.projectRoot);
   const evidence = await createNoEditEvidence(fixture.projectRoot, {
@@ -1365,14 +1383,6 @@ async function evaluateEditedRequestFinding(t, findingStatus, { withNoEditDecisi
   await injectOpenReviewFinding(fixture.projectRoot, evidence, finding);
   const trackerPath = path.join(fixture.projectRoot, "audit-tracker.md");
   const tracker = await readFile(trackerPath, "utf8");
-  await writeFile(
-    trackerPath,
-    tracker.replace(
-      `| ${finding.id} | current-scope-review | intent | manuscript/chapter-001.md | open | ${evidence.reviewReports[0].path} | ${timestamp} | Author decision is required after full-target review. |`,
-      `| ${finding.id} | current-scope-review | intent | manuscript/chapter-001.md | ${findingStatus} | ${evidence.reviewReports[0].path} | ${timestamp} | Tracker status was edited without a finding-decision record. |`,
-    ),
-    "utf8",
-  );
   if (withNoEditDecision) {
     evidence.noEditSkip.covered_findings.push(finding.id);
     const skipPath = path.join(fixture.projectRoot, evidence.noEditReference.path);
@@ -1380,6 +1390,22 @@ async function evaluateEditedRequestFinding(t, findingStatus, { withNoEditDecisi
     evidence.noEditReference.sha256 = createHash("sha256")
       .update(await readFile(skipPath))
       .digest("hex");
+    const approvalRow = tracker.split("\n").find((line) => line.startsWith("| NOEDIT-302 |"));
+    assert.ok(approvalRow);
+    const boundApprovalRow = approvalRow.replace(
+      "Author confirmed that no accepted finding requires a manuscript edit.",
+      `Author confirmed that no accepted finding requires a manuscript edit. finding_id=${finding.id} finding_status=${findingStatus}`,
+    );
+    await writeFile(trackerPath, tracker.replace(approvalRow, boundApprovalRow), "utf8");
+  } else {
+    await writeFile(
+      trackerPath,
+      tracker.replace(
+        `| ${finding.id} | current-scope-review | ${finding.audit} | ${finding.location.file} | open | ${evidence.reviewReports[0].path} | ${timestamp} | Author decision is required after full-target review. |`,
+        `| ${finding.id} | current-scope-review | ${finding.audit} | ${finding.location.file} | ${findingStatus} | ${evidence.reviewReports[0].path} | ${timestamp} | Tracker status was edited without a finding-decision record. |`,
+      ),
+      "utf8",
+    );
   }
   const verified = await runInput(fixture.projectRoot, "verify-revision-execution", {
     cycle_id: "cycle-request-finding-gate",
@@ -1388,7 +1414,31 @@ async function evaluateEditedRequestFinding(t, findingStatus, { withNoEditDecisi
     requested_pass: evidence.passReference,
     target_scope: target,
   });
-  assert.equal(verified.status, 0, `${verified.stdout}\n${verified.stderr}`);
+  assert.equal(verified.status, withNoEditDecision ? 0 : 1, `${verified.stdout}\n${verified.stderr}`);
+  if (!withNoEditDecision) {
+    const status = runValidator([
+      "--convergence-status",
+      path.join(fixture.projectRoot, ".author-toolkit", "project.json"),
+    ]);
+    return {
+      finding,
+      evaluated: verified,
+      evaluationResult: JSON.parse(verified.stdout),
+      status,
+      requestCompletion: null,
+    };
+  }
+  if (withNoEditDecision) {
+    const decided = await runInput(fixture.projectRoot, "record-finding-decision", {
+      finding_id: finding.id,
+      status: findingStatus,
+      report: evidence.reviewReports[0].path,
+      reason: `Author recorded the ${findingStatus} no-edit decision after verified output.`,
+      author_decision_id: evidence.noEditSkip.author_decision_id,
+      no_edit_skip: evidence.noEditReference,
+    });
+    assert.equal(decided.status, 0, `${decided.stdout}\n${decided.stderr}`);
+  }
   const linked = await runInput(fixture.projectRoot, "transition-cycle", {
     cycle_id: "cycle-request-finding-gate",
     expected_revision: 4,
@@ -1403,26 +1453,36 @@ async function evaluateEditedRequestFinding(t, findingStatus, { withNoEditDecisi
       ...(withNoEditDecision ? { no_edit_skips: [evidence.noEditReference] } : {}),
     },
   });
-  assert.equal(linked.status, 0, linked.stderr);
-  const evaluated = await runInput(
-    fixture.projectRoot,
-    "evaluate-cycle",
-    evidence.evaluationInput(
-      `evaluation-finding-${findingStatus}-${withNoEditDecision ? "decided" : "undecided"}`,
-      5,
-      "cycle-request-finding-gate",
-    ),
-  );
+  assert.equal(linked.status, withNoEditDecision ? 0 : 1, linked.stderr);
   const status = runValidator([
     "--convergence-status",
     path.join(fixture.projectRoot, ".author-toolkit", "project.json"),
   ]);
-  assert.equal(status.status, 0, status.stderr);
+  assert.equal(status.status, withNoEditDecision ? 0 : 1, status.stderr);
+  if (!withNoEditDecision) {
+    return {
+      finding,
+      evaluated: linked,
+      evaluationResult: JSON.parse(linked.stdout),
+      status,
+      requestCompletion: null,
+    };
+  }
+  const evaluated = await runInput(
+    fixture.projectRoot,
+    "evaluate-cycle",
+    evidence.evaluationInput(
+      `evaluation-finding-${findingStatus}-decided`,
+      5,
+      "cycle-request-finding-gate",
+    ),
+  );
   return {
     finding,
     evaluated,
     evaluationResult: JSON.parse(evaluated.stdout),
-    requestCompletion: JSON.parse(status.stdout).request_completion,
+    status,
+    requestCompletion: JSON.parse(status.stdout).result.request_completion,
   };
 }
 
@@ -1430,17 +1490,13 @@ for (const findingStatus of ["deferred", "dismissed"]) {
   test(`an edited execution does not bypass an undecided ${findingStatus} finding`, async (t) => {
     const result = await evaluateEditedRequestFinding(t, findingStatus);
     assert.equal(result.evaluated.status, 1, `${result.evaluated.stdout}\n${result.evaluated.stderr}`);
-    assert.equal(result.evaluationResult.evaluation.outcome, "not_satisfied");
-    const blocker = result.evaluationResult.evaluation.blockers.find(
-      (candidate) => candidate.code === "finding-author-decision-missing"
+    assert.equal(result.evaluationResult.valid, false);
+    const blocker = result.evaluationResult.blockers.find(
+      (candidate) => candidate.code === "revision-execution-verification-invalid"
     );
-    assert.ok(blocker, JSON.stringify(result.evaluationResult.evaluation.blockers, null, 2));
-    assert.equal(blocker.artifact_id, result.finding.id);
-    assert.equal(result.requestCompletion.status, "incomplete");
-    assert.ok(result.requestCompletion.blockers.some(
-      (candidate) => candidate.code === "finding-author-decision-missing" &&
-        candidate.message.includes(result.finding.id)
-    ), JSON.stringify(result.requestCompletion, null, 2));
+    assert.ok(blocker, JSON.stringify(result.evaluationResult.blockers, null, 2));
+    assert.match(blocker.message, /author_decision_id|finding_status/);
+    assert.equal(result.requestCompletion, null);
   });
 }
 

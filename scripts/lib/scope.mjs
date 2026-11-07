@@ -9,7 +9,7 @@ import {
 } from "./manuscript.mjs";
 import { projectRootFromManifest } from "./project-files.mjs";
 import { runCheckpoint } from "./cycle-coordination.mjs";
-import { readActiveCycle } from "./evaluation-artifacts.mjs";
+import { readActiveCycle, readProject } from "./evaluation-artifacts.mjs";
 import {
   validateInventorySnapshotSchema,
   validateScopeSnapshotSchema,
@@ -134,7 +134,7 @@ export async function recordInventorySnapshot(projectRoot, manifest, options = {
     ...observed,
     created_at: utcTimestamp(options),
   };
-  const validation = validateInventorySnapshot(record);
+  const validation = validateInventorySnapshot(record, options);
   if (!validation.valid) throw validationError(validation);
   const relative = path.posix.join(
     manifest.paths.convergence,
@@ -235,7 +235,7 @@ async function recordScopeLocked(root, manifestPath, initialConvergence, scope, 
     );
   }
   const manifest = JSON.parse(manifestText);
-  const originalValidation = validateManifest(manifest);
+  const originalValidation = validateManifest(manifest, options);
   if (!originalValidation.valid) throw validationError(originalValidation);
   if (manifest.paths.convergence !== initialConvergence) {
     throw scopeStateError(
@@ -243,7 +243,7 @@ async function recordScopeLocked(root, manifestPath, initialConvergence, scope, 
       "The registered convergence path changed while scope recording waited for its lock.",
     );
   }
-  const active = await readActiveCycle({ root, manifest });
+  const active = await readActiveCycle({ root, manifest }, options);
   if (options.cycleId !== undefined && !active) {
     throw scopeStateError("active-cycle-required", "The named active cycle is unavailable.");
   }
@@ -331,7 +331,7 @@ async function recordScopeLocked(root, manifestPath, initialConvergence, scope, 
 
   if (normalizedScope.status === "proposed") {
     const updated = { ...manifest, current_scope: currentScope, updated_at: updatedAt };
-    const validation = validateManifest(updated);
+    const validation = validateManifest(updated, options);
     if (!validation.valid) throw validationError(validation);
     await atomicWrite(manifestPath, `${JSON.stringify(updated, null, 2)}\n`);
     progress.manifestWritten = true;
@@ -392,15 +392,15 @@ async function recordScopeLocked(root, manifestPath, initialConvergence, scope, 
       reading_order_confirmed: true,
     },
   };
-  const inventoryValidation = validateInventorySnapshot(inventoryRecord);
+  const inventoryValidation = validateInventorySnapshot(inventoryRecord, options);
   if (!inventoryValidation.valid) throw validationError(inventoryValidation);
-  const snapshotValidation = validateScopeSnapshot(snapshot);
+  const snapshotValidation = validateScopeSnapshot(snapshot, options);
   if (!snapshotValidation.valid) throw validationError(snapshotValidation);
   const snapshotText = `${JSON.stringify(snapshot, null, 2)}\n`;
   currentScope.snapshot_path = snapshotRelative;
   currentScope.snapshot_sha256 = sha256(snapshotText);
   const updated = { ...manifest, current_scope: currentScope, updated_at: updatedAt };
-  const validation = validateManifest(updated);
+  const validation = validateManifest(updated, options);
   if (!validation.valid) throw validationError(validation);
 
   await writeImmutable(inventoryPath, inventoryText);
@@ -434,11 +434,7 @@ async function recordScopeLocked(root, manifestPath, initialConvergence, scope, 
 }
 
 export async function recordScope(projectRoot, scope, options = {}) {
-  const root = path.resolve(projectRoot);
-  const manifestPath = path.join(root, ".author-toolkit", "project.json");
-  const initialManifest = JSON.parse(await readFile(manifestPath, "utf8"));
-  const originalValidation = validateManifest(initialManifest);
-  if (!originalValidation.valid) throw validationError(originalValidation);
+  const { root, manifestPath, manifest: initialManifest } = await readProject(projectRoot, options);
   await mkdir(path.resolve(root, initialManifest.paths.convergence), { recursive: true });
   const lock = await acquireDirectoryLock(
     path.resolve(root, initialManifest.paths.convergence, "active-cycle.lock"),
@@ -498,7 +494,7 @@ function relevantExclusions(values, paths) {
   return values.filter((value) => !isOperationalManuscriptPath(value, paths));
 }
 
-export async function validateFullManuscriptScope(manifest, manifestPath) {
+export async function validateFullManuscriptScope(manifest, manifestPath, options = {}) {
   const projectRoot = projectRootFromManifest(manifestPath);
   const scope = manifest.current_scope;
   const result = {
@@ -556,7 +552,7 @@ export async function validateFullManuscriptScope(manifest, manifestPath) {
   try {
     snapshotText = await readFile(path.resolve(projectRoot, scope.snapshot_path), "utf8");
     snapshot = JSON.parse(snapshotText);
-    result.errors.push(...validateScopeSnapshot(snapshot).errors);
+    result.errors.push(...validateScopeSnapshot(snapshot, options).errors);
     result.inventory_fingerprint = snapshot.inventory?.inventory_fingerprint ?? null;
     if (sha256(snapshotText) !== scope.snapshot_sha256) {
       result.errors.push(
@@ -653,7 +649,7 @@ export async function validateFullManuscriptScope(manifest, manifestPath) {
         "utf8",
       );
       inventory = JSON.parse(inventoryText);
-      result.errors.push(...validateInventorySnapshot(inventory).errors);
+      result.errors.push(...validateInventorySnapshot(inventory, options).errors);
       if (inventory.manuscript_root !== manifest.manuscript_root) {
         result.errors.push(
           scopeFailure(

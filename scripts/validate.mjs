@@ -18,6 +18,7 @@ function createArtifactTypes({
   validateRevisionExecution,
   validateSemanticAttestation,
   validateCoverageIndex,
+  validateCoverageIndexFile,
   validateCoverageUnit,
   validateCreationBatch,
   validateCreationCommit,
@@ -70,7 +71,7 @@ function createArtifactTypes({
     { key: "creationBatches", option: "--creation-batch", validate: validateCreationBatch },
     { key: "creationCommits", option: "--creation-commit", validate: validateCreationCommit },
     { key: "coverageUnits", option: "--coverage-unit", validate: validateCoverageUnit },
-    { key: "coverageIndexes", option: "--coverage-index", validate: validateCoverageIndex },
+    { key: "coverageIndexes", option: "--coverage-index", validateFile: validateCoverageIndexFile },
     { key: "reviewJobs", option: "--review-job", validate: validateReviewJob },
     {
       key: "readerStates",
@@ -110,6 +111,28 @@ Repository mode checks all schemas and current example manifests and reports.
 Project-root mode checks deployed shared-reference hashes, then the selected project's manifest, files, and tracker.
 Repository and project-root modes cannot be combined with each other or individual checks.
 --now ISO_TIMESTAMP injects the UTC validation clock; current timestamps may be at most 60 seconds in the future.`);
+}
+
+function emitResponse(command, result, valid, errors) {
+  console.log(JSON.stringify({
+    response_contract_version: "1.0",
+    command,
+    valid,
+    result,
+    errors,
+  }, null, 2));
+  if (!valid) process.exitCode = 1;
+}
+
+function emitUsageError(error) {
+  console.log(JSON.stringify({
+    response_contract_version: "1.0",
+    command: "validate",
+    valid: false,
+    result: null,
+    errors: [{ code: "usage-error", message: error.message }],
+  }, null, 2));
+  process.exitCode = 2;
 }
 
 async function readJson(file) {
@@ -226,27 +249,18 @@ async function main() {
     const manifestPath = isStatus ? selection.convergenceStatus[0] : selection.convergenceGate[0];
     const projectRoot = projectRootFromManifest(manifestPath);
     const result = isStatus
-      ? await getCycleStatus(projectRoot)
-      : await checkConvergenceGate(projectRoot);
-    console.log(JSON.stringify(result, null, 2));
-    if (isStatus ? !result.query_valid : !result.valid) process.exitCode = 1;
+      ? await getCycleStatus(projectRoot, { now: selection.now ?? undefined })
+      : await checkConvergenceGate(projectRoot, { now: selection.now ?? undefined });
+    const valid = isStatus ? result.query_valid : result.valid;
+    emitResponse(isStatus ? "convergence-status" : "convergence-gate", result, valid, valid ? [] : result.blockers);
     return;
   }
 
-  let checks = 0;
-  let failures = 0;
+  const results = [];
 
   function check(label, result) {
-    checks += 1;
-    if (result.valid) {
-      console.log(`ok - ${label}`);
-      return;
-    }
-    failures += 1;
-    console.error(`not ok - ${label}`);
-    for (const error of result.errors) {
-      console.error(`  ${error.instancePath || "/"} ${error.code ? `${error.code}: ` : ""}${error.message}`);
-    }
+    const { valid, errors, ...details } = result;
+    results.push({ label, valid, errors, ...details });
   }
 
   if (selection.projectRoot) {
@@ -279,16 +293,19 @@ async function main() {
         if (manifest.current_scope) {
           const scopeResult = await validateFullManuscriptScope(manifest, file);
           check(`${path.relative(root, file)}#scope`, scopeResult);
-          console.log(
-            `  scope_id=${scopeResult.scope_id} scope_fingerprint=${scopeResult.scope_fingerprint} full_manuscript=${scopeResult.full_manuscript}`,
-          );
         }
-        check(`${path.relative(root, file)}#tracker`, await validateTracker(manifest, file));
+        check(`${path.relative(root, file)}#tracker`, await validateTracker(manifest, file, {
+          now: selection.now ?? undefined,
+        }));
         check(
           `${path.relative(root, file)}#backups`,
           await runtime.validateBackupIndexFile(
-            path.resolve(path.dirname(file), "..", manifest.paths.backups, "index.json"),
-            { projectRoot: projectRootFromManifest(file), now: selection.now ?? undefined },
+            path.resolve(projectRootFromManifest(file), manifest.paths.backups, "index.json"),
+            {
+              projectRoot: projectRootFromManifest(file),
+              manifest,
+              now: selection.now ?? undefined,
+            },
           ),
         );
       }
@@ -340,14 +357,25 @@ async function main() {
     }
   }
 
-  console.log(`${checks} checks, ${failures} failures`);
-  if (failures > 0) process.exitCode = 1;
+  const failed = results.filter((result) => !result.valid);
+  const errors = failed.flatMap((result) => result.errors.map((error) => ({
+    ...error,
+    check: result.label,
+  })));
+  const mode = selection.repository
+    ? "repository"
+    : selection.projectRoot
+      ? "project-root"
+      : "artifacts";
+  emitResponse("validate", {
+    mode,
+    checks: results.length,
+    results,
+  }, errors.length === 0, errors);
 }
 
 try {
   await main();
 } catch (error) {
-  console.error(error.message);
-  usage();
-  process.exitCode = 2;
+  emitUsageError(error);
 }

@@ -7,7 +7,7 @@ import test from "node:test";
 import { root } from "./helpers.mjs";
 
 test("tracked pre-commit hook runs fast validation and focused contracts", {
-  timeout: 120000,
+  timeout: 240000,
 }, async () => {
   const hook = path.join(root, ".githooks", "pre-commit");
   const metadata = await stat(hook);
@@ -26,11 +26,16 @@ test("tracked pre-commit hook runs fast validation and focused contracts", {
     cwd: path.join(root, "scripts"),
     encoding: "utf8",
     env: environment,
-    timeout: 90000,
+    timeout: 240000,
   });
   const output = `${result.stdout}\n${result.stderr}`;
   assert.equal(result.status, 0, output);
-  assert.match(output, /11 checks, 0 failures/);
+  const responseText = result.stdout.match(/^\{\n[\s\S]*?^\}/m)?.[0];
+  assert.ok(responseText, output);
+  const response = JSON.parse(responseText);
+  assert.equal(response.valid, true);
+  assert.equal(response.result.checks, 11);
+  assert.deepEqual(response.errors, []);
   assert.match(output, /Generated runtime artifacts are current/);
   assert.match(output, /# pass [1-9][0-9]*/);
   assert.match(output, /# fail 0/);

@@ -5,7 +5,12 @@ import { cp, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/pr
 import path from "node:path";
 import test from "node:test";
 
-import { extractReportEnvelope } from "../scripts/lib/index.mjs";
+import { extractReportEnvelope, recordScope } from "../scripts/lib/index.mjs";
+import {
+  createConvergenceProject,
+  createNoEditEvidence,
+  timestamp,
+} from "./convergence-helpers.mjs";
 import { readReport, root } from "./helpers.mjs";
 
 const sourceProjectCli = path.join(root, "scripts", "author-project.mjs");
@@ -164,12 +169,6 @@ test("coverage artifacts require current hashes and preserve null synthesis", as
   const temporary = await mkdtemp(path.join(output, "greenfield-coverage-"));
   t.after(() => rm(temporary, { recursive: true, force: true }));
   const validator = path.join(root, "scripts", "validate.mjs");
-  const requestedPass = {
-    pass_id: "fixture-pass-en",
-    pass_fingerprint: "b".repeat(64),
-    path: ".author-toolkit/convergence/passes/fixture-pass-en.json",
-    sha256: "c".repeat(64),
-  };
   const unit = {
     schema_version: "1.0.0",
     unit_id: "unit-current",
@@ -185,22 +184,39 @@ test("coverage artifacts require current hashes and preserve null synthesis", as
     coverage: "full",
     created_at: "2026-11-05T00:00:00Z",
   };
-  const index = {
-    schema_version: "1.0.0",
-    scope_id: "scope-current",
-    scope_fingerprint: "a".repeat(64),
-    requested_pass: requestedPass,
-    entries: [{
-      operation: "diagnostics",
-      units: [{ unit_id: "unit-current", path: "reports/coverage/current.json", sha256: "f".repeat(64) }],
-      synthesis_report: null,
-      synthesis_coverage: null,
+
+  const manuscript = "The ferry leaves at dawn.\n";
+  const { projectRoot } = await createConvergenceProject(t, {
+    manuscripts: [{ name: "chapter-001.md", contents: manuscript }],
+  });
+  await recordScope(projectRoot, {
+    scope_id: "scope-greenfield-coverage",
+    description: "The complete manuscript for current coverage validation.",
+    status: "confirmed",
+    files: [{
+      path: "manuscript/chapter-001.md",
+      sha256: createHash("sha256").update(manuscript).digest("hex"),
     }],
-    updated_at: "2026-11-05T00:00:00Z",
-  };
+    excluded_files: [],
+    created_at: timestamp,
+  }, {
+    authorConfirmation: {
+      decision_id: "SCOPE-001",
+      confirmed_at: timestamp,
+      reading_order_confirmed: true,
+    },
+    now: new Date(timestamp),
+  });
+  const evidence = await createNoEditEvidence(projectRoot);
+  const currentIndex = JSON.parse(await readFile(
+    path.join(projectRoot, evidence.coverageIndexReference.path),
+    "utf8",
+  ));
 
   async function validateJson(name, option, value) {
-    const file = path.join(temporary, `${name}.json`);
+    const file = option === "--coverage-index"
+      ? path.join(projectRoot, "reports", "coverage", `${name}.json`)
+      : path.join(temporary, `${name}.json`);
     await writeFile(file, `${JSON.stringify(value, null, 2)}\n`, "utf8");
     return spawnSync(process.execPath, [validator, option, file], {
       cwd: root,
@@ -210,11 +226,25 @@ test("coverage artifacts require current hashes and preserve null synthesis", as
 
   for (const [name, option, value] of [
     ["current-unit", "--coverage-unit", unit],
-    ["current-index", "--coverage-index", index],
+    ["current-index", "--coverage-index", currentIndex],
   ]) {
     const current = await validateJson(name, option, value);
     assert.equal(current.status, 0, `${name}: ${current.stdout}\n${current.stderr}`);
   }
+  const nullSynthesis = structuredClone(currentIndex);
+  nullSynthesis.entries[0].synthesis_report = null;
+  delete nullSynthesis.entries[0].synthesis_report_sha256;
+  nullSynthesis.entries[0].synthesis_coverage = null;
+  const currentNullSynthesis = await validateJson(
+    "current-null-synthesis",
+    "--coverage-index",
+    nullSynthesis,
+  );
+  assert.equal(
+    currentNullSynthesis.status,
+    0,
+    `${currentNullSynthesis.stdout}\n${currentNullSynthesis.stderr}`,
+  );
 
   const legacyUnit = structuredClone(unit);
   delete legacyUnit.source_report_sha256;
@@ -224,14 +254,15 @@ test("coverage artifacts require current hashes and preserve null synthesis", as
   assert.match(`${oldUnit.stdout}\n${oldUnit.stderr}`, /manuscript-only/i);
 
   const legacyIndexes = [];
-  const missingPass = structuredClone(index);
+  const missingPass = structuredClone(currentIndex);
   delete missingPass.requested_pass;
   legacyIndexes.push(missingPass);
-  const missingUnitHash = structuredClone(index);
+  const missingUnitHash = structuredClone(currentIndex);
   delete missingUnitHash.entries[0].units[0].sha256;
   legacyIndexes.push(missingUnitHash);
-  const missingSynthesisHash = structuredClone(index);
+  const missingSynthesisHash = structuredClone(currentIndex);
   missingSynthesisHash.entries[0].synthesis_report = "reports/diagnostics/synthesis.md";
+  delete missingSynthesisHash.entries[0].synthesis_report_sha256;
   missingSynthesisHash.entries[0].synthesis_coverage = "full";
   legacyIndexes.push(missingSynthesisHash);
   for (const [position, value] of legacyIndexes.entries()) {

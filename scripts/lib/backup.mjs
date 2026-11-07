@@ -2,15 +2,22 @@ import { readFile, rename } from "node:fs/promises";
 import path from "node:path";
 
 import { validateCreationCommit } from "./artifacts.mjs";
+import { commandError, failure, requiredAction } from "./command-result.mjs";
 import { runCheckpoint } from "./cycle-coordination.mjs";
 import { readProject } from "./evaluation-artifacts.mjs";
+import { isOperationalManuscriptPath } from "./manuscript.mjs";
 import {
   validateBackupIndexSchema,
   validateBackupManifestSchema,
   validateRecordBackupCommand,
   validateRecordRestoreCommand,
 } from "./schemas.mjs";
-import { collectVersionedInventory, validateFullManuscriptScope } from "./scope.mjs";
+import {
+  collectVersionedInventory,
+  computeScopeFingerprint,
+  validateFullManuscriptScope,
+  validateScopeSnapshot,
+} from "./scope.mjs";
 import { validateDeployedReferences } from "./shared-references.mjs";
 import {
   acquireDirectoryLock,
@@ -65,13 +72,99 @@ function validateFileActions(files) {
   return errors;
 }
 
+const MANUSCRIPT_EXTENSIONS = new Set([".md", ".markdown", ".txt"]);
+
+function manuscriptActionErrors(manifest, files, inputScope, code, checkScope = true) {
+  const errors = [];
+  const manuscriptRoot = manifest.manuscript_root.replace(/\/$/, "");
+  const singleFileRoot = MANUSCRIPT_EXTENSIONS.has(path.posix.extname(manuscriptRoot).toLowerCase());
+  const scopeFiles = new Map((inputScope?.files ?? []).map((file) => [file.path, file]));
+  for (const [index, file] of (files ?? []).entries()) {
+    const withinRoot = singleFileRoot
+      ? file.path === manuscriptRoot
+      : manuscriptRoot === "." || file.path.startsWith(`${manuscriptRoot}/`);
+    if (
+      !withinRoot ||
+      !MANUSCRIPT_EXTENSIONS.has(path.posix.extname(file.path).toLowerCase()) ||
+      isOperationalManuscriptPath(file.path, manifest.paths)
+    ) {
+      errors.push(backupError(
+        `/files/${index}/path`,
+        `backup and restore actions require a manuscript path beneath ${manifest.manuscript_root}: ${file.path}`,
+        code,
+      ));
+      continue;
+    }
+    if (!checkScope) continue;
+    const scoped = scopeFiles.get(file.path);
+    if (file.action === "create" && scoped) {
+      errors.push(backupError(
+        `/files/${index}/path`,
+        `create target already belongs to the input scope: ${file.path}`,
+        code,
+      ));
+    } else if (file.action !== "create" && (!scoped || scoped.sha256 !== file.input_sha256)) {
+      errors.push(backupError(
+        `/files/${index}/input_sha256`,
+        `${file.action} input must belong to the applicable input scope with its exact hash: ${file.path}`,
+        code,
+      ));
+    }
+  }
+  return errors;
+}
+
+function requireManuscriptActions(project, files, inputScope, code) {
+  const errors = manuscriptActionErrors(project.manifest, files, inputScope, code);
+  if (errors.length > 0) {
+    throw commandError(code, "Backup and restore actions are limited to exact manuscript-scope paths.", {
+      validation_errors: errors,
+    });
+  }
+}
+
+async function readRestoreSourceScope(project, sourceManifest, options) {
+  if (sourceManifest.files.every((file) => file.action === "create")) return null;
+  const code = "restore-source-scope-mismatch";
+  if (!sourceManifest.scope_id || !sourceManifest.scope_fingerprint) {
+    throw commandError(code, "Restoring original bytes requires the source backup's confirmed input scope.");
+  }
+  const relative = path.posix.join(
+    project.manifest.paths.convergence,
+    "scopes",
+    `${sourceManifest.scope_id}-${sourceManifest.scope_fingerprint}.json`,
+  );
+  let snapshot;
+  try {
+    snapshot = JSON.parse(await readFile(path.resolve(project.root, relative), "utf8"));
+  } catch (error) {
+    throw commandError(code, `Cannot read the source backup input scope: ${error.message}`, {
+      path: relative,
+    });
+  }
+  const validation = validateScopeSnapshot(snapshot, options);
+  if (
+    !validation.valid ||
+    snapshot.scope_id !== sourceManifest.scope_id ||
+    snapshot.scope_fingerprint !== sourceManifest.scope_fingerprint ||
+    computeScopeFingerprint(snapshot) !== sourceManifest.scope_fingerprint
+  ) {
+    throw commandError(code, "The source backup input scope is not valid confirmed scope evidence.", {
+      path: relative,
+      validation_errors: validation.errors,
+    });
+  }
+  return snapshot;
+}
+
 export function validateBackupManifest(value, options = {}) {
   const schema = validateBackupManifestSchema(value, options);
   const errors = [...schema.errors, ...validateFileActions(value?.files)];
   return { valid: errors.length === 0, errors };
 }
 
-async function readManifest(projectRoot) {
+async function readProjectManifest(projectRoot, candidate = null) {
+  if (candidate !== null) return candidate;
   return JSON.parse(await readFile(
     path.join(projectRoot, ".author-toolkit", "project.json"),
     "utf8",
@@ -83,7 +176,7 @@ export async function validateBackupIndex(projectRoot, value, options = {}) {
   const schema = validateBackupIndexSchema(value, options);
   if (!schema.valid) return schema;
   const errors = [];
-  const manifest = await readManifest(root);
+  const manifest = await readProjectManifest(root, options.manifest ?? null);
   const backupRoot = manifest.paths.backups;
   const backupIds = new Set();
   const backupEntries = new Map();
@@ -142,6 +235,16 @@ export async function validateBackupIndex(projectRoot, value, options = {}) {
       instancePath: `${entryPath}/manifest${error.instancePath}`,
     })));
     if (!manifestValidation.valid) continue;
+    errors.push(...manuscriptActionErrors(
+      manifest,
+      backupManifest.files,
+      undefined,
+      "backup-manuscript-path-invalid",
+      false,
+    ).map((error) => ({
+      ...error,
+      instancePath: `${entryPath}/manifest${error.instancePath}`,
+    })));
     manifests.set(entry.backup_id, backupManifest);
     for (const field of [
       "backup_id",
@@ -202,6 +305,16 @@ export async function validateBackupIndex(projectRoot, value, options = {}) {
     }
     restorationIds.add(restoration.restoration_id);
     errors.push(...validateFileActions(restoration.files).map((error) => ({
+      ...error,
+      instancePath: `/restorations/${index}${error.instancePath}`,
+    })));
+    errors.push(...manuscriptActionErrors(
+      manifest,
+      restoration.files,
+      undefined,
+      "restore-manuscript-path-invalid",
+      false,
+    ).map((error) => ({
       ...error,
       instancePath: `/restorations/${index}${error.instancePath}`,
     })));
@@ -332,7 +445,7 @@ async function projectRootForBackupIndex(indexPath) {
 export async function validateBackupIndexFile(indexPath, options = {}) {
   try {
     const projectRoot = options.projectRoot ?? await projectRootForBackupIndex(indexPath);
-    const manifest = await readManifest(projectRoot);
+    const manifest = await readProjectManifest(projectRoot, options.manifest ?? null);
     const expected = path.resolve(projectRoot, manifest.paths.backups, "index.json");
     if (path.resolve(indexPath) !== expected) {
       return {
@@ -345,31 +458,6 @@ export async function validateBackupIndexFile(indexPath, options = {}) {
   } catch (error) {
     return { valid: false, errors: [backupError("", error.message, "backup-index-unavailable")] };
   }
-}
-
-function requiredAction(operation) {
-  return {
-    strategy: "author-project",
-    operation,
-    command: `author-project ${operation}`,
-  };
-}
-
-function failure(code, message, operation, details = {}) {
-  return {
-    valid: false,
-    state_written: false,
-    required_action: requiredAction(operation),
-    blockers: [{ code, message, ...details, required_action: requiredAction(operation) }],
-    ...details,
-  };
-}
-
-function commandError(code, message, details = {}) {
-  const error = new Error(message);
-  error.projectCode = code;
-  error.projectDetails = details;
-  return error;
 }
 
 function approvalFilesFingerprint(request) {
@@ -455,6 +543,90 @@ async function publishManifest(file, text) {
     }
     return true;
   }
+}
+
+async function publishOriginalInputs(project, files, backupId, checkpoint, options, progress) {
+  const inputs = [];
+  for (const file of files) inputs.push(await readCurrentInput(project, file));
+  const manifestFiles = [];
+  for (const [index, file] of files.entries()) {
+    const backupPath = file.action === "create"
+      ? null
+      : path.posix.join(project.manifest.paths.backups, backupId, file.path);
+    if (backupPath !== null) {
+      await publishPreservedBytes(path.resolve(project.root, backupPath), inputs[index]);
+      progress.bytesPublished = true;
+    }
+    manifestFiles.push({ ...file, backup_path: backupPath });
+  }
+  for (const file of files) await readCurrentInput(project, file);
+  await runCheckpoint(options, checkpoint);
+  return manifestFiles;
+}
+
+async function publishValidatedManifest(
+  project,
+  request,
+  files,
+  createdAt,
+  relativeManifest,
+  invalidMessage,
+  options,
+  progress,
+) {
+  const manifest = {
+    schema_version: "1.0.0",
+    backup_id: request.backup_id,
+    operation: request.operation,
+    approval_id: request.approval_id,
+    scope_id: request.scope_id,
+    scope_fingerprint: request.scope_fingerprint,
+    files,
+    created_at: createdAt,
+  };
+  const validation = validateBackupManifest(manifest, options);
+  if (!validation.valid) {
+    throw commandError("backup-manifest-invalid", invalidMessage, {
+      validation_errors: validation.errors,
+    });
+  }
+  const text = `${JSON.stringify(manifest, null, 2)}\n`;
+  await publishManifest(path.resolve(project.root, relativeManifest), text);
+  progress.manifestPublished = true;
+  await runCheckpoint(options, "manifest-published");
+  return {
+    manifest,
+    text,
+    reference: { path: relativeManifest, sha256: sha256Bytes(text) },
+  };
+}
+
+async function writeValidatedIndex(
+  project,
+  index,
+  indexPath,
+  entry,
+  invalidMessage,
+  options,
+  progress,
+  restoration = null,
+) {
+  const updated = {
+    ...index,
+    backups: [...index.backups, entry],
+    ...(restoration ? { restorations: [...index.restorations, restoration] } : {}),
+  };
+  const validation = await validateBackupIndex(project.root, updated, options);
+  if (!validation.valid) {
+    throw commandError("backup-index-invalid", invalidMessage, {
+      validation_errors: validation.errors,
+    });
+  }
+  const text = `${JSON.stringify(updated, null, 2)}\n`;
+  await writeAtomicVerified(indexPath, text);
+  progress.indexUpdated = true;
+  await runCheckpoint(options, "index-written");
+  return text;
 }
 
 function manifestRequestMatches(manifest, request) {
@@ -566,6 +738,12 @@ export async function recordBackup(projectRoot, request, options = {}) {
         });
       }
     }
+    requireManuscriptActions(
+      project,
+      request.files,
+      bootstrap ? null : currentScope,
+      "backup-manuscript-path-invalid",
+    );
     const tracker = await parseTrackerState(
       await readFile(path.resolve(project.root, project.manifest.paths.audit_tracker), "utf8"),
       project.root,
@@ -617,23 +795,14 @@ export async function recordBackup(projectRoot, request, options = {}) {
           actual_sha256: sha256Bytes(indexText),
         });
       }
-      const inputs = [];
-      for (const file of request.files) {
-        inputs.push(await readCurrentInput(project, file));
-      }
-      const manifestFiles = [];
-      for (const [index, file] of request.files.entries()) {
-        const backupPath = file.action === "create"
-          ? null
-          : path.posix.join(project.manifest.paths.backups, request.backup_id, file.path);
-        if (backupPath !== null) {
-          await publishPreservedBytes(path.resolve(project.root, backupPath), inputs[index]);
-          progress.bytesPublished = true;
-        }
-        manifestFiles.push({ ...file, backup_path: backupPath });
-      }
-      for (const file of request.files) await readCurrentInput(project, file);
-      await runCheckpoint(options, "backup-bytes-written");
+      const manifestFiles = await publishOriginalInputs(
+        project,
+        request.files,
+        request.backup_id,
+        "backup-bytes-written",
+        options,
+        progress,
+      );
 
       const relativeManifest = path.posix.join(
         project.manifest.paths.backups,
@@ -651,27 +820,17 @@ export async function recordBackup(projectRoot, request, options = {}) {
       } catch (error) {
         if (error.code !== "ENOENT") throw error;
       }
-      const backupManifest = {
-        schema_version: "1.0.0",
-        backup_id: request.backup_id,
-        operation: request.operation,
-        approval_id: request.approval_id,
-        scope_id: request.scope_id,
-        scope_fingerprint: request.scope_fingerprint,
-        files: manifestFiles,
-        created_at: createdAt,
-      };
-      const manifestValidation = validateBackupManifest(backupManifest, options);
-      if (!manifestValidation.valid) {
-        throw commandError("backup-manifest-invalid", "The candidate backup manifest is invalid.", {
-          validation_errors: manifestValidation.errors,
-        });
-      }
-      const manifestText = `${JSON.stringify(backupManifest, null, 2)}\n`;
-      await publishManifest(path.resolve(project.root, relativeManifest), manifestText);
-      progress.manifestPublished = true;
-      await runCheckpoint(options, "manifest-published");
-      const manifestReference = { path: relativeManifest, sha256: sha256Bytes(manifestText) };
+      const { manifest: backupManifest, reference: manifestReference } =
+        await publishValidatedManifest(
+          project,
+          request,
+          manifestFiles,
+          createdAt,
+          relativeManifest,
+          "The candidate backup manifest is invalid.",
+          options,
+          progress,
+        );
       const entry = {
         backup_id: request.backup_id,
         operation: request.operation,
@@ -681,17 +840,15 @@ export async function recordBackup(projectRoot, request, options = {}) {
         manifest: manifestReference,
         created_at: createdAt,
       };
-      const updated = { ...index, backups: [...index.backups, entry] };
-      const updatedValidation = await validateBackupIndex(project.root, updated, options);
-      if (!updatedValidation.valid) {
-        throw commandError("backup-index-invalid", "The candidate backup index is invalid.", {
-          validation_errors: updatedValidation.errors,
-        });
-      }
-      const updatedText = `${JSON.stringify(updated, null, 2)}\n`;
-      await writeAtomicVerified(indexPath, updatedText);
-      progress.indexUpdated = true;
-      await runCheckpoint(options, "index-written");
+      const updatedText = await writeValidatedIndex(
+        project,
+        index,
+        indexPath,
+        entry,
+        "The candidate backup index is invalid.",
+        options,
+        progress,
+      );
       outcome = {
         valid: true,
         state_written: true,
@@ -928,6 +1085,12 @@ export async function recordRestore(projectRoot, request, options = {}) {
         });
       }
     }
+    requireManuscriptActions(
+      project,
+      request.files,
+      currentScope,
+      "restore-manuscript-path-invalid",
+    );
     const tracker = await parseTrackerState(
       await readFile(path.resolve(project.root, project.manifest.paths.audit_tracker), "utf8"),
       project.root,
@@ -985,6 +1148,15 @@ export async function recordRestore(projectRoot, request, options = {}) {
         "The requested restore files must be the complete ordered inverse of the source backup manifest.",
       );
     }
+    const sourceScope = await readRestoreSourceScope(project, sourceManifest, options);
+    if (sourceScope) {
+      requireManuscriptActions(
+        project,
+        sourceManifest.files,
+        sourceScope,
+        "restore-source-scope-mismatch",
+      );
+    }
 
     let safetyFiles;
     let createdAt;
@@ -996,43 +1168,28 @@ export async function recordRestore(projectRoot, request, options = {}) {
       safetyManifest = recoveryManifest;
       safetyManifestText = recoveryManifestText;
     } else {
-      const inputs = [];
-      for (const file of request.files) inputs.push(await readCurrentInput(project, file));
-      safetyFiles = [];
-      for (const [index, file] of request.files.entries()) {
-        const backupPath = file.action === "create"
-          ? null
-          : path.posix.join(project.manifest.paths.backups, request.safety_backup_id, file.path);
-        if (backupPath !== null) {
-          await publishPreservedBytes(path.resolve(project.root, backupPath), inputs[index]);
-          progress.bytesPublished = true;
-        }
-        safetyFiles.push({ ...file, backup_path: backupPath });
-      }
-      for (const file of request.files) await readCurrentInput(project, file);
-      await runCheckpoint(options, "safety-backup-written");
+      safetyFiles = await publishOriginalInputs(
+        project,
+        request.files,
+        request.safety_backup_id,
+        "safety-backup-written",
+        options,
+        progress,
+      );
 
       createdAt = utcTimestamp(options);
-      safetyManifest = {
-        schema_version: "1.0.0",
-        backup_id: request.safety_backup_id,
-        operation: request.operation,
-        approval_id: request.approval_id,
-        scope_id: request.scope_id,
-        scope_fingerprint: request.scope_fingerprint,
-        files: safetyFiles,
-        created_at: createdAt,
-      };
-      const safetyValidation = validateBackupManifest(safetyManifest, options);
-      if (!safetyValidation.valid) {
-        throw commandError("backup-manifest-invalid", "The safety backup manifest is invalid.", {
-          validation_errors: safetyValidation.errors,
-        });
-      }
-      safetyManifestText = `${JSON.stringify(safetyManifest, null, 2)}\n`;
-      await publishManifest(path.resolve(project.root, safetyManifestRelative), safetyManifestText);
-      progress.manifestPublished = true;
-      await runCheckpoint(options, "manifest-published");
+      const publication = await publishValidatedManifest(
+        project,
+        { ...request, backup_id: request.safety_backup_id },
+        safetyFiles,
+        createdAt,
+        safetyManifestRelative,
+        "The safety backup manifest is invalid.",
+        options,
+        progress,
+      );
+      safetyManifest = publication.manifest;
+      safetyManifestText = publication.text;
 
       for (const [index, file] of request.files.entries()) {
         const currentPath = path.resolve(project.root, file.path);
@@ -1095,21 +1252,16 @@ export async function recordRestore(projectRoot, request, options = {}) {
       files: safetyFiles,
       created_at: createdAt,
     };
-    const updated = {
-      ...index,
-      backups: [...index.backups, safetyEntry],
-      restorations: [...index.restorations, restoration],
-    };
-    const updatedValidation = await validateBackupIndex(project.root, updated, options);
-    if (!updatedValidation.valid) {
-      throw commandError("backup-index-invalid", "The candidate restoration index is invalid.", {
-        validation_errors: updatedValidation.errors,
-      });
-    }
-    const updatedText = `${JSON.stringify(updated, null, 2)}\n`;
-    await writeAtomicVerified(indexPath, updatedText);
-    progress.indexUpdated = true;
-    await runCheckpoint(options, "index-written");
+    const updatedText = await writeValidatedIndex(
+      project,
+      index,
+      indexPath,
+      safetyEntry,
+      "The candidate restoration index is invalid.",
+      options,
+      progress,
+      restoration,
+    );
 
     const scopeValidation = await validateFullManuscriptScope(project.manifest, project.manifestPath);
     outcome = {
@@ -1210,6 +1362,7 @@ async function readCommitSource(project, reference, backupIndex, options = {}) {
     );
   }
   const files = [];
+  let sourceScope = null;
   for (const file of commit.files) {
     if (file.action === "create") {
       if (file.backup_id !== null) {
@@ -1233,6 +1386,21 @@ async function readCommitSource(project, reference, backupIndex, options = {}) {
       );
     }
     const originalManifest = JSON.parse(await readFile(path.resolve(project.root, indexed.manifest.path), "utf8"));
+    const originalScope = {
+      scope_id: originalManifest.scope_id,
+      scope_fingerprint: originalManifest.scope_fingerprint,
+    };
+    if (
+      originalManifest.scope_id !== commit.scope_before_id ||
+      (sourceScope && JSON.stringify(sourceScope) !== JSON.stringify(originalScope))
+    ) {
+      throw commandError(
+        "restore-source-mismatch",
+        `Creation commit backup scope differs from its input scope: ${file.path}`,
+        { commit_id: reference.commit_id, backup_id: file.backup_id },
+      );
+    }
+    sourceScope = originalScope;
     const original = originalManifest.files.find((candidate) => candidate.path === file.path);
     if (
       !original ||
@@ -1254,5 +1422,5 @@ async function readCommitSource(project, reference, backupIndex, options = {}) {
       backup_path: original.backup_path,
     });
   }
-  return { operation: "creation-commit", files };
+  return { operation: "creation-commit", files, ...sourceScope };
 }

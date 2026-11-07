@@ -52,7 +52,7 @@
     "dependencies": {
       "type": "array",
       "uniqueItems": true,
-      "items": { "$ref": "#/$defs/versionedPath" }
+      "items": { "$ref": "#/$defs/dependency" }
     },
     "inapplicability": {
       "type": "array",
@@ -137,11 +137,43 @@
       "uniqueItems": true,
       "items": { "$ref": "relative-path-schema.json" }
     },
-    "versionedPath": {
+    "dependency": {
       "type": "object",
-      "required": ["path", "sha256"],
+      "required": ["path", "sha256", "role", "source"],
       "additionalProperties": false,
       "properties": {
+        "path": { "$ref": "relative-path-schema.json" },
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "role": { "enum": ["story-bible", "draft-baseline", "revision-plan", "other"] },
+        "source": {
+          "anyOf": [{ "$ref": "#/$defs/dependencySource" }, { "type": "null" }]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "role": { "enum": ["draft-baseline", "revision-plan"] } }
+          },
+          "then": {
+            "properties": { "source": { "$ref": "#/$defs/dependencySource" } }
+          }
+        },
+        {
+          "if": {
+            "properties": { "role": { "enum": ["story-bible", "other"] } }
+          },
+          "then": {
+            "properties": { "source": { "type": "null" } }
+          }
+        }
+      ]
+    },
+    "dependencySource": {
+      "type": "object",
+      "required": ["report_id", "path", "sha256"],
+      "additionalProperties": false,
+      "properties": {
+        "report_id": { "$ref": "#/$defs/id" },
         "path": { "$ref": "relative-path-schema.json" },
         "sha256": { "$ref": "#/$defs/sha256" }
       }

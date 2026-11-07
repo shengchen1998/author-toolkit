@@ -1,6 +1,6 @@
 import { spawn, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import { root } from "./helpers.mjs";
@@ -64,6 +64,11 @@ export async function createConvergenceProject(t, { manuscripts = [] } = {}) {
     await writeFile(target, file.contents, "utf8");
   }
   const manifestPath = path.join(projectRoot, ".author-toolkit", "project.json");
+  await cp(
+    path.join(root, "skills", "setup-author-toolkit", "assets", "references"),
+    path.join(projectRoot, ".author-toolkit", "references"),
+    { recursive: true },
+  );
   await writeJson(manifestPath, currentManifest());
   await writeJson(path.join(projectRoot, ".author-toolkit", "backups", "index.json"), {
     schema_version: "1.0.0",
@@ -158,6 +163,23 @@ export async function currentScopeReference(projectRoot) {
     snapshot_path: scope.snapshot_path,
     snapshot_sha256: scope.snapshot_sha256,
   };
+}
+
+export async function projectClock(projectRoot) {
+  const manifest = JSON.parse(
+    await readFile(path.join(projectRoot, ".author-toolkit", "project.json"), "utf8"),
+  );
+  let latest = Date.parse(manifest.updated_at);
+  try {
+    const active = JSON.parse(await readFile(
+      path.join(projectRoot, ".author-toolkit", "convergence", "active-cycle.json"),
+      "utf8",
+    ));
+    latest = Math.max(latest, Date.parse(active.updated_at));
+  } catch (error) {
+    if (error.code !== "ENOENT") throw error;
+  }
+  return new Date(latest);
 }
 
 function requestedPassFingerprint(pass) {
@@ -379,7 +401,24 @@ export async function createNoEditEvidence(projectRoot, options = {}) {
     path: filePath,
     sha256,
   }));
-  const dependency = await artifactAt(projectRoot, options.dependencyPath ?? "story-bible.md");
+  const dependencyPath = options.dependencyPath ?? "story-bible.md";
+  const dependency = await artifactAt(projectRoot, dependencyPath);
+  const dependencyRole = options.dependencyRole ?? (dependencyPath === "story-bible.md"
+    ? "story-bible"
+    : dependencyPath.includes("draft-baseline")
+      ? "draft-baseline"
+      : dependencyPath.includes("revision-plan")
+        ? "revision-plan"
+        : "other");
+  dependency.role = dependencyRole;
+  dependency.source = ["draft-baseline", "revision-plan"].includes(dependencyRole)
+    ? options.dependencySource ?? {
+        report_id: options.dependencyReportId ?? `${dependencyRole}-source`,
+        path: dependency.path,
+        sha256: dependency.sha256,
+      }
+    : null;
+  const versionedDependency = { path: dependency.path, sha256: dependency.sha256 };
   const requestedSubchecks = options.requestedSubchecks ?? [];
   let baselinePass = null;
   let baselinePassRecord = null;
@@ -489,13 +528,20 @@ export async function createNoEditEvidence(projectRoot, options = {}) {
   };
 
   const noEditDecisionId = options.noEditDecisionId ?? `NOEDIT-${numericSuffix}`;
+  const noEditDecisionBindings = (options.findings ?? []).map((finding) => {
+    const status = options.noEditDecisionStatuses?.[finding.id] ??
+      (["deferred", "dismissed"].includes(options.findingStatuses?.[finding.id]?.status)
+        ? options.findingStatuses[finding.id].status
+        : "deferred");
+    return `finding_id=${finding.id} finding_status=${status}`;
+  }).join(" ");
   await appendTrackerApproval(projectRoot, {
     id: noEditDecisionId,
     type: "no-edit-skip",
     operation: "revision-plan",
     scopeId: scopeReference.scope_id,
     paths,
-    reason: "Author confirmed that no accepted finding requires a manuscript edit.",
+    reason: `Author confirmed that no accepted finding requires a manuscript edit.${noEditDecisionBindings ? ` ${noEditDecisionBindings}` : ""}`,
   });
   if (options.wholeBook) {
     await appendTrackerApproval(projectRoot, {
@@ -565,7 +611,7 @@ export async function createNoEditEvidence(projectRoot, options = {}) {
       "story-bible",
       `reports/story-bible/${passId}.md`,
       ["whole-book-foundation"],
-      [...versionedPaths, dependency],
+      [...versionedPaths, versionedDependency],
     ));
     wholeBookReports.push(await writeReport(
       `${passId}-structure`,
@@ -613,7 +659,7 @@ export async function createNoEditEvidence(projectRoot, options = {}) {
         kind: "local",
         paths: localPaths,
         subchecks: requirement.subchecks,
-        dependencies: [dependency],
+        dependencies: [versionedDependency],
         dependency_exception: null,
         coverage: "full",
         created_at: timestamp,
@@ -868,12 +914,17 @@ export async function createNoEditEvidence(projectRoot, options = {}) {
     const trackerPath = path.join(projectRoot, "audit-tracker.md");
     let tracker = await readFile(trackerPath, "utf8");
     const separator = "|---|---|---|---|---|---|---|---|\n";
+    const findingReportPath = `reports/diagnostics/${passId}-local.md`;
+    const findingReportSha256 = (await artifactAt(projectRoot, findingReportPath)).sha256;
     for (const finding of options.findings) {
       const decision = options.findingStatuses?.[finding.id] ?? {
         status: "deferred",
         reason: "Author deferred the finding with its consequence recorded.",
       };
-      const row = `| ${finding.id} | diagnostics | narrative | manuscript/chapter-001.md | ${decision.status} | reports/diagnostics/${passId}-local.md | ${timestamp} | ${decision.reason} |\n`;
+      const decisionReason = ["deferred", "dismissed"].includes(decision.status)
+        ? `${decision.reason} author_decision_id=${noEditDecisionId} finding_status=${decision.status} previous_report=${encodeURIComponent(findingReportPath)} previous_report_sha256=${findingReportSha256} report_sha256=${findingReportSha256} evidence_type=no-edit-skip evidence_id=${noEditSkip.skip_id} evidence_path=${encodeURIComponent(noEditReference.path)} evidence_sha256=${noEditReference.sha256}`
+        : decision.reason;
+      const row = `| ${finding.id} | diagnostics | ${finding.audit} | ${finding.location.file} | ${decision.status} | ${findingReportPath} | ${timestamp} | ${decisionReason} |\n`;
       const existing = new RegExp(`^\\| ${finding.id} \\|.*\\|$`, "m");
       if (existing.test(tracker)) {
         tracker = tracker.replace(existing, row.trimEnd());
