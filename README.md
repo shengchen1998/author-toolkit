@@ -62,7 +62,7 @@ or rewriting, invoke `prose-mechanics` with its AI-Isms audit; shared
 
 ## Scope and language support
 
-The shared 3.2 creation and revision workflows support single-book fiction
+The shared 4.0.0 creation and revision workflows support single-book fiction
 projects with Markdown or plain-text manuscripts. `write-fiction` can start
 without a complete outline or ending and can also continue an existing manuscript.
 `revise-fiction` addresses the whole book. `revise-draft` can work on an
@@ -76,7 +76,7 @@ revision to existing content, and restores that state for the full-manuscript
 target scope.
 
 Narrative nonfiction remains a direct `narrative-nonfiction` task. Multi-book
-projects and integrations with other hosts are outside the supported 3.2
+projects and integrations with other hosts are outside the supported 4.0.0
 workflows.
 
 English and Chinese are the core workflow languages. Chinese prose audits use
@@ -208,7 +208,7 @@ A quick run looks like this:
    preserves the existing file beneath the registered backups path. For a new
    project, setup also installs the project-level `AGENTS.md` template when no
    such file exists, preserving any existing agent instructions. Do not pass a
-   workflow name or operation argument. After a toolkit update, an existing v3
+   workflow name or operation argument. After a toolkit update, an existing 4.0.0
    project may need setup again to deploy new shared references. Its initial
    `author-project` read, validation, and status calls check every packaged file
    and route missing files or hash mismatches back through setup instead of
@@ -727,6 +727,20 @@ npm run smoke:installed
 npm test
 npm run validate
 ```
+
+For faster checks before each toolkit commit, opt in once from the toolkit
+repository root:
+
+```bash
+git config --local core.hooksPath .githooks
+```
+
+The tracked `.githooks/pre-commit` hook runs repository validation, generated
+runtime consistency, and focused public CLI and evidence-contract tests. This
+manual opt-in changes only the toolkit repository's local Git configuration.
+Neither installation nor writing-project setup enables hooks or changes Git
+configuration. Run `.githooks/pre-commit` directly to use the same checks
+without changing any Git configuration.
 
 `npm test` includes the generated-runtime consistency and isolated real-installer
 smoke tests. The smoke uses the generic installer in a disposable directory,
