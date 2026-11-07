@@ -84,9 +84,18 @@ function findingsSection(markdown) {
   return { lines: lines.slice(start, end), start };
 }
 
+function pathCell(value) {
+  const trimmed = value.trim();
+  if (trimmed.startsWith("`")) {
+    const parsed = parseApprovalPaths(trimmed);
+    if (parsed.valid && parsed.paths.length === 1) return parsed.paths[0];
+  }
+  return cleanCell(trimmed).replace(/\\\|/g, "|");
+}
+
 function reportCell(value) {
   const link = value.match(/\[[^\]]+\]\(([^)]+)\)/);
-  return cleanCell(link?.[1] ?? value);
+  return pathCell(link?.[1] ?? value);
 }
 
 export async function validateTrackerMarkdown(markdown, projectRoot) {
@@ -400,6 +409,43 @@ function parsedRows(lines, table, definitions) {
   return rows;
 }
 
+function typedFindingDecisionErrors(findings, approvals) {
+  const errors = [];
+  for (const [index, finding] of findings.entries()) {
+    const tokens = finding.reason.split(/\s+/).filter(Boolean);
+    const decisionTokens = tokens.filter((token) => token.startsWith("author_decision_id="));
+    const statusTokens = tokens.filter((token) => token.startsWith("finding_status="));
+    if (decisionTokens.length === 0 && statusTokens.length === 0) continue;
+    const rowPath = `/Findings/${index}/reason`;
+    if (decisionTokens.length !== 1 || statusTokens.length !== 1) {
+      errors.push(trackerError(
+        rowPath,
+        "typed finding decision requires exactly one author_decision_id and one finding_status token",
+      ));
+      continue;
+    }
+    const decisionId = decisionTokens[0].slice("author_decision_id=".length);
+    const decisionStatus = statusTokens[0].slice("finding_status=".length);
+    if (!/^[A-Z][A-Z0-9]*-[0-9]{3,}$/.test(decisionId)) {
+      errors.push(trackerError(rowPath, `typed finding decision has an invalid author decision ID: ${decisionId}`));
+    }
+    if (finding.status === "open" || decisionStatus !== finding.status) {
+      errors.push(trackerError(
+        rowPath,
+        `typed finding decision status mismatch: row=${finding.status}, token=${decisionStatus}`,
+      ));
+    }
+    const decision = approvals.find((approval) => approval.id === decisionId);
+    if (!decision || decision.status !== "approved") {
+      errors.push(trackerError(
+        rowPath,
+        `typed finding decision lacks approved author decision: ${decisionId}`,
+      ));
+    }
+  }
+  return errors;
+}
+
 export async function parseTrackerState(markdown, projectRoot) {
   const findingValidation = await validateTrackerMarkdown(markdown, projectRoot);
   const approvalValidation = validateApprovalsMarkdown(markdown);
@@ -411,6 +457,7 @@ export async function parseTrackerState(markdown, projectRoot) {
     const table = tableWithColumns(findingSection.lines, definitions);
     if (table) {
       for (const row of parsedRows(findingSection.lines, table, definitions)) {
+        row.location = pathCell(row.location);
         row.report = reportCell(row.report);
         row.status = row.status.toLowerCase();
         delete row.cellCount;
@@ -477,6 +524,7 @@ export async function parseTrackerState(markdown, projectRoot) {
   } else if (completionSection.error > 1) {
     errors.push(trackerError("/Cycle completions", "expected at most one ## Cycle completions heading"));
   }
+  errors.push(...typedFindingDecisionErrors(findings, approvals));
 
   return {
     valid: errors.length === 0,

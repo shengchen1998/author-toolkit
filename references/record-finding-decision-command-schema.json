@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "record-finding-decision-command-schema.json",
+  "title": "author-toolkit record-finding-decision command v1",
+  "type": "object",
+  "required": ["finding_id", "status", "report", "reason", "author_decision_id"],
+  "additionalProperties": false,
+  "properties": {
+    "finding_id": {
+      "type": "string",
+      "pattern": "^[A-Z][A-Z0-9]*-[0-9]{3,}$"
+    },
+    "status": { "enum": ["resolved", "deferred", "dismissed", "stale"] },
+    "report": { "$ref": "relative-path-schema.json" },
+    "reason": { "type": "string", "minLength": 1 },
+    "author_decision_id": {
+      "type": "string",
+      "pattern": "^[A-Z][A-Z0-9]*-[0-9]{3,}$"
+    },
+    "revision_execution": { "$ref": "#/$defs/executionReference" },
+    "no_edit_skip": { "$ref": "#/$defs/skipReference" },
+    "expected_tracker_sha256": { "$ref": "#/$defs/sha256" }
+  },
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "executionReference": {
+      "type": "object",
+      "required": ["execution_id", "path", "sha256"],
+      "additionalProperties": false,
+      "properties": {
+        "execution_id": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$" },
+        "path": { "$ref": "relative-path-schema.json" },
+        "sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "skipReference": {
+      "type": "object",
+      "required": ["skip_id", "path", "sha256"],
+      "additionalProperties": false,
+      "properties": {
+        "skip_id": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$" },
+        "path": { "$ref": "relative-path-schema.json" },
+        "sha256": { "$ref": "#/$defs/sha256" }
+      }
+    }
+  }
+}

@@ -50,6 +50,9 @@ export {
   validateInventorySnapshotSchema,
   validateScopeSnapshotSchema,
   validateReaderStateSchema,
+  validateRecordApprovalCommand,
+  validateRecordFindingCommand,
+  validateRecordFindingDecisionCommand,
   validateRelativePath,
   validateReportEnvelope,
   validateReviewJobSchema,
@@ -121,5 +124,6 @@ export {
 } from "./scope.mjs";
 export { reconcileManuscript } from "./reconciliation.mjs";
 export { recordProjectScope, setPendingAction } from "./project-commands.mjs";
+export { recordApproval, recordFinding, recordFindingDecision } from "./tracker-commands.mjs";
 export { reconcileCycle } from "./cycle-recovery.mjs";
 export { migrateProjectToV3, migrateProjectToV32 } from "./migration.mjs";
