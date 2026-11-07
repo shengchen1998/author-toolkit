@@ -47,13 +47,14 @@ async function copyExample(t) {
   return projectRoot;
 }
 
-async function digestPaths(projectRoot, relatives) {
+async function digestPaths(projectRoot, relatives, excluded = new Set()) {
   const hash = createHash("sha256");
   async function visit(relative) {
     const entries = await readdir(path.join(projectRoot, relative), { withFileTypes: true });
     entries.sort((left, right) => left.name.localeCompare(right.name));
     for (const entry of entries) {
       const child = path.posix.join(relative, entry.name);
+      if (excluded.has(child)) continue;
       if (entry.isDirectory()) await visit(child);
       else hash.update(child).update(await readFile(path.join(projectRoot, child)));
     }
@@ -334,7 +335,14 @@ test("v3.1 preserves pending work but requires reconfirmation without exact scop
   assert.equal("snapshot_path" in migrated.current_scope, false);
   assert.deepEqual(migrated.pending_action, manifest.pending_action);
   assert.equal(await readFile(path.join(projectRoot, "audit-tracker.md"), "utf8"), tracker);
-  assert.equal(await digestPaths(projectRoot, preserved), beforeDigest);
+  assert.equal(
+    await digestPaths(projectRoot, preserved, new Set([".author-toolkit/backups/index.json"])),
+    beforeDigest,
+  );
+  assert.deepEqual(JSON.parse(await readFile(
+    path.join(projectRoot, ".author-toolkit", "backups", "index.json"),
+    "utf8",
+  )), { schema_version: "1.0.0", backups: [], restorations: [] });
   assert.match(summary.snapshot, /-v3_1-v3_2[\\/]project\.json$/);
   assert.deepEqual(JSON.parse(await readFile(summary.snapshot, "utf8")), manifest);
   assert.equal(summary.source_schema_version, "3.1.0");

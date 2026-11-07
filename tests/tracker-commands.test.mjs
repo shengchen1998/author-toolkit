@@ -11,6 +11,7 @@ import {
   artifactAt,
   createFirstPublicationArtifacts,
   createNoEditEvidence,
+  writeBackupEvidence,
 } from "./convergence-helpers.mjs";
 import { root } from "./helpers.mjs";
 
@@ -443,13 +444,18 @@ test("record-finding-decision resolves through typed approvals and a verified ex
     action: "Change the departure.",
   });
   const backupRelative = ".author-toolkit/backups/backup-typed-001/manuscript/chapter-001.md";
-  await mkdir(path.dirname(path.join(project.projectRoot, backupRelative)), { recursive: true });
-  await writeFile(path.join(project.projectRoot, backupRelative), original, "utf8");
   const backupManifestRelative = ".author-toolkit/backups/backup-typed-001/manifest.json";
-  await writeJson(path.join(project.projectRoot, backupManifestRelative), {
-    backup_id: "backup-typed-001",
-    approval_id: "EDIT-002",
-    scope_id: base.scopeReference.scope_id,
+  await writeBackupEvidence(project.projectRoot, {
+    backupId: "backup-typed-001",
+    approvalId: "EDIT-002",
+    scope: base.scopeReference,
+    files: [{
+      path: "manuscript/chapter-001.md",
+      action: "modify",
+      input_sha256: sha256(original),
+      output_sha256: sha256(output),
+      contents: original,
+    }],
   });
   const plan = { plan_id: "typed-plan-001", ...(await artifactAt(project.projectRoot, planRelative)) };
   const batch = { batch_id: "typed-batch-001", ...(await artifactAt(project.projectRoot, batchRelative)) };
@@ -650,13 +656,18 @@ test("record-finding-decision accepts an open-to-dismissed transition with curre
     assert.equal(recorded.processResult.status, 0, recorded.processResult.stdout);
   }
   const backupRelative = ".author-toolkit/backups/backup-dismiss-001/manuscript/chapter-001.md";
-  await mkdir(path.dirname(path.join(project.projectRoot, backupRelative)), { recursive: true });
-  await writeFile(path.join(project.projectRoot, backupRelative), original, "utf8");
   const backupManifestRelative = ".author-toolkit/backups/backup-dismiss-001/manifest.json";
-  await writeJson(path.join(project.projectRoot, backupManifestRelative), {
-    backup_id: "backup-dismiss-001",
-    approval_id: "EDIT-003",
-    scope_id: base.scopeReference.scope_id,
+  await writeBackupEvidence(project.projectRoot, {
+    backupId: "backup-dismiss-001",
+    approvalId: "EDIT-003",
+    scope: base.scopeReference,
+    files: [{
+      path: "manuscript/chapter-001.md",
+      action: "modify",
+      input_sha256: sha256(original),
+      output_sha256: sha256(output),
+      contents: original,
+    }],
   });
 
   await writeFile(path.join(project.projectRoot, "manuscript", "chapter-001.md"), output, "utf8");

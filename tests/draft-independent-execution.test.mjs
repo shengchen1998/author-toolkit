@@ -14,6 +14,7 @@ import {
   runInput,
   runValidator,
   timestamp,
+  writeBackupEvidence,
   writeJson,
 } from "./convergence-helpers.mjs";
 
@@ -65,13 +66,18 @@ async function executionRequest(projectRoot, evidence, input, plannedOutput) {
     action: "Change dawn to dusk in chapter 1.",
   });
   const backupRelative = ".author-toolkit/backups/backup-independent-001/manuscript/chapter-001.md";
-  await mkdir(path.dirname(path.join(projectRoot, backupRelative)), { recursive: true });
-  await writeFile(path.join(projectRoot, backupRelative), input, "utf8");
   const backupManifestRelative = ".author-toolkit/backups/backup-independent-001/manifest.json";
-  await writeJson(path.join(projectRoot, backupManifestRelative), {
-    backup_id: "backup-independent-001",
-    approval_id: "EDIT-002",
-    scope_id: "scope-001",
+  await writeBackupEvidence(projectRoot, {
+    backupId: "backup-independent-001",
+    approvalId: "EDIT-002",
+    scope: evidence.scopeReference,
+    files: [{
+      path: manuscriptPath,
+      action: "modify",
+      input_sha256: createHash("sha256").update(input).digest("hex"),
+      output_sha256: createHash("sha256").update(plannedOutput).digest("hex"),
+      contents: input,
+    }],
   });
   return {
     execution_id: "execution-independent-001",

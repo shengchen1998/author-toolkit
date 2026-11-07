@@ -132,7 +132,7 @@ test("migration inventories manuscripts and converts pending work and overrides"
     encoding: "utf8",
   });
   assert.equal(cli.status, 1, cli.stderr);
-  assert.match(cli.stdout, /4 checks, 1 failure/);
+  assert.match(cli.stdout, /5 checks, 1 failure/);
   assert.match(cli.stdout, /#files/);
   assert.match(cli.stderr, /#scope/);
   assert.match(cli.stdout, /#tracker/);

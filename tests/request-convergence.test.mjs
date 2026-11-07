@@ -17,6 +17,7 @@ import {
   runInput,
   runValidator,
   timestamp,
+  writeBackupEvidence,
   writeJson,
 } from "./convergence-helpers.mjs";
 
@@ -92,24 +93,20 @@ async function preparedProject(t, { actions = null, inputOrder = null, inputs = 
     batch_id: "request-batch-001",
     action: "Change dawn to dusk in chapter 1.",
   });
-  const backupFiles = [];
-  for (const action of batchActions) {
-    if (action.action === "create") continue;
-    const backupRelative = `.author-toolkit/backups/backup-001/${action.path}`;
-    await mkdir(path.dirname(path.join(projectRoot, backupRelative)), { recursive: true });
-    await writeFile(path.join(projectRoot, backupRelative), action.input, "utf8");
-    backupFiles.push({
+  const backup = await writeBackupEvidence(projectRoot, {
+    backupId: "backup-001",
+    approvalId: "EDIT-001",
+    scope,
+    files: batchActions.map((action) => ({
       path: action.path,
-      backup_path: backupRelative,
-      sha256: createHash("sha256").update(action.input).digest("hex"),
-    });
-  }
-  const backupManifestRelative = ".author-toolkit/backups/backup-001/manifest.json";
-  await writeJson(path.join(projectRoot, backupManifestRelative), {
-    backup_id: "backup-001",
-    approval_id: "EDIT-001",
-    scope_id: scope.scope_id,
+      action: action.action,
+      input_sha256: action.input === null ? null : createHash("sha256").update(action.input).digest("hex"),
+      output_sha256: action.output === null ? null : createHash("sha256").update(action.output).digest("hex"),
+      contents: action.input,
+    })),
   });
+  const backupFiles = backup.files;
+  const backupManifestRelative = ".author-toolkit/backups/backup-001/manifest.json";
   const execution = {
     cycle_id: "cycle-bootstrap-001",
     expected_revision: 2,
@@ -785,13 +782,18 @@ test("an edited request preserves its base and completes only after full-target 
     finding_id: finding.id,
   });
   const reworkBackup = ".author-toolkit/backups/backup-101/manuscript/chapter-001.md";
-  await mkdir(path.dirname(path.join(fixture.projectRoot, reworkBackup)), { recursive: true });
-  await writeFile(path.join(fixture.projectRoot, reworkBackup), fixture.output, "utf8");
   const reworkBackupManifest = ".author-toolkit/backups/backup-101/manifest.json";
-  await writeJson(path.join(fixture.projectRoot, reworkBackupManifest), {
-    backup_id: "backup-101",
-    approval_id: "EDIT-101",
-    scope_id: target.scope_id,
+  await writeBackupEvidence(fixture.projectRoot, {
+    backupId: "backup-101",
+    approvalId: "EDIT-101",
+    scope: target,
+    files: [{
+      path: "manuscript/chapter-001.md",
+      action: "modify",
+      input_sha256: createHash("sha256").update(fixture.output).digest("hex"),
+      output_sha256: createHash("sha256").update(reworkOutput).digest("hex"),
+      contents: fixture.output,
+    }],
   });
   const reworkPlanned = await runInput(fixture.projectRoot, "transition-cycle", {
     cycle_id: "cycle-request-002",

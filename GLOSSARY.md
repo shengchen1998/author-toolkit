@@ -88,6 +88,18 @@ The recorded author decision that revision planning and chapter revision require
 The verified record linking revision intent and approvals to actual input and output manuscript versions. Cycle-bound records carry their cycle ID; independent revise-draft records use `cycle_id: null`.
 _Avoid_: Approval without execution
 
+**Backup manifest**:
+The immutable identity of an approved backup operation, scope, ordered actions, expected absence, and preserved original-byte versions.
+
+**Backup index**:
+The living recovery-data index whose backup manifests, original bytes, and restoration records validate together beneath registered `paths.backups`.
+
+**Safety backup**:
+The current input bytes and explicit absence preserved before any approved restoration mutates manuscript.
+
+**Restoration record**:
+The append-only identity linking a source backup or creation commit, independent restore approval, safety backup, and exact inverse actions. It does not confirm a resulting scope or current evidence.
+
 **Review group**:
 The binding of intent, standards, and fresh-reader review evidence to one requested pass and target fingerprint, including the fresh reader's continuity evidence.
 

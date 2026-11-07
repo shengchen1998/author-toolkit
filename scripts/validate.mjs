@@ -8,6 +8,8 @@ const root = fileURLToPath(new URL("../", import.meta.url));
 const examples = ["fiction-revision-en", "fiction-revision-zh"];
 
 function createArtifactTypes({
+  validateBackupIndexFile,
+  validateBackupManifest,
   validateConvergenceCycle,
   validateConvergenceEvaluation,
   validateNoEditSkip,
@@ -29,6 +31,8 @@ function createArtifactTypes({
   validateStoryStateMarkdown,
 }) {
   return [
+    { key: "backupIndexes", option: "--backup-index", validateFile: validateBackupIndexFile },
+    { key: "backupManifests", option: "--backup-manifest", validate: validateBackupManifest },
     { key: "scopeSnapshots", option: "--scope-snapshot", validate: validateScopeSnapshot },
     {
       key: "inventorySnapshots",
@@ -89,6 +93,7 @@ function usage() {
   node ${process.argv[1] ?? "validate.mjs"} --repository
   node ${process.argv[1] ?? "validate.mjs"} --project-root ROOT
   node ${process.argv[1] ?? "validate.mjs"} [--manifest FILE] [--report FILE] [--workflow-fixture FILE]...
+  node ${process.argv[1] ?? "validate.mjs"} [--backup-manifest FILE] [--backup-index FILE]
   node ${process.argv[1] ?? "validate.mjs"} [--scope-snapshot FILE] [--inventory-snapshot FILE]...
   node ${process.argv[1] ?? "validate.mjs"} [--convergence-cycle FILE] [--requested-pass FILE]...
   node ${process.argv[1] ?? "validate.mjs"} [--revision-execution FILE] [--manuscript-reconciliation FILE]...
@@ -295,6 +300,15 @@ async function main() {
           }
         }
         check(`${path.relative(root, file)}#tracker`, await validateTracker(manifest, file));
+        if (manifest.schema_version === "3.2.0") {
+          check(
+            `${path.relative(root, file)}#backups`,
+            await runtime.validateBackupIndexFile(
+              path.resolve(path.dirname(file), "..", manifest.paths.backups, "index.json"),
+              { projectRoot: projectRootFromManifest(file), now: selection.now ?? undefined },
+            ),
+          );
+        }
       } else if (
         !["2.0.0", "3.0.0", "3.1.0", "3.2.0"].includes(manifest?.schema_version) ||
         manifest?.project_type !== "fiction" ||
@@ -376,7 +390,9 @@ async function main() {
         const options = { now: selection.now ?? undefined };
         const result = isMarkdown
           ? type.validateMarkdown(await readFile(file, "utf8"), options)
-          : type.validate(await readJson(file), options);
+          : type.validateFile
+            ? await type.validateFile(file, options)
+            : type.validate(await readJson(file), options);
         check(path.relative(root, file), result);
       } catch (error) {
         check(path.relative(root, file), {

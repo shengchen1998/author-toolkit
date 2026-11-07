@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 
+import { validateBackupIndex } from "./backup.mjs";
 import { externalReconciliationBlock } from "./cycles.mjs";
 import {
   beginCycleOperation,
@@ -367,8 +368,40 @@ async function validateExecutionContext(project, execution, options = {}) {
       }
     }
 
+    const backupIndexPath = path.resolve(project.root, project.manifest.paths.backups, "index.json");
+    let backupIndex = null;
+    try {
+      backupIndex = JSON.parse(await readFile(backupIndexPath, "utf8"));
+      const indexValidation = await validateBackupIndex(project.root, backupIndex);
+      if (!indexValidation.valid) {
+        errors.push(contextError(
+          "revision-backup-invalid",
+          `Backup index is invalid: ${formatErrors(indexValidation.errors)}`,
+          backupIndexPath,
+        ));
+      }
+    } catch (error) {
+      errors.push(contextError("revision-backup-invalid", `Cannot read backup index: ${error.message}`, backupIndexPath));
+    }
+
     const backupsByPath = new Map();
     for (const backup of execution.backups) {
+      const indexedBackup = backupIndex?.backups.find((entry) => entry.backup_id === backup.backup_id);
+      if (
+        !indexedBackup ||
+        indexedBackup.approval_id !== backup.approval_id ||
+        indexedBackup.operation !== "chapter-revision" ||
+        indexedBackup.scope_id !== execution.input_scope.scope_id ||
+        indexedBackup.scope_fingerprint !== execution.input_scope.scope_fingerprint ||
+        !sameReference(indexedBackup.manifest, backup.manifest)
+      ) {
+        errors.push(contextError(
+          "revision-backup-invalid",
+          `Backup ${backup.backup_id} is not the same indexed backup evidence required by this execution.`,
+          backup.manifest.path,
+          backup.backup_id,
+        ));
+      }
       if (!execution.approval_ids.includes(backup.approval_id)) {
         errors.push(contextError(
           "revision-backup-approval-mismatch",
@@ -390,15 +423,48 @@ async function validateExecutionContext(project, execution, options = {}) {
         const manifest = JSON.parse(contents.toString("utf8"));
         if (
           manifest.backup_id !== backup.backup_id ||
+          manifest.operation !== "chapter-revision" ||
           manifest.approval_id !== backup.approval_id ||
-          manifest.scope_id !== execution.input_scope.scope_id
+          manifest.scope_id !== execution.input_scope.scope_id ||
+          manifest.scope_fingerprint !== execution.input_scope.scope_fingerprint
         ) {
           errors.push(contextError(
             "revision-backup-invalid",
-            `Backup manifest ${backup.manifest.path} does not bind the recorded backup, approval, and input scope.`,
+            `Backup manifest ${backup.manifest.path} does not bind the recorded backup, operation, approval, and input scope.`,
             backup.manifest.path,
             backup.backup_id,
           ));
+        }
+        const manifestBackupFiles = (manifest.files ?? [])
+          .filter((file) => file.action !== "create")
+          .map((file) => ({
+            path: file.path,
+            backup_path: file.backup_path,
+            sha256: file.input_sha256,
+          }));
+        if (JSON.stringify(manifestBackupFiles) !== JSON.stringify(backup.files)) {
+          errors.push(contextError(
+            "revision-backup-invalid",
+            `Execution backup files differ from the indexed manifest for ${backup.backup_id}.`,
+            backup.manifest.path,
+            backup.backup_id,
+          ));
+        }
+        for (const manifestFile of manifest.files ?? []) {
+          const executionFile = execution.files.find((file) => file.path === manifestFile.path);
+          if (
+            !executionFile ||
+            executionFile.action !== manifestFile.action ||
+            executionFile.input_sha256 !== manifestFile.input_sha256 ||
+            executionFile.output_sha256 !== manifestFile.output_sha256
+          ) {
+            errors.push(contextError(
+              "revision-backup-invalid",
+              `Indexed backup action ${manifestFile.path} is not part of the exact approved execution.`,
+              manifestFile.path,
+              backup.backup_id,
+            ));
+          }
         }
       } catch (error) {
         errors.push(contextError("revision-backup-invalid", error.message, backup.manifest.path, backup.backup_id));

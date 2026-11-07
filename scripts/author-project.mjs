@@ -9,6 +9,8 @@ const commands = new Set([
   "record-finding",
   "record-finding-decision",
   "record-approval",
+  "record-backup",
+  "record-restore",
   "start-cycle",
   "transition-cycle",
   "evaluate-cycle",
@@ -39,6 +41,8 @@ function usage() {
   node ${process.argv[1] ?? "author-project.mjs"} record-finding --project-root ROOT --input FILE
   node ${process.argv[1] ?? "author-project.mjs"} record-finding-decision --project-root ROOT --input FILE
   node ${process.argv[1] ?? "author-project.mjs"} record-approval --project-root ROOT --input FILE
+  node ${process.argv[1] ?? "author-project.mjs"} record-backup --project-root ROOT --input FILE
+  node ${process.argv[1] ?? "author-project.mjs"} record-restore --project-root ROOT --input FILE
   node ${process.argv[1] ?? "author-project.mjs"} start-cycle --project-root ROOT --input FILE
   node ${process.argv[1] ?? "author-project.mjs"} transition-cycle --project-root ROOT --input FILE
   node ${process.argv[1] ?? "author-project.mjs"} reconcile-cycle --project-root ROOT [--input FILE]
@@ -66,7 +70,8 @@ set-pending preserves current scope and active-cycle coordination and never infe
 record-scope recomputes current manuscript hashes and exclusions for proposed or confirmed input; confirmation requires reading-order evidence and publishes immutable snapshots before coordinated manifest state.
 record-finding validates an exact report finding and records open; record-finding-decision requires status-specific current evidence and an approved author decision.
 record-approval binds exact operation, scope, ordered paths, actions, versions, status, reason, and applicable revision fingerprints.
-Pending-action, scope, tracker writes, transitions, reconciliation, revision execution, evaluations, and completions serialize independent processes with active-cycle.lock and recheck expected_revision in the lock.
+record-backup preserves exact approved inputs and create absence in the validated backup index; record-restore requires independent approval and current safety backups.
+Pending-action, scope, tracker writes, backup and restore operations, transitions, reconciliation, revision execution, evaluations, and completions serialize independent processes with active-cycle.lock and recheck expected_revision in the lock.
 reconcile-cycle without --input only diagnoses; a direction requires exact cycle and operation identities and never rewrites historical artifacts or infers approval from pending action.
 Manuscript reconciliation verifies an existing creation-import decision, current inventory, scope, and story state; it never writes manuscript or accepts a confirmation boolean as replacement evidence.
 Independent evaluate-draft uses the same evaluator without creating an active cycle; an active cycle requires evaluate-cycle instead.
@@ -99,7 +104,7 @@ function parseArguments(args) {
   if (Boolean(selection.projectRoot) === Boolean(selection.manifest)) {
     throw new Error("Select exactly one of --project-root or --manifest");
   }
-  if (["set-pending", "record-scope", "record-finding", "record-finding-decision", "record-approval", "start-cycle", "transition-cycle", "evaluate-cycle", "evaluate-draft", "complete-cycle", "check-operation", "prepare-draft-revision-execution", "prepare-revision-execution", "verify-draft-revision-execution", "verify-revision-execution", "reconcile-manuscript"].includes(command) && !selection.input) {
+  if (["set-pending", "record-scope", "record-finding", "record-finding-decision", "record-approval", "record-backup", "record-restore", "start-cycle", "transition-cycle", "evaluate-cycle", "evaluate-draft", "complete-cycle", "check-operation", "prepare-draft-revision-execution", "prepare-revision-execution", "verify-draft-revision-execution", "verify-revision-execution", "reconcile-manuscript"].includes(command) && !selection.input) {
     throw new Error(`${command} requires --input`);
   }
   if (["cycle-status", "cycle-gate", "convergence-status", "convergence-gate"].includes(command) && selection.input) {
@@ -240,6 +245,8 @@ async function main() {
     prepareRevisionExecution,
     projectRootFromManifest,
     recordApproval,
+    recordBackup,
+    recordRestore,
     recordFinding,
     recordFindingDecision,
     recordProjectScope,
@@ -304,6 +311,8 @@ async function main() {
       result = await recordFindingDecision(projectRoot, input);
     }
     if (selection.command === "record-approval") result = await recordApproval(projectRoot, input);
+    if (selection.command === "record-backup") result = await recordBackup(projectRoot, input);
+    if (selection.command === "record-restore") result = await recordRestore(projectRoot, input);
     if (selection.command === "start-cycle") result = await startCycle(projectRoot, input);
     if (selection.command === "transition-cycle") {
       result = await transitionCycle(projectRoot, input);

@@ -36,6 +36,8 @@ export {
   validateMarkdownReport,
 } from "./markdown.mjs";
 export {
+  validateBackupIndexSchema,
+  validateBackupManifestSchema,
   validateCoverageIndexSchema,
   validateCoverageUnitSchema,
   validateCoverageUnitSchema as validateCoverageUnit,
@@ -51,6 +53,8 @@ export {
   validateScopeSnapshotSchema,
   validateReaderStateSchema,
   validateRecordApprovalCommand,
+  validateRecordBackupCommand,
+  validateRecordRestoreCommand,
   validateRecordFindingCommand,
   validateRecordFindingDecisionCommand,
   validateRelativePath,
@@ -125,5 +129,12 @@ export {
 export { reconcileManuscript } from "./reconciliation.mjs";
 export { recordProjectScope, setPendingAction } from "./project-commands.mjs";
 export { recordApproval, recordFinding, recordFindingDecision } from "./tracker-commands.mjs";
+export {
+  recordBackup,
+  recordRestore,
+  validateBackupIndex,
+  validateBackupIndexFile,
+  validateBackupManifest,
+} from "./backup.mjs";
 export { reconcileCycle } from "./cycle-recovery.mjs";
 export { migrateProjectToV3, migrateProjectToV32 } from "./migration.mjs";

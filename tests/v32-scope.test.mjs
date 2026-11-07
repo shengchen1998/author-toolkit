@@ -106,6 +106,11 @@ async function createProject(t) {
   await writeFile(path.join(projectRoot, "manuscript", "cover.png"), "cover", "utf8");
   const manifestPath = path.join(projectRoot, ".author-toolkit", "project.json");
   await writeFile(manifestPath, `${JSON.stringify(manifestV32(), null, 2)}\n`, "utf8");
+  await writeFile(path.join(projectRoot, ".author-toolkit", "backups", "index.json"), `${JSON.stringify({
+    schema_version: "1.0.0",
+    backups: [],
+    restorations: [],
+  }, null, 2)}\n`, "utf8");
   return { projectRoot, manifestPath };
 }
 
@@ -329,7 +334,7 @@ test("the public CLI validates scope and inventory snapshots and exposes scope i
     project.recorded.inventory_path,
   ]);
   assert.equal(result.status, 0, result.stderr);
-  assert.match(result.stdout, /6 checks, 0 failures/);
+  assert.match(result.stdout, /7 checks, 0 failures/);
   assert.match(
     result.stdout,
     new RegExp(`scope_id=scope-1 scope_fingerprint=${project.recorded.scope_fingerprint}`),
@@ -478,6 +483,7 @@ test("snapshot writes do not stale a project-root manuscript inventory", async (
   const scope = {
     ...confirmedScope(),
     excluded_files: [
+      ".author-toolkit/backups/index.json",
       ".author-toolkit/project.json",
       "audit-tracker.md",
       "manuscript/cover.png",

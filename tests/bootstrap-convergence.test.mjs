@@ -18,6 +18,7 @@ import {
   currentScopeReference,
   runInput,
   timestamp,
+  writeBackupEvidence,
   writeJson,
 } from "./convergence-helpers.mjs";
 
@@ -602,13 +603,18 @@ test("bootstrap revise-draft preserves first creation in the cumulative change s
     action: "Change dawn to dusk in the first chapter.",
   });
   const backupRelative = ".author-toolkit/backups/backup-bootstrap-101/manuscript/chapter-001.md";
-  await mkdir(path.dirname(path.join(projectRoot, backupRelative)), { recursive: true });
-  await writeFile(path.join(projectRoot, backupRelative), publication.contents, "utf8");
   const backupManifestRelative = ".author-toolkit/backups/backup-bootstrap-101/manifest.json";
-  await writeJson(path.join(projectRoot, backupManifestRelative), {
-    backup_id: "backup-bootstrap-101",
-    approval_id: "EDIT-101",
-    scope_id: publication.targetScope.scope_id,
+  await writeBackupEvidence(projectRoot, {
+    backupId: "backup-bootstrap-101",
+    approvalId: "EDIT-101",
+    scope: publication.targetScope,
+    files: [{
+      path: "manuscript/chapter-001.md",
+      action: "modify",
+      input_sha256: sha256(publication.contents),
+      output_sha256: sha256(revisedContents),
+      contents: publication.contents,
+    }],
   });
   const execution = {
     cycle_id: cycle.cycle_id,

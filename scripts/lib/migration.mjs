@@ -319,6 +319,17 @@ function v32Manifest(legacy, timestamp) {
 }
 
 async function createOperationalSkeleton(projectRoot, manifest) {
+  const backupIndex = path.resolve(projectRoot, manifest.paths.backups, "index.json");
+  try {
+    await readFile(backupIndex);
+  } catch (error) {
+    if (error.code !== "ENOENT") throw error;
+    await createNoClobberVerified(backupIndex, `${JSON.stringify({
+      schema_version: "1.0.0",
+      backups: [],
+      restorations: [],
+    }, null, 2)}\n`);
+  }
   for (const directory of ["state/chapters", "state/volumes", "batches", "staging"]) {
     await mkdir(path.resolve(projectRoot, manifest.paths.creation, directory), { recursive: true });
   }

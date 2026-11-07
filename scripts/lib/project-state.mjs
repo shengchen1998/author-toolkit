@@ -2,6 +2,7 @@ import { mkdir, readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { validateBackupIndexFile } from "./backup.mjs";
 import { getCycleStatus } from "./cycles.mjs";
 import { validateManifest } from "./manifest.mjs";
 import { validateProjectFiles, validateScopeCurrency } from "./project-files.mjs";
@@ -93,6 +94,10 @@ export async function initializeProject(projectRoot, input = {}, options = {}) {
     if (validation.valid && existing.schema_version === "3.2.0") {
       errors.push(...(await validateProjectFiles(existing, manifestPath)).errors);
       errors.push(...(await validateTracker(existing, manifestPath)).errors);
+      errors.push(...(await validateBackupIndexFile(
+        path.resolve(root, existing.paths.backups, "index.json"),
+        { projectRoot: root },
+      )).errors);
       if (existing.current_scope) {
         errors.push(...(existing.current_scope.status === "confirmed"
           ? await validateFullManuscriptScope(existing, manifestPath)
@@ -185,6 +190,10 @@ export async function initializeProject(projectRoot, input = {}, options = {}) {
     validateManifest(manifest),
     await validateProjectFiles(manifest, manifestPath),
     await validateTracker(manifest, manifestPath),
+    await validateBackupIndexFile(
+      path.resolve(root, manifest.paths.backups, "index.json"),
+      { projectRoot: root },
+    ),
     await validateDeployedReferences(root),
   ];
   const errors = checks.flatMap((check) => check.errors);
@@ -321,6 +330,13 @@ export async function getCompactProjectStatus(projectRoot) {
     projectChecks.push(
       { name: "files", ...await validateProjectFiles(manifest, manifestPath) },
       { name: "tracker", ...await validateTracker(manifest, manifestPath) },
+      ...(manifest.schema_version === "3.2.0" ? [{
+        name: "backups",
+        ...await validateBackupIndexFile(
+          path.resolve(root, manifest.paths.backups, "index.json"),
+          { projectRoot: root },
+        ),
+      }] : []),
     );
     if (manifest.current_scope) {
       projectChecks.push({
