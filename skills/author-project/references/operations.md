@@ -48,6 +48,37 @@ Approval statuses are `approved`, `deferred`, `cancelled`, and `superseded`. Rec
 
 A diagnostic proposes changes but does not create an approval. Creation acceptance records manuscript and resulting-scope approvals separately. A restore always needs a separate approval ID. Backup, commit, and restoration records cite the applicable approval, scope, and input hashes.
 
+## Typed tracker writes
+
+Run the installed public commands instead of hand-editing the living tracker:
+
+```bash
+node <setup-skill>/assets/runtime/author-project.mjs record-finding --project-root <project-root> --input <finding.json>
+node <setup-skill>/assets/runtime/author-project.mjs record-finding-decision --project-root <project-root> --input <finding-decision.json>
+node <setup-skill>/assets/runtime/author-project.mjs record-approval --project-root <project-root> --input <approval.json>
+```
+
+The closed input schemas are `record-finding-command-schema.json`, `record-finding-decision-command-schema.json`, and `record-approval-command-schema.json` in the deployed shared references. Every command returns the versioned project response, generates its UTC `updated_at` through the shared clock, and accepts an optional `expected_tracker_sha256`. The command acquires the registered convergence state root's `active-cycle.lock`, rereads the manifest and tracker, rechecks that hash, rejects an invalid existing tracker or duplicate ID, validates the complete candidate Markdown, and publishes through a verified atomic replacement. A post-write interruption reports `state_written: true` and the actual tracker recovery hash; it does not roll back or rewrite the row.
+
+`record-finding` requires a complete finding v2 object, its report operation, a current report beneath the registered reports path, `status: "open"`, and a nonempty reason. The report must validate as report v2 evidence, have the same operation, and contain the exact finding, including its stable ID, audit, technique, location, issue, recommendation, and confidence. The report envelope's audit may name the wider report audit while the finding retains its own audit. Finding location paths must be portable project-relative paths. New findings enter as `open`; a pending placeholder or another initial status is rejected. Special-character report and location paths round-trip through real Markdown code spans and table escaping.
+
+`record-finding-decision` requires an existing finding, a current report, a nonempty reason, and `author_decision_id`. It writes matching `author_decision_id=` and `finding_status=` tokens into the finding reason. Validation rejects a missing or unapproved decision and any later external edit that changes the row status independently of its token. The applicable evidence is:
+
+| Status | Required current evidence and decision |
+| --- | --- |
+| `resolved` | A verified revision execution with `execute` disposition for this finding and the same author decision. Recheck approved inputs, actual output bytes, current target, pass, and scope. |
+| `deferred` | A verified execution with `defer` disposition, or a current no-edit skip covering this finding and the same approved author decision. Record the consequence in the reason. |
+| `dismissed` | A verified execution with `dismiss` disposition, or a current no-edit skip covering this finding and the same approved author decision. Record why the finding is inapplicable or intentional. |
+| `stale` | An equivalent complete current report that no longer observes the finding, current SHA-256 report inputs, and an approved `finding-decision` approval whose operation, scope, complete report-input paths, `finding_id=`, and `finding_status=stale` tokens match. |
+
+A no-edit skip must bind its requested pass, current target scope, complete pass paths, report, and approved decision. Execution evidence must be `verified`; a prepared record or an approval alone is insufficient. An open finding remains legal but blocks a satisfied evaluation. Deferred and dismissed findings retain eligibility only through the current evidence above, and stale findings remain historical rather than resolved.
+
+`record-approval` requires `approval_id`, `type`, `operation`, `scope_id`, complete ordered `paths`, ordered `files`, `status`, and `reason`. Each file records `path`, `action`, `input_sha256`, and `output_sha256`; paths must equal the ordered file paths exactly. The reason receives an `approval_files=` SHA-256 token over the operation, scope ID, and ordered file bindings. Revision file actions use `create`, `modify`, `delete`, or `reorder`, with the same nullability and changed-content rules as revision execution.
+
+For `type: "revision-plan"` and `type: "edit"`, also supply `revision` with hashed `plan`, `batch`, and `scope_fingerprint`. Their operations must be `revision-plan` and `chapter-revision` respectively. The command verifies the plan and batch bytes and appends `plan_id=`, `plan_sha256=`, `batch_id=`, `batch_sha256=`, `scope_fingerprint=`, and `revision_approval=` tokens. It computes `revision_approval` through the same canonical algorithm consumed by revision preparation and verification, including the operation, plan, batch, input scope, and complete ordered path/action/input/output bindings. Other approval types must not supply a revision binding.
+
+Duplicate finding, approval, and completion-decision IDs remain invalid external state. Typed writes stop without merging, renumbering, deleting, or repairing rows. Diagnostics identify the conflicting finding report or approval operation and scope where applicable. External-edit validation also reports invalid statuses, missing reports, malformed paths, and invalid typed decisions without changing tracker bytes.
+
 ## Timestamp
 
 Resolve `<setup-skill>` as the installed `setup-author-toolkit` directory and run the shared public command before manually authoring reports or artifacts:

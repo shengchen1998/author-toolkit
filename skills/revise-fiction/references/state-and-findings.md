@@ -57,7 +57,9 @@ Use only these finding statuses:
 | `dismissed` | The author judged it inapplicable or intentional; record the reason |
 | `stale` | Its input or scope changed, or an equivalent rerun no longer observes it without verified resolution |
 
-For each status change, use the shared [Timestamp](../../author-project/references/operations.md#timestamp) command's `result.json` for the tracker row's UTC time, then update its current report path and reason. Keep historical report paths in the audit-run table. Unknown future plot, an unwritten ending, and other open creative choices belong in baseline open questions; they become findings only when they cause a concrete problem in existing text.
+For each status change, update the tracker row with UTC time, current report path, and reason. Keep historical report paths in the audit-run table. Unknown future plot, an unwritten ending, and other open creative choices belong in baseline open questions; they become findings only when they cause a concrete problem in existing text.
+
+Use the public `record-finding` and `record-finding-decision` commands in `author-project` for these living rows instead of editing them by hand. The commands supply the shared UTC time. Finding creation requires an exact finding v2 object in its current operation report and writes `open`. A later decision writes matching `author_decision_id=` and `finding_status=` tokens. Resolved requires a current verified `execute` execution. Deferred and dismissed require their current execution disposition or authorized no-edit skip, including the approved author decision and consequence or reason. Stale requires an equivalent complete rerun, current report inputs, and an explicit approved finding decision. These commands use the shared cycle lock and verified tracker writes; external edits receive diagnostics without automatic repair. See [Typed tracker writes](../../author-project/references/operations.md#typed-tracker-writes) for the closed inputs and evidence bindings.
 
 ## Author decision loop
 
@@ -75,7 +77,7 @@ The author may select a different active item, explicitly request batch handling
 
 ## Author approvals
 
-Use the shared `## Approvals` table for edit, restore, baseline, scope, prose-override, and prose-risk decisions. Record `Approval ID`, `Type`, `Operation`, `Scope ID`, `Paths`, `Status`, `Reason`, and `Updated`. Approval IDs use an uppercase prefix and at least three digits. Status is `approved`, `deferred`, `cancelled`, or `superseded`.
+Use the shared `## Approvals` table for edit, restore, baseline, scope, prose-override, and prose-risk decisions. Record them through the public `record-approval` command with `Approval ID`, `Type`, `Operation`, `Scope ID`, complete ordered `Paths` and file actions and versions, `Status`, `Reason`, and `Updated`. Approval IDs use an uppercase prefix and at least three digits. Status is `approved`, `deferred`, `cancelled`, or `superseded`. The command adds the `approval_files=` binding and, for revision plan and edit decisions, the exact revision approval tokens.
 
 An approval applies only to its named operation, paths, scope, and input versions. A revision plan decision and each edit approval also bind the exact plan and batch IDs and hashes, input scope fingerprint, complete ordered batch paths, actions, input hashes, and approved output hashes through the [revision approval tokens](../../author-project/references/operations.md#revision-execution-and-request-completion). Reusing a scope ID never makes an older revision approval current for changed content. Link manuscript backup records to the approval ID. A structural or input change supersedes an affected override; record the supersession rather than deleting history. Legacy v2 overrides remain `deferred` until the author confirms them on resume.
 

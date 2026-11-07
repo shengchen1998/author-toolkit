@@ -183,7 +183,7 @@ function contextError(code, message, pathValue = null, artifactId = null) {
   };
 }
 
-function revisionApprovalFingerprint(execution, operation) {
+export function revisionApprovalFingerprint(execution, operation) {
   return sha256Bytes(JSON.stringify({
     operation,
     plan: {
@@ -345,7 +345,10 @@ async function validateExecutionContext(project, execution, options = {}) {
           defer: "deferred",
           dismiss: "dismissed",
         }[finding.disposition];
-        if (tracked && finding.disposition !== "execute" && tracked.status !== expectedStatus) {
+        const pendingDecision = options.pendingFindingDecision?.findingId === finding.finding_id &&
+          options.pendingFindingDecision.status === expectedStatus &&
+          tracked?.status === "open";
+        if (tracked && finding.disposition !== "execute" && tracked.status !== expectedStatus && !pendingDecision) {
           errors.push(contextError(
             "revision-finding-disposition-mismatch",
             `Finding ${finding.finding_id} is ${tracked.status}, not ${expectedStatus}.`,

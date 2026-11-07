@@ -39,6 +39,9 @@ const coverageUnitSchema = readSchema("coverage-unit-schema.json");
 const coverageIndexSchema = readSchema("coverage-index-schema.json");
 const reviewJobSchema = readSchema("review-job-schema.json");
 const readerStateSchema = readSchema("reader-state-schema.json");
+const recordFindingCommandSchema = readSchema("record-finding-command-schema.json");
+const recordApprovalCommandSchema = readSchema("record-approval-command-schema.json");
+const recordFindingDecisionCommandSchema = readSchema("record-finding-decision-command-schema.json");
 
 const ajv = new Ajv2020({ allErrors: true, strict: true });
 addFormats(ajv);
@@ -67,6 +70,9 @@ ajv.addSchema(coverageUnitSchema);
 ajv.addSchema(coverageIndexSchema);
 ajv.addSchema(reviewJobSchema);
 ajv.addSchema(readerStateSchema);
+ajv.addSchema(recordFindingCommandSchema);
+ajv.addSchema(recordApprovalCommandSchema);
+ajv.addSchema(recordFindingDecisionCommandSchema);
 
 const findingV1Validator = ajv.getSchema("finding-schema-v1.json");
 const findingV2Validator = ajv.getSchema("finding-schema-v2.json");
@@ -93,6 +99,9 @@ const coverageUnitValidator = ajv.getSchema("coverage-unit-schema.json");
 const coverageIndexValidator = ajv.getSchema("coverage-index-schema.json");
 const reviewJobValidator = ajv.getSchema("review-job-schema.json");
 const readerStateValidator = ajv.getSchema("reader-state-schema.json");
+const recordFindingCommandValidator = ajv.getSchema("record-finding-command-schema.json");
+const recordApprovalCommandValidator = ajv.getSchema("record-approval-command-schema.json");
+const recordFindingDecisionCommandValidator = ajv.getSchema("record-finding-decision-command-schema.json");
 
 function evaluate(validator, value, options = {}) {
   const schemaValid = validator(value);
@@ -203,6 +212,18 @@ export function validateReaderStateSchema(value, options = {}) {
   return evaluate(readerStateValidator, value, options);
 }
 
+export function validateRecordFindingCommand(value, options = {}) {
+  return evaluate(recordFindingCommandValidator, value, options);
+}
+
+export function validateRecordApprovalCommand(value, options = {}) {
+  return evaluate(recordApprovalCommandValidator, value, options);
+}
+
+export function validateRecordFindingDecisionCommand(value, options = {}) {
+  return evaluate(recordFindingDecisionCommandValidator, value, options);
+}
+
 export function validateSchemaDefinitions() {
   const errors = [];
   const schemas = [
@@ -231,6 +252,9 @@ export function validateSchemaDefinitions() {
     ["coverage-index-schema.json", coverageIndexSchema],
     ["review-job-schema.json", reviewJobSchema],
     ["reader-state-schema.json", readerStateSchema],
+    ["record-finding-command-schema.json", recordFindingCommandSchema],
+    ["record-approval-command-schema.json", recordApprovalCommandSchema],
+    ["record-finding-decision-command-schema.json", recordFindingDecisionCommandSchema],
   ];
 
   for (const [name, schema] of schemas) {
