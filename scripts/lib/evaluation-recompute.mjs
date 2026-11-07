@@ -45,8 +45,8 @@ function targetEvaluationIdentityBlockers(cycle, stored, reference) {
   return blockers;
 }
 
-export async function recomputeStoredEvaluation(project, cycle, reference) {
-  const { value: stored } = await readEvaluationReference(project, reference);
+export async function recomputeStoredEvaluation(project, cycle, reference, options = {}) {
+  const { value: stored } = await readEvaluationReference(project, reference, options);
   const identityBlockers = targetEvaluationIdentityBlockers(cycle, stored, reference);
   if (identityBlockers.length > 0) {
     return {
@@ -94,6 +94,7 @@ export async function recomputeStoredEvaluation(project, cycle, reference) {
     },
     stored.evaluation_id,
     stored.created_at,
+    options,
   );
   return {
     stored,
@@ -103,7 +104,7 @@ export async function recomputeStoredEvaluation(project, cycle, reference) {
   };
 }
 
-export async function recomputeCompletedCycleForRecovery(project, completed) {
+export async function recomputeCompletedCycleForRecovery(project, completed, options = {}) {
   if (completed?.status !== "completed" || !completed.target_evaluation) {
     throw new Error("A completed cycle and target evaluation are required for recovery");
   }
@@ -111,12 +112,13 @@ export async function recomputeCompletedCycleForRecovery(project, completed) {
     project,
     completed,
     completed.target_evaluation,
+    options,
   );
   const trackerText = await readFile(
     path.resolve(project.root, project.manifest.paths.audit_tracker),
     "utf8",
   );
-  const tracker = await parseTrackerState(trackerText, project.root);
+  const tracker = await parseTrackerState(trackerText, project.root, options);
   const decision = tracker.completion_decisions.find(
     (candidate) => candidate.id === completed.completion?.decision_id,
   );
@@ -130,8 +132,8 @@ export async function recomputeCompletedCycleForRecovery(project, completed) {
   return result;
 }
 
-export async function recomputeCycleEvaluationForRecovery(project, cycle, reference) {
-  const result = await recomputeStoredEvaluation(project, cycle, reference);
+export async function recomputeCycleEvaluationForRecovery(project, cycle, reference, options = {}) {
+  const result = await recomputeStoredEvaluation(project, cycle, reference, options);
   if (
     result.stored.cycle_id !== cycle.cycle_id ||
     !sameScopeReference(result.stored.target_scope, cycle.target_scope) ||

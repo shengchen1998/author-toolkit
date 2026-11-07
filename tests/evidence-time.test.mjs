@@ -8,7 +8,9 @@ import test from "node:test";
 import {
   completeCycle,
   evaluateCycle,
+  evaluateDraft,
   extractReportEnvelope,
+  getCycleStatus,
   recordScope,
   startCycle,
   transitionCycle,
@@ -17,7 +19,9 @@ import {
   createConvergenceProject,
   createFirstPublicationArtifacts,
   createNoEditEvidence,
+  createRevisionExecutionFixture,
   writeBackupEvidence,
+  writeJson,
 } from "./convergence-helpers.mjs";
 import { root } from "./helpers.mjs";
 
@@ -412,7 +416,9 @@ test("installed validation applies one fixed UTC clock and 60-second allowance t
           const result = runValidator(artifactCase.option, file);
           if (offset <= 60) {
             assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
-            assert.match(result.stdout, /0 failures/);
+            const response = JSON.parse(result.stdout);
+            assert.equal(response.valid, true);
+            assert.deepEqual(response.errors, []);
           } else {
             assert.equal(result.status, 1, `${result.stdout}\n${result.stderr}`);
             assert.ok(
@@ -425,4 +431,196 @@ test("installed validation applies one fixed UTC clock and 60-second allowance t
       });
     }
   }
+});
+
+
+test("tracker findings, approvals, and cycle completions share the fixed clock and future allowance", async (t) => {
+  const { projectRoot, manifestPath } = await currentArtifacts(t);
+  const trackerPath = path.join(projectRoot, "audit-tracker.md");
+  const original = await readFile(trackerPath, "utf8");
+  const findingSeparator = "|---|---|---|---|---|---|---|---|\n";
+  const findingIndex = original.indexOf(findingSeparator, original.indexOf("## Findings"));
+  assert.ok(findingIndex >= 0);
+  const families = [
+    {
+      name: "findings",
+      path: "/Findings/0/updated",
+      update(markdown, updated) {
+        const row = `| TIME-001 | diagnostics | narrative | manuscript/chapter-001.md | open | reports/diagnostics/pass-001-local.md | ${updated} | Author decision is required. |\n`;
+        return markdown.slice(0, findingIndex + findingSeparator.length) + row + markdown.slice(findingIndex + findingSeparator.length);
+      },
+    },
+    {
+      name: "approvals",
+      path: "/Approvals/0/updated",
+      update(markdown, updated) {
+        return markdown.replace(/^(\| NOEDIT-001 \|.*\| )[^ |]+( \|)$/m, `$1${updated}$2`);
+      },
+    },
+    {
+      name: "cycle completions",
+      path: "/Cycle completions/0/updated",
+      update(markdown, updated) {
+        return markdown.replace(/^(\| COMPLETE-001 \|.*\| )[^ |]+( \|)$/m, `$1${updated}$2`);
+      },
+    },
+  ];
+  for (const family of families) {
+    await t.test(family.name, async (t) => {
+      for (const offset of [0, 60, 61, "invalid"]) {
+        await t.test(String(offset), async () => {
+          const updated = offset === "invalid" ? "not-a-date-time" : atOffset(offset);
+          const candidate = family.update(original, updated);
+          assert.ok(candidate.includes(updated));
+          await writeFile(trackerPath, candidate, "utf8");
+          const result = runValidator("--manifest", manifestPath);
+          if (offset === 0 || offset === 60) {
+            assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
+          } else {
+            assert.equal(result.status, 1, `${result.stdout}\n${result.stderr}`);
+            assert.ok(result.stderr.includes(family.path), result.stderr);
+            assert.match(result.stderr, offset === "invalid" ? /date-time|timestamp/i : /60 seconds/);
+          }
+        });
+      }
+    });
+  }
+});
+
+
+async function fixedClockEvidence(t) {
+  const manuscript = "The ferry leaves at dawn.\n";
+  const { projectRoot } = await createConvergenceProject(t, {
+    manuscripts: [{ name: "chapter-001.md", contents: manuscript }],
+  });
+  await recordScope(projectRoot, {
+    scope_id: "scope-fixed-clock",
+    description: "The complete manuscript for the injected validation clock.",
+    status: "confirmed",
+    files: [{
+      path: "manuscript/chapter-001.md",
+      sha256: createHash("sha256").update(manuscript).digest("hex"),
+    }],
+    excluded_files: [],
+    created_at: NOW,
+  }, {
+    authorConfirmation: {
+      decision_id: "SCOPE-001",
+      confirmed_at: NOW,
+      reading_order_confirmed: true,
+    },
+    now: new Date(NOW),
+  });
+  const evidence = await createNoEditEvidence(projectRoot);
+  const input = {
+    evaluation_id: "evaluation-fixed-clock",
+    requested_pass: evidence.passReference,
+    target_scope: evidence.scopeReference,
+    coverage_index: evidence.coverageIndexReference,
+    reports: evidence.reports,
+    review_group: evidence.reviewGroupReference,
+    no_edit_skips: [evidence.noEditReference],
+    revision_executions: [],
+    semantic_attestations: [evidence.hostAttestationReference, evidence.freshAttestationReference],
+  };
+  return { projectRoot, evidence, input };
+}
+
+test("public evaluation uses the injected clock for nested evidence instead of wall time", async (t) => {
+  const { projectRoot, input } = await fixedClockEvidence(t);
+  const result = await evaluateDraft(projectRoot, input, { now: new Date(NOW) });
+  assert.equal(result.valid, true, JSON.stringify(result.blockers));
+});
+
+for (const family of ["report", "requested pass", "semantic attestation", "revision execution", "manifest"]) {
+  await test(`injected clock rejects future ${family} evidence`, async (t) => {
+    const { projectRoot, evidence, input } = await fixedClockEvidence(t);
+    if (family === "report") {
+      const reference = evidence.reports[0];
+      const reportPath = path.join(projectRoot, reference.path);
+      const markdown = await readFile(reportPath, "utf8");
+      const envelope = JSON.parse(markdown.match(/```json\n([\s\S]+?)\n```/)[1]);
+      envelope.created_at = atOffset(61);
+      await writeFile(reportPath, markdown.replace(/```json\n[\s\S]+?\n```/, `\`\`\`json\n${JSON.stringify(envelope, null, 2)}\n\`\`\``), "utf8");
+      reference.sha256 = createHash("sha256").update(await readFile(reportPath)).digest("hex");
+    } else if (family === "requested pass") {
+      evidence.pass.created_at = atOffset(61);
+      await writeJson(path.join(projectRoot, evidence.passReference.path), evidence.pass);
+      evidence.passReference.sha256 = createHash("sha256").update(await readFile(path.join(projectRoot, evidence.passReference.path))).digest("hex");
+    } else if (family === "semantic attestation") {
+      evidence.hostAttestation.created_at = atOffset(61);
+      await writeJson(path.join(projectRoot, evidence.hostAttestationReference.path), evidence.hostAttestation);
+      evidence.hostAttestationReference.sha256 = createHash("sha256").update(await readFile(path.join(projectRoot, evidence.hostAttestationReference.path))).digest("hex");
+    } else if (family === "revision execution") {
+      const { execution } = await createRevisionExecutionFixture(projectRoot, {
+        requestedPass: evidence.passReference,
+        inputScope: evidence.scopeReference,
+      });
+      execution.status = "verified";
+      execution.created_at = atOffset(61);
+      execution.verified_at = atOffset(61);
+      const relative = ".author-toolkit/convergence/executions/execution-fixed-clock.json";
+      await writeJson(path.join(projectRoot, relative), execution);
+      input.revision_executions.push({
+        execution_id: execution.execution_id,
+        path: relative,
+        sha256: createHash("sha256").update(await readFile(path.join(projectRoot, relative))).digest("hex"),
+      });
+    } else {
+      const manifestPath = path.join(projectRoot, ".author-toolkit", "project.json");
+      const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
+      manifest.updated_at = atOffset(61);
+      await writeJson(manifestPath, manifest);
+    }
+
+    if (family === "manifest") {
+      await assert.rejects(evaluateDraft(projectRoot, input, { now: new Date(NOW) }), (error) =>
+        error.projectCode === "project-state-invalid" && /60 seconds/.test(error.message)
+      );
+    } else {
+      const result = await evaluateDraft(projectRoot, input, { now: new Date(NOW) });
+      assert.equal(result.valid, false, JSON.stringify(result.blockers));
+      assert.match(JSON.stringify(result.blockers), /60 seconds/);
+    }
+  });
+}
+
+test("scope recording validates nested snapshots with the injected clock", async (t) => {
+  const manuscript = "The ferry leaves at dawn.\n";
+  const { projectRoot } = await createConvergenceProject(t, {
+    manuscripts: [{ name: "chapter-001.md", contents: manuscript }],
+  });
+  await assert.rejects(recordScope(projectRoot, {
+    scope_id: "scope-fixed-clock-future",
+    description: "A nested scope snapshot beyond the injected allowance.",
+    status: "confirmed",
+    files: [{
+      path: "manuscript/chapter-001.md",
+      sha256: createHash("sha256").update(manuscript).digest("hex"),
+    }],
+    excluded_files: [],
+    created_at: atOffset(61),
+  }, {
+    authorConfirmation: {
+      decision_id: "SCOPE-001",
+      confirmed_at: NOW,
+      reading_order_confirmed: true,
+    },
+    now: new Date(NOW),
+  }), /60 seconds/);
+});
+
+
+test("convergence status applies the injected clock to historical evaluations", async (t) => {
+  const { projectRoot, input } = await fixedClockEvidence(t);
+  const evaluated = await evaluateDraft(projectRoot, input, { now: new Date(NOW) });
+  assert.equal(evaluated.valid, true, JSON.stringify(evaluated.blockers));
+  const evaluation = await readJson(projectRoot, evaluated.evaluation_reference.path);
+  evaluation.created_at = atOffset(61);
+  await writeJson(path.join(projectRoot, evaluated.evaluation_reference.path), evaluation);
+
+  const status = await getCycleStatus(projectRoot, { now: new Date(NOW) });
+
+  assert.equal(status.query_valid, false, JSON.stringify(status.blockers));
+  assert.match(JSON.stringify(status.blockers), /60 seconds/);
 });

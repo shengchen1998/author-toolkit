@@ -164,8 +164,8 @@ test("an independent resolved finding recovers only through verified output and 
     }],
     findingStatuses: {
       "DIAG-001": {
-        status: "resolved",
-        reason: "Author accepted the independent edit after reviewing the new text.",
+        status: "open",
+        reason: "Author will accept the independent edit after verified output.",
       },
     },
   });
@@ -173,7 +173,7 @@ test("an independent resolved finding recovers only through verified output and 
   const unverified = await evaluateDraft(projectRoot, target, "evaluation-independent-unverified");
   assert.equal(unverified.status, 1, `${unverified.stdout}\n${unverified.stderr}`);
   assert.ok(JSON.parse(unverified.stdout).blockers.some((blocker) =>
-    blocker.code === "verified-execution-required"
+    blocker.code === "open-findings"
   ));
   const preparedEvidence = await evaluateDraft(
     projectRoot,
@@ -228,6 +228,15 @@ test("an independent resolved finding recovers only through verified output and 
   assert.equal(JSON.parse(repeatedVerify.stdout).blockers[0].code, "revision-execution-identity-mismatch");
   assert.equal(await readFile(verifiedResult.execution_path, "utf8"), verifiedBytes);
 
+  const decided = await runInput(projectRoot, "record-finding-decision", {
+    finding_id: "DIAG-001",
+    status: "resolved",
+    report: "reports/diagnostics/pass-002-local.md",
+    reason: "Author accepted the independent edit after reviewing the verified new text.",
+    author_decision_id: "PLAN-002",
+    revision_execution: verifiedResult.execution_reference,
+  });
+  assert.equal(decided.status, 0, `${decided.stdout}\n${decided.stderr}`);
   const evaluated = await evaluateDraft(
     projectRoot,
     target,

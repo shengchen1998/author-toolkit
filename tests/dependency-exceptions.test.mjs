@@ -80,3 +80,53 @@ test("coverage units require either null or one complete closed dependency excep
     });
   }
 });
+
+
+test("requested-pass dependencies require a closed role and verifiable source identity", async (t) => {
+  const { projectRoot } = await createConvergenceProject(t);
+  const dependency = {
+    path: "reports/draft-baseline/baseline.md",
+    sha256: hash,
+    role: "draft-baseline",
+    source: {
+      report_id: "baseline-source-001",
+      path: "reports/draft-baseline/baseline.md",
+      sha256: hash,
+    },
+  };
+  const pass = {
+    schema_version: "1.0.0",
+    pass_id: "pass-dependency-role-001",
+    pass_fingerprint: "aabb1f8f1ef448e50ff2d7e6e598daa458bb51ece2a4a5a4f7b6e33f1bce98ac",
+    target_scope: {
+      scope_id: "scope-001",
+      scope_fingerprint: "b".repeat(64),
+      snapshot_path: ".author-toolkit/convergence/scopes/scope-001.json",
+      snapshot_sha256: "c".repeat(64),
+    },
+    required_operations: [{ operation: "diagnostics", paths: ["manuscript/chapter-001.md"], subchecks: ["causality"] }],
+    paths: ["manuscript/chapter-001.md"],
+    language: "en",
+    dependencies: [dependency],
+    inapplicability: [],
+    narrowing: null,
+    baseline_pass: null,
+    requested_subchecks: [],
+    created_at: timestamp,
+  };
+  const cases = [
+    ["complete", dependency, 0],
+    ["missing role", (({ role, ...value }) => value)(dependency), 1],
+    ["missing source", (({ source, ...value }) => value)(dependency), 1],
+    ["uncontrolled role", { ...dependency, role: "notes" }, 1],
+    ["extra source field", { ...dependency, source: { ...dependency.source, operation: "draft-baseline" } }, 1],
+  ];
+  for (const [name, value, expectedStatus] of cases) {
+    await t.test(name, async () => {
+      const candidate = { ...pass, dependencies: [value] };
+      const file = await writeJson(path.join(projectRoot, `requested-pass-${name.replaceAll(" ", "-")}.json`), candidate);
+      const result = runValidator(["--requested-pass", file]);
+      assert.equal(result.status, expectedStatus, `${result.stdout}\n${result.stderr}`);
+    });
+  }
+});

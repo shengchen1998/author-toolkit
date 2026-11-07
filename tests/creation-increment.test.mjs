@@ -837,8 +837,8 @@ test("accepted increment review findings reenter verified execution before conve
     findings: [finding],
     findingStatuses: {
       [finding.id]: {
-        status: "resolved",
-        reason: "The accepted continuity fix is preserved in verified execution-102.",
+        status: "open",
+        reason: "The accepted continuity fix awaits verified execution-102.",
       },
     },
   });
@@ -850,7 +850,17 @@ test("accepted increment review findings reenter verified execution before conve
     target_scope: reworkedTarget,
   });
   assert.equal(verified.status, 0, `${verified.stdout}\n${verified.stderr}`);
-  const verifiedCycle = JSON.parse(verified.stdout).cycle;
+  const verifiedResult = JSON.parse(verified.stdout);
+  const decided = await runInput(fixture.projectRoot, "record-finding-decision", {
+    finding_id: finding.id,
+    status: "resolved",
+    report: `reports/diagnostics/${finalEvidence.pass.pass_id}-local.md`,
+    reason: "The accepted continuity fix is preserved in verified execution-102.",
+    author_decision_id: "RESOLVE-102",
+    revision_execution: verifiedResult.execution_reference,
+  });
+  assert.equal(decided.status, 0, `${decided.stdout}\n${decided.stderr}`);
+  const verifiedCycle = verifiedResult.cycle;
   assert.equal(verifiedCycle.starting_scope.scope_fingerprint, fixture.startingScope.scope_fingerprint);
   assert.deepEqual(verifiedCycle.change_set.created, [{
     path: "manuscript/chapter-002.md",

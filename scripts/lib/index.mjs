@@ -6,6 +6,7 @@ export {
   validateCreationCommit,
   validateStoryStateMarkdown,
 } from "./artifacts.mjs";
+export { validateCoverageIndexFile } from "./coverage-index.mjs";
 export {
   CURRENT_PROJECT_SCHEMA_VERSION,
   greenfieldInitializationError,

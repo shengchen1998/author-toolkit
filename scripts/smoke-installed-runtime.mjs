@@ -211,7 +211,10 @@ try {
 
   const valid = runInstalled("validate.mjs", ["--project-root", projectRoot]);
   assert.equal(valid.status, 0, `${valid.stdout}\n${valid.stderr}`);
-  assert.match(valid.stdout, /5 checks, 0 failures/);
+  const validationResponse = JSON.parse(valid.stdout);
+  assert.equal(validationResponse.valid, true);
+  assert.equal(validationResponse.result.checks, 5);
+  assert.deepEqual(validationResponse.errors, []);
   assert.doesNotMatch(valid.stdout, /manual-checks-only/);
   assert.doesNotMatch(valid.stdout, /fiction-revision-zh/);
 
@@ -221,11 +224,13 @@ try {
   await writeFile(manifestPath, JSON.stringify(manifest, null, 2) + "\n", "utf8");
   const invalid = runInstalled("validate.mjs", ["--project-root", projectRoot]);
   assert.equal(invalid.status, 1);
-  assert.match(invalid.stderr, /\/paths\/reports/);
+  assert.match(invalid.stdout, /\/paths\/reports/);
 
   const usage = runInstalled("validate.mjs", ["--project-root"]);
   assert.equal(usage.status, 2);
-  assert.match(usage.stdout, /Usage:/);
+  const usageResponse = JSON.parse(usage.stdout);
+  assert.equal(usageResponse.valid, false);
+  assert.equal(usageResponse.errors[0].code, "usage-error");
 
   const terminology = path.join(
     projectRoot,
@@ -236,15 +241,15 @@ try {
   await writeFile(terminology, "locally changed reference\n", "utf8");
   const conflict = runInstalled("validate.mjs", ["--project-root", projectRoot]);
   assert.equal(conflict.status, 1);
-  assert.match(conflict.stderr, /reference-version-conflict/);
-  assert.match(conflict.stderr, /expected_sha256=[a-f0-9]{64}/);
-  assert.match(conflict.stderr, /actual_sha256=[a-f0-9]{64}/);
+  assert.match(conflict.stdout, /reference-version-conflict/);
+  assert.match(conflict.stdout, /expected_sha256=[a-f0-9]{64}/);
+  assert.match(conflict.stdout, /actual_sha256=[a-f0-9]{64}/);
 
   await rm(terminology);
   const missing = runInstalled("validate.mjs", ["--project-root", projectRoot]);
   assert.equal(missing.status, 1);
-  assert.match(missing.stderr, /missing shared reference/i);
-  assert.match(missing.stderr, /terminology\.md/);
+  assert.match(missing.stdout, /missing shared reference/i);
+  assert.match(missing.stdout, /terminology\.md/);
 
   console.log(
     "Installed runtime smoke passed: generic installer, isolated help, manuscript-only init, pending-action and proposed/confirmed scope commands, compact and full project views, unified responses, real schema validation, exit codes, and shared-reference diagnostics.",

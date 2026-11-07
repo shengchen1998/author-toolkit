@@ -943,7 +943,10 @@ test("reconciliation and story-state hashes join the evaluation evidence graph",
     path.join(projectRoot, reconciliationReference.path),
   ]);
   assert.equal(artifactValidation.status, 0, `${artifactValidation.stdout}\n${artifactValidation.stderr}`);
-  assert.match(artifactValidation.stdout, /1 checks, 0 failures/);
+  const response = JSON.parse(artifactValidation.stdout);
+  assert.equal(response.valid, true);
+  assert.equal(response.result.checks, 1);
+  assert.deepEqual(response.errors, []);
 
   await writeFile(
     path.join(projectRoot, storyState[0].path),

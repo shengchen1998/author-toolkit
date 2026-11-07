@@ -40,18 +40,39 @@ function utcDate(now) {
   if (Number.isNaN(value.getTime())) throw new Error("Invalid UTC time");
   return value;
 }
-function utcTimestamp(options = {}) {
-  return utcDate(options.now).toISOString();
+function utcTimestamp(options2 = {}) {
+  return utcDate(options2.now).toISOString();
 }
-function timestampResult(options = {}) {
-  const json = utcTimestamp(options);
+function timestampResult(options2 = {}) {
+  const json = utcTimestamp(options2);
   return { json, filename: json.replace(/[-:.]/g, "") };
+}
+function validateTimestamp(value, instancePath, options2 = {}) {
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/.test(value) || !Number.isFinite(Date.parse(value))) {
+    return [{
+      instancePath,
+      keyword: "date-time",
+      message: "timestamp must be an ISO date-time string",
+      params: {}
+    }];
+  }
+  const current = utcDate(options2.now);
+  if (Date.parse(value) <= current.getTime() + 6e4) return [];
+  return [{
+    instancePath,
+    keyword: "future-timestamp",
+    message: `timestamp must not be more than 60 seconds after the current UTC time (${current.toISOString()})`,
+    params: {
+      current_time: current.toISOString(),
+      future_tolerance_seconds: 60
+    }
+  }];
 }
 function pointerPart(value) {
   return value.replaceAll("~", "~0").replaceAll("/", "~1");
 }
-function validateEvidenceTimestamps(value, options = {}) {
-  const current = utcDate(options.now);
+function validateEvidenceTimestamps(value, options2 = {}) {
+  const current = utcDate(options2.now);
   const currentTime = current.toISOString();
   const maximum = current.getTime() + 6e4;
   const errors = [];
@@ -3313,8 +3334,8 @@ var require_utils = __commonJS({
       }
       return ind;
     }
-    function removeDotSegments(path22) {
-      let input = path22;
+    function removeDotSegments(path26) {
+      let input = path26;
       const output = [];
       let nextSlash = -1;
       let len = 0;
@@ -3388,11 +3409,11 @@ var require_utils = __commonJS({
       }
       return output.join("");
     }
-    function removeDotSegmentsRelative(path22) {
-      if (path22 === "" || path22[0] === "/") {
-        return removeDotSegments(path22);
+    function removeDotSegmentsRelative(path26) {
+      if (path26 === "" || path26[0] === "/") {
+        return removeDotSegments(path26);
       }
-      const segments = path22.split("/");
+      const segments = path26.split("/");
       const last = segments.length - 1;
       const output = [];
       let trailingDirectory = false;
@@ -3755,57 +3776,57 @@ var require_schemes = __commonJS({
       }
       if (wsComponent.resourceName) {
         const queryIndex = wsComponent.resourceName.indexOf("?");
-        const path22 = queryIndex === -1 ? wsComponent.resourceName : wsComponent.resourceName.slice(0, queryIndex);
-        wsComponent.path = path22 && path22 !== "/" ? path22 : void 0;
+        const path26 = queryIndex === -1 ? wsComponent.resourceName : wsComponent.resourceName.slice(0, queryIndex);
+        wsComponent.path = path26 && path26 !== "/" ? path26 : void 0;
         wsComponent.query = queryIndex === -1 ? void 0 : wsComponent.resourceName.slice(queryIndex + 1);
         wsComponent.resourceName = void 0;
       }
       wsComponent.fragment = void 0;
       return wsComponent;
     }
-    function urnParse(urnComponent, options) {
+    function urnParse(urnComponent, options2) {
       if (!urnComponent.path) {
         urnComponent.error = "URN can not be parsed";
         return urnComponent;
       }
       const matches = urnComponent.path.match(URN_REG);
       if (matches && matches[0] === urnComponent.path) {
-        const scheme = options.scheme || urnComponent.scheme || "urn";
+        const scheme = options2.scheme || urnComponent.scheme || "urn";
         urnComponent.nid = matches[1].toLowerCase();
         urnComponent.nss = matches[2];
-        const urnScheme = `${scheme}:${options.nid || urnComponent.nid}`;
+        const urnScheme = `${scheme}:${options2.nid || urnComponent.nid}`;
         const schemeHandler = getSchemeHandler(urnScheme);
         urnComponent.path = void 0;
         if (schemeHandler) {
-          urnComponent = schemeHandler.parse(urnComponent, options);
+          urnComponent = schemeHandler.parse(urnComponent, options2);
         }
       } else {
         urnComponent.error = urnComponent.error || "URN can not be parsed.";
       }
       return urnComponent;
     }
-    function urnSerialize(urnComponent, options) {
+    function urnSerialize(urnComponent, options2) {
       if (urnComponent.nid === void 0) {
         throw new Error("URN without nid cannot be serialized");
       }
-      const scheme = options.scheme || urnComponent.scheme || "urn";
+      const scheme = options2.scheme || urnComponent.scheme || "urn";
       const nid = urnComponent.nid.toLowerCase();
-      const urnScheme = `${scheme}:${options.nid || nid}`;
+      const urnScheme = `${scheme}:${options2.nid || nid}`;
       const schemeHandler = getSchemeHandler(urnScheme);
       if (schemeHandler) {
-        urnComponent = schemeHandler.serialize(urnComponent, options);
+        urnComponent = schemeHandler.serialize(urnComponent, options2);
       }
       const uriComponent = urnComponent;
       const nss = urnComponent.nss;
-      uriComponent.path = `${nid || options.nid}:${nss}`;
-      options.skipEscape = true;
+      uriComponent.path = `${nid || options2.nid}:${nss}`;
+      options2.skipEscape = true;
       return uriComponent;
     }
-    function urnuuidParse(urnComponent, options) {
+    function urnuuidParse(urnComponent, options2) {
       const uuidComponent = urnComponent;
       uuidComponent.uuid = uuidComponent.nss;
       uuidComponent.nss = void 0;
-      if (!options.tolerant && (!uuidComponent.uuid || !isUUID(uuidComponent.uuid))) {
+      if (!options2.tolerant && (!uuidComponent.uuid || !isUUID(uuidComponent.uuid))) {
         uuidComponent.error = uuidComponent.error || "UUID is not valid.";
       }
       return uuidComponent;
@@ -3916,18 +3937,18 @@ var require_fast_uri = __commonJS({
       }
       return stringScheme;
     }
-    function normalize(uri, options) {
+    function normalize(uri, options2) {
       if (typeof uri === "string") {
         uri = /** @type {T} */
-        normalizeString(uri, options);
+        normalizeString(uri, options2);
       } else if (typeof uri === "object") {
         uri = /** @type {T} */
-        parse(serialize(uri, options), options);
+        parse(serialize(uri, options2), options2);
       }
       return uri;
     }
-    function resolve(baseURI, relativeURI, options) {
-      const schemelessOptions = options ? Object.assign({ scheme: "null" }, options) : { scheme: "null" };
+    function resolve(baseURI, relativeURI, options2) {
+      const schemelessOptions = options2 ? Object.assign({ scheme: "null" }, options2) : { scheme: "null" };
       const {
         parsed: baseParsed,
         malformedAuthorityOrPort: baseMalformed,
@@ -3948,13 +3969,13 @@ var require_fast_uri = __commonJS({
         throw new Error(baseParsed.error || relativeParsed.error || "URI is malformed.");
       }
       const resolved = resolveComponent(baseParsed, relativeParsed, schemelessOptions, true);
-      const resolvedSchemeHandler = getSchemeHandler(options && options.scheme || resolved.scheme);
+      const resolvedSchemeHandler = getSchemeHandler(options2 && options2.scheme || resolved.scheme);
       const resolvedHost = resolved.host;
       const resolvedHostIsIP = resolvedHost !== void 0 && resolvedHost !== "" && (isIPv4(resolvedHost) || normalizeIPv6(resolvedHost).isIPV6);
-      if (hasForbiddenDomainHost(resolved, options || {}, resolvedSchemeHandler, resolvedHostIsIP)) {
+      if (hasForbiddenDomainHost(resolved, options2 || {}, resolvedSchemeHandler, resolvedHostIsIP)) {
         throw new Error(MALFORMED_HOST_ERROR);
       }
-      canonicalizeHost(resolved, options || {}, resolvedSchemeHandler, resolvedHostIsIP);
+      canonicalizeHost(resolved, options2 || {}, resolvedSchemeHandler, resolvedHostIsIP);
       const encodedASCIIHost = resolvedHost && resolvedHost.indexOf("%") !== -1 && !new RegExp("\\P{ASCII}", "u").test(resolvedHost);
       if (resolved.error && !encodedASCIIHost) {
         throw new Error(resolved.error);
@@ -3962,14 +3983,14 @@ var require_fast_uri = __commonJS({
       schemelessOptions.skipEscape = true;
       return serialize(resolved, schemelessOptions);
     }
-    function resolveComponent(base, relative, options, skipNormalization) {
+    function resolveComponent(base, relative, options2, skipNormalization) {
       const target = {};
       if (!skipNormalization) {
-        base = parse(serialize(base, options), options);
-        relative = parse(serialize(relative, options), options);
+        base = parse(serialize(base, options2), options2);
+        relative = parse(serialize(relative, options2), options2);
       }
-      options = options || {};
-      if (!options.tolerant && relative.scheme) {
+      options2 = options2 || {};
+      if (!options2.tolerant && relative.scheme) {
         target.scheme = relative.scheme;
         target.userinfo = relative.userinfo;
         target.host = relative.host;
@@ -4016,9 +4037,9 @@ var require_fast_uri = __commonJS({
       target.fragment = relative.fragment;
       return target;
     }
-    function equal(uriA, uriB, options) {
-      const normalizedA = normalizeComparableURI(uriA, options);
-      const normalizedB = normalizeComparableURI(uriB, options);
+    function equal(uriA, uriB, options2) {
+      const normalizedA = normalizeComparableURI(uriA, options2);
+      const normalizedB = normalizeComparableURI(uriB, options2);
       return normalizedA !== void 0 && normalizedB !== void 0 && normalizedA === normalizedB;
     }
     function serialize(cmpts, opts) {
@@ -4038,30 +4059,30 @@ var require_fast_uri = __commonJS({
         secure: cmpts.secure,
         error: ""
       };
-      const options = Object.assign({}, opts);
+      const options2 = Object.assign({}, opts);
       const uriTokens = [];
       if (component.scheme) {
         component.scheme = validateScheme(component.scheme);
       }
-      const schemeHandler = getSchemeHandler(options.scheme || component.scheme);
-      if (schemeHandler && schemeHandler.serialize) schemeHandler.serialize(component, options);
+      const schemeHandler = getSchemeHandler(options2.scheme || component.scheme);
+      if (schemeHandler && schemeHandler.serialize) schemeHandler.serialize(component, options2);
       const hasAuthority = component.userinfo !== void 0 || component.host !== void 0 || component.port !== void 0;
-      const schemelessReference = (component.scheme === void 0 || options.reference === "suffix") && !hasAuthority;
-      const pathNoScheme = !options.skipEscape && schemelessReference;
+      const schemelessReference = (component.scheme === void 0 || options2.reference === "suffix") && !hasAuthority;
+      const pathNoScheme = !options2.skipEscape && schemelessReference;
       if (component.path !== void 0) {
-        if (!options.skipEscape) {
+        if (!options2.skipEscape) {
           component.path = serializePathEncoding(component.path, pathNoScheme);
         } else {
           component.path = normalizePercentEncoding(component.path);
         }
       }
-      if (options.reference !== "suffix" && component.scheme) {
+      if (options2.reference !== "suffix" && component.scheme) {
         component.scheme = validateScheme(component.scheme);
         uriTokens.push(component.scheme, ":");
       }
       const authority = recomposeAuthority(component);
       if (authority !== void 0) {
-        if (options.reference !== "suffix") {
+        if (options2.reference !== "suffix") {
           uriTokens.push("//");
         }
         uriTokens.push(authority);
@@ -4071,7 +4092,7 @@ var require_fast_uri = __commonJS({
       }
       if (component.path !== void 0) {
         let s = component.path;
-        if (!options.absolutePath && (!schemeHandler || !schemeHandler.absolutePath)) {
+        if (!options2.absolutePath && (!schemeHandler || !schemeHandler.absolutePath)) {
           s = schemelessReference && s[0] !== "/" ? removeDotSegmentsRelative(s) : removeDotSegments(s);
         }
         if (schemelessReference) {
@@ -4120,12 +4141,12 @@ var require_fast_uri = __commonJS({
       const host = matches[4];
       return hasMalformedPercentEncoding(matches[3]) || host !== void 0 && !isIPLiteral(host) && hasMalformedPercentEncoding(host) || hasMalformedPercentEncoding(matches[6]) || hasMalformedPercentEncoding(matches[7]) || hasMalformedPercentEncoding(matches[8]);
     }
-    function canonicalizeHost(parsed, options, schemeHandler, isIP) {
-      if (hasForbiddenDomainHost(parsed, options, schemeHandler, isIP)) {
+    function canonicalizeHost(parsed, options2, schemeHandler, isIP) {
+      if (hasForbiddenDomainHost(parsed, options2, schemeHandler, isIP)) {
         parsed.error = parsed.error || MALFORMED_HOST_ERROR;
         return true;
       }
-      if (!options.unicodeSupport && (!schemeHandler || !schemeHandler.unicodeSupport) && parsed.host && !isIPLiteral(parsed.host) && (options.domainHost || schemeHandler && schemeHandler.domainHost) && isIP === false && nonSimpleDomain(parsed.host)) {
+      if (!options2.unicodeSupport && (!schemeHandler || !schemeHandler.unicodeSupport) && parsed.host && !isIPLiteral(parsed.host) && (options2.domainHost || schemeHandler && schemeHandler.domainHost) && isIP === false && nonSimpleDomain(parsed.host)) {
         let url;
         try {
           url = new URL("http://" + parsed.host);
@@ -4141,16 +4162,16 @@ var require_fast_uri = __commonJS({
       }
       return false;
     }
-    function hasForbiddenDomainHost(parsed, options, schemeHandler, isIP) {
+    function hasForbiddenDomainHost(parsed, options2, schemeHandler, isIP) {
       return Boolean(
-        parsed.host && isIP === false && !isIPLiteral(parsed.host) && (options.domainHost || schemeHandler && schemeHandler.domainHost) && FORBIDDEN_DOMAIN_HOST_CHARACTER.test(parsed.host)
+        parsed.host && isIP === false && !isIPLiteral(parsed.host) && (options2.domainHost || schemeHandler && schemeHandler.domainHost) && FORBIDDEN_DOMAIN_HOST_CHARACTER.test(parsed.host)
       );
     }
     function isHostOnlyURL(url) {
       return url.username === "" && url.password === "" && url.port === "" && url.pathname === "/" && url.search === "" && url.hash === "" && url.hostname !== "";
     }
     function parseWithStatus(uri, opts) {
-      const options = Object.assign({}, opts);
+      const options2 = Object.assign({}, opts);
       const parsed = {
         scheme: void 0,
         userinfo: void 0,
@@ -4167,9 +4188,9 @@ var require_fast_uri = __commonJS({
       let malformedIPLiteral = false;
       let malformedScheme = false;
       let isIP = false;
-      if (options.reference === "suffix") {
-        if (options.scheme) {
-          uri = options.scheme + ":" + uri;
+      if (options2.reference === "suffix") {
+        if (options2.scheme) {
+          uri = options2.scheme + ":" + uri;
         } else {
           uri = "//" + uri;
         }
@@ -4248,19 +4269,19 @@ var require_fast_uri = __commonJS({
         } else {
           parsed.reference = "uri";
         }
-        if (options.reference && options.reference !== "suffix" && options.reference !== parsed.reference) {
-          parsed.error = parsed.error || "URI is not a " + options.reference + " reference.";
+        if (options2.reference && options2.reference !== "suffix" && options2.reference !== parsed.reference) {
+          parsed.error = parsed.error || "URI is not a " + options2.reference + " reference.";
         }
-        const schemeHandler = getSchemeHandler(options.scheme || parsed.scheme);
+        const schemeHandler = getSchemeHandler(options2.scheme || parsed.scheme);
         if (!malformedIPLiteral) {
-          malformedHost = canonicalizeHost(parsed, options, schemeHandler, isIP);
+          malformedHost = canonicalizeHost(parsed, options2, schemeHandler, isIP);
         }
         if (uri.indexOf("%") !== -1 && parsed.host !== void 0 && !malformedIPLiteral) {
           let host = isIP ? parsed.host : normalizePercentEncoding(parsed.host, true);
           if (!isIP) {
             host = normalizePercentEncoding(host.toLowerCase());
           }
-          parsed.host = isIP || options.scheme !== "null" ? reescapeHostDelimiters(host, isIP) : host;
+          parsed.host = isIP || options2.scheme !== "null" ? reescapeHostDelimiters(host, isIP) : host;
         }
         if (!schemeHandler || schemeHandler && !schemeHandler.skipNormalize) {
           if (parsed.path) {
@@ -4274,7 +4295,7 @@ var require_fast_uri = __commonJS({
           }
         }
         if (schemeHandler && schemeHandler.parse) {
-          schemeHandler.parse(parsed, options);
+          schemeHandler.parse(parsed, options2);
           if (schemeHandler === SCHEMES.urn && parsed.nid === void 0) {
             malformedSchemeSpecific = true;
           }
@@ -4821,10 +4842,10 @@ var require_core = __commonJS({
     Ajv.ValidationError = validation_error_1.default;
     Ajv.MissingRefError = ref_error_1.default;
     exports.default = Ajv;
-    function checkOptions(checkOpts, options, msg, log = "error") {
+    function checkOptions(checkOpts, options2, msg, log = "error") {
       for (const key in checkOpts) {
         const opt = key;
-        if (opt in options)
+        if (opt in options2)
           this.logger[log](`${msg}: option ${key}. ${checkOpts[opt]}`);
       }
     }
@@ -8136,52 +8157,52 @@ function readSchema(name) {
   const schemaUrl = packagedReferences ? new URL(name, packagedReferences) : new URL(`../../references/${name}`, import.meta.url);
   return JSON.parse(readFileSync(schemaUrl, "utf8"));
 }
-function evaluate(validator, value, options = {}) {
+function evaluate(validator, value, options2 = {}) {
   const schemaValid = validator(value);
   const errors = [
     ...schemaValid ? [] : validator.errors.map((error) => ({ ...error })),
-    ...validateEvidenceTimestamps(value, options)
+    ...validateEvidenceTimestamps(value, options2)
   ];
   return { valid: errors.length === 0, errors };
 }
-function validateFindingV1(value, options = {}) {
-  return evaluate(findingV1Validator, value, options);
+function validateFindingV1(value, options2 = {}) {
+  return evaluate(findingV1Validator, value, options2);
 }
-function validateFindingV2(value, options = {}) {
-  return evaluate(findingV2Validator, value, options);
+function validateFindingV2(value, options2 = {}) {
+  return evaluate(findingV2Validator, value, options2);
 }
-function validateProjectV4Schema(value, options = {}) {
-  return evaluate(projectV4Validator, value, options);
+function validateProjectV4Schema(value, options2 = {}) {
+  return evaluate(projectV4Validator, value, options2);
 }
-function validateScopeSnapshotSchema(value, options = {}) {
-  return evaluate(scopeSnapshotValidator, value, options);
+function validateScopeSnapshotSchema(value, options2 = {}) {
+  return evaluate(scopeSnapshotValidator, value, options2);
 }
-function validateInventorySnapshotSchema(value, options = {}) {
-  return evaluate(inventorySnapshotValidator, value, options);
+function validateInventorySnapshotSchema(value, options2 = {}) {
+  return evaluate(inventorySnapshotValidator, value, options2);
 }
-function validateConvergenceCycleSchema(value, options = {}) {
-  return evaluate(convergenceCycleValidator, value, options);
+function validateConvergenceCycleSchema(value, options2 = {}) {
+  return evaluate(convergenceCycleValidator, value, options2);
 }
-function validateRequestedPassSchema(value, options = {}) {
-  return evaluate(requestedPassValidator, value, options);
+function validateRequestedPassSchema(value, options2 = {}) {
+  return evaluate(requestedPassValidator, value, options2);
 }
-function validateNoEditSkipSchema(value, options = {}) {
-  return evaluate(noEditSkipValidator, value, options);
+function validateNoEditSkipSchema(value, options2 = {}) {
+  return evaluate(noEditSkipValidator, value, options2);
 }
-function validateReviewGroupSchema(value, options = {}) {
-  return evaluate(reviewGroupValidator, value, options);
+function validateReviewGroupSchema(value, options2 = {}) {
+  return evaluate(reviewGroupValidator, value, options2);
 }
-function validateSemanticAttestationSchema(value, options = {}) {
-  return evaluate(semanticAttestationValidator, value, options);
+function validateSemanticAttestationSchema(value, options2 = {}) {
+  return evaluate(semanticAttestationValidator, value, options2);
 }
-function validateConvergenceEvaluationSchema(value, options = {}) {
-  return evaluate(convergenceEvaluationValidator, value, options);
+function validateConvergenceEvaluationSchema(value, options2 = {}) {
+  return evaluate(convergenceEvaluationValidator, value, options2);
 }
-function validateRevisionExecutionSchema(value, options = {}) {
-  return evaluate(revisionExecutionValidator, value, options);
+function validateRevisionExecutionSchema(value, options2 = {}) {
+  return evaluate(revisionExecutionValidator, value, options2);
 }
-function validateManuscriptReconciliationSchema(value, options = {}) {
-  return evaluate(manuscriptReconciliationValidator, value, options);
+function validateManuscriptReconciliationSchema(value, options2 = {}) {
+  return evaluate(manuscriptReconciliationValidator, value, options2);
 }
 function legacySharedArtifactError(artifact, instancePath, missingField) {
   return {
@@ -8209,20 +8230,20 @@ function withLegacyReportDiagnostic(value, result) {
     errors: [legacySharedArtifactError("report v2", `/${missingField}`, missingField), ...result.errors]
   };
 }
-function validateReportEnvelope(value, options = {}) {
-  return withLegacyReportDiagnostic(value, evaluate(reportValidator, value, options));
+function validateReportEnvelope(value, options2 = {}) {
+  return withLegacyReportDiagnostic(value, evaluate(reportValidator, value, options2));
 }
-function validateRelativePath(value, options = {}) {
-  return evaluate(relativePathValidator, value, options);
+function validateRelativePath(value, options2 = {}) {
+  return evaluate(relativePathValidator, value, options2);
 }
-function validateStoryState(value, options = {}) {
-  return evaluate(storyStateValidator, value, options);
+function validateStoryState(value, options2 = {}) {
+  return evaluate(storyStateValidator, value, options2);
 }
-function validateCreationBatchSchema(value, options = {}) {
-  return evaluate(creationBatchValidator, value, options);
+function validateCreationBatchSchema(value, options2 = {}) {
+  return evaluate(creationBatchValidator, value, options2);
 }
-function validateCreationCommitSchema(value, options = {}) {
-  return evaluate(creationCommitValidator, value, options);
+function validateCreationCommitSchema(value, options2 = {}) {
+  return evaluate(creationCommitValidator, value, options2);
 }
 function withLegacyCoverageUnitDiagnostic(value, result) {
   if (value?.schema_version !== "1.0.0" || value.source_report_sha256 !== void 0) {
@@ -8269,38 +8290,38 @@ function withLegacyCoverageIndexDiagnostic(value, result) {
   }
   return result;
 }
-function validateCoverageUnitSchema(value, options = {}) {
-  return withLegacyCoverageUnitDiagnostic(value, evaluate(coverageUnitValidator, value, options));
+function validateCoverageUnitSchema(value, options2 = {}) {
+  return withLegacyCoverageUnitDiagnostic(value, evaluate(coverageUnitValidator, value, options2));
 }
-function validateCoverageIndexSchema(value, options = {}) {
-  return withLegacyCoverageIndexDiagnostic(value, evaluate(coverageIndexValidator, value, options));
+function validateCoverageIndexSchema(value, options2 = {}) {
+  return withLegacyCoverageIndexDiagnostic(value, evaluate(coverageIndexValidator, value, options2));
 }
-function validateReviewJobSchema(value, options = {}) {
-  return evaluate(reviewJobValidator, value, options);
+function validateReviewJobSchema(value, options2 = {}) {
+  return evaluate(reviewJobValidator, value, options2);
 }
-function validateReaderStateSchema(value, options = {}) {
-  return evaluate(readerStateValidator, value, options);
+function validateReaderStateSchema(value, options2 = {}) {
+  return evaluate(readerStateValidator, value, options2);
 }
-function validateRecordFindingCommand(value, options = {}) {
-  return evaluate(recordFindingCommandValidator, value, options);
+function validateRecordFindingCommand(value, options2 = {}) {
+  return evaluate(recordFindingCommandValidator, value, options2);
 }
-function validateRecordApprovalCommand(value, options = {}) {
-  return evaluate(recordApprovalCommandValidator, value, options);
+function validateRecordApprovalCommand(value, options2 = {}) {
+  return evaluate(recordApprovalCommandValidator, value, options2);
 }
-function validateRecordFindingDecisionCommand(value, options = {}) {
-  return evaluate(recordFindingDecisionCommandValidator, value, options);
+function validateRecordFindingDecisionCommand(value, options2 = {}) {
+  return evaluate(recordFindingDecisionCommandValidator, value, options2);
 }
-function validateBackupManifestSchema(value, options = {}) {
-  return evaluate(backupManifestValidator, value, options);
+function validateBackupManifestSchema(value, options2 = {}) {
+  return evaluate(backupManifestValidator, value, options2);
 }
-function validateBackupIndexSchema(value, options = {}) {
-  return evaluate(backupIndexValidator, value, options);
+function validateBackupIndexSchema(value, options2 = {}) {
+  return evaluate(backupIndexValidator, value, options2);
 }
-function validateRecordBackupCommand(value, options = {}) {
-  return evaluate(recordBackupCommandValidator, value, options);
+function validateRecordBackupCommand(value, options2 = {}) {
+  return evaluate(recordBackupCommandValidator, value, options2);
 }
-function validateRecordRestoreCommand(value, options = {}) {
-  return evaluate(recordRestoreCommandValidator, value, options);
+function validateRecordRestoreCommand(value, options2 = {}) {
+  return evaluate(recordRestoreCommandValidator, value, options2);
 }
 function validateSchemaDefinitions() {
   const errors = [];
@@ -8501,7 +8522,7 @@ function extractReportEnvelope(markdown) {
     throw new ReportEnvelopeError(`Report envelope is not valid JSON: ${error.message}`);
   }
 }
-function validateMarkdownEnvelope(markdown, validate, options = {}) {
+function validateMarkdownEnvelope(markdown, validate, options2 = {}) {
   let envelope;
   try {
     envelope = extractReportEnvelope(markdown);
@@ -8512,7 +8533,7 @@ function validateMarkdownEnvelope(markdown, validate, options = {}) {
       errors: [{ instancePath: "", keyword: "markdown", message: error.message, params: {} }]
     };
   }
-  return { ...validate(envelope, options), envelope };
+  return { ...validate(envelope, options2), envelope };
 }
 function languageCoverageHeadingCount(markdown) {
   let count = 0;
@@ -8523,7 +8544,7 @@ function languageCoverageHeadingCount(markdown) {
   });
   return count;
 }
-function validateMarkdownReport(markdown, options = {}) {
+function validateMarkdownReport(markdown, options2 = {}) {
   let envelope;
   try {
     envelope = extractReportEnvelope(markdown);
@@ -8534,7 +8555,7 @@ function validateMarkdownReport(markdown, options = {}) {
       errors: [{ instancePath: "", keyword: "markdown", message: error.message, params: {} }]
     };
   }
-  const result = validateReportEnvelope(envelope, options);
+  const result = validateReportEnvelope(envelope, options2);
   const errors = [...result.errors];
   const coverageHeadings = languageCoverageHeadingCount(markdown);
   if (coverageHeadings !== 1) {
@@ -8568,8 +8589,8 @@ function evidenceError(message) {
 function evidenceValue(notes, name) {
   return notes.match(new RegExp(`(?:^|\\s)${name}=([^\\s]+)`))?.[1];
 }
-function validateEvidenceReport(markdown, options = {}) {
-  const result = validateMarkdownReport(markdown, options);
+function validateEvidenceReport(markdown, options2 = {}) {
+  const result = validateMarkdownReport(markdown, options2);
   if (!result.envelope) return result;
   const errors = [...result.errors];
   const notes = result.envelope.engine?.notes ?? "";
@@ -8782,8 +8803,8 @@ var init_state_io = __esm({
 });
 
 // scripts/lib/artifacts.mjs
-function validateStoryStateMarkdown(markdown, options = {}) {
-  return validateMarkdownEnvelope(markdown, validateStoryState, options);
+function validateStoryStateMarkdown(markdown, options2 = {}) {
+  return validateMarkdownEnvelope(markdown, validateStoryState, options2);
 }
 function validateFileHashes(file, index, errors, contract) {
   const creation = contract === "creation";
@@ -8848,8 +8869,8 @@ function creationApprovalBindingMatches(approval, batch, scopeFingerprint) {
 function sameApprovalPaths(actual, expected) {
   return JSON.stringify(actual) === JSON.stringify(expected);
 }
-function validateCreationBatch(value, options = {}) {
-  const result = validateCreationBatchSchema(value, options);
+function validateCreationBatch(value, options2 = {}) {
+  const result = validateCreationBatchSchema(value, options2);
   const errors = [...result.errors];
   for (const [index, file] of (value?.files ?? []).entries()) {
     validateFileHashes(file, index, errors, "creation");
@@ -8886,8 +8907,8 @@ function validateCreationBatch(value, options = {}) {
   }
   return { ...result, valid: errors.length === 0, errors };
 }
-function validateCreationCommit(value, options = {}) {
-  const result = validateCreationCommitSchema(value, options);
+function validateCreationCommit(value, options2 = {}) {
+  const result = validateCreationCommitSchema(value, options2);
   const errors = [...result.errors];
   const files = Array.isArray(value?.files) ? value.files : [];
   for (const [index, file] of files.entries()) {
@@ -8946,8 +8967,8 @@ function canReuseCoverageUnit(unit, requested) {
   const requestedSubchecks = [...requested.subchecks].sort();
   return unitSubchecks.every((subcheck, index) => subcheck === requestedSubchecks[index]) && sameVersionedPaths(unit.dependencies, requested.dependencies, false);
 }
-function validateCoverageIndex(value, options = {}) {
-  const result = validateCoverageIndexSchema(value, options);
+function validateCoverageIndex(value, options2 = {}) {
+  const result = validateCoverageIndexSchema(value, options2);
   const errors = [...result.errors];
   const entries = Array.isArray(value?.entries) ? value.entries : [];
   const operations = /* @__PURE__ */ new Set();
@@ -8989,6 +9010,218 @@ var init_artifacts = __esm({
   }
 });
 
+// scripts/lib/evaluation-contracts.mjs
+function artifactError(instancePath, message, keyword = "convergence-artifact") {
+  return { instancePath, keyword, message, params: {} };
+}
+function sameReference(left, right) {
+  return left?.path === right?.path && left?.sha256 === right?.sha256;
+}
+function samePassReference(left, right) {
+  return sameReference(left, right) && left?.pass_id === right?.pass_id && left?.pass_fingerprint === right?.pass_fingerprint;
+}
+function sameScopeReference(left, right) {
+  return left?.scope_id === right?.scope_id && left?.scope_fingerprint === right?.scope_fingerprint && left?.snapshot_path === right?.snapshot_path && left?.snapshot_sha256 === right?.snapshot_sha256;
+}
+function canonicalPassContent(pass) {
+  return {
+    target_scope: {
+      scope_id: pass.target_scope.scope_id,
+      scope_fingerprint: pass.target_scope.scope_fingerprint
+    },
+    required_operations: pass.required_operations,
+    paths: pass.paths,
+    language: pass.language,
+    dependencies: pass.dependencies,
+    inapplicability: pass.inapplicability,
+    narrowing: pass.narrowing ? { reason: pass.narrowing.reason, gaps: pass.narrowing.gaps } : null,
+    baseline_pass: pass.baseline_pass ? {
+      pass_id: pass.baseline_pass.pass_id,
+      pass_fingerprint: pass.baseline_pass.pass_fingerprint
+    } : null,
+    requested_subchecks: pass.requested_subchecks.map(({ operation, subcheck }) => ({
+      operation,
+      subcheck
+    }))
+  };
+}
+function computeRequestedPassFingerprint(pass) {
+  return sha256Bytes(JSON.stringify(canonicalPassContent(pass)));
+}
+function deriveRequestedPassBaseline(lastSatisfiedFullPass, newRequests = []) {
+  const operations = /* @__PURE__ */ new Map();
+  for (const requirement of lastSatisfiedFullPass?.required_operations ?? []) {
+    operations.set(requirement.operation, {
+      operation: requirement.operation,
+      paths: [...requirement.paths],
+      subchecks: new Set(requirement.subchecks)
+    });
+  }
+  for (const request of newRequests) {
+    if (!operations.has(request.operation)) {
+      operations.set(request.operation, {
+        operation: request.operation,
+        paths: [...request.paths ?? lastSatisfiedFullPass?.paths ?? []],
+        subchecks: /* @__PURE__ */ new Set()
+      });
+    }
+    operations.get(request.operation).subchecks.add(request.subcheck);
+  }
+  return [...operations.values()].map((requirement) => ({
+    operation: requirement.operation,
+    paths: requirement.paths,
+    subchecks: [...requirement.subchecks].sort()
+  }));
+}
+function validateRequestedPass(value, options2 = {}) {
+  const schema = validateRequestedPassSchema(value, options2);
+  const errors = [...schema.errors];
+  if (value?.target_scope && Array.isArray(value?.required_operations) && Array.isArray(value?.paths) && Array.isArray(value?.dependencies) && Array.isArray(value?.inapplicability) && Array.isArray(value?.requested_subchecks)) {
+    const expected = computeRequestedPassFingerprint(value);
+    if (value.pass_fingerprint !== expected) {
+      errors.push(artifactError(
+        "/pass_fingerprint",
+        `pass_fingerprint must match canonical requested-pass content: ${expected}`,
+        "requested-pass-fingerprint"
+      ));
+    }
+  }
+  const operations = /* @__PURE__ */ new Set();
+  for (const [index, requirement] of (value?.required_operations ?? []).entries()) {
+    if (operations.has(requirement.operation)) {
+      errors.push(artifactError(
+        `/required_operations/${index}/operation`,
+        `duplicate required operation: ${requirement.operation}`,
+        "requested-pass-operation"
+      ));
+    }
+    operations.add(requirement.operation);
+  }
+  const requested = /* @__PURE__ */ new Set();
+  for (const [index, request] of (value?.requested_subchecks ?? []).entries()) {
+    const key = `${request.operation}\0${request.subcheck}`;
+    if (requested.has(key)) {
+      errors.push(artifactError(
+        `/requested_subchecks/${index}`,
+        "a newly requested subcheck can appear only once",
+        "requested-pass-subcheck"
+      ));
+    }
+    requested.add(key);
+  }
+  const inapplicable = /* @__PURE__ */ new Set();
+  for (const [index, reason] of (value?.inapplicability ?? []).entries()) {
+    for (const filePath of reason.paths) {
+      const key = `${reason.operation}\0${reason.subcheck}\0${filePath}`;
+      if (inapplicable.has(key)) {
+        errors.push(artifactError(
+          `/inapplicability/${index}`,
+          `duplicate inapplicability record for ${reason.operation}/${reason.subcheck} at ${filePath}`,
+          "requested-pass-applicability"
+        ));
+      }
+      inapplicable.add(key);
+      const requirement = passRequirements(value, reason.operation);
+      if (requirement?.subchecks.includes(reason.subcheck) && requirement.paths.includes(filePath)) {
+        errors.push(artifactError(
+          `/inapplicability/${index}`,
+          `${reason.operation}/${reason.subcheck} cannot be required and inapplicable at ${filePath}`,
+          "requested-pass-applicability"
+        ));
+      }
+    }
+  }
+  return { valid: errors.length === 0, errors };
+}
+function validateNoEditSkip(value, options2 = {}) {
+  const schema = validateNoEditSkipSchema(value, options2);
+  const errors = [...schema.errors];
+  for (const operation of ["revision-plan", "chapter-revision"]) {
+    if (!value?.operations?.includes(operation)) {
+      errors.push(artifactError(
+        "/operations",
+        `a no-edit skip must record ${operation}`,
+        "no-edit-operations"
+      ));
+    }
+  }
+  return { valid: errors.length === 0, errors };
+}
+function validateReviewGroup(value, options2 = {}) {
+  const schema = validateReviewGroupSchema(value, options2);
+  const errors = [...schema.errors];
+  const perspectives = new Set((value?.jobs ?? []).map((entry) => entry.perspective));
+  for (const perspective of PERSPECTIVES) {
+    if (!perspectives.has(perspective)) {
+      errors.push(artifactError(
+        "/jobs",
+        `review group requires its ${perspective} perspective`,
+        "review-group-perspective"
+      ));
+    }
+  }
+  if (perspectives.size !== (value?.jobs ?? []).length) {
+    errors.push(artifactError(
+      "/jobs",
+      "review group perspectives must be unique",
+      "review-group-perspective"
+    ));
+  }
+  return { valid: errors.length === 0, errors };
+}
+function validateSemanticAttestation(value, options2 = {}) {
+  const schema = validateSemanticAttestationSchema(value, options2);
+  const errors = [...schema.errors];
+  const claims = /* @__PURE__ */ new Set();
+  for (const [index, claim] of (value?.claims ?? []).entries()) {
+    if (claims.has(claim.claim_type)) {
+      errors.push(artifactError(
+        `/claims/${index}/claim_type`,
+        "one attestation cannot repeat a claim type",
+        "semantic-attestation-claim"
+      ));
+    }
+    claims.add(claim.claim_type);
+  }
+  return { valid: errors.length === 0, errors };
+}
+function validateConvergenceEvaluation(value, options2 = {}) {
+  const schema = validateConvergenceEvaluationSchema(value, options2);
+  const errors = [...schema.errors];
+  if (value?.outcome === "satisfied" && value?.blockers?.length > 0) {
+    errors.push(artifactError(
+      "/blockers",
+      "a satisfied evaluation cannot retain blockers",
+      "convergence-evaluation-outcome"
+    ));
+  }
+  if (value?.outcome !== "satisfied" && value?.blockers?.length === 0) {
+    errors.push(artifactError(
+      "/blockers",
+      "a non-satisfied evaluation requires concrete blockers",
+      "convergence-evaluation-outcome"
+    ));
+  }
+  return { valid: errors.length === 0, errors };
+}
+function passRequirements(pass, operation) {
+  return pass?.required_operations?.find((requirement) => requirement.operation === operation) ?? null;
+}
+var COVERAGE_OPERATIONS, PERSPECTIVES, DEFAULT_ACTION;
+var init_evaluation_contracts = __esm({
+  "scripts/lib/evaluation-contracts.mjs"() {
+    init_schemas();
+    init_state_io();
+    COVERAGE_OPERATIONS = ["diagnostics", "characters", "prose", "ai-cleanup"];
+    PERSPECTIVES = ["intent", "standards", "fresh"];
+    DEFAULT_ACTION = Object.freeze({
+      strategy: "revise-draft",
+      operation: "intake",
+      command: "revise-draft"
+    });
+  }
+});
+
 // scripts/lib/manifest.mjs
 function greenfieldInitializationError(value) {
   const detected = value?.schema_version ?? "missing";
@@ -9007,9 +9240,9 @@ function greenfieldInitializationError(value) {
     }
   };
 }
-function validateManifest(value, options = {}) {
+function validateManifest(value, options2 = {}) {
   if (value?.schema_version === CURRENT_PROJECT_SCHEMA_VERSION) {
-    return validateProjectV4Schema(value, options);
+    return validateProjectV4Schema(value, options2);
   }
   return { valid: false, errors: [greenfieldInitializationError(value)] };
 }
@@ -9021,6 +9254,1826 @@ var init_manifest = __esm({
   }
 });
 
+// scripts/lib/manuscript.mjs
+import { readdir as readdir2, stat } from "node:fs/promises";
+import path2 from "node:path";
+function portablePath(value) {
+  return value.split(path2.sep).join("/");
+}
+function operationalRoots(paths) {
+  return [
+    ...ALWAYS_OPERATIONAL,
+    ...Object.values(paths).filter((value) => typeof value === "string")
+  ].map((value) => value.replace(/\/$/, "")).filter(Boolean);
+}
+function isOperational(relativePath, roots) {
+  return roots.some(
+    (root2) => root2 === "." || relativePath === root2 || relativePath.startsWith(`${root2}/`)
+  );
+}
+function isOperationalManuscriptPath(relativePath, paths = {}) {
+  return isOperational(relativePath, operationalRoots(paths));
+}
+async function collectManuscriptInventory(projectRoot, manuscriptRoot, paths = {}) {
+  const absoluteRoot = path2.resolve(projectRoot, manuscriptRoot);
+  const roots = operationalRoots(paths);
+  const entries = [];
+  async function add(absolute, file) {
+    const relativePath = portablePath(path2.relative(projectRoot, absolute));
+    entries.push({
+      absolute,
+      path: relativePath,
+      extension: path2.extname(relativePath).toLowerCase(),
+      file,
+      operational: isOperational(relativePath, roots)
+    });
+  }
+  async function visit(directory) {
+    const children = await readdir2(directory, { withFileTypes: true });
+    children.sort((left, right) => left.name.localeCompare(right.name));
+    for (const entry of children) {
+      const absolute = path2.join(directory, entry.name);
+      if (entry.isDirectory()) await visit(absolute);
+      else await add(absolute, entry.isFile());
+    }
+  }
+  const rootStat = await stat(absoluteRoot);
+  if (rootStat.isFile()) await add(absoluteRoot, true);
+  else await visit(absoluteRoot);
+  return {
+    files: entries.filter(
+      (entry) => entry.file && !entry.operational && MANUSCRIPT_EXTENSIONS.has(entry.extension)
+    ),
+    excludedFiles: entries.filter(
+      (entry) => !entry.file || entry.operational || !MANUSCRIPT_EXTENSIONS.has(entry.extension)
+    ).map((entry) => entry.path)
+  };
+}
+var MANUSCRIPT_EXTENSIONS, ALWAYS_OPERATIONAL;
+var init_manuscript = __esm({
+  "scripts/lib/manuscript.mjs"() {
+    MANUSCRIPT_EXTENSIONS = /* @__PURE__ */ new Set([".md", ".markdown", ".txt"]);
+    ALWAYS_OPERATIONAL = [".author-toolkit", "draft-baseline.md"];
+  }
+});
+
+// scripts/lib/project-files.mjs
+import { createHash as createHash2 } from "node:crypto";
+import { readFile as readFile2, stat as stat2 } from "node:fs/promises";
+import path3 from "node:path";
+function fileError(instancePath, message) {
+  return { instancePath, keyword: "filesystem", message, params: {} };
+}
+function scopeError(instancePath, message) {
+  return { instancePath, keyword: "scope-currency", message, params: {} };
+}
+function projectRootFromManifest(manifestPath) {
+  const directory = path3.dirname(path3.resolve(manifestPath));
+  return path3.basename(directory) === ".author-toolkit" ? path3.dirname(directory) : directory;
+}
+function isUninitializedProjectTemplate(manifest) {
+  return manifest.language === "und" && manifest.created_at === "2000-01-01T00:00:00Z" && manifest.updated_at === "2000-01-01T00:00:00Z";
+}
+async function checkExists(root2, instancePath, relativePath) {
+  if (!validateRelativePath(relativePath).valid) {
+    return fileError(instancePath, "project path must be a portable project-relative path");
+  }
+  try {
+    await stat2(path3.resolve(root2, relativePath));
+    return null;
+  } catch (error) {
+    if (error.code === "ENOENT") {
+      return fileError(instancePath, `required project path does not exist: ${relativePath}`);
+    }
+    return fileError(instancePath, `cannot access project path ${relativePath}: ${error.message}`);
+  }
+}
+async function validateProjectFiles(manifest, manifestPath) {
+  const projectRoot = projectRootFromManifest(manifestPath);
+  if (isUninitializedProjectTemplate(manifest)) {
+    return { valid: true, errors: [], projectRoot };
+  }
+  const checks = [["/manuscript_root", manifest.manuscript_root]];
+  for (const name of OPERATIONAL_PATHS) {
+    checks.push([`/paths/${name}`, manifest.paths?.[name]]);
+  }
+  manifest.pending_action?.artifacts?.forEach((artifact, artifactIndex) => {
+    checks.push([`/pending_action/artifacts/${artifactIndex}`, artifact]);
+  });
+  manifest.current_scope?.files?.forEach((file, fileIndex) => {
+    checks.push([`/current_scope/files/${fileIndex}/path`, file.path]);
+  });
+  const errors = [];
+  for (const [instancePath, relativePath] of checks) {
+    const error = await checkExists(projectRoot, instancePath, relativePath);
+    if (error) errors.push(error);
+  }
+  return { valid: errors.length === 0, errors, projectRoot };
+}
+async function validateScopeCurrency(manifest, manifestPath) {
+  const projectRoot = projectRootFromManifest(manifestPath);
+  if (!manifest.current_scope || isUninitializedProjectTemplate(manifest)) {
+    return { valid: true, errors: [], projectRoot };
+  }
+  const errors = [];
+  for (const [index, file] of manifest.current_scope.files.entries()) {
+    const instancePath = `/current_scope/files/${index}`;
+    if (!validateRelativePath(file.path).valid) {
+      errors.push(scopeError(`${instancePath}/path`, "scope path must be project-relative"));
+      continue;
+    }
+    try {
+      const contents = await readFile2(path3.resolve(projectRoot, file.path));
+      const actual = createHash2("sha256").update(contents).digest("hex");
+      if (actual !== file.sha256) {
+        errors.push(
+          scopeError(
+            `${instancePath}/sha256`,
+            `manuscript content changed since the scope was recorded: ${file.path}`
+          )
+        );
+      }
+    } catch (error) {
+      errors.push(
+        scopeError(
+          `${instancePath}/path`,
+          `cannot read current manuscript ${file.path}: ${error.message}`
+        )
+      );
+    }
+  }
+  try {
+    const inventory = await collectManuscriptInventory(
+      projectRoot,
+      manifest.manuscript_root,
+      manifest.paths
+    );
+    const actualPaths = inventory.files.map((file) => file.path);
+    const recordedPaths = new Set(manifest.current_scope.files.map((file) => file.path));
+    for (const filePath of actualPaths) {
+      if (!recordedPaths.has(filePath)) {
+        errors.push(
+          scopeError(
+            "/current_scope/files",
+            `manuscript file is not registered in the current scope: ${filePath}`
+          )
+        );
+      }
+    }
+  } catch (error) {
+    errors.push(
+      scopeError("/current_scope/files", `cannot inventory current manuscript: ${error.message}`)
+    );
+  }
+  return { valid: errors.length === 0, errors, projectRoot };
+}
+var OPERATIONAL_PATHS;
+var init_project_files = __esm({
+  "scripts/lib/project-files.mjs"() {
+    init_manuscript();
+    init_schemas();
+    OPERATIONAL_PATHS = [
+      "story_bible",
+      "audit_tracker",
+      "reports",
+      "sessions",
+      "backups",
+      "handoffs",
+      "creation",
+      "convergence"
+    ];
+  }
+});
+
+// scripts/lib/cycle-coordination.mjs
+import { readFile as readFile3 } from "node:fs/promises";
+import path4 from "node:path";
+function action() {
+  return {
+    strategy: "author-project",
+    operation: "reconcile-cycle",
+    command: "author-project reconcile-cycle"
+  };
+}
+function blocker(code, message, operation = null) {
+  return {
+    code,
+    message,
+    ...operation ? {
+      operation_id: operation.operation_id,
+      cycle_id: operation.cycle_id,
+      expected_revision: operation.expected_revision,
+      intended_revision: operation.intended_revision,
+      kind: operation.kind
+    } : {},
+    required_action: action()
+  };
+}
+function pendingBlockers(manifest, active) {
+  const pending = manifest.pending_action;
+  if (!pending?.cycle_id) return [];
+  const cycle = active?.value;
+  if (!cycle) {
+    if (manifest.last_completed_cycle?.cycle_id === pending.cycle_id) return [];
+    return [blocker(
+      "pending-cycle-unavailable",
+      `Pending action ${pending.operation_id ?? pending.operation} names unavailable cycle ${pending.cycle_id}; it cannot authorize continuation.`
+    )];
+  }
+  if (pending.cycle_id !== cycle.cycle_id) {
+    return [blocker(
+      "pending-cycle-id-mismatch",
+      `Pending action names cycle ${pending.cycle_id}, but active cycle is ${cycle.cycle_id}.`
+    )];
+  }
+  if (pending.cycle_revision !== cycle.revision) {
+    return [blocker(
+      "cycle-pending-revision-mismatch",
+      `Pending action revision ${pending.cycle_revision} does not match active cycle revision ${cycle.revision}.`
+    )];
+  }
+  const position = cycle.recovery_position;
+  if (pending.operation_id && position?.operation_id && pending.operation_id !== position.operation_id) {
+    return [blocker(
+      "cycle-operation-id-mismatch",
+      `Pending operation ID ${pending.operation_id} does not match cycle operation ID ${position.operation_id}.`
+    )];
+  }
+  if (position?.operation && pending.operation !== position.operation) {
+    return [blocker(
+      "cycle-operation-mismatch",
+      `Pending operation ${pending.operation} does not match cycle recovery operation ${position.operation}.`
+    )];
+  }
+  if (cycle.target_scope?.scope_id && (pending.scope_id !== cycle.target_scope.scope_id || pending.scope_fingerprint && pending.scope_fingerprint !== cycle.target_scope.scope_fingerprint)) {
+    return [blocker(
+      "cycle-pending-scope-mismatch",
+      `Pending scope ${pending.scope_id ?? "null"}@${pending.scope_fingerprint ?? "unrecorded"} does not match active target ${cycle.target_scope.scope_id}@${cycle.target_scope.scope_fingerprint}.`
+    )];
+  }
+  return [];
+}
+function coordinationBlockers(project, active, { allowOperationId = null } = {}) {
+  const operation = project.manifest.cycle_operation;
+  if (operation && operation.operation_id !== allowOperationId) {
+    if (operation.cycle_id !== active?.value.cycle_id) {
+      return [blocker(
+        "cycle-operation-cycle-id-mismatch",
+        `Interrupted operation ${operation.operation_id} names cycle ${operation.cycle_id}, which does not match active cycle ${active?.value.cycle_id ?? "null"}.`,
+        operation
+      )];
+    }
+    if (![operation.expected_revision, operation.intended_revision].includes(active?.value.revision)) {
+      return [blocker(
+        "cycle-operation-revision-mismatch",
+        `Interrupted operation ${operation.operation_id} allows revisions ${operation.expected_revision} or ${operation.intended_revision}, but active revision is ${active?.value.revision ?? "null"}.`,
+        operation
+      )];
+    }
+    if (active?.value.revision === operation.intended_revision && active.value.recovery_position?.operation_id && active.value.recovery_position.operation_id !== operation.operation_id) {
+      return [blocker(
+        "cycle-operation-id-mismatch",
+        `Active operation ID ${active.value.recovery_position.operation_id} does not match interrupted operation ${operation.operation_id}.`,
+        operation
+      )];
+    }
+    return [blocker(
+      "cycle-reconciliation-required",
+      `Interrupted ${operation.kind} ${operation.operation_id} stopped at cycle revision ${active?.value.revision ?? "null"}; diagnose and choose an explicit reconciliation direction.`,
+      operation
+    )];
+  }
+  if (operation) return [];
+  const recoveryPending = allowOperationId && project.manifest.pending_action?.cycle_id === active?.value.cycle_id && project.manifest.pending_action.operation_id === allowOperationId;
+  const pending = recoveryPending ? [] : pendingBlockers(project.manifest, active);
+  if (pending.length > 0) return pending;
+  const reconciliation = active?.value.related_artifacts?.reconciliations?.at(-1) ?? null;
+  const manifestReconciliation = project.manifest.manuscript_reconciliation ?? null;
+  if (reconciliation && (reconciliation.path !== manifestReconciliation?.path || reconciliation.sha256 !== manifestReconciliation?.sha256 || reconciliation.reconciliation_id !== manifestReconciliation?.reconciliation_id)) {
+    return [blocker(
+      "cycle-manifest-reconciliation-mismatch",
+      `Active reconciliation ${reconciliation.reconciliation_id} at ${reconciliation.path}@${reconciliation.sha256} does not match manifest ${manifestReconciliation?.reconciliation_id ?? "null"} at ${manifestReconciliation?.path ?? "null"}@${manifestReconciliation?.sha256 ?? "null"}.`,
+      {
+        operation_id: reconciliation.reconciliation_id,
+        cycle_id: active.value.cycle_id,
+        expected_revision: active.value.revision - 1,
+        intended_revision: active.value.revision,
+        kind: "manuscript-reconciliation"
+      }
+    )];
+  }
+  return [];
+}
+async function runCheckpoint(options2, point) {
+  if (typeof options2.checkpoint === "function") await options2.checkpoint(point);
+}
+function timestamp(options2) {
+  return utcTimestamp(options2);
+}
+async function writeManifest(project, manifest) {
+  const validation = validateManifest(manifest);
+  if (!validation.valid) {
+    throw new Error(`Coordinated manifest is invalid: ${validation.errors.map((error) => error.message).join("; ")}`);
+  }
+  await writeAtomicVerified(project.manifestPath, `${JSON.stringify(manifest, null, 2)}
+`);
+  project.manifest = manifest;
+}
+async function beginCycleOperation(project, active, definition, options2 = {}) {
+  const existing = project.manifest.cycle_operation;
+  if (existing) {
+    if (options2.recoveryOperationId === definition.operationId && existing.operation_id === definition.operationId && existing.kind === definition.kind && existing.cycle_id === active.value.cycle_id && existing.expected_revision === active.value.revision && existing.intended_revision === active.value.revision + 1 && (existing.artifact_id ?? null) === (definition.artifactId ?? null)) {
+      return existing;
+    }
+    throw new Error(`Cannot begin ${definition.operationId} while ${existing.operation_id} awaits reconciliation`);
+  }
+  const operation = {
+    kind: definition.kind,
+    operation_id: definition.operationId,
+    cycle_id: active.value.cycle_id,
+    expected_revision: active.value.revision,
+    intended_revision: active.value.revision + 1,
+    ...definition.artifactId ? { artifact_id: definition.artifactId } : {},
+    created_at: timestamp(options2)
+  };
+  await writeManifest(project, {
+    ...project.manifest,
+    cycle_operation: operation,
+    updated_at: operation.created_at
+  });
+  await runCheckpoint(options2, "manifest-written");
+  return operation;
+}
+async function finishCycleOperation(project, cycle, operationId, options2 = {}) {
+  const operation = project.manifest.cycle_operation;
+  if (!operation && !options2.allowMissingOperation || operation && (operation.operation_id !== operationId || operation.cycle_id !== cycle.cycle_id || operation.intended_revision !== cycle.revision)) {
+    throw new Error(`Cannot finish unrecorded cycle operation ${operationId} at revision ${cycle.revision}`);
+  }
+  const { cycle_operation: removed, ...withoutOperation } = project.manifest;
+  let pending = project.manifest.pending_action;
+  if (pending?.cycle_id === cycle.cycle_id) {
+    if (options2.complete) {
+      pending = null;
+    } else {
+      pending = {
+        ...pending,
+        operation: cycle.recovery_position?.operation ?? pending.operation,
+        cycle_revision: cycle.revision,
+        operation_id: cycle.recovery_position?.operation_id ?? operationId,
+        updated_at: timestamp(options2)
+      };
+      if (cycle.target_scope) {
+        pending.scope_id = cycle.target_scope.scope_id;
+        pending.scope_fingerprint = cycle.target_scope.scope_fingerprint;
+      } else {
+        delete pending.scope_id;
+        delete pending.scope_fingerprint;
+      }
+    }
+  }
+  const manifest = {
+    ...withoutOperation,
+    ...options2.manifestChanges ?? {},
+    ...pending ? { pending_action: pending } : {},
+    updated_at: options2.completedAt ?? cycle.updated_at ?? timestamp(options2)
+  };
+  if (!pending) delete manifest.pending_action;
+  for (const field of options2.removeManifestFields ?? []) delete manifest[field];
+  await writeManifest(project, manifest);
+  await runCheckpoint(options2, "manifest-updated");
+  return manifest;
+}
+async function discardCycleOperation(project, operationId, options2 = {}) {
+  const operation = project.manifest.cycle_operation;
+  if (!operation || operation.operation_id !== operationId) {
+    throw new Error(`Cannot discard unrecorded cycle operation ${operationId}`);
+  }
+  const { cycle_operation: removed, ...manifest } = project.manifest;
+  manifest.updated_at = timestamp(options2);
+  await writeManifest(project, manifest);
+  return manifest;
+}
+async function completedPointerBlocker(project) {
+  const pointer = project.manifest.last_completed_cycle;
+  if (!pointer) return null;
+  const expectedPath = path4.posix.join(
+    project.manifest.paths.convergence,
+    "cycles",
+    `${pointer.cycle_id}.json`
+  );
+  if (pointer.path !== expectedPath) {
+    return {
+      ...blocker(
+        "cycle-completed-pointer-path-mismatch",
+        `Completed-cycle pointer path ${pointer.path} must be ${expectedPath}.`,
+        {
+          kind: "completion",
+          operation_id: pointer.cycle_id,
+          cycle_id: pointer.cycle_id,
+          expected_revision: pointer.revision - 1,
+          intended_revision: pointer.revision
+        }
+      ),
+      path: pointer.path,
+      expected_path: expectedPath
+    };
+  }
+  let text;
+  try {
+    text = await readFile3(path4.resolve(project.root, pointer.path), "utf8");
+  } catch (error) {
+    return {
+      ...blocker(
+        "cycle-completed-pointer-unavailable",
+        `Cannot read completed cycle ${pointer.cycle_id} at ${pointer.path}: ${error.message}`,
+        {
+          kind: "completion",
+          operation_id: pointer.cycle_id,
+          cycle_id: pointer.cycle_id,
+          expected_revision: pointer.revision - 1,
+          intended_revision: pointer.revision
+        }
+      ),
+      path: pointer.path
+    };
+  }
+  const actualHash = sha256Bytes(text);
+  if (actualHash !== pointer.sha256) {
+    return {
+      ...blocker(
+        "cycle-completed-pointer-hash-mismatch",
+        `Completed cycle at ${pointer.path} has SHA-256 ${actualHash}, expected ${pointer.sha256}.`,
+        {
+          kind: "completion",
+          operation_id: pointer.cycle_id,
+          cycle_id: pointer.cycle_id,
+          expected_revision: pointer.revision - 1,
+          intended_revision: pointer.revision
+        }
+      ),
+      path: pointer.path,
+      expected_sha256: pointer.sha256,
+      actual_sha256: actualHash
+    };
+  }
+  const completed = JSON.parse(text);
+  if (completed.status !== "completed" || completed.cycle_id !== pointer.cycle_id || completed.revision !== pointer.revision) {
+    return {
+      ...blocker(
+        "cycle-completed-pointer-identity-mismatch",
+        `Completed cycle at ${pointer.path} does not match ${pointer.cycle_id} revision ${pointer.revision}.`,
+        {
+          kind: "completion",
+          operation_id: pointer.cycle_id,
+          cycle_id: pointer.cycle_id,
+          expected_revision: pointer.revision - 1,
+          intended_revision: pointer.revision
+        }
+      ),
+      path: pointer.path
+    };
+  }
+  return null;
+}
+var init_cycle_coordination = __esm({
+  "scripts/lib/cycle-coordination.mjs"() {
+    init_manifest();
+    init_state_io();
+    init_time();
+  }
+});
+
+// scripts/lib/shared-references.mjs
+var shared_references_exports = {};
+__export(shared_references_exports, {
+  packagedReferences: () => packagedReferences2,
+  validateDeployedReferences: () => validateDeployedReferences
+});
+import { createHash as createHash3 } from "node:crypto";
+import { readFile as readFile4, readdir as readdir3 } from "node:fs/promises";
+import path5 from "node:path";
+import { fileURLToPath } from "node:url";
+function sha256(bytes) {
+  return createHash3("sha256").update(bytes).digest("hex");
+}
+async function validateDeployedReferences(projectRoot) {
+  const errors = [];
+  const entries = await readdir3(packagedReferences2, { withFileTypes: true });
+  for (const entry of entries) {
+    if (!entry.isFile()) continue;
+    const relativePath = `.author-toolkit/references/${entry.name}`;
+    const packaged = await readFile4(path5.join(packagedReferences2, entry.name));
+    let deployed;
+    try {
+      deployed = await readFile4(path5.join(projectRoot, relativePath));
+    } catch (error) {
+      if (error.code !== "ENOENT") throw error;
+      errors.push({
+        instancePath: `/${relativePath}`,
+        code: "shared-reference-missing",
+        message: `missing shared reference ${relativePath}; run setup-author-toolkit`
+      });
+      continue;
+    }
+    const expectedHash = sha256(packaged);
+    const actualHash = sha256(deployed);
+    if (actualHash !== expectedHash) {
+      errors.push({
+        instancePath: `/${relativePath}`,
+        code: "reference-version-conflict",
+        expected_sha256: expectedHash,
+        actual_sha256: actualHash,
+        message: `reference-version-conflict: ${relativePath}; expected_sha256=${expectedHash} actual_sha256=${actualHash}; run setup-author-toolkit`
+      });
+    }
+  }
+  return { valid: errors.length === 0, errors };
+}
+var packagedReferenceUrl, packagedReferences2;
+var init_shared_references = __esm({
+  "scripts/lib/shared-references.mjs"() {
+    packagedReferenceUrl = globalThis[Symbol.for("author-toolkit.packaged-references")];
+    packagedReferences2 = fileURLToPath(
+      packagedReferenceUrl ?? new URL("../../skills/setup-author-toolkit/assets/references/", import.meta.url)
+    );
+  }
+});
+
+// scripts/lib/evaluation-artifacts.mjs
+var evaluation_artifacts_exports = {};
+__export(evaluation_artifacts_exports, {
+  completedCycles: () => completedCycles,
+  evaluationReference: () => evaluationReference,
+  evaluationSources: () => evaluationSources,
+  formatErrors: () => formatErrors,
+  latestSatisfiedPass: () => latestSatisfiedPass,
+  operationTime: () => operationTime,
+  publishImmutable: () => publishImmutable,
+  readActiveCycle: () => readActiveCycle,
+  readEvaluationReference: () => readEvaluationReference,
+  readProject: () => readProject
+});
+import { readdir as readdir4, readFile as readFile5 } from "node:fs/promises";
+import path6 from "node:path";
+async function readProject(projectRoot, options2 = {}) {
+  const root2 = path6.resolve(projectRoot);
+  const manifestPath = path6.join(root2, ".author-toolkit", "project.json");
+  const manifest = JSON.parse(await readFile5(manifestPath, "utf8"));
+  const validation = validateManifest(manifest, options2);
+  if (!validation.valid) {
+    const error = new Error(`Project validation failed: ${validation.errors.map((error2) => error2.message).join("; ")}`);
+    error.projectCode = validation.errors.find(
+      (candidate) => candidate.code === "greenfield-initialization-required"
+    )?.code ?? "project-state-invalid";
+    error.projectDetails = { validation_errors: validation.errors };
+    throw error;
+  }
+  const references = await validateDeployedReferences(root2);
+  if (!references.valid) {
+    const error = new Error("Shared references are missing or do not match the installed payload; run setup-author-toolkit.");
+    error.projectCode = "reference-version-conflict";
+    error.projectDetails = { reference_errors: references.errors };
+    throw error;
+  }
+  return { root: root2, manifestPath, manifest, references };
+}
+async function readActiveCycle(project, options2 = {}) {
+  const file = path6.resolve(project.root, project.manifest.paths.convergence, "active-cycle.json");
+  let value;
+  let text;
+  try {
+    text = await readFile5(file, "utf8");
+    value = JSON.parse(text);
+  } catch (error) {
+    if (error.code === "ENOENT") return null;
+    throw error;
+  }
+  const validation = validateConvergenceCycleSchema(value, options2);
+  if (!validation.valid || value.status !== "active") {
+    throw new Error(`Living cycle is invalid: ${file}: ${formatErrors(validation.errors)}`);
+  }
+  return { value, file, text };
+}
+function operationTime(options2 = {}) {
+  return utcTimestamp(options2);
+}
+function evaluationReference(evaluation, relativePath, text) {
+  return {
+    evaluation_id: evaluation.evaluation_id,
+    path: relativePath,
+    sha256: sha256Bytes(text)
+  };
+}
+async function publishImmutable(file, text) {
+  try {
+    await createNoClobberVerified(file, text);
+  } catch (error) {
+    if (error.code !== "EEXIST") throw error;
+    const existing = await readFile5(file, "utf8");
+    if (existing !== text) throw new Error(`Immutable artifact already differs: ${file}`);
+  }
+}
+function formatErrors(errors) {
+  return errors.map((error) => `${error.instancePath || "/"} ${error.message}`).join("; ");
+}
+async function completedCycles(project, options2 = {}) {
+  const directory = path6.resolve(project.root, project.manifest.paths.convergence, "cycles");
+  let entries;
+  try {
+    entries = await readdir4(directory, { withFileTypes: true });
+  } catch (error) {
+    if (error.code === "ENOENT") return [];
+    throw error;
+  }
+  const cycles = [];
+  for (const entry of entries) {
+    if (!entry.isFile() || !entry.name.endsWith(".json")) continue;
+    const value = JSON.parse(await readFile5(path6.join(directory, entry.name), "utf8"));
+    const validation = validateConvergenceCycleSchema(value, options2);
+    if (!validation.valid) {
+      throw new Error(`Completed cycle is invalid: ${entry.name}: ${formatErrors(validation.errors)}`);
+    }
+    if (value.status === "completed") cycles.push(value);
+  }
+  return cycles.sort(
+    (left, right) => String(left.completion?.completed_at ?? left.updated_at).localeCompare(
+      String(right.completion?.completed_at ?? right.updated_at)
+    ) || left.cycle_id.localeCompare(right.cycle_id)
+  );
+}
+async function readEvaluationReference(project, reference, options2 = {}) {
+  const text = await readFile5(path6.resolve(project.root, reference.path), "utf8");
+  if (sha256Bytes(text) !== reference.sha256) {
+    throw new Error(`Evaluation content hash changed: ${reference.path}`);
+  }
+  const value = JSON.parse(text);
+  const validation = validateConvergenceEvaluation(value, options2);
+  if (!validation.valid) throw new Error(formatErrors(validation.errors));
+  if (value.evaluation_id !== reference.evaluation_id) {
+    throw new Error(`Evaluation identity changed: ${reference.path}`);
+  }
+  return { value, text };
+}
+async function evaluationSources(project, options2 = {}) {
+  const sources = (await completedCycles(project, options2)).map((cycle) => ({
+    cycle,
+    evaluationReference: cycle.target_evaluation,
+    passReference: cycle.requested_pass,
+    sortAt: cycle.completion?.completed_at ?? cycle.updated_at
+  }));
+  const directory = path6.resolve(project.root, project.manifest.paths.convergence, "evaluations");
+  let entries;
+  try {
+    entries = await readdir4(directory, { withFileTypes: true });
+  } catch (error) {
+    if (error.code === "ENOENT") return sources;
+    throw error;
+  }
+  for (const entry of entries) {
+    if (!entry.isFile() || !entry.name.endsWith(".json")) continue;
+    const relative = path6.posix.join(
+      project.manifest.paths.convergence,
+      "evaluations",
+      entry.name
+    );
+    const text = await readFile5(path6.resolve(project.root, relative), "utf8");
+    const evaluationReference2 = {
+      evaluation_id: entry.name.slice(0, -".json".length),
+      path: relative,
+      sha256: sha256Bytes(text)
+    };
+    const { value: evaluation } = await readEvaluationReference(project, evaluationReference2, options2);
+    if (evaluation.cycle_id !== null) continue;
+    sources.push({
+      cycle: null,
+      evaluationReference: evaluationReference2,
+      passReference: evaluation.requested_pass,
+      sortAt: evaluation.created_at
+    });
+  }
+  return sources.sort(
+    (left, right) => left.sortAt.localeCompare(right.sortAt) || left.evaluationReference.path.localeCompare(right.evaluationReference.path)
+  );
+}
+async function latestSatisfiedPass(project, excludeCycleId = null, excludeEvaluationId = null, options2 = {}) {
+  for (const source of (await evaluationSources(project, options2)).reverse()) {
+    if (source.cycle?.cycle_id === excludeCycleId || source.evaluationReference.evaluation_id === excludeEvaluationId || !source.passReference) continue;
+    try {
+      const { value: evaluation } = await readEvaluationReference(project, source.evaluationReference, options2);
+      if (evaluation.outcome !== "satisfied") continue;
+      const passText = await readFile5(path6.resolve(project.root, source.passReference.path), "utf8");
+      if (sha256Bytes(passText) !== source.passReference.sha256) continue;
+      const pass = JSON.parse(passText);
+      if (!validateRequestedPass(pass, options2).valid || pass.narrowing !== null) continue;
+      if (pass.pass_id !== source.passReference.pass_id || pass.pass_fingerprint !== source.passReference.pass_fingerprint) continue;
+      return {
+        cycle: source.cycle,
+        evaluation,
+        evaluationReference: source.evaluationReference,
+        pass,
+        passReference: source.passReference
+      };
+    } catch {
+      continue;
+    }
+  }
+  return null;
+}
+var init_evaluation_artifacts = __esm({
+  "scripts/lib/evaluation-artifacts.mjs"() {
+    init_manifest();
+    init_schemas();
+    init_shared_references();
+    init_state_io();
+    init_time();
+    init_evaluation_contracts();
+  }
+});
+
+// scripts/lib/scope.mjs
+import { createHash as createHash4 } from "node:crypto";
+import { mkdir as mkdir2, readFile as readFile6 } from "node:fs/promises";
+import path7 from "node:path";
+function sha2562(contents) {
+  return createHash4("sha256").update(contents).digest("hex");
+}
+function sorted(values) {
+  return [...values].sort();
+}
+function byPath(left, right) {
+  return left.path < right.path ? -1 : left.path > right.path ? 1 : 0;
+}
+function canonicalInventory(value) {
+  return {
+    manuscript_root: value.manuscript_root,
+    files: [...value.files].sort(byPath).map(({ path: filePath, sha256: hash }) => ({ path: filePath, sha256: hash })),
+    excluded_files: sorted(value.excluded_files)
+  };
+}
+function computeScopeFingerprint(scope) {
+  return sha2562(
+    JSON.stringify({
+      files: scope.files.map(({ path: filePath, sha256: hash }) => ({ path: filePath, sha256: hash })),
+      excluded_files: sorted(scope.excluded_files)
+    })
+  );
+}
+function computeInventoryFingerprint(inventory) {
+  return sha2562(JSON.stringify(canonicalInventory(inventory)));
+}
+async function atomicWrite(file, contents) {
+  await writeAtomicVerified(file, contents);
+}
+async function writeImmutable(file, contents) {
+  try {
+    await createNoClobberVerified(file, contents);
+  } catch (error) {
+    if (error.code !== "EEXIST") throw error;
+    const existing = await readFile6(file, "utf8");
+    if (existing !== contents) {
+      throw new Error(`Immutable snapshot already exists with different content: ${file}`);
+    }
+  }
+}
+async function readExistingInventory(file, expected) {
+  let contents;
+  try {
+    contents = await readFile6(file, "utf8");
+  } catch (error) {
+    if (error.code === "ENOENT") return null;
+    throw error;
+  }
+  const inventory = JSON.parse(contents);
+  if (computeInventoryFingerprint(inventory) !== expected.inventory_fingerprint || inventory.manuscript_root !== expected.manuscript_root || JSON.stringify(inventory.files) !== JSON.stringify(expected.files) || JSON.stringify(sorted(inventory.excluded_files)) !== JSON.stringify(sorted(expected.excluded_files))) {
+    throw new Error(`Immutable inventory snapshot has inconsistent content: ${file}`);
+  }
+  return contents;
+}
+async function currentInventory(projectRoot, manifest) {
+  const inventory = await collectManuscriptInventory(
+    projectRoot,
+    manifest.manuscript_root,
+    manifest.paths
+  );
+  const files = [];
+  for (const entry of inventory.files) {
+    files.push({ path: entry.path, sha256: sha2562(await readFile6(entry.absolute)) });
+  }
+  const lockRoot = `${manifest.paths.convergence.replace(/\/$/, "")}/active-cycle.lock`;
+  return {
+    files,
+    excludedFiles: inventory.excludedFiles.filter(
+      (filePath) => filePath !== lockRoot && !filePath.startsWith(`${lockRoot}/`)
+    ),
+    absoluteByPath: new Map(inventory.files.map((entry) => [entry.path, entry.absolute]))
+  };
+}
+async function collectVersionedInventory(projectRoot, manifest) {
+  const current = await currentInventory(projectRoot, manifest);
+  const inventory = {
+    manuscript_root: manifest.manuscript_root,
+    files: current.files,
+    excluded_files: sorted(current.excludedFiles)
+  };
+  return {
+    ...inventory,
+    inventory_fingerprint: computeInventoryFingerprint(inventory)
+  };
+}
+async function recordInventorySnapshot(projectRoot, manifest, options2 = {}) {
+  const observed = await collectVersionedInventory(projectRoot, manifest);
+  const record = {
+    schema_version: "1.0.0",
+    ...observed,
+    created_at: utcTimestamp(options2)
+  };
+  const validation = validateInventorySnapshot(record, options2);
+  if (!validation.valid) throw validationError(validation);
+  const relative = path7.posix.join(
+    manifest.paths.convergence,
+    "inventories",
+    `${record.inventory_fingerprint}.json`
+  );
+  const absolute = path7.resolve(projectRoot, relative);
+  const text = `${JSON.stringify(record, null, 2)}
+`;
+  await writeImmutable(absolute, text);
+  return {
+    record,
+    reference: {
+      path: relative,
+      sha256: sha2562(text),
+      inventory_fingerprint: record.inventory_fingerprint
+    }
+  };
+}
+function diffManuscriptInventories(previous, current) {
+  const beforeByPath = new Map((previous.files ?? []).map((file) => [file.path, file]));
+  const afterByPath = new Map((current.files ?? []).map((file) => [file.path, file]));
+  const created = current.files.filter((file) => !beforeByPath.has(file.path));
+  const modified = current.files.filter(
+    (file) => beforeByPath.has(file.path) && beforeByPath.get(file.path).sha256 !== file.sha256
+  ).map((file) => ({
+    path: file.path,
+    input_sha256: beforeByPath.get(file.path).sha256,
+    output_sha256: file.sha256
+  }));
+  const deleted = previous.files.filter((file) => !afterByPath.has(file.path)).map((file) => ({
+    path: file.path,
+    input_sha256: file.sha256
+  }));
+  const beforeRetained = previous.files.filter((file) => afterByPath.has(file.path)).map((file) => file.path);
+  const afterRetained = current.files.filter((file) => beforeByPath.has(file.path)).map((file) => file.path);
+  const reordered = [];
+  if (JSON.stringify(beforeRetained) !== JSON.stringify(afterRetained)) {
+    const afterIndex = new Map(afterRetained.map((filePath, index) => [filePath, index]));
+    for (const [beforeIndex, filePath] of beforeRetained.entries()) {
+      const beforePrevious = beforeRetained[beforeIndex - 1] ?? null;
+      const indexAfter = afterIndex.get(filePath);
+      const afterPrevious = afterRetained[indexAfter - 1] ?? null;
+      if (beforePrevious !== afterPrevious) {
+        reordered.push({
+          path: filePath,
+          before_index: previous.files.findIndex((file) => file.path === filePath),
+          after_index: current.files.findIndex((file) => file.path === filePath)
+        });
+      }
+    }
+  }
+  return {
+    created,
+    modified,
+    deleted,
+    reordered,
+    evidence_affected: [.../* @__PURE__ */ new Set([
+      ...created.map((file) => file.path),
+      ...modified.map((file) => file.path),
+      ...deleted.map((file) => file.path),
+      ...reordered.map((file) => file.path)
+    ])],
+    dependency_affected: []
+  };
+}
+function validationError(result) {
+  return new Error(
+    `4.0.0 scope validation failed:
+${result.errors.map((error) => `${error.instancePath || "/"} ${error.message}`).join("\n")}`
+  );
+}
+function scopeStateError(code, message, details = {}) {
+  const error = new Error(message);
+  error.projectCode = code;
+  error.projectDetails = details;
+  return error;
+}
+async function recordScopeLocked(root2, manifestPath, initialConvergence, scope, options2, progress) {
+  await runCheckpoint(options2, "lock-acquired");
+  const manifestText = await readFile6(manifestPath, "utf8");
+  const actualManifestHash = sha2562(manifestText);
+  if (options2.expectedManifestSha256 !== void 0 && actualManifestHash !== options2.expectedManifestSha256) {
+    throw scopeStateError(
+      "manifest-hash-conflict",
+      "The project manifest changed after the scope input was prepared; reread it before retrying.",
+      {
+        expected_sha256: options2.expectedManifestSha256,
+        actual_sha256: actualManifestHash
+      }
+    );
+  }
+  const manifest = JSON.parse(manifestText);
+  const originalValidation = validateManifest(manifest, options2);
+  if (!originalValidation.valid) throw validationError(originalValidation);
+  if (manifest.paths.convergence !== initialConvergence) {
+    throw scopeStateError(
+      "project-lock-path-conflict",
+      "The registered convergence path changed while scope recording waited for its lock."
+    );
+  }
+  const active = await readActiveCycle({ root: root2, manifest }, options2);
+  if (options2.cycleId !== void 0 && !active) {
+    throw scopeStateError("active-cycle-required", "The named active cycle is unavailable.");
+  }
+  if (active && options2.cycleId !== void 0 && (active.value.cycle_id !== options2.cycleId || active.value.revision !== options2.expectedRevision)) {
+    throw scopeStateError(
+      "cycle-revision-conflict",
+      `Expected cycle ${options2.cycleId} revision ${options2.expectedRevision}, but the active cycle is ${active.value.cycle_id} revision ${active.value.revision}.`
+    );
+  }
+  progress.active = active;
+  const updatedAt = utcTimestamp(options2);
+  if (!["proposed", "confirmed"].includes(scope.status)) {
+    throw new Error(`Unsupported scope status: ${scope.status}`);
+  }
+  const confirmation = options2.authorConfirmation;
+  if (scope.status === "confirmed" && (!confirmation || confirmation.reading_order_confirmed !== true)) {
+    throw scopeStateError(
+      "scope-confirmation-required",
+      "A confirmed scope requires author confirmation of its exact reading order."
+    );
+  }
+  const inventory = await currentInventory(root2, manifest);
+  const scopePaths = /* @__PURE__ */ new Set();
+  const files = [];
+  for (const entry of Array.isArray(scope.files) ? scope.files : []) {
+    const filePath = typeof entry === "string" ? entry : entry?.path;
+    const expectedHash = typeof entry === "object" && entry !== null ? entry.sha256 : void 0;
+    if (scopePaths.has(filePath)) throw new Error(`Duplicate scope path: ${filePath}`);
+    scopePaths.add(filePath);
+    const absolute = inventory.absoluteByPath.get(filePath);
+    if (!absolute) {
+      throw scopeStateError(
+        "scope-path-invalid",
+        `Scope path is not in the current manuscript inventory: ${filePath}`,
+        { path: filePath }
+      );
+    }
+    const actualHash = inventory.files.find((file) => file.path === filePath).sha256;
+    if (expectedHash !== void 0 && actualHash !== expectedHash) {
+      throw scopeStateError(
+        "scope-input-hash-conflict",
+        `Scope input hash is not current: ${filePath}`,
+        { path: filePath, expected_sha256: expectedHash, actual_sha256: actualHash }
+      );
+    }
+    files.push({ path: filePath, sha256: actualHash });
+  }
+  const excludedFiles = scope.excluded_files === void 0 ? sorted(inventory.excludedFiles) : scope.excluded_files;
+  if (JSON.stringify(sorted(excludedFiles)) !== JSON.stringify(sorted(inventory.excludedFiles))) {
+    throw scopeStateError(
+      "scope-exclusions-conflict",
+      "Scope exclusions do not match the current manuscript inventory.",
+      { expected: excludedFiles, actual: sorted(inventory.excludedFiles) }
+    );
+  }
+  const normalizedScope = {
+    ...scope,
+    files,
+    excluded_files: sorted(excludedFiles),
+    created_at: scope.created_at ?? updatedAt
+  };
+  const scopeFingerprint = computeScopeFingerprint(normalizedScope);
+  if (scope.scope_fingerprint !== void 0 && scope.scope_fingerprint !== scopeFingerprint) {
+    throw scopeStateError(
+      "scope-fingerprint-conflict",
+      `Scope fingerprint ${scope.scope_fingerprint} does not match the current ordered manuscript content ${scopeFingerprint}.`,
+      { expected_sha256: scope.scope_fingerprint, actual_sha256: scopeFingerprint }
+    );
+  }
+  const currentScope = {
+    scope_id: normalizedScope.scope_id,
+    description: normalizedScope.description,
+    status: normalizedScope.status,
+    files: normalizedScope.files,
+    excluded_files: normalizedScope.excluded_files,
+    created_at: normalizedScope.created_at,
+    scope_fingerprint: scopeFingerprint
+  };
+  if (normalizedScope.status === "proposed") {
+    const updated2 = { ...manifest, current_scope: currentScope, updated_at: updatedAt };
+    const validation2 = validateManifest(updated2, options2);
+    if (!validation2.valid) throw validationError(validation2);
+    await atomicWrite(manifestPath, `${JSON.stringify(updated2, null, 2)}
+`);
+    progress.manifestWritten = true;
+    await runCheckpoint(options2, "manifest-updated");
+    return {
+      scope_id: normalizedScope.scope_id,
+      scope_fingerprint: scopeFingerprint,
+      inventory_fingerprint: null,
+      snapshot_path: null,
+      inventory_path: null,
+      snapshot_reference: null,
+      inventory_reference: null,
+      current_scope: currentScope
+    };
+  }
+  const inventoryRecord = {
+    schema_version: "1.0.0",
+    inventory_fingerprint: "",
+    manuscript_root: manifest.manuscript_root,
+    files: inventory.files,
+    excluded_files: sorted(inventory.excludedFiles),
+    created_at: updatedAt
+  };
+  inventoryRecord.inventory_fingerprint = computeInventoryFingerprint(inventoryRecord);
+  const inventoryRelative = path7.posix.join(
+    manifest.paths.convergence,
+    "inventories",
+    `${inventoryRecord.inventory_fingerprint}.json`
+  );
+  const inventoryPath = path7.resolve(root2, inventoryRelative);
+  let inventoryText = await readExistingInventory(inventoryPath, inventoryRecord);
+  if (inventoryText === null) inventoryText = `${JSON.stringify(inventoryRecord, null, 2)}
+`;
+  const snapshotRelative = path7.posix.join(
+    manifest.paths.convergence,
+    "scopes",
+    `${normalizedScope.scope_id}-${scopeFingerprint}.json`
+  );
+  const snapshotPath = path7.resolve(root2, snapshotRelative);
+  const snapshot = {
+    schema_version: "1.0.0",
+    scope_id: normalizedScope.scope_id,
+    scope_fingerprint: scopeFingerprint,
+    description: normalizedScope.description,
+    status: "confirmed",
+    files: currentScope.files,
+    excluded_files: normalizedScope.excluded_files,
+    created_at: normalizedScope.created_at,
+    inventory: {
+      path: inventoryRelative,
+      sha256: sha2562(inventoryText),
+      inventory_fingerprint: inventoryRecord.inventory_fingerprint
+    },
+    author_confirmation: {
+      decision_id: confirmation.decision_id,
+      confirmed_at: confirmation.confirmed_at,
+      reading_order_confirmed: true
+    }
+  };
+  const inventoryValidation = validateInventorySnapshot(inventoryRecord, options2);
+  if (!inventoryValidation.valid) throw validationError(inventoryValidation);
+  const snapshotValidation = validateScopeSnapshot(snapshot, options2);
+  if (!snapshotValidation.valid) throw validationError(snapshotValidation);
+  const snapshotText = `${JSON.stringify(snapshot, null, 2)}
+`;
+  currentScope.snapshot_path = snapshotRelative;
+  currentScope.snapshot_sha256 = sha2562(snapshotText);
+  const updated = { ...manifest, current_scope: currentScope, updated_at: updatedAt };
+  const validation = validateManifest(updated, options2);
+  if (!validation.valid) throw validationError(validation);
+  await writeImmutable(inventoryPath, inventoryText);
+  progress.inventoryPublished = true;
+  progress.inventoryPath = inventoryPath;
+  await runCheckpoint(options2, "inventory-published");
+  await writeImmutable(snapshotPath, snapshotText);
+  progress.snapshotPublished = true;
+  progress.snapshotPath = snapshotPath;
+  await runCheckpoint(options2, "snapshot-published");
+  await atomicWrite(manifestPath, `${JSON.stringify(updated, null, 2)}
+`);
+  progress.manifestWritten = true;
+  await runCheckpoint(options2, "manifest-updated");
+  return {
+    scope_id: normalizedScope.scope_id,
+    scope_fingerprint: scopeFingerprint,
+    inventory_fingerprint: inventoryRecord.inventory_fingerprint,
+    snapshot_path: snapshotPath,
+    inventory_path: inventoryPath,
+    snapshot_reference: {
+      path: snapshotRelative,
+      sha256: currentScope.snapshot_sha256
+    },
+    inventory_reference: {
+      path: inventoryRelative,
+      sha256: sha2562(inventoryText),
+      inventory_fingerprint: inventoryRecord.inventory_fingerprint
+    },
+    current_scope: currentScope
+  };
+}
+async function recordScope(projectRoot, scope, options2 = {}) {
+  const { root: root2, manifestPath, manifest: initialManifest } = await readProject(projectRoot, options2);
+  await mkdir2(path7.resolve(root2, initialManifest.paths.convergence), { recursive: true });
+  const lock = await acquireDirectoryLock(
+    path7.resolve(root2, initialManifest.paths.convergence, "active-cycle.lock"),
+    {
+      timeoutMs: options2.lockTimeoutMs ?? 1e4,
+      retryMs: options2.lockRetryMs ?? 20,
+      now: options2.now
+    }
+  );
+  if (!lock.acquired) {
+    throw scopeStateError(
+      lock.code === "timeout" ? "project-lock-timeout" : "project-lock-error",
+      `Cannot coordinate scope recording at ${lock.directory}: ${lock.error.message}`,
+      { lock_path: lock.directory }
+    );
+  }
+  const progress = options2.progress ?? {};
+  let outcome;
+  let operationError;
+  try {
+    outcome = await recordScopeLocked(
+      root2,
+      manifestPath,
+      initialManifest.paths.convergence,
+      scope,
+      options2,
+      progress
+    );
+  } catch (error) {
+    operationError = error;
+  }
+  const released = await releaseDirectoryLock(lock);
+  if (!released.released) {
+    throw scopeStateError(
+      "project-lock-release-error",
+      `Cannot release scope lock ${lock.directory}: ${released.error.message}${operationError ? `; operation also failed: ${operationError.message}` : ""}`,
+      { lock_path: lock.directory }
+    );
+  }
+  if (operationError) throw operationError;
+  return outcome;
+}
+function scopeFailure(instancePath, message, keyword = "full-manuscript-scope") {
+  return { instancePath, keyword, message, params: {} };
+}
+function sameFiles(left, right) {
+  return JSON.stringify(left) === JSON.stringify(right);
+}
+function sameStrings(left, right) {
+  return JSON.stringify(sorted(left)) === JSON.stringify(sorted(right));
+}
+function relevantExclusions(values, paths) {
+  return values.filter((value) => !isOperationalManuscriptPath(value, paths));
+}
+async function validateFullManuscriptScope(manifest, manifestPath, options2 = {}) {
+  const projectRoot = projectRootFromManifest(manifestPath);
+  const scope = manifest.current_scope;
+  const result = {
+    valid: false,
+    full_manuscript: false,
+    errors: [],
+    projectRoot,
+    scope_id: scope?.scope_id ?? null,
+    scope_fingerprint: scope?.scope_fingerprint ?? null,
+    inventory_fingerprint: null,
+    snapshot_path: scope?.snapshot_path ?? null
+  };
+  if (!scope) {
+    result.errors.push(scopeFailure("/current_scope", "a current scope is required"));
+    return result;
+  }
+  if (scope.status !== "confirmed") {
+    result.errors.push(
+      scopeFailure(
+        "/current_scope/status",
+        "full-manuscript validation requires a confirmed scope",
+        "scope-status"
+      )
+    );
+    return result;
+  }
+  const expectedFingerprint = computeScopeFingerprint(scope);
+  if (scope.scope_fingerprint !== expectedFingerprint) {
+    result.errors.push(
+      scopeFailure(
+        "/current_scope/scope_fingerprint",
+        `scope_fingerprint must be ${expectedFingerprint}`,
+        "scope-fingerprint"
+      )
+    );
+  }
+  const seen = /* @__PURE__ */ new Set();
+  for (const [index, file] of scope.files.entries()) {
+    if (seen.has(file.path)) {
+      result.errors.push(
+        scopeFailure(
+          `/current_scope/files/${index}/path`,
+          `duplicate manuscript path in scope: ${file.path}`,
+          "scope-uniqueness"
+        )
+      );
+    }
+    seen.add(file.path);
+  }
+  let snapshotText;
+  let snapshot;
+  try {
+    snapshotText = await readFile6(path7.resolve(projectRoot, scope.snapshot_path), "utf8");
+    snapshot = JSON.parse(snapshotText);
+    result.errors.push(...validateScopeSnapshot(snapshot, options2).errors);
+    result.inventory_fingerprint = snapshot.inventory?.inventory_fingerprint ?? null;
+    if (sha2562(snapshotText) !== scope.snapshot_sha256) {
+      result.errors.push(
+        scopeFailure(
+          "/current_scope/snapshot_sha256",
+          "scope snapshot content changed after confirmation",
+          "scope-snapshot"
+        )
+      );
+    }
+    const expectedSnapshotPath = path7.posix.join(
+      manifest.paths.convergence,
+      "scopes",
+      `${scope.scope_id}-${scope.scope_fingerprint}.json`
+    );
+    if (scope.snapshot_path !== expectedSnapshotPath) {
+      result.errors.push(
+        scopeFailure(
+          "/current_scope/snapshot_path",
+          `scope snapshot path must be ${expectedSnapshotPath}`,
+          "scope-snapshot"
+        )
+      );
+    }
+    if (snapshot.scope_id !== scope.scope_id || snapshot.scope_fingerprint !== scope.scope_fingerprint || snapshot.status !== "confirmed") {
+      result.errors.push(
+        scopeFailure(
+          "/current_scope/snapshot_path",
+          "scope snapshot identity or confirmation status does not match the manifest",
+          "scope-snapshot"
+        )
+      );
+    }
+    if (!sameFiles(snapshot.files, scope.files)) {
+      result.errors.push(
+        scopeFailure(
+          "/current_scope/files",
+          "scope files, hashes, or confirmed reading order differ from the immutable snapshot",
+          "scope-order"
+        )
+      );
+    }
+    if (!sameStrings(snapshot.excluded_files, scope.excluded_files)) {
+      result.errors.push(
+        scopeFailure(
+          "/current_scope/excluded_files",
+          "scope exclusions differ from the immutable snapshot",
+          "scope-exclusions"
+        )
+      );
+    }
+    if (snapshot.author_confirmation?.reading_order_confirmed !== true) {
+      result.errors.push(
+        scopeFailure(
+          "/current_scope/snapshot_path",
+          "the author did not confirm the snapshot reading order",
+          "scope-confirmation"
+        )
+      );
+    }
+  } catch (error) {
+    result.errors.push(
+      scopeFailure(
+        "/current_scope/snapshot_path",
+        `cannot read a valid immutable scope snapshot: ${error.message}`,
+        "scope-snapshot"
+      )
+    );
+  }
+  let inventory;
+  if (snapshot?.inventory) {
+    try {
+      const expectedInventoryPath = path7.posix.join(
+        manifest.paths.convergence,
+        "inventories",
+        `${snapshot.inventory.inventory_fingerprint}.json`
+      );
+      if (snapshot.inventory.path !== expectedInventoryPath) {
+        result.errors.push(
+          scopeFailure(
+            "/current_scope/snapshot_path",
+            `inventory snapshot path must be ${expectedInventoryPath}`,
+            "scope-inventory"
+          )
+        );
+      }
+      const inventoryText = await readFile6(
+        path7.resolve(projectRoot, snapshot.inventory.path),
+        "utf8"
+      );
+      inventory = JSON.parse(inventoryText);
+      result.errors.push(...validateInventorySnapshot(inventory, options2).errors);
+      if (inventory.manuscript_root !== manifest.manuscript_root) {
+        result.errors.push(
+          scopeFailure(
+            "/current_scope/snapshot_path",
+            "inventory snapshot manuscript_root does not match the manifest",
+            "scope-inventory"
+          )
+        );
+      }
+      if (sha2562(inventoryText) !== snapshot.inventory.sha256) {
+        result.errors.push(
+          scopeFailure(
+            "/current_scope/snapshot_path",
+            "inventory snapshot content changed after scope confirmation",
+            "scope-inventory"
+          )
+        );
+      }
+      if (computeInventoryFingerprint(inventory) !== snapshot.inventory.inventory_fingerprint || inventory.inventory_fingerprint !== snapshot.inventory.inventory_fingerprint) {
+        result.errors.push(
+          scopeFailure(
+            "/current_scope/snapshot_path",
+            "inventory snapshot fingerprint does not match its canonical content",
+            "scope-inventory"
+          )
+        );
+      }
+      if (!sameStrings(inventory.excluded_files, snapshot.excluded_files)) {
+        result.errors.push(
+          scopeFailure(
+            "/current_scope/excluded_files",
+            "scope exclusions differ from its inventory evidence",
+            "scope-exclusions"
+          )
+        );
+      }
+      if (inventory.files.length !== snapshot.files.length || !snapshot.files.every(
+        (file) => inventory.files.some(
+          (candidate) => candidate.path === file.path && candidate.sha256 === file.sha256
+        )
+      )) {
+        result.errors.push(
+          scopeFailure(
+            "/current_scope/files",
+            "confirmed scope is not the complete manuscript in its inventory evidence",
+            "scope-inventory"
+          )
+        );
+      }
+    } catch (error) {
+      result.errors.push(
+        scopeFailure(
+          "/current_scope/snapshot_path",
+          `cannot read valid inventory evidence: ${error.message}`,
+          "scope-inventory"
+        )
+      );
+    }
+  }
+  try {
+    const current = await currentInventory(projectRoot, manifest);
+    const scopeByPath = new Map(scope.files.map((file) => [file.path, file.sha256]));
+    for (const file of current.files) {
+      if (!scopeByPath.has(file.path)) {
+        result.errors.push(
+          scopeFailure(
+            "/current_scope/files",
+            `manuscript file is not registered in the current scope: ${file.path}`,
+            "scope-inventory"
+          )
+        );
+      }
+    }
+    for (const [index, file] of scope.files.entries()) {
+      const absolute = current.absoluteByPath.get(file.path);
+      if (!absolute) {
+        let message = `scope path is not a current manuscript-inventory path: ${file.path}`;
+        try {
+          await readFile6(path7.resolve(projectRoot, file.path));
+        } catch (error) {
+          message = `cannot read current manuscript ${file.path}: ${error.message}`;
+        }
+        result.errors.push(
+          scopeFailure(
+            `/current_scope/files/${index}/path`,
+            message,
+            "scope-inventory"
+          )
+        );
+        continue;
+      }
+      const currentHash = current.files.find((candidate) => candidate.path === file.path)?.sha256;
+      if (currentHash !== file.sha256) {
+        result.errors.push(
+          scopeFailure(
+            `/current_scope/files/${index}/sha256`,
+            `manuscript content changed since the scope was recorded: ${file.path}`,
+            "scope-currency"
+          )
+        );
+      }
+    }
+    if (!sameStrings(
+      relevantExclusions(current.excludedFiles, manifest.paths),
+      relevantExclusions(scope.excluded_files, manifest.paths)
+    )) {
+      result.errors.push(
+        scopeFailure(
+          "/current_scope/excluded_files",
+          "current non-operational manuscript exclusions changed after confirmation",
+          "scope-exclusions"
+        )
+      );
+    }
+  } catch (error) {
+    result.errors.push(
+      scopeFailure(
+        "/current_scope/files",
+        `cannot inventory current manuscript: ${error.message}`,
+        "scope-inventory"
+      )
+    );
+  }
+  result.valid = result.errors.length === 0;
+  result.full_manuscript = result.valid;
+  return result;
+}
+function validateScopeSnapshot(value, options2 = {}) {
+  const schema = validateScopeSnapshotSchema(value, options2);
+  const errors = [...schema.errors];
+  if (Array.isArray(value?.files) && Array.isArray(value?.excluded_files)) {
+    const expected = computeScopeFingerprint(value);
+    if (value.scope_fingerprint !== expected) {
+      errors.push(
+        scopeFailure(
+          "/scope_fingerprint",
+          `scope_fingerprint does not match canonical content; expected ${expected}`,
+          "scope-fingerprint"
+        )
+      );
+    }
+    const paths = /* @__PURE__ */ new Set();
+    for (const [index, file] of value.files.entries()) {
+      if (paths.has(file.path)) {
+        errors.push(
+          scopeFailure(
+            `/files/${index}/path`,
+            `duplicate manuscript path in scope snapshot: ${file.path}`,
+            "scope-uniqueness"
+          )
+        );
+      }
+      paths.add(file.path);
+    }
+  }
+  return { valid: errors.length === 0, errors };
+}
+function validateInventorySnapshot(value, options2 = {}) {
+  const schema = validateInventorySnapshotSchema(value, options2);
+  const errors = [...schema.errors];
+  if (typeof value?.manuscript_root === "string" && Array.isArray(value?.files) && Array.isArray(value?.excluded_files)) {
+    const expected = computeInventoryFingerprint(value);
+    if (value.inventory_fingerprint !== expected) {
+      errors.push(
+        scopeFailure(
+          "/inventory_fingerprint",
+          `inventory_fingerprint does not match canonical content; expected ${expected}`,
+          "inventory-fingerprint"
+        )
+      );
+    }
+    const paths = /* @__PURE__ */ new Set();
+    for (const [index, file] of value.files.entries()) {
+      if (paths.has(file.path)) {
+        errors.push(
+          scopeFailure(
+            `/files/${index}/path`,
+            `duplicate manuscript path in inventory snapshot: ${file.path}`,
+            "inventory-uniqueness"
+          )
+        );
+      }
+      paths.add(file.path);
+    }
+  }
+  return { valid: errors.length === 0, errors };
+}
+var init_scope = __esm({
+  "scripts/lib/scope.mjs"() {
+    init_manifest();
+    init_manuscript();
+    init_project_files();
+    init_cycle_coordination();
+    init_evaluation_artifacts();
+    init_schemas();
+    init_state_io();
+    init_time();
+  }
+});
+
+// scripts/lib/coverage-index.mjs
+import { readFile as readFile7 } from "node:fs/promises";
+import path8 from "node:path";
+function coverageError(instancePath, message, code = "coverage-evidence-invalid") {
+  return { instancePath, code, keyword: code, message, params: {} };
+}
+async function projectRootForIndex(indexPath) {
+  let directory = path8.dirname(path8.resolve(indexPath));
+  while (true) {
+    try {
+      await readFile7(path8.join(directory, ".author-toolkit", "project.json"), "utf8");
+      return directory;
+    } catch (error) {
+      if (error.code !== "ENOENT") throw error;
+    }
+    const parent = path8.dirname(directory);
+    if (parent === directory) {
+      throw new Error("Cannot locate .author-toolkit/project.json for the coverage index");
+    }
+    directory = parent;
+  }
+}
+async function readArtifact(projectRoot, reference, instancePath, errors) {
+  if (!reference?.path || !validateRelativePath(reference.path).valid || !/^[0-9a-f]{64}$/.test(reference.sha256 ?? "")) {
+    errors.push(coverageError(instancePath, "artifact reference requires a safe path and SHA-256", "coverage-reference-invalid"));
+    return null;
+  }
+  try {
+    const contents = await readFile7(path8.resolve(projectRoot, reference.path));
+    if (sha256Bytes(contents) !== reference.sha256) {
+      errors.push(coverageError(`${instancePath}/sha256`, `artifact hash differs for ${reference.path}`, "coverage-artifact-hash-mismatch"));
+      return null;
+    }
+    return contents;
+  } catch (error) {
+    errors.push(coverageError(instancePath, `cannot read artifact ${reference.path}: ${error.message}`, "coverage-artifact-unavailable"));
+    return null;
+  }
+}
+async function readJson(projectRoot, reference, instancePath, errors) {
+  const contents = await readArtifact(projectRoot, reference, instancePath, errors);
+  if (!contents) return null;
+  try {
+    return JSON.parse(contents.toString("utf8"));
+  } catch (error) {
+    errors.push(coverageError(instancePath, `artifact is not valid JSON: ${error.message}`, "coverage-artifact-json-invalid"));
+    return null;
+  }
+}
+function dependencyMatches(source, current) {
+  return source.path === current.path && source.sha256 === current.sha256;
+}
+function validateDependencySource(source, dependency, operation, contents, errors) {
+  if (!source?.report_id || !contents) return false;
+  const validation = validateEvidenceReport(contents.toString("utf8"));
+  const report = validation.envelope;
+  if (!validation.valid || report.report_id !== source.report_id || report.stage !== operation) {
+    errors.push(coverageError(
+      "/dependency_exception/source",
+      `dependency source must be a valid ${operation} report with matching identity`,
+      "dependency-source-invalid"
+    ));
+    return false;
+  }
+  if (dependencyMatches(source, dependency)) return true;
+  return report.inputs.some(
+    (input) => input.path === dependency.path && input.version === dependency.sha256 && input.version_type === "sha256"
+  );
+}
+async function validateException(projectRoot, unit, pass, exception, options2, errors) {
+  const dependency = pass.dependencies.find((candidate) => candidate.path === exception.dependency_path);
+  const oldDependency = unit.dependencies.find((candidate) => candidate.path === exception.dependency_path);
+  if (exception.unit_id !== unit.unit_id || !samePassReference(exception.requested_pass, pass.requested_pass ?? pass) || !dependency || !oldDependency || oldDependency.sha256 !== exception.old_sha256 || dependency.sha256 !== exception.new_sha256 || exception.old_sha256 === exception.new_sha256 || dependency.role !== exception.operation) {
+    errors.push(coverageError(
+      "/dependency_exception",
+      "dependency exception does not bind the unit, current pass, role, and exact old/new dependency versions",
+      "dependency-exception-identity-mismatch"
+    ));
+    return;
+  }
+  const unitPaths = unit.dependencies.map((candidate) => candidate.path).sort();
+  const passPaths = pass.dependencies.map((candidate) => candidate.path).sort();
+  const changed = unitPaths.filter(
+    (filePath, index) => filePath === passPaths[index] && unit.dependencies.find((candidate) => candidate.path === filePath)?.sha256 !== pass.dependencies.find((candidate) => candidate.path === filePath)?.sha256
+  );
+  if (JSON.stringify(unitPaths) !== JSON.stringify(passPaths) || changed.length !== 1) {
+    errors.push(coverageError(
+      "/dependency_exception",
+      "dependency exception must change exactly one dependency hash",
+      "dependency-exception-hash-mismatch"
+    ));
+  }
+  const sourceContents = await readArtifact(
+    projectRoot,
+    dependency.source,
+    "/dependency_exception/source",
+    errors
+  );
+  if (!validateDependencySource(dependency.source, dependency, exception.operation, sourceContents, errors)) {
+    errors.push(coverageError(
+      "/dependency_exception/source",
+      "dependency source does not prove the current dependency version",
+      "dependency-source-invalid"
+    ));
+  }
+  const attestation = await readJson(
+    projectRoot,
+    exception.semantic_attestation,
+    "/dependency_exception/semantic_attestation",
+    errors
+  );
+  if (!attestation) return;
+  const attestationValidation = validateSemanticAttestation(attestation, options2);
+  if (!attestationValidation.valid) {
+    errors.push(...attestationValidation.errors.map((error) => ({
+      ...error,
+      code: "dependency-exception-attestation-mismatch"
+    })));
+    return;
+  }
+  const claims = attestation.claims.filter(
+    (claim) => claim.claim_type === "dependency-copyedit" && claim.subject === unit.unit_id
+  );
+  if (attestation.attester.role !== "host" || claims.length !== 1 || claims[0].verdict !== "confirmed") {
+    errors.push(coverageError(
+      "/dependency_exception/semantic_attestation",
+      "dependency exception requires one confirmed host dependency-copyedit claim",
+      "dependency-exception-attestation-mismatch"
+    ));
+    return;
+  }
+  const artifacts = claims[0].artifacts;
+  const passArtifacts = artifacts.filter((artifact) => sameReference(artifact, exception.requested_pass));
+  const dependencyArtifacts = artifacts.filter((artifact) => dependencyMatches(artifact, dependency));
+  const sourceArtifacts = artifacts.filter(
+    (artifact) => !sameReference(artifact, exception.requested_pass) && !dependencyMatches(artifact, dependency)
+  );
+  if (attestation.attestation_id !== exception.semantic_attestation.attestation_id || attestation.pass_id !== pass.pass_id || attestation.pass_fingerprint !== pass.pass_fingerprint || attestation.scope_id !== pass.target_scope.scope_id || attestation.scope_fingerprint !== pass.target_scope.scope_fingerprint || artifacts.length !== 3 || passArtifacts.length !== 1 || dependencyArtifacts.length !== 1 || sourceArtifacts.length !== 1) {
+    errors.push(coverageError(
+      "/dependency_exception/semantic_attestation",
+      `dependency-copyedit claim must exactly attest source unit, requested pass, and current dependency (artifacts=${artifacts.length}, pass=${passArtifacts.length}, dependency=${dependencyArtifacts.length}, source=${sourceArtifacts.length})`,
+      "dependency-exception-attestation-mismatch"
+    ));
+    return;
+  }
+  const sourceUnit = await readJson(projectRoot, sourceArtifacts[0], "/dependency_exception/source_unit", errors);
+  if (!sourceUnit) return;
+  const sourceValidation = validateCoverageUnitSchema(sourceUnit, options2);
+  if (!sourceValidation.valid) {
+    errors.push(...sourceValidation.errors.map((error) => ({
+      ...error,
+      code: "dependency-exception-source-mismatch"
+    })));
+    return;
+  }
+  const sourceDependency = sourceUnit.dependencies?.find((candidate) => candidate.path === exception.dependency_path);
+  if (sourceUnit.dependency_exception !== null || sourceUnit.unit_id !== unit.unit_id || sourceUnit.source_report !== unit.source_report || sourceUnit.source_report_sha256 !== unit.source_report_sha256 || sourceUnit.scope_id !== unit.scope_id || sourceUnit.operation !== unit.operation || sourceUnit.kind !== unit.kind || sourceUnit.coverage !== unit.coverage || JSON.stringify(sourceUnit.paths) !== JSON.stringify(unit.paths) || JSON.stringify(sourceUnit.dependencies) !== JSON.stringify(unit.dependencies) || JSON.stringify([...sourceUnit.subchecks].sort()) !== JSON.stringify([...unit.subchecks].sort()) || sourceDependency?.sha256 !== exception.old_sha256) {
+    errors.push(coverageError(
+      "/dependency_exception/source_unit",
+      "exception source unit does not preserve the original evidence and cannot chain exceptions",
+      "dependency-exception-source-mismatch"
+    ));
+  }
+}
+async function validateCoverageIndexFile(indexPath, options2 = {}) {
+  const errors = [];
+  try {
+    const projectRoot = options2.projectRoot ?? await projectRootForIndex(indexPath);
+    const manifest = JSON.parse(await readFile7(
+      path8.join(projectRoot, ".author-toolkit", "project.json"),
+      "utf8"
+    ));
+    const value = JSON.parse(await readFile7(indexPath, "utf8"));
+    const local = validateCoverageIndex(value, options2);
+    errors.push(...local.errors);
+    const reportsRoot = manifest.paths.reports.replace(/\/$/, "");
+    const relativeIndex = path8.relative(projectRoot, path8.resolve(indexPath)).split(path8.sep).join("/");
+    if (relativeIndex !== reportsRoot && !relativeIndex.startsWith(`${reportsRoot}/`)) {
+      errors.push(coverageError("", `coverage index must be beneath registered paths.reports: ${relativeIndex}`, "coverage-index-path-mismatch"));
+    }
+    const currentScope = manifest.current_scope;
+    if (!currentScope || currentScope.scope_id !== value.scope_id || currentScope.scope_fingerprint !== value.scope_fingerprint) {
+      errors.push(coverageError(
+        "/scope_fingerprint",
+        "coverage index scope does not match the current confirmed scope",
+        "coverage-index-scope-mismatch"
+      ));
+    }
+    if (currentScope?.snapshot_path) {
+      const scope = await readJson(projectRoot, {
+        path: currentScope.snapshot_path,
+        sha256: currentScope.snapshot_sha256
+      }, "/current_scope/snapshot", errors);
+      if (scope) {
+        const validation = validateScopeSnapshot(scope, options2);
+        errors.push(...validation.errors);
+        if (scope.scope_id !== value.scope_id || scope.scope_fingerprint !== value.scope_fingerprint) {
+          errors.push(coverageError(
+            "/current_scope/snapshot",
+            "coverage index scope identity differs from its immutable snapshot",
+            "coverage-index-scope-mismatch"
+          ));
+        }
+      }
+    }
+    const pass = await readJson(projectRoot, value.requested_pass, "/requested_pass", errors);
+    if (pass) {
+      const validation = validateRequestedPass(pass, options2);
+      errors.push(...validation.errors);
+      if (pass.pass_id !== value.requested_pass.pass_id || pass.pass_fingerprint !== value.requested_pass.pass_fingerprint) {
+        errors.push(coverageError(
+          "/requested_pass",
+          "requested-pass identity differs from the referenced artifact",
+          "coverage-index-pass-mismatch"
+        ));
+      }
+      pass.requested_pass = value.requested_pass;
+    }
+    for (const [entryIndex, entry] of (value.entries ?? []).entries()) {
+      for (const [unitIndex, reference] of entry.units.entries()) {
+        const unit = await readJson(projectRoot, reference, `/entries/${entryIndex}/units/${unitIndex}`, errors);
+        if (!unit) continue;
+        const validation = validateCoverageUnitSchema(unit, options2);
+        errors.push(...validation.errors);
+        if (unit.unit_id !== reference.unit_id || unit.operation !== entry.operation) {
+          errors.push(coverageError(
+            `/entries/${entryIndex}/units/${unitIndex}`,
+            "coverage unit identity or operation differs from the index entry",
+            "coverage-unit-identity-mismatch"
+          ));
+        }
+        if (unit.source_report && unit.source_report_sha256) {
+          const reportContents = await readArtifact(projectRoot, {
+            path: unit.source_report,
+            sha256: unit.source_report_sha256
+          }, `/entries/${entryIndex}/units/${unitIndex}/source_report`, errors);
+          if (reportContents) {
+            const reportValidation = validateEvidenceReport(reportContents.toString("utf8"), options2);
+            errors.push(...reportValidation.errors);
+            if (reportValidation.envelope?.stage !== unit.operation) {
+              errors.push(coverageError(
+                `/entries/${entryIndex}/units/${unitIndex}/source_report`,
+                "coverage source report has the wrong operation",
+                "coverage-source-operation-mismatch"
+              ));
+            }
+          }
+        }
+        if (pass) {
+          if (unit.dependency_exception) {
+            await validateException(projectRoot, unit, pass, unit.dependency_exception, options2, errors);
+          } else {
+            const actual = unit.dependencies.map((dependency) => `${dependency.path}\0${dependency.sha256}`).sort();
+            const expected = pass.dependencies.map((dependency) => `${dependency.path}\0${dependency.sha256}`).sort();
+            if (JSON.stringify(actual) !== JSON.stringify(expected)) {
+              errors.push(coverageError(
+                `/entries/${entryIndex}/units/${unitIndex}/dependencies`,
+                "coverage unit dependencies differ from the current requested pass without an exception",
+                "coverage-unit-not-current"
+              ));
+            }
+          }
+        }
+      }
+      if (entry.synthesis_report) {
+        const contents = await readArtifact(projectRoot, {
+          path: entry.synthesis_report,
+          sha256: entry.synthesis_report_sha256
+        }, `/entries/${entryIndex}/synthesis_report`, errors);
+        if (contents) {
+          const validation = validateEvidenceReport(contents.toString("utf8"), options2);
+          errors.push(...validation.errors);
+          if (validation.envelope?.stage !== entry.operation || validation.envelope?.scope_id !== value.scope_id || validation.envelope?.scope_fingerprint !== value.scope_fingerprint || !samePassReference(validation.envelope?.requested_pass, value.requested_pass)) {
+            errors.push(coverageError(
+              `/entries/${entryIndex}/synthesis_report`,
+              "synthesis report does not match the index operation, scope, and requested pass",
+              "coverage-synthesis-mismatch"
+            ));
+          }
+        }
+      }
+    }
+  } catch (error) {
+    errors.push(coverageError("", error.message, "coverage-index-unavailable"));
+  }
+  return { valid: errors.length === 0, errors };
+}
+var init_coverage_index = __esm({
+  "scripts/lib/coverage-index.mjs"() {
+    init_artifacts();
+    init_evaluation_contracts();
+    init_markdown();
+    init_schemas();
+    init_scope();
+    init_state_io();
+  }
+});
+
 // scripts/lib/review.mjs
 function reviewError(instancePath, keyword, message) {
   return { instancePath, keyword, message, params: {} };
@@ -9028,12 +11081,12 @@ function reviewError(instancePath, keyword, message) {
 function objectArray(value) {
   return Array.isArray(value) ? value.filter((item) => item && typeof item === "object") : [];
 }
-function duplicateErrors(items, key, path22, keyword, errors) {
+function duplicateErrors(items, key, path26, keyword, errors) {
   const seen = /* @__PURE__ */ new Set();
   for (const [index, item] of items.entries()) {
     const value = item?.[key];
     if (seen.has(value)) {
-      errors.push(reviewError(`${path22}/${index}/${key}`, keyword, `duplicate ${key}: ${value}`));
+      errors.push(reviewError(`${path26}/${index}/${key}`, keyword, `duplicate ${key}: ${value}`));
     }
     seen.add(value);
   }
@@ -9268,8 +11321,8 @@ function checkReviewCoverage(job) {
     book_complete: bookComplete
   };
 }
-function validateReviewJob(value, options = {}) {
-  const result = validateReviewJobSchema(value, options);
+function validateReviewJob(value, options2 = {}) {
+  const result = validateReviewJobSchema(value, options2);
   const errors = [...result.errors, ...structureErrors(value)];
   const coverage = checkReviewCoverage(value);
   if (value?.coverage === "full" && !coverage.complete) {
@@ -9310,8 +11363,8 @@ function validateReviewJob(value, options = {}) {
   }
   return { ...result, valid: errors.length === 0, errors, coverage };
 }
-function validateReaderState(value, options = {}) {
-  const result = validateReaderStateSchema(value, options);
+function validateReaderState(value, options2 = {}) {
+  const result = validateReaderStateSchema(value, options2);
   const errors = [...result.errors];
   const chunks = objectArray(value?.chunks);
   duplicateErrors(chunks, "chunk_id", "/chunks", "reader-chunk", errors);
@@ -9359,8 +11412,8 @@ function validateReaderState(value, options = {}) {
   }
   return { ...result, valid: errors.length === 0, errors };
 }
-function validateReaderStateForJob(value, job, options = {}) {
-  const result = validateReaderState(value, options);
+function validateReaderStateForJob(value, job, options2 = {}) {
+  const result = validateReaderState(value, options2);
   const errors = [...result.errors];
   for (const field of ["job_id", "scope_id", "perspective"]) {
     if (value?.[field] !== job?.[field]) {
@@ -9471,204 +11524,13 @@ function validateReaderStateForJob(value, job, options = {}) {
   }
   return { ...result, valid: errors.length === 0, errors };
 }
-function validateReaderStateMarkdown(markdown, options = {}) {
-  return validateMarkdownEnvelope(markdown, validateReaderState, options);
+function validateReaderStateMarkdown(markdown, options2 = {}) {
+  return validateMarkdownEnvelope(markdown, validateReaderState, options2);
 }
 var init_review = __esm({
   "scripts/lib/review.mjs"() {
     init_markdown();
     init_schemas();
-  }
-});
-
-// scripts/lib/manuscript.mjs
-import { readdir as readdir2, stat } from "node:fs/promises";
-import path2 from "node:path";
-function portablePath(value) {
-  return value.split(path2.sep).join("/");
-}
-function operationalRoots(paths) {
-  return [
-    ...ALWAYS_OPERATIONAL,
-    ...Object.values(paths).filter((value) => typeof value === "string")
-  ].map((value) => value.replace(/\/$/, "")).filter(Boolean);
-}
-function isOperational(relativePath, roots) {
-  return roots.some(
-    (root2) => root2 === "." || relativePath === root2 || relativePath.startsWith(`${root2}/`)
-  );
-}
-function isOperationalManuscriptPath(relativePath, paths = {}) {
-  return isOperational(relativePath, operationalRoots(paths));
-}
-async function collectManuscriptInventory(projectRoot, manuscriptRoot, paths = {}) {
-  const absoluteRoot = path2.resolve(projectRoot, manuscriptRoot);
-  const roots = operationalRoots(paths);
-  const entries = [];
-  async function add(absolute, file) {
-    const relativePath = portablePath(path2.relative(projectRoot, absolute));
-    entries.push({
-      absolute,
-      path: relativePath,
-      extension: path2.extname(relativePath).toLowerCase(),
-      file,
-      operational: isOperational(relativePath, roots)
-    });
-  }
-  async function visit(directory) {
-    const children = await readdir2(directory, { withFileTypes: true });
-    children.sort((left, right) => left.name.localeCompare(right.name));
-    for (const entry of children) {
-      const absolute = path2.join(directory, entry.name);
-      if (entry.isDirectory()) await visit(absolute);
-      else await add(absolute, entry.isFile());
-    }
-  }
-  const rootStat = await stat(absoluteRoot);
-  if (rootStat.isFile()) await add(absoluteRoot, true);
-  else await visit(absoluteRoot);
-  return {
-    files: entries.filter(
-      (entry) => entry.file && !entry.operational && MANUSCRIPT_EXTENSIONS.has(entry.extension)
-    ),
-    excludedFiles: entries.filter(
-      (entry) => !entry.file || entry.operational || !MANUSCRIPT_EXTENSIONS.has(entry.extension)
-    ).map((entry) => entry.path)
-  };
-}
-var MANUSCRIPT_EXTENSIONS, ALWAYS_OPERATIONAL;
-var init_manuscript = __esm({
-  "scripts/lib/manuscript.mjs"() {
-    MANUSCRIPT_EXTENSIONS = /* @__PURE__ */ new Set([".md", ".markdown", ".txt"]);
-    ALWAYS_OPERATIONAL = [".author-toolkit", "draft-baseline.md"];
-  }
-});
-
-// scripts/lib/project-files.mjs
-import { createHash as createHash2 } from "node:crypto";
-import { readFile as readFile2, stat as stat2 } from "node:fs/promises";
-import path3 from "node:path";
-function fileError(instancePath, message) {
-  return { instancePath, keyword: "filesystem", message, params: {} };
-}
-function scopeError(instancePath, message) {
-  return { instancePath, keyword: "scope-currency", message, params: {} };
-}
-function projectRootFromManifest(manifestPath) {
-  const directory = path3.dirname(path3.resolve(manifestPath));
-  return path3.basename(directory) === ".author-toolkit" ? path3.dirname(directory) : directory;
-}
-function isUninitializedProjectTemplate(manifest) {
-  return manifest.language === "und" && manifest.created_at === "2000-01-01T00:00:00Z" && manifest.updated_at === "2000-01-01T00:00:00Z";
-}
-async function checkExists(root2, instancePath, relativePath) {
-  if (!validateRelativePath(relativePath).valid) {
-    return fileError(instancePath, "project path must be a portable project-relative path");
-  }
-  try {
-    await stat2(path3.resolve(root2, relativePath));
-    return null;
-  } catch (error) {
-    if (error.code === "ENOENT") {
-      return fileError(instancePath, `required project path does not exist: ${relativePath}`);
-    }
-    return fileError(instancePath, `cannot access project path ${relativePath}: ${error.message}`);
-  }
-}
-async function validateProjectFiles(manifest, manifestPath) {
-  const projectRoot = projectRootFromManifest(manifestPath);
-  if (isUninitializedProjectTemplate(manifest)) {
-    return { valid: true, errors: [], projectRoot };
-  }
-  const checks = [["/manuscript_root", manifest.manuscript_root]];
-  for (const name of OPERATIONAL_PATHS) {
-    checks.push([`/paths/${name}`, manifest.paths?.[name]]);
-  }
-  manifest.pending_action?.artifacts?.forEach((artifact, artifactIndex) => {
-    checks.push([`/pending_action/artifacts/${artifactIndex}`, artifact]);
-  });
-  manifest.current_scope?.files?.forEach((file, fileIndex) => {
-    checks.push([`/current_scope/files/${fileIndex}/path`, file.path]);
-  });
-  const errors = [];
-  for (const [instancePath, relativePath] of checks) {
-    const error = await checkExists(projectRoot, instancePath, relativePath);
-    if (error) errors.push(error);
-  }
-  return { valid: errors.length === 0, errors, projectRoot };
-}
-async function validateScopeCurrency(manifest, manifestPath) {
-  const projectRoot = projectRootFromManifest(manifestPath);
-  if (!manifest.current_scope || isUninitializedProjectTemplate(manifest)) {
-    return { valid: true, errors: [], projectRoot };
-  }
-  const errors = [];
-  for (const [index, file] of manifest.current_scope.files.entries()) {
-    const instancePath = `/current_scope/files/${index}`;
-    if (!validateRelativePath(file.path).valid) {
-      errors.push(scopeError(`${instancePath}/path`, "scope path must be project-relative"));
-      continue;
-    }
-    try {
-      const contents = await readFile2(path3.resolve(projectRoot, file.path));
-      const actual = createHash2("sha256").update(contents).digest("hex");
-      if (actual !== file.sha256) {
-        errors.push(
-          scopeError(
-            `${instancePath}/sha256`,
-            `manuscript content changed since the scope was recorded: ${file.path}`
-          )
-        );
-      }
-    } catch (error) {
-      errors.push(
-        scopeError(
-          `${instancePath}/path`,
-          `cannot read current manuscript ${file.path}: ${error.message}`
-        )
-      );
-    }
-  }
-  try {
-    const inventory = await collectManuscriptInventory(
-      projectRoot,
-      manifest.manuscript_root,
-      manifest.paths
-    );
-    const actualPaths = inventory.files.map((file) => file.path);
-    const recordedPaths = new Set(manifest.current_scope.files.map((file) => file.path));
-    for (const filePath of actualPaths) {
-      if (!recordedPaths.has(filePath)) {
-        errors.push(
-          scopeError(
-            "/current_scope/files",
-            `manuscript file is not registered in the current scope: ${filePath}`
-          )
-        );
-      }
-    }
-  } catch (error) {
-    errors.push(
-      scopeError("/current_scope/files", `cannot inventory current manuscript: ${error.message}`)
-    );
-  }
-  return { valid: errors.length === 0, errors, projectRoot };
-}
-var OPERATIONAL_PATHS;
-var init_project_files = __esm({
-  "scripts/lib/project-files.mjs"() {
-    init_manuscript();
-    init_schemas();
-    OPERATIONAL_PATHS = [
-      "story_bible",
-      "audit_tracker",
-      "reports",
-      "sessions",
-      "backups",
-      "handoffs",
-      "creation",
-      "convergence"
-    ];
   }
 });
 
@@ -9737,2070 +11599,6 @@ var init_approval_paths = __esm({
   }
 });
 
-// scripts/lib/tracker.mjs
-import { readFile as readFile3, stat as stat3 } from "node:fs/promises";
-import path4 from "node:path";
-function trackerError(instancePath, message) {
-  return { instancePath, keyword: "tracker", message, params: {} };
-}
-function cleanCell(value = "") {
-  return value.trim().replace(/^`([^`]*)`$/, "$1").trim();
-}
-function splitRow(line) {
-  const trimmed = line.trim();
-  if (!trimmed.startsWith("|") || !trimmed.endsWith("|")) return null;
-  const cells = [];
-  let value = "";
-  let escaped = false;
-  for (const character of trimmed.slice(1, -1)) {
-    if (escaped) {
-      value += character;
-      escaped = false;
-    } else if (character === "\\") {
-      escaped = true;
-      value += character;
-    } else if (character === "|") {
-      cells.push(value.trim());
-      value = "";
-    } else {
-      value += character;
-    }
-  }
-  cells.push(value.trim());
-  return cells;
-}
-function normalizeHeader(value) {
-  return cleanCell(value).toLowerCase().replace(/[_-]+/g, " ").replace(/\s+/g, " ");
-}
-function isSeparator(row) {
-  return row?.length > 0 && row.every((cell2) => /^:?-{3,}:?$/.test(cell2.trim()));
-}
-function findingsSection(markdown) {
-  const lines = markdown.split(/\r?\n/);
-  const headings = lines.flatMap(
-    (line, index) => /^ {0,3}##[ \t]+Findings[ \t]*$/.test(line) ? [index] : []
-  );
-  if (headings.length !== 1) return { lines, error: headings.length };
-  const start = headings[0] + 1;
-  let end = lines.length;
-  for (let index = start; index < lines.length; index += 1) {
-    if (/^ {0,3}##[ \t]+/.test(lines[index])) {
-      end = index;
-      break;
-    }
-  }
-  return { lines: lines.slice(start, end), start };
-}
-function pathCell(value) {
-  const trimmed = value.trim();
-  if (trimmed.startsWith("`")) {
-    const parsed = parseApprovalPaths(trimmed);
-    if (parsed.valid && parsed.paths.length === 1) return parsed.paths[0];
-  }
-  return cleanCell(trimmed).replace(/\\\|/g, "|");
-}
-function reportCell(value) {
-  const link2 = value.match(/\[[^\]]+\]\(([^)]+)\)/);
-  return pathCell(link2?.[1] ?? value);
-}
-async function validateTrackerMarkdown(markdown, projectRoot) {
-  const errors = [];
-  const section = findingsSection(markdown);
-  if (section.error !== void 0) {
-    return {
-      valid: false,
-      errors: [
-        trackerError(
-          "/Findings",
-          `expected exactly one ## Findings heading; found ${section.error}`
-        )
-      ]
-    };
-  }
-  let headerIndex = -1;
-  let columns = null;
-  for (let index = 0; index < section.lines.length - 1; index += 1) {
-    const header = splitRow(section.lines[index]);
-    const separator = splitRow(section.lines[index + 1]);
-    if (!header || !isSeparator(separator)) continue;
-    const normalized = header.map(normalizeHeader);
-    const resolved = {};
-    for (const [name, aliases] of Object.entries(COLUMN_ALIASES)) {
-      resolved[name] = normalized.findIndex((column) => aliases.includes(column));
-    }
-    if (Object.values(resolved).every((index2) => index2 >= 0)) {
-      headerIndex = index;
-      columns = resolved;
-      break;
-    }
-  }
-  if (!columns) {
-    return {
-      valid: false,
-      errors: [
-        trackerError(
-          "/Findings",
-          "Findings table requires Finding ID, Stage, Audit, Location, Status, Current report, Updated, and Decision or stale reason columns"
-        )
-      ]
-    };
-  }
-  const ids = /* @__PURE__ */ new Set();
-  const dataLines = section.lines.slice(headerIndex + 2);
-  for (const [rowIndex, line] of dataLines.entries()) {
-    if (!line.trim()) continue;
-    const row = splitRow(line);
-    if (!row) break;
-    const rowPath = `/Findings/${rowIndex}`;
-    const get = (name) => cleanCell(row[columns[name]]);
-    const id = get("id");
-    const status = get("status").toLowerCase();
-    const report = reportCell(row[columns.report]);
-    const reason = get("reason");
-    if (row.length !== Object.keys(columns).length) {
-      errors.push(trackerError(rowPath, "finding row has the wrong number of columns"));
-      continue;
-    }
-    for (const field of ["stage", "audit", "location", "updated", "reason"]) {
-      if (!get(field)) errors.push(trackerError(`${rowPath}/${field}`, `${field} is required`));
-    }
-    if (!/^[A-Z][A-Z0-9]*-[0-9]{3,}$/.test(id)) {
-      errors.push(trackerError(`${rowPath}/id`, "finding ID must have an uppercase prefix and at least three digits"));
-    } else if (ids.has(id)) {
-      errors.push(trackerError(`${rowPath}/id`, `duplicate finding ID: ${id}`));
-    }
-    ids.add(id);
-    if (!TRACKER_STATUSES.includes(status)) {
-      errors.push(
-        trackerError(
-          `${rowPath}/status`,
-          `status must be one of ${TRACKER_STATUSES.join(", ")}; received ${status || "empty"}`
-        )
-      );
-    }
-    if (/pending|待决定/i.test(reason)) {
-      errors.push(trackerError(`${rowPath}/reason`, "record an actual decision or stale reason, not a pending placeholder"));
-    }
-    if (!report) {
-      errors.push(trackerError(`${rowPath}/report`, "current report is required"));
-      continue;
-    }
-    if (!validateRelativePath(report).valid) {
-      errors.push(trackerError(`${rowPath}/report`, "current report must be a portable project-relative path"));
-      continue;
-    }
-    try {
-      const reportStat = await stat3(path4.resolve(projectRoot, report));
-      if (!reportStat.isFile()) {
-        errors.push(trackerError(`${rowPath}/report`, `current report is not a file: ${report}`));
-      }
-    } catch (error) {
-      errors.push(trackerError(`${rowPath}/report`, `current report does not exist: ${report}`));
-    }
-  }
-  return { valid: errors.length === 0, errors };
-}
-function approvalsSection(markdown) {
-  const lines = markdown.split(/\r?\n/);
-  const headings = lines.flatMap(
-    (line, index) => /^ {0,3}##[ \t]+Approvals[ \t]*$/.test(line) ? [index] : []
-  );
-  if (headings.length !== 1) return { lines, error: headings.length };
-  const start = headings[0] + 1;
-  let end = lines.length;
-  for (let index = start; index < lines.length; index += 1) {
-    if (/^ {0,3}##[ \t]+/.test(lines[index])) {
-      end = index;
-      break;
-    }
-  }
-  return { lines: lines.slice(start, end) };
-}
-function validateApprovalsMarkdown(markdown) {
-  const errors = [];
-  const section = approvalsSection(markdown);
-  if (section.error !== void 0) {
-    return {
-      valid: false,
-      errors: [
-        trackerError(
-          "/Approvals",
-          `expected exactly one ## Approvals heading; found ${section.error}`
-        )
-      ]
-    };
-  }
-  const tables = [];
-  for (let index = 0; index < section.lines.length - 1; index += 1) {
-    const header2 = splitRow(section.lines[index]);
-    const separator = splitRow(section.lines[index + 1]);
-    if (header2 && isSeparator(separator)) tables.push({ header: header2, index });
-  }
-  if (tables.length !== 1) {
-    return {
-      valid: false,
-      errors: [
-        trackerError(
-          "/Approvals",
-          `expected exactly one Approvals table; found ${tables.length}`
-        )
-      ]
-    };
-  }
-  const [{ header, index: headerIndex }] = tables;
-  const normalized = header.map(normalizeHeader);
-  const columns = Object.fromEntries(
-    APPROVAL_COLUMNS.map(([name, label]) => [name, normalized.indexOf(label)])
-  );
-  if (header.length !== APPROVAL_COLUMNS.length || Object.values(columns).some((index) => index < 0)) {
-    return {
-      valid: false,
-      errors: [
-        trackerError(
-          "/Approvals",
-          "Approvals table requires Approval ID, Type, Operation, Scope ID, Paths, Status, Reason, and Updated columns"
-        )
-      ]
-    };
-  }
-  const ids = /* @__PURE__ */ new Set();
-  const dataLines = section.lines.slice(headerIndex + 2);
-  for (const [rowIndex, line] of dataLines.entries()) {
-    if (!line.trim()) continue;
-    const row = splitRow(line);
-    if (!row) break;
-    const rowPath = `/Approvals/${rowIndex}`;
-    const get = (name) => cleanCell(row[columns[name]]);
-    if (row.length !== APPROVAL_COLUMNS.length) {
-      errors.push(trackerError(rowPath, "approval row has the wrong number of columns"));
-      continue;
-    }
-    const id = get("id");
-    if (!/^[A-Z][A-Z0-9]*-[0-9]{3,}$/.test(id)) {
-      errors.push(
-        trackerError(
-          `${rowPath}/id`,
-          "approval ID must have an uppercase prefix and at least three digits"
-        )
-      );
-    } else if (ids.has(id)) {
-      errors.push(trackerError(`${rowPath}/id`, `duplicate approval ID: ${id}`));
-    }
-    ids.add(id);
-    for (const field of ["type", "operation", "scopeId", "paths", "reason", "updated"]) {
-      if (!get(field)) errors.push(trackerError(`${rowPath}/${field}`, `${field} is required`));
-    }
-    const status = get("status");
-    if (!APPROVAL_STATUSES.includes(status)) {
-      errors.push(
-        trackerError(
-          `${rowPath}/status`,
-          `status must be one of ${APPROVAL_STATUSES.join(", ")}; received ${status || "empty"}`
-        )
-      );
-    }
-    const parsedPaths = parseApprovalPaths(row[columns.paths] ?? "");
-    if (!parsedPaths.valid || parsedPaths.paths.some((value) => !value || !validateRelativePath(value).valid)) {
-      errors.push(
-        trackerError(
-          `${rowPath}/paths`,
-          "paths must be comma-separated portable project-relative paths"
-        )
-      );
-    }
-  }
-  return { valid: errors.length === 0, errors };
-}
-function namedSection(markdown, name) {
-  const lines = markdown.split(/\r?\n/);
-  const headings = lines.flatMap(
-    (line, index) => new RegExp(`^ {0,3}##[ \\t]+${name}[ \\t]*$`).test(line) ? [index] : []
-  );
-  if (headings.length !== 1) return { lines, error: headings.length };
-  const start = headings[0] + 1;
-  let end = lines.length;
-  for (let index = start; index < lines.length; index += 1) {
-    if (/^ {0,3}##[ \t]+/.test(lines[index])) {
-      end = index;
-      break;
-    }
-  }
-  return { lines: lines.slice(start, end), heading: headings[0], error: void 0 };
-}
-function tableWithColumns(lines, definitions) {
-  for (let index = 0; index < lines.length - 1; index += 1) {
-    const header = splitRow(lines[index]);
-    const separator = splitRow(lines[index + 1]);
-    if (!header || !isSeparator(separator)) continue;
-    const normalized = header.map(normalizeHeader);
-    const columns = Object.fromEntries(
-      definitions.map(([name, label]) => [name, normalized.indexOf(label)])
-    );
-    if (Object.values(columns).every((column) => column >= 0)) {
-      return { header, columns, index };
-    }
-  }
-  return null;
-}
-function parsedRows(lines, table, definitions) {
-  const rows = [];
-  for (const line of lines.slice(table.index + 2)) {
-    if (!line.trim()) continue;
-    const cells = splitRow(line);
-    if (!cells) break;
-    const row = Object.fromEntries(
-      definitions.map(([name]) => [name, cleanCell(cells[table.columns[name]])])
-    );
-    row.cellCount = cells.length;
-    rows.push(row);
-  }
-  return rows;
-}
-function typedFindingDecisionErrors(findings, approvals) {
-  const errors = [];
-  for (const [index, finding] of findings.entries()) {
-    const tokens = finding.reason.split(/\s+/).filter(Boolean);
-    const decisionTokens = tokens.filter((token) => token.startsWith("author_decision_id="));
-    const statusTokens = tokens.filter((token) => token.startsWith("finding_status="));
-    if (decisionTokens.length === 0 && statusTokens.length === 0) continue;
-    const rowPath = `/Findings/${index}/reason`;
-    if (decisionTokens.length !== 1 || statusTokens.length !== 1) {
-      errors.push(trackerError(
-        rowPath,
-        "typed finding decision requires exactly one author_decision_id and one finding_status token"
-      ));
-      continue;
-    }
-    const decisionId = decisionTokens[0].slice("author_decision_id=".length);
-    const decisionStatus = statusTokens[0].slice("finding_status=".length);
-    if (!/^[A-Z][A-Z0-9]*-[0-9]{3,}$/.test(decisionId)) {
-      errors.push(trackerError(rowPath, `typed finding decision has an invalid author decision ID: ${decisionId}`));
-    }
-    if (finding.status === "open" || decisionStatus !== finding.status) {
-      errors.push(trackerError(
-        rowPath,
-        `typed finding decision status mismatch: row=${finding.status}, token=${decisionStatus}`
-      ));
-    }
-    const decision = approvals.find((approval) => approval.id === decisionId);
-    if (!decision || decision.status !== "approved") {
-      errors.push(trackerError(
-        rowPath,
-        `typed finding decision lacks approved author decision: ${decisionId}`
-      ));
-    }
-  }
-  return errors;
-}
-async function parseTrackerState(markdown, projectRoot) {
-  const findingValidation = await validateTrackerMarkdown(markdown, projectRoot);
-  const approvalValidation = validateApprovalsMarkdown(markdown);
-  const errors = [...findingValidation.errors, ...approvalValidation.errors];
-  const findings = [];
-  const findingSection = findingsSection(markdown);
-  if (findingSection.error === void 0) {
-    const definitions = Object.entries(COLUMN_ALIASES).map(([name, aliases]) => [name, aliases[0]]);
-    const table = tableWithColumns(findingSection.lines, definitions);
-    if (table) {
-      for (const row of parsedRows(findingSection.lines, table, definitions)) {
-        row.location = pathCell(row.location);
-        row.report = reportCell(row.report);
-        row.status = row.status.toLowerCase();
-        delete row.cellCount;
-        findings.push(row);
-      }
-    }
-  }
-  const approvals = [];
-  const approvalSection = approvalsSection(markdown);
-  if (approvalSection.error === void 0) {
-    const table = tableWithColumns(approvalSection.lines, APPROVAL_COLUMNS);
-    if (table) {
-      for (const row of parsedRows(approvalSection.lines, table, APPROVAL_COLUMNS)) {
-        row.paths = parseApprovalPaths(row.paths).paths;
-        delete row.cellCount;
-        approvals.push(row);
-      }
-    }
-  }
-  const completionDecisions = [];
-  const completionSection = namedSection(markdown, "Cycle completions");
-  if (completionSection.error === void 0) {
-    const table = tableWithColumns(completionSection.lines, CYCLE_COMPLETION_COLUMNS);
-    if (!table || table.header.length !== CYCLE_COMPLETION_COLUMNS.length) {
-      errors.push(trackerError(
-        "/Cycle completions",
-        "Cycle completions requires Decision ID, Cycle ID, Target scope fingerprint, Status, Reason, and Updated columns"
-      ));
-    } else {
-      const ids = /* @__PURE__ */ new Set();
-      for (const [index, row] of parsedRows(
-        completionSection.lines,
-        table,
-        CYCLE_COMPLETION_COLUMNS
-      ).entries()) {
-        const rowPath = `/Cycle completions/${index}`;
-        if (row.cellCount !== CYCLE_COMPLETION_COLUMNS.length) {
-          errors.push(trackerError(rowPath, "cycle completion row has the wrong number of columns"));
-        }
-        if (!/^[A-Z][A-Z0-9]*-[0-9]{3,}$/.test(row.id)) {
-          errors.push(trackerError(`${rowPath}/id`, "completion decision ID has an invalid format"));
-        } else if (ids.has(row.id)) {
-          errors.push(trackerError(`${rowPath}/id`, `duplicate completion decision ID: ${row.id}`));
-        }
-        ids.add(row.id);
-        if (!/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(row.cycleId)) {
-          errors.push(trackerError(`${rowPath}/cycleId`, "cycle ID has an invalid format"));
-        }
-        if (!/^[0-9a-f]{64}$/.test(row.scopeFingerprint)) {
-          errors.push(trackerError(`${rowPath}/scopeFingerprint`, "target scope fingerprint must be SHA-256"));
-        }
-        if (!APPROVAL_STATUSES.includes(row.status)) {
-          errors.push(trackerError(`${rowPath}/status`, "completion decision status is invalid"));
-        }
-        if (!row.reason || !row.updated) {
-          errors.push(trackerError(rowPath, "completion decision reason and updated time are required"));
-        }
-        delete row.cellCount;
-        completionDecisions.push(row);
-      }
-    }
-  } else if (completionSection.error > 1) {
-    errors.push(trackerError("/Cycle completions", "expected at most one ## Cycle completions heading"));
-  }
-  errors.push(...typedFindingDecisionErrors(findings, approvals));
-  return {
-    valid: errors.length === 0,
-    errors,
-    findings,
-    approvals,
-    completion_decisions: completionDecisions
-  };
-}
-function completionCell(value) {
-  return String(value).replace(/\r?\n/g, " ").replaceAll("|", "\\|").trim();
-}
-function appendCycleCompletionDecision(markdown, decision) {
-  const section = namedSection(markdown, "Cycle completions");
-  const row = `| ${decision.decision_id} | ${decision.cycle_id} | ${decision.scope_fingerprint} | approved | ${completionCell(decision.reason)} | ${decision.updated_at} |
-`;
-  if (section.error === void 0) {
-    const table = tableWithColumns(section.lines, CYCLE_COMPLETION_COLUMNS);
-    if (!table) throw new Error("Cycle completions table is invalid");
-    for (const existing of parsedRows(section.lines, table, CYCLE_COMPLETION_COLUMNS)) {
-      if (existing.id === decision.decision_id) throw new Error(`Duplicate completion decision: ${decision.decision_id}`);
-    }
-    const lines = markdown.split(/\r?\n/);
-    const separatorIndex = section.heading + 1 + table.index + 1;
-    lines.splice(separatorIndex + 1, 0, row.trimEnd());
-    return lines.join("\n");
-  }
-  const block = `## Cycle completions
-
-| Decision ID | Cycle ID | Target scope fingerprint | Status | Reason | Updated |
-|---|---|---|---|---|---|
-${row}
-`;
-  const openQuestions = markdown.match(/^ {0,3}##[ \t]+Open questions[ \t]*$/m);
-  if (openQuestions?.index !== void 0) {
-    return `${markdown.slice(0, openQuestions.index)}${block}
-${markdown.slice(openQuestions.index)}`;
-  }
-  return `${markdown.trimEnd()}
-
-${block}`;
-}
-async function validateTrackerV3Markdown(markdown, projectRoot) {
-  const state = await parseTrackerState(markdown, projectRoot);
-  return { valid: state.valid, errors: state.errors };
-}
-async function validateTracker(manifest, manifestPath) {
-  if (isUninitializedProjectTemplate(manifest)) {
-    return { valid: true, errors: [] };
-  }
-  const projectRoot = projectRootFromManifest(manifestPath);
-  const trackerPath = path4.resolve(projectRoot, manifest.paths.audit_tracker);
-  try {
-    const markdown = await readFile3(trackerPath, "utf8");
-    return validateTrackerV3Markdown(markdown, projectRoot);
-  } catch (error) {
-    return {
-      valid: false,
-      errors: [trackerError("/paths/audit_tracker", `cannot read audit tracker: ${error.message}`)]
-    };
-  }
-}
-var TRACKER_STATUSES, COLUMN_ALIASES, APPROVAL_STATUSES, APPROVAL_COLUMNS, CYCLE_COMPLETION_COLUMNS;
-var init_tracker = __esm({
-  "scripts/lib/tracker.mjs"() {
-    init_approval_paths();
-    init_project_files();
-    init_schemas();
-    TRACKER_STATUSES = Object.freeze([
-      "open",
-      "resolved",
-      "deferred",
-      "dismissed",
-      "stale"
-    ]);
-    COLUMN_ALIASES = {
-      id: ["finding id", "id"],
-      stage: ["stage"],
-      audit: ["audit"],
-      location: ["location"],
-      status: ["status"],
-      report: ["current report"],
-      updated: ["updated"],
-      reason: ["decision or stale reason", "decision reason"]
-    };
-    APPROVAL_STATUSES = Object.freeze([
-      "approved",
-      "deferred",
-      "cancelled",
-      "superseded"
-    ]);
-    APPROVAL_COLUMNS = [
-      ["id", "approval id"],
-      ["type", "type"],
-      ["operation", "operation"],
-      ["scopeId", "scope id"],
-      ["paths", "paths"],
-      ["status", "status"],
-      ["reason", "reason"],
-      ["updated", "updated"]
-    ];
-    CYCLE_COMPLETION_COLUMNS = [
-      ["id", "decision id"],
-      ["cycleId", "cycle id"],
-      ["scopeFingerprint", "target scope fingerprint"],
-      ["status", "status"],
-      ["reason", "reason"],
-      ["updated", "updated"]
-    ];
-  }
-});
-
-// scripts/lib/cycle-coordination.mjs
-import { readFile as readFile4 } from "node:fs/promises";
-import path5 from "node:path";
-function action() {
-  return {
-    strategy: "author-project",
-    operation: "reconcile-cycle",
-    command: "author-project reconcile-cycle"
-  };
-}
-function blocker(code, message, operation = null) {
-  return {
-    code,
-    message,
-    ...operation ? {
-      operation_id: operation.operation_id,
-      cycle_id: operation.cycle_id,
-      expected_revision: operation.expected_revision,
-      intended_revision: operation.intended_revision,
-      kind: operation.kind
-    } : {},
-    required_action: action()
-  };
-}
-function pendingBlockers(manifest, active) {
-  const pending = manifest.pending_action;
-  if (!pending?.cycle_id) return [];
-  const cycle = active?.value;
-  if (!cycle) {
-    if (manifest.last_completed_cycle?.cycle_id === pending.cycle_id) return [];
-    return [blocker(
-      "pending-cycle-unavailable",
-      `Pending action ${pending.operation_id ?? pending.operation} names unavailable cycle ${pending.cycle_id}; it cannot authorize continuation.`
-    )];
-  }
-  if (pending.cycle_id !== cycle.cycle_id) {
-    return [blocker(
-      "pending-cycle-id-mismatch",
-      `Pending action names cycle ${pending.cycle_id}, but active cycle is ${cycle.cycle_id}.`
-    )];
-  }
-  if (pending.cycle_revision !== cycle.revision) {
-    return [blocker(
-      "cycle-pending-revision-mismatch",
-      `Pending action revision ${pending.cycle_revision} does not match active cycle revision ${cycle.revision}.`
-    )];
-  }
-  const position = cycle.recovery_position;
-  if (pending.operation_id && position?.operation_id && pending.operation_id !== position.operation_id) {
-    return [blocker(
-      "cycle-operation-id-mismatch",
-      `Pending operation ID ${pending.operation_id} does not match cycle operation ID ${position.operation_id}.`
-    )];
-  }
-  if (position?.operation && pending.operation !== position.operation) {
-    return [blocker(
-      "cycle-operation-mismatch",
-      `Pending operation ${pending.operation} does not match cycle recovery operation ${position.operation}.`
-    )];
-  }
-  if (cycle.target_scope?.scope_id && (pending.scope_id !== cycle.target_scope.scope_id || pending.scope_fingerprint && pending.scope_fingerprint !== cycle.target_scope.scope_fingerprint)) {
-    return [blocker(
-      "cycle-pending-scope-mismatch",
-      `Pending scope ${pending.scope_id ?? "null"}@${pending.scope_fingerprint ?? "unrecorded"} does not match active target ${cycle.target_scope.scope_id}@${cycle.target_scope.scope_fingerprint}.`
-    )];
-  }
-  return [];
-}
-function coordinationBlockers(project, active, { allowOperationId = null } = {}) {
-  const operation = project.manifest.cycle_operation;
-  if (operation && operation.operation_id !== allowOperationId) {
-    if (operation.cycle_id !== active?.value.cycle_id) {
-      return [blocker(
-        "cycle-operation-cycle-id-mismatch",
-        `Interrupted operation ${operation.operation_id} names cycle ${operation.cycle_id}, which does not match active cycle ${active?.value.cycle_id ?? "null"}.`,
-        operation
-      )];
-    }
-    if (![operation.expected_revision, operation.intended_revision].includes(active?.value.revision)) {
-      return [blocker(
-        "cycle-operation-revision-mismatch",
-        `Interrupted operation ${operation.operation_id} allows revisions ${operation.expected_revision} or ${operation.intended_revision}, but active revision is ${active?.value.revision ?? "null"}.`,
-        operation
-      )];
-    }
-    if (active?.value.revision === operation.intended_revision && active.value.recovery_position?.operation_id && active.value.recovery_position.operation_id !== operation.operation_id) {
-      return [blocker(
-        "cycle-operation-id-mismatch",
-        `Active operation ID ${active.value.recovery_position.operation_id} does not match interrupted operation ${operation.operation_id}.`,
-        operation
-      )];
-    }
-    return [blocker(
-      "cycle-reconciliation-required",
-      `Interrupted ${operation.kind} ${operation.operation_id} stopped at cycle revision ${active?.value.revision ?? "null"}; diagnose and choose an explicit reconciliation direction.`,
-      operation
-    )];
-  }
-  if (operation) return [];
-  const recoveryPending = allowOperationId && project.manifest.pending_action?.cycle_id === active?.value.cycle_id && project.manifest.pending_action.operation_id === allowOperationId;
-  const pending = recoveryPending ? [] : pendingBlockers(project.manifest, active);
-  if (pending.length > 0) return pending;
-  const reconciliation = active?.value.related_artifacts?.reconciliations?.at(-1) ?? null;
-  const manifestReconciliation = project.manifest.manuscript_reconciliation ?? null;
-  if (reconciliation && (reconciliation.path !== manifestReconciliation?.path || reconciliation.sha256 !== manifestReconciliation?.sha256 || reconciliation.reconciliation_id !== manifestReconciliation?.reconciliation_id)) {
-    return [blocker(
-      "cycle-manifest-reconciliation-mismatch",
-      `Active reconciliation ${reconciliation.reconciliation_id} at ${reconciliation.path}@${reconciliation.sha256} does not match manifest ${manifestReconciliation?.reconciliation_id ?? "null"} at ${manifestReconciliation?.path ?? "null"}@${manifestReconciliation?.sha256 ?? "null"}.`,
-      {
-        operation_id: reconciliation.reconciliation_id,
-        cycle_id: active.value.cycle_id,
-        expected_revision: active.value.revision - 1,
-        intended_revision: active.value.revision,
-        kind: "manuscript-reconciliation"
-      }
-    )];
-  }
-  return [];
-}
-async function runCheckpoint(options, point) {
-  if (typeof options.checkpoint === "function") await options.checkpoint(point);
-}
-function timestamp(options) {
-  return utcTimestamp(options);
-}
-async function writeManifest(project, manifest) {
-  const validation = validateManifest(manifest);
-  if (!validation.valid) {
-    throw new Error(`Coordinated manifest is invalid: ${validation.errors.map((error) => error.message).join("; ")}`);
-  }
-  await writeAtomicVerified(project.manifestPath, `${JSON.stringify(manifest, null, 2)}
-`);
-  project.manifest = manifest;
-}
-async function beginCycleOperation(project, active, definition, options = {}) {
-  const existing = project.manifest.cycle_operation;
-  if (existing) {
-    if (options.recoveryOperationId === definition.operationId && existing.operation_id === definition.operationId && existing.kind === definition.kind && existing.cycle_id === active.value.cycle_id && existing.expected_revision === active.value.revision && existing.intended_revision === active.value.revision + 1 && (existing.artifact_id ?? null) === (definition.artifactId ?? null)) {
-      return existing;
-    }
-    throw new Error(`Cannot begin ${definition.operationId} while ${existing.operation_id} awaits reconciliation`);
-  }
-  const operation = {
-    kind: definition.kind,
-    operation_id: definition.operationId,
-    cycle_id: active.value.cycle_id,
-    expected_revision: active.value.revision,
-    intended_revision: active.value.revision + 1,
-    ...definition.artifactId ? { artifact_id: definition.artifactId } : {},
-    created_at: timestamp(options)
-  };
-  await writeManifest(project, {
-    ...project.manifest,
-    cycle_operation: operation,
-    updated_at: operation.created_at
-  });
-  await runCheckpoint(options, "manifest-written");
-  return operation;
-}
-async function finishCycleOperation(project, cycle, operationId, options = {}) {
-  const operation = project.manifest.cycle_operation;
-  if (!operation && !options.allowMissingOperation || operation && (operation.operation_id !== operationId || operation.cycle_id !== cycle.cycle_id || operation.intended_revision !== cycle.revision)) {
-    throw new Error(`Cannot finish unrecorded cycle operation ${operationId} at revision ${cycle.revision}`);
-  }
-  const { cycle_operation: removed, ...withoutOperation } = project.manifest;
-  let pending = project.manifest.pending_action;
-  if (pending?.cycle_id === cycle.cycle_id) {
-    if (options.complete) {
-      pending = null;
-    } else {
-      pending = {
-        ...pending,
-        operation: cycle.recovery_position?.operation ?? pending.operation,
-        cycle_revision: cycle.revision,
-        operation_id: cycle.recovery_position?.operation_id ?? operationId,
-        updated_at: timestamp(options)
-      };
-      if (cycle.target_scope) {
-        pending.scope_id = cycle.target_scope.scope_id;
-        pending.scope_fingerprint = cycle.target_scope.scope_fingerprint;
-      } else {
-        delete pending.scope_id;
-        delete pending.scope_fingerprint;
-      }
-    }
-  }
-  const manifest = {
-    ...withoutOperation,
-    ...options.manifestChanges ?? {},
-    ...pending ? { pending_action: pending } : {},
-    updated_at: options.completedAt ?? cycle.updated_at ?? timestamp(options)
-  };
-  if (!pending) delete manifest.pending_action;
-  for (const field of options.removeManifestFields ?? []) delete manifest[field];
-  await writeManifest(project, manifest);
-  await runCheckpoint(options, "manifest-updated");
-  return manifest;
-}
-async function discardCycleOperation(project, operationId, options = {}) {
-  const operation = project.manifest.cycle_operation;
-  if (!operation || operation.operation_id !== operationId) {
-    throw new Error(`Cannot discard unrecorded cycle operation ${operationId}`);
-  }
-  const { cycle_operation: removed, ...manifest } = project.manifest;
-  manifest.updated_at = timestamp(options);
-  await writeManifest(project, manifest);
-  return manifest;
-}
-async function completedPointerBlocker(project) {
-  const pointer = project.manifest.last_completed_cycle;
-  if (!pointer) return null;
-  const expectedPath = path5.posix.join(
-    project.manifest.paths.convergence,
-    "cycles",
-    `${pointer.cycle_id}.json`
-  );
-  if (pointer.path !== expectedPath) {
-    return {
-      ...blocker(
-        "cycle-completed-pointer-path-mismatch",
-        `Completed-cycle pointer path ${pointer.path} must be ${expectedPath}.`,
-        {
-          kind: "completion",
-          operation_id: pointer.cycle_id,
-          cycle_id: pointer.cycle_id,
-          expected_revision: pointer.revision - 1,
-          intended_revision: pointer.revision
-        }
-      ),
-      path: pointer.path,
-      expected_path: expectedPath
-    };
-  }
-  let text;
-  try {
-    text = await readFile4(path5.resolve(project.root, pointer.path), "utf8");
-  } catch (error) {
-    return {
-      ...blocker(
-        "cycle-completed-pointer-unavailable",
-        `Cannot read completed cycle ${pointer.cycle_id} at ${pointer.path}: ${error.message}`,
-        {
-          kind: "completion",
-          operation_id: pointer.cycle_id,
-          cycle_id: pointer.cycle_id,
-          expected_revision: pointer.revision - 1,
-          intended_revision: pointer.revision
-        }
-      ),
-      path: pointer.path
-    };
-  }
-  const actualHash = sha256Bytes(text);
-  if (actualHash !== pointer.sha256) {
-    return {
-      ...blocker(
-        "cycle-completed-pointer-hash-mismatch",
-        `Completed cycle at ${pointer.path} has SHA-256 ${actualHash}, expected ${pointer.sha256}.`,
-        {
-          kind: "completion",
-          operation_id: pointer.cycle_id,
-          cycle_id: pointer.cycle_id,
-          expected_revision: pointer.revision - 1,
-          intended_revision: pointer.revision
-        }
-      ),
-      path: pointer.path,
-      expected_sha256: pointer.sha256,
-      actual_sha256: actualHash
-    };
-  }
-  const completed = JSON.parse(text);
-  if (completed.status !== "completed" || completed.cycle_id !== pointer.cycle_id || completed.revision !== pointer.revision) {
-    return {
-      ...blocker(
-        "cycle-completed-pointer-identity-mismatch",
-        `Completed cycle at ${pointer.path} does not match ${pointer.cycle_id} revision ${pointer.revision}.`,
-        {
-          kind: "completion",
-          operation_id: pointer.cycle_id,
-          cycle_id: pointer.cycle_id,
-          expected_revision: pointer.revision - 1,
-          intended_revision: pointer.revision
-        }
-      ),
-      path: pointer.path
-    };
-  }
-  return null;
-}
-var init_cycle_coordination = __esm({
-  "scripts/lib/cycle-coordination.mjs"() {
-    init_manifest();
-    init_state_io();
-    init_time();
-  }
-});
-
-// scripts/lib/evaluation-contracts.mjs
-function artifactError(instancePath, message, keyword = "convergence-artifact") {
-  return { instancePath, keyword, message, params: {} };
-}
-function sameReference(left, right) {
-  return left?.path === right?.path && left?.sha256 === right?.sha256;
-}
-function samePassReference(left, right) {
-  return sameReference(left, right) && left?.pass_id === right?.pass_id && left?.pass_fingerprint === right?.pass_fingerprint;
-}
-function sameScopeReference(left, right) {
-  return left?.scope_id === right?.scope_id && left?.scope_fingerprint === right?.scope_fingerprint && left?.snapshot_path === right?.snapshot_path && left?.snapshot_sha256 === right?.snapshot_sha256;
-}
-function canonicalPassContent(pass) {
-  return {
-    target_scope: {
-      scope_id: pass.target_scope.scope_id,
-      scope_fingerprint: pass.target_scope.scope_fingerprint
-    },
-    required_operations: pass.required_operations,
-    paths: pass.paths,
-    language: pass.language,
-    dependencies: pass.dependencies,
-    inapplicability: pass.inapplicability,
-    narrowing: pass.narrowing ? { reason: pass.narrowing.reason, gaps: pass.narrowing.gaps } : null,
-    baseline_pass: pass.baseline_pass ? {
-      pass_id: pass.baseline_pass.pass_id,
-      pass_fingerprint: pass.baseline_pass.pass_fingerprint
-    } : null,
-    requested_subchecks: pass.requested_subchecks.map(({ operation, subcheck }) => ({
-      operation,
-      subcheck
-    }))
-  };
-}
-function computeRequestedPassFingerprint(pass) {
-  return sha256Bytes(JSON.stringify(canonicalPassContent(pass)));
-}
-function deriveRequestedPassBaseline(lastSatisfiedFullPass, newRequests = []) {
-  const operations = /* @__PURE__ */ new Map();
-  for (const requirement of lastSatisfiedFullPass?.required_operations ?? []) {
-    operations.set(requirement.operation, {
-      operation: requirement.operation,
-      paths: [...requirement.paths],
-      subchecks: new Set(requirement.subchecks)
-    });
-  }
-  for (const request of newRequests) {
-    if (!operations.has(request.operation)) {
-      operations.set(request.operation, {
-        operation: request.operation,
-        paths: [...request.paths ?? lastSatisfiedFullPass?.paths ?? []],
-        subchecks: /* @__PURE__ */ new Set()
-      });
-    }
-    operations.get(request.operation).subchecks.add(request.subcheck);
-  }
-  return [...operations.values()].map((requirement) => ({
-    operation: requirement.operation,
-    paths: requirement.paths,
-    subchecks: [...requirement.subchecks].sort()
-  }));
-}
-function validateRequestedPass(value, options = {}) {
-  const schema = validateRequestedPassSchema(value, options);
-  const errors = [...schema.errors];
-  if (value?.target_scope && Array.isArray(value?.required_operations) && Array.isArray(value?.paths) && Array.isArray(value?.dependencies) && Array.isArray(value?.inapplicability) && Array.isArray(value?.requested_subchecks)) {
-    const expected = computeRequestedPassFingerprint(value);
-    if (value.pass_fingerprint !== expected) {
-      errors.push(artifactError(
-        "/pass_fingerprint",
-        `pass_fingerprint must match canonical requested-pass content: ${expected}`,
-        "requested-pass-fingerprint"
-      ));
-    }
-  }
-  const operations = /* @__PURE__ */ new Set();
-  for (const [index, requirement] of (value?.required_operations ?? []).entries()) {
-    if (operations.has(requirement.operation)) {
-      errors.push(artifactError(
-        `/required_operations/${index}/operation`,
-        `duplicate required operation: ${requirement.operation}`,
-        "requested-pass-operation"
-      ));
-    }
-    operations.add(requirement.operation);
-  }
-  const requested = /* @__PURE__ */ new Set();
-  for (const [index, request] of (value?.requested_subchecks ?? []).entries()) {
-    const key = `${request.operation}\0${request.subcheck}`;
-    if (requested.has(key)) {
-      errors.push(artifactError(
-        `/requested_subchecks/${index}`,
-        "a newly requested subcheck can appear only once",
-        "requested-pass-subcheck"
-      ));
-    }
-    requested.add(key);
-  }
-  const inapplicable = /* @__PURE__ */ new Set();
-  for (const [index, reason] of (value?.inapplicability ?? []).entries()) {
-    for (const filePath of reason.paths) {
-      const key = `${reason.operation}\0${reason.subcheck}\0${filePath}`;
-      if (inapplicable.has(key)) {
-        errors.push(artifactError(
-          `/inapplicability/${index}`,
-          `duplicate inapplicability record for ${reason.operation}/${reason.subcheck} at ${filePath}`,
-          "requested-pass-applicability"
-        ));
-      }
-      inapplicable.add(key);
-      const requirement = passRequirements(value, reason.operation);
-      if (requirement?.subchecks.includes(reason.subcheck) && requirement.paths.includes(filePath)) {
-        errors.push(artifactError(
-          `/inapplicability/${index}`,
-          `${reason.operation}/${reason.subcheck} cannot be required and inapplicable at ${filePath}`,
-          "requested-pass-applicability"
-        ));
-      }
-    }
-  }
-  return { valid: errors.length === 0, errors };
-}
-function validateNoEditSkip(value, options = {}) {
-  const schema = validateNoEditSkipSchema(value, options);
-  const errors = [...schema.errors];
-  for (const operation of ["revision-plan", "chapter-revision"]) {
-    if (!value?.operations?.includes(operation)) {
-      errors.push(artifactError(
-        "/operations",
-        `a no-edit skip must record ${operation}`,
-        "no-edit-operations"
-      ));
-    }
-  }
-  return { valid: errors.length === 0, errors };
-}
-function validateReviewGroup(value, options = {}) {
-  const schema = validateReviewGroupSchema(value, options);
-  const errors = [...schema.errors];
-  const perspectives = new Set((value?.jobs ?? []).map((entry) => entry.perspective));
-  for (const perspective of PERSPECTIVES) {
-    if (!perspectives.has(perspective)) {
-      errors.push(artifactError(
-        "/jobs",
-        `review group requires its ${perspective} perspective`,
-        "review-group-perspective"
-      ));
-    }
-  }
-  if (perspectives.size !== (value?.jobs ?? []).length) {
-    errors.push(artifactError(
-      "/jobs",
-      "review group perspectives must be unique",
-      "review-group-perspective"
-    ));
-  }
-  return { valid: errors.length === 0, errors };
-}
-function validateSemanticAttestation(value, options = {}) {
-  const schema = validateSemanticAttestationSchema(value, options);
-  const errors = [...schema.errors];
-  const claims = /* @__PURE__ */ new Set();
-  for (const [index, claim] of (value?.claims ?? []).entries()) {
-    if (claims.has(claim.claim_type)) {
-      errors.push(artifactError(
-        `/claims/${index}/claim_type`,
-        "one attestation cannot repeat a claim type",
-        "semantic-attestation-claim"
-      ));
-    }
-    claims.add(claim.claim_type);
-  }
-  return { valid: errors.length === 0, errors };
-}
-function validateConvergenceEvaluation(value, options = {}) {
-  const schema = validateConvergenceEvaluationSchema(value, options);
-  const errors = [...schema.errors];
-  if (value?.outcome === "satisfied" && value?.blockers?.length > 0) {
-    errors.push(artifactError(
-      "/blockers",
-      "a satisfied evaluation cannot retain blockers",
-      "convergence-evaluation-outcome"
-    ));
-  }
-  if (value?.outcome !== "satisfied" && value?.blockers?.length === 0) {
-    errors.push(artifactError(
-      "/blockers",
-      "a non-satisfied evaluation requires concrete blockers",
-      "convergence-evaluation-outcome"
-    ));
-  }
-  return { valid: errors.length === 0, errors };
-}
-function passRequirements(pass, operation) {
-  return pass?.required_operations?.find((requirement) => requirement.operation === operation) ?? null;
-}
-var COVERAGE_OPERATIONS, PERSPECTIVES, DEFAULT_ACTION;
-var init_evaluation_contracts = __esm({
-  "scripts/lib/evaluation-contracts.mjs"() {
-    init_schemas();
-    init_state_io();
-    COVERAGE_OPERATIONS = ["diagnostics", "characters", "prose", "ai-cleanup"];
-    PERSPECTIVES = ["intent", "standards", "fresh"];
-    DEFAULT_ACTION = Object.freeze({
-      strategy: "revise-draft",
-      operation: "intake",
-      command: "revise-draft"
-    });
-  }
-});
-
-// scripts/lib/evaluation-artifacts.mjs
-import { readdir as readdir3, readFile as readFile5 } from "node:fs/promises";
-import path6 from "node:path";
-async function readProject(projectRoot) {
-  const root2 = path6.resolve(projectRoot);
-  const manifestPath = path6.join(root2, ".author-toolkit", "project.json");
-  const manifest = JSON.parse(await readFile5(manifestPath, "utf8"));
-  const validation = validateManifest(manifest);
-  if (!validation.valid) {
-    throw new Error(`Project validation failed: ${validation.errors.map((error) => error.message).join("; ")}`);
-  }
-  return { root: root2, manifestPath, manifest };
-}
-async function readActiveCycle(project) {
-  const file = path6.resolve(project.root, project.manifest.paths.convergence, "active-cycle.json");
-  let value;
-  let text;
-  try {
-    text = await readFile5(file, "utf8");
-    value = JSON.parse(text);
-  } catch (error) {
-    if (error.code === "ENOENT") return null;
-    throw error;
-  }
-  const validation = validateConvergenceCycleSchema(value);
-  if (!validation.valid || value.status !== "active") {
-    throw new Error(`Living cycle is invalid: ${file}: ${formatErrors(validation.errors)}`);
-  }
-  return { value, file, text };
-}
-function operationTime(options = {}) {
-  return utcTimestamp(options);
-}
-function evaluationReference(evaluation, relativePath, text) {
-  return {
-    evaluation_id: evaluation.evaluation_id,
-    path: relativePath,
-    sha256: sha256Bytes(text)
-  };
-}
-async function publishImmutable(file, text) {
-  try {
-    await createNoClobberVerified(file, text);
-  } catch (error) {
-    if (error.code !== "EEXIST") throw error;
-    const existing = await readFile5(file, "utf8");
-    if (existing !== text) throw new Error(`Immutable artifact already differs: ${file}`);
-  }
-}
-function formatErrors(errors) {
-  return errors.map((error) => `${error.instancePath || "/"} ${error.message}`).join("; ");
-}
-async function completedCycles(project) {
-  const directory = path6.resolve(project.root, project.manifest.paths.convergence, "cycles");
-  let entries;
-  try {
-    entries = await readdir3(directory, { withFileTypes: true });
-  } catch (error) {
-    if (error.code === "ENOENT") return [];
-    throw error;
-  }
-  const cycles = [];
-  for (const entry of entries) {
-    if (!entry.isFile() || !entry.name.endsWith(".json")) continue;
-    const value = JSON.parse(await readFile5(path6.join(directory, entry.name), "utf8"));
-    const validation = validateConvergenceCycleSchema(value);
-    if (!validation.valid) {
-      throw new Error(`Completed cycle is invalid: ${entry.name}: ${formatErrors(validation.errors)}`);
-    }
-    if (value.status === "completed") cycles.push(value);
-  }
-  return cycles.sort(
-    (left, right) => String(left.completion?.completed_at ?? left.updated_at).localeCompare(
-      String(right.completion?.completed_at ?? right.updated_at)
-    ) || left.cycle_id.localeCompare(right.cycle_id)
-  );
-}
-async function readEvaluationReference(project, reference) {
-  const text = await readFile5(path6.resolve(project.root, reference.path), "utf8");
-  if (sha256Bytes(text) !== reference.sha256) {
-    throw new Error(`Evaluation content hash changed: ${reference.path}`);
-  }
-  const value = JSON.parse(text);
-  const validation = validateConvergenceEvaluation(value);
-  if (!validation.valid) throw new Error(formatErrors(validation.errors));
-  if (value.evaluation_id !== reference.evaluation_id) {
-    throw new Error(`Evaluation identity changed: ${reference.path}`);
-  }
-  return { value, text };
-}
-async function evaluationSources(project) {
-  const sources = (await completedCycles(project)).map((cycle) => ({
-    cycle,
-    evaluationReference: cycle.target_evaluation,
-    passReference: cycle.requested_pass,
-    sortAt: cycle.completion?.completed_at ?? cycle.updated_at
-  }));
-  const directory = path6.resolve(project.root, project.manifest.paths.convergence, "evaluations");
-  let entries;
-  try {
-    entries = await readdir3(directory, { withFileTypes: true });
-  } catch (error) {
-    if (error.code === "ENOENT") return sources;
-    throw error;
-  }
-  for (const entry of entries) {
-    if (!entry.isFile() || !entry.name.endsWith(".json")) continue;
-    const relative = path6.posix.join(
-      project.manifest.paths.convergence,
-      "evaluations",
-      entry.name
-    );
-    const text = await readFile5(path6.resolve(project.root, relative), "utf8");
-    const evaluationReference2 = {
-      evaluation_id: entry.name.slice(0, -".json".length),
-      path: relative,
-      sha256: sha256Bytes(text)
-    };
-    const { value: evaluation } = await readEvaluationReference(project, evaluationReference2);
-    if (evaluation.cycle_id !== null) continue;
-    sources.push({
-      cycle: null,
-      evaluationReference: evaluationReference2,
-      passReference: evaluation.requested_pass,
-      sortAt: evaluation.created_at
-    });
-  }
-  return sources.sort(
-    (left, right) => left.sortAt.localeCompare(right.sortAt) || left.evaluationReference.path.localeCompare(right.evaluationReference.path)
-  );
-}
-async function latestSatisfiedPass(project, excludeCycleId = null, excludeEvaluationId = null) {
-  for (const source of (await evaluationSources(project)).reverse()) {
-    if (source.cycle?.cycle_id === excludeCycleId || source.evaluationReference.evaluation_id === excludeEvaluationId || !source.passReference) continue;
-    try {
-      const { value: evaluation } = await readEvaluationReference(project, source.evaluationReference);
-      if (evaluation.outcome !== "satisfied") continue;
-      const passText = await readFile5(path6.resolve(project.root, source.passReference.path), "utf8");
-      if (sha256Bytes(passText) !== source.passReference.sha256) continue;
-      const pass = JSON.parse(passText);
-      if (!validateRequestedPass(pass).valid || pass.narrowing !== null) continue;
-      if (pass.pass_id !== source.passReference.pass_id || pass.pass_fingerprint !== source.passReference.pass_fingerprint) continue;
-      return {
-        cycle: source.cycle,
-        evaluation,
-        evaluationReference: source.evaluationReference,
-        pass,
-        passReference: source.passReference
-      };
-    } catch {
-      continue;
-    }
-  }
-  return null;
-}
-var init_evaluation_artifacts = __esm({
-  "scripts/lib/evaluation-artifacts.mjs"() {
-    init_manifest();
-    init_schemas();
-    init_state_io();
-    init_time();
-    init_evaluation_contracts();
-  }
-});
-
-// scripts/lib/scope.mjs
-import { createHash as createHash3 } from "node:crypto";
-import { mkdir as mkdir2, readFile as readFile6 } from "node:fs/promises";
-import path7 from "node:path";
-function sha256(contents) {
-  return createHash3("sha256").update(contents).digest("hex");
-}
-function sorted(values) {
-  return [...values].sort();
-}
-function byPath(left, right) {
-  return left.path < right.path ? -1 : left.path > right.path ? 1 : 0;
-}
-function canonicalInventory(value) {
-  return {
-    manuscript_root: value.manuscript_root,
-    files: [...value.files].sort(byPath).map(({ path: filePath, sha256: hash }) => ({ path: filePath, sha256: hash })),
-    excluded_files: sorted(value.excluded_files)
-  };
-}
-function computeScopeFingerprint(scope) {
-  return sha256(
-    JSON.stringify({
-      files: scope.files.map(({ path: filePath, sha256: hash }) => ({ path: filePath, sha256: hash })),
-      excluded_files: sorted(scope.excluded_files)
-    })
-  );
-}
-function computeInventoryFingerprint(inventory) {
-  return sha256(JSON.stringify(canonicalInventory(inventory)));
-}
-async function atomicWrite(file, contents) {
-  await writeAtomicVerified(file, contents);
-}
-async function writeImmutable(file, contents) {
-  try {
-    await createNoClobberVerified(file, contents);
-  } catch (error) {
-    if (error.code !== "EEXIST") throw error;
-    const existing = await readFile6(file, "utf8");
-    if (existing !== contents) {
-      throw new Error(`Immutable snapshot already exists with different content: ${file}`);
-    }
-  }
-}
-async function readExistingInventory(file, expected) {
-  let contents;
-  try {
-    contents = await readFile6(file, "utf8");
-  } catch (error) {
-    if (error.code === "ENOENT") return null;
-    throw error;
-  }
-  const inventory = JSON.parse(contents);
-  if (computeInventoryFingerprint(inventory) !== expected.inventory_fingerprint || inventory.manuscript_root !== expected.manuscript_root || JSON.stringify(inventory.files) !== JSON.stringify(expected.files) || JSON.stringify(sorted(inventory.excluded_files)) !== JSON.stringify(sorted(expected.excluded_files))) {
-    throw new Error(`Immutable inventory snapshot has inconsistent content: ${file}`);
-  }
-  return contents;
-}
-async function currentInventory(projectRoot, manifest) {
-  const inventory = await collectManuscriptInventory(
-    projectRoot,
-    manifest.manuscript_root,
-    manifest.paths
-  );
-  const files = [];
-  for (const entry of inventory.files) {
-    files.push({ path: entry.path, sha256: sha256(await readFile6(entry.absolute)) });
-  }
-  const lockRoot = `${manifest.paths.convergence.replace(/\/$/, "")}/active-cycle.lock`;
-  return {
-    files,
-    excludedFiles: inventory.excludedFiles.filter(
-      (filePath) => filePath !== lockRoot && !filePath.startsWith(`${lockRoot}/`)
-    ),
-    absoluteByPath: new Map(inventory.files.map((entry) => [entry.path, entry.absolute]))
-  };
-}
-async function collectVersionedInventory(projectRoot, manifest) {
-  const current = await currentInventory(projectRoot, manifest);
-  const inventory = {
-    manuscript_root: manifest.manuscript_root,
-    files: current.files,
-    excluded_files: sorted(current.excludedFiles)
-  };
-  return {
-    ...inventory,
-    inventory_fingerprint: computeInventoryFingerprint(inventory)
-  };
-}
-async function recordInventorySnapshot(projectRoot, manifest, options = {}) {
-  const observed = await collectVersionedInventory(projectRoot, manifest);
-  const record = {
-    schema_version: "1.0.0",
-    ...observed,
-    created_at: utcTimestamp(options)
-  };
-  const validation = validateInventorySnapshot(record);
-  if (!validation.valid) throw validationError(validation);
-  const relative = path7.posix.join(
-    manifest.paths.convergence,
-    "inventories",
-    `${record.inventory_fingerprint}.json`
-  );
-  const absolute = path7.resolve(projectRoot, relative);
-  const text = `${JSON.stringify(record, null, 2)}
-`;
-  await writeImmutable(absolute, text);
-  return {
-    record,
-    reference: {
-      path: relative,
-      sha256: sha256(text),
-      inventory_fingerprint: record.inventory_fingerprint
-    }
-  };
-}
-function diffManuscriptInventories(previous, current) {
-  const beforeByPath = new Map((previous.files ?? []).map((file) => [file.path, file]));
-  const afterByPath = new Map((current.files ?? []).map((file) => [file.path, file]));
-  const created = current.files.filter((file) => !beforeByPath.has(file.path));
-  const modified = current.files.filter(
-    (file) => beforeByPath.has(file.path) && beforeByPath.get(file.path).sha256 !== file.sha256
-  ).map((file) => ({
-    path: file.path,
-    input_sha256: beforeByPath.get(file.path).sha256,
-    output_sha256: file.sha256
-  }));
-  const deleted = previous.files.filter((file) => !afterByPath.has(file.path)).map((file) => ({
-    path: file.path,
-    input_sha256: file.sha256
-  }));
-  const beforeRetained = previous.files.filter((file) => afterByPath.has(file.path)).map((file) => file.path);
-  const afterRetained = current.files.filter((file) => beforeByPath.has(file.path)).map((file) => file.path);
-  const reordered = [];
-  if (JSON.stringify(beforeRetained) !== JSON.stringify(afterRetained)) {
-    const afterIndex = new Map(afterRetained.map((filePath, index) => [filePath, index]));
-    for (const [beforeIndex, filePath] of beforeRetained.entries()) {
-      const beforePrevious = beforeRetained[beforeIndex - 1] ?? null;
-      const indexAfter = afterIndex.get(filePath);
-      const afterPrevious = afterRetained[indexAfter - 1] ?? null;
-      if (beforePrevious !== afterPrevious) {
-        reordered.push({
-          path: filePath,
-          before_index: previous.files.findIndex((file) => file.path === filePath),
-          after_index: current.files.findIndex((file) => file.path === filePath)
-        });
-      }
-    }
-  }
-  return {
-    created,
-    modified,
-    deleted,
-    reordered,
-    evidence_affected: [.../* @__PURE__ */ new Set([
-      ...created.map((file) => file.path),
-      ...modified.map((file) => file.path),
-      ...deleted.map((file) => file.path),
-      ...reordered.map((file) => file.path)
-    ])],
-    dependency_affected: []
-  };
-}
-function validationError(result) {
-  return new Error(
-    `4.0.0 scope validation failed:
-${result.errors.map((error) => `${error.instancePath || "/"} ${error.message}`).join("\n")}`
-  );
-}
-function scopeStateError(code, message, details = {}) {
-  const error = new Error(message);
-  error.projectCode = code;
-  error.projectDetails = details;
-  return error;
-}
-async function recordScopeLocked(root2, manifestPath, initialConvergence, scope, options, progress) {
-  await runCheckpoint(options, "lock-acquired");
-  const manifestText = await readFile6(manifestPath, "utf8");
-  const actualManifestHash = sha256(manifestText);
-  if (options.expectedManifestSha256 !== void 0 && actualManifestHash !== options.expectedManifestSha256) {
-    throw scopeStateError(
-      "manifest-hash-conflict",
-      "The project manifest changed after the scope input was prepared; reread it before retrying.",
-      {
-        expected_sha256: options.expectedManifestSha256,
-        actual_sha256: actualManifestHash
-      }
-    );
-  }
-  const manifest = JSON.parse(manifestText);
-  const originalValidation = validateManifest(manifest);
-  if (!originalValidation.valid) throw validationError(originalValidation);
-  if (manifest.paths.convergence !== initialConvergence) {
-    throw scopeStateError(
-      "project-lock-path-conflict",
-      "The registered convergence path changed while scope recording waited for its lock."
-    );
-  }
-  const active = await readActiveCycle({ root: root2, manifest });
-  if (options.cycleId !== void 0 && !active) {
-    throw scopeStateError("active-cycle-required", "The named active cycle is unavailable.");
-  }
-  if (active && options.cycleId !== void 0 && (active.value.cycle_id !== options.cycleId || active.value.revision !== options.expectedRevision)) {
-    throw scopeStateError(
-      "cycle-revision-conflict",
-      `Expected cycle ${options.cycleId} revision ${options.expectedRevision}, but the active cycle is ${active.value.cycle_id} revision ${active.value.revision}.`
-    );
-  }
-  progress.active = active;
-  const updatedAt = utcTimestamp(options);
-  if (!["proposed", "confirmed"].includes(scope.status)) {
-    throw new Error(`Unsupported scope status: ${scope.status}`);
-  }
-  const confirmation = options.authorConfirmation;
-  if (scope.status === "confirmed" && (!confirmation || confirmation.reading_order_confirmed !== true)) {
-    throw scopeStateError(
-      "scope-confirmation-required",
-      "A confirmed scope requires author confirmation of its exact reading order."
-    );
-  }
-  const inventory = await currentInventory(root2, manifest);
-  const scopePaths = /* @__PURE__ */ new Set();
-  const files = [];
-  for (const entry of Array.isArray(scope.files) ? scope.files : []) {
-    const filePath = typeof entry === "string" ? entry : entry?.path;
-    const expectedHash = typeof entry === "object" && entry !== null ? entry.sha256 : void 0;
-    if (scopePaths.has(filePath)) throw new Error(`Duplicate scope path: ${filePath}`);
-    scopePaths.add(filePath);
-    const absolute = inventory.absoluteByPath.get(filePath);
-    if (!absolute) {
-      throw scopeStateError(
-        "scope-path-invalid",
-        `Scope path is not in the current manuscript inventory: ${filePath}`,
-        { path: filePath }
-      );
-    }
-    const actualHash = inventory.files.find((file) => file.path === filePath).sha256;
-    if (expectedHash !== void 0 && actualHash !== expectedHash) {
-      throw scopeStateError(
-        "scope-input-hash-conflict",
-        `Scope input hash is not current: ${filePath}`,
-        { path: filePath, expected_sha256: expectedHash, actual_sha256: actualHash }
-      );
-    }
-    files.push({ path: filePath, sha256: actualHash });
-  }
-  const excludedFiles = scope.excluded_files === void 0 ? sorted(inventory.excludedFiles) : scope.excluded_files;
-  if (JSON.stringify(sorted(excludedFiles)) !== JSON.stringify(sorted(inventory.excludedFiles))) {
-    throw scopeStateError(
-      "scope-exclusions-conflict",
-      "Scope exclusions do not match the current manuscript inventory.",
-      { expected: excludedFiles, actual: sorted(inventory.excludedFiles) }
-    );
-  }
-  const normalizedScope = {
-    ...scope,
-    files,
-    excluded_files: sorted(excludedFiles),
-    created_at: scope.created_at ?? updatedAt
-  };
-  const scopeFingerprint = computeScopeFingerprint(normalizedScope);
-  if (scope.scope_fingerprint !== void 0 && scope.scope_fingerprint !== scopeFingerprint) {
-    throw scopeStateError(
-      "scope-fingerprint-conflict",
-      `Scope fingerprint ${scope.scope_fingerprint} does not match the current ordered manuscript content ${scopeFingerprint}.`,
-      { expected_sha256: scope.scope_fingerprint, actual_sha256: scopeFingerprint }
-    );
-  }
-  const currentScope = {
-    scope_id: normalizedScope.scope_id,
-    description: normalizedScope.description,
-    status: normalizedScope.status,
-    files: normalizedScope.files,
-    excluded_files: normalizedScope.excluded_files,
-    created_at: normalizedScope.created_at,
-    scope_fingerprint: scopeFingerprint
-  };
-  if (normalizedScope.status === "proposed") {
-    const updated2 = { ...manifest, current_scope: currentScope, updated_at: updatedAt };
-    const validation2 = validateManifest(updated2);
-    if (!validation2.valid) throw validationError(validation2);
-    await atomicWrite(manifestPath, `${JSON.stringify(updated2, null, 2)}
-`);
-    progress.manifestWritten = true;
-    await runCheckpoint(options, "manifest-updated");
-    return {
-      scope_id: normalizedScope.scope_id,
-      scope_fingerprint: scopeFingerprint,
-      inventory_fingerprint: null,
-      snapshot_path: null,
-      inventory_path: null,
-      snapshot_reference: null,
-      inventory_reference: null,
-      current_scope: currentScope
-    };
-  }
-  const inventoryRecord = {
-    schema_version: "1.0.0",
-    inventory_fingerprint: "",
-    manuscript_root: manifest.manuscript_root,
-    files: inventory.files,
-    excluded_files: sorted(inventory.excludedFiles),
-    created_at: updatedAt
-  };
-  inventoryRecord.inventory_fingerprint = computeInventoryFingerprint(inventoryRecord);
-  const inventoryRelative = path7.posix.join(
-    manifest.paths.convergence,
-    "inventories",
-    `${inventoryRecord.inventory_fingerprint}.json`
-  );
-  const inventoryPath = path7.resolve(root2, inventoryRelative);
-  let inventoryText = await readExistingInventory(inventoryPath, inventoryRecord);
-  if (inventoryText === null) inventoryText = `${JSON.stringify(inventoryRecord, null, 2)}
-`;
-  const snapshotRelative = path7.posix.join(
-    manifest.paths.convergence,
-    "scopes",
-    `${normalizedScope.scope_id}-${scopeFingerprint}.json`
-  );
-  const snapshotPath = path7.resolve(root2, snapshotRelative);
-  const snapshot = {
-    schema_version: "1.0.0",
-    scope_id: normalizedScope.scope_id,
-    scope_fingerprint: scopeFingerprint,
-    description: normalizedScope.description,
-    status: "confirmed",
-    files: currentScope.files,
-    excluded_files: normalizedScope.excluded_files,
-    created_at: normalizedScope.created_at,
-    inventory: {
-      path: inventoryRelative,
-      sha256: sha256(inventoryText),
-      inventory_fingerprint: inventoryRecord.inventory_fingerprint
-    },
-    author_confirmation: {
-      decision_id: confirmation.decision_id,
-      confirmed_at: confirmation.confirmed_at,
-      reading_order_confirmed: true
-    }
-  };
-  const inventoryValidation = validateInventorySnapshot(inventoryRecord);
-  if (!inventoryValidation.valid) throw validationError(inventoryValidation);
-  const snapshotValidation = validateScopeSnapshot(snapshot);
-  if (!snapshotValidation.valid) throw validationError(snapshotValidation);
-  const snapshotText = `${JSON.stringify(snapshot, null, 2)}
-`;
-  currentScope.snapshot_path = snapshotRelative;
-  currentScope.snapshot_sha256 = sha256(snapshotText);
-  const updated = { ...manifest, current_scope: currentScope, updated_at: updatedAt };
-  const validation = validateManifest(updated);
-  if (!validation.valid) throw validationError(validation);
-  await writeImmutable(inventoryPath, inventoryText);
-  progress.inventoryPublished = true;
-  progress.inventoryPath = inventoryPath;
-  await runCheckpoint(options, "inventory-published");
-  await writeImmutable(snapshotPath, snapshotText);
-  progress.snapshotPublished = true;
-  progress.snapshotPath = snapshotPath;
-  await runCheckpoint(options, "snapshot-published");
-  await atomicWrite(manifestPath, `${JSON.stringify(updated, null, 2)}
-`);
-  progress.manifestWritten = true;
-  await runCheckpoint(options, "manifest-updated");
-  return {
-    scope_id: normalizedScope.scope_id,
-    scope_fingerprint: scopeFingerprint,
-    inventory_fingerprint: inventoryRecord.inventory_fingerprint,
-    snapshot_path: snapshotPath,
-    inventory_path: inventoryPath,
-    snapshot_reference: {
-      path: snapshotRelative,
-      sha256: currentScope.snapshot_sha256
-    },
-    inventory_reference: {
-      path: inventoryRelative,
-      sha256: sha256(inventoryText),
-      inventory_fingerprint: inventoryRecord.inventory_fingerprint
-    },
-    current_scope: currentScope
-  };
-}
-async function recordScope(projectRoot, scope, options = {}) {
-  const root2 = path7.resolve(projectRoot);
-  const manifestPath = path7.join(root2, ".author-toolkit", "project.json");
-  const initialManifest = JSON.parse(await readFile6(manifestPath, "utf8"));
-  const originalValidation = validateManifest(initialManifest);
-  if (!originalValidation.valid) throw validationError(originalValidation);
-  await mkdir2(path7.resolve(root2, initialManifest.paths.convergence), { recursive: true });
-  const lock = await acquireDirectoryLock(
-    path7.resolve(root2, initialManifest.paths.convergence, "active-cycle.lock"),
-    {
-      timeoutMs: options.lockTimeoutMs ?? 1e4,
-      retryMs: options.lockRetryMs ?? 20,
-      now: options.now
-    }
-  );
-  if (!lock.acquired) {
-    throw scopeStateError(
-      lock.code === "timeout" ? "project-lock-timeout" : "project-lock-error",
-      `Cannot coordinate scope recording at ${lock.directory}: ${lock.error.message}`,
-      { lock_path: lock.directory }
-    );
-  }
-  const progress = options.progress ?? {};
-  let outcome;
-  let operationError;
-  try {
-    outcome = await recordScopeLocked(
-      root2,
-      manifestPath,
-      initialManifest.paths.convergence,
-      scope,
-      options,
-      progress
-    );
-  } catch (error) {
-    operationError = error;
-  }
-  const released = await releaseDirectoryLock(lock);
-  if (!released.released) {
-    throw scopeStateError(
-      "project-lock-release-error",
-      `Cannot release scope lock ${lock.directory}: ${released.error.message}${operationError ? `; operation also failed: ${operationError.message}` : ""}`,
-      { lock_path: lock.directory }
-    );
-  }
-  if (operationError) throw operationError;
-  return outcome;
-}
-function scopeFailure(instancePath, message, keyword = "full-manuscript-scope") {
-  return { instancePath, keyword, message, params: {} };
-}
-function sameFiles(left, right) {
-  return JSON.stringify(left) === JSON.stringify(right);
-}
-function sameStrings(left, right) {
-  return JSON.stringify(sorted(left)) === JSON.stringify(sorted(right));
-}
-function relevantExclusions(values, paths) {
-  return values.filter((value) => !isOperationalManuscriptPath(value, paths));
-}
-async function validateFullManuscriptScope(manifest, manifestPath) {
-  const projectRoot = projectRootFromManifest(manifestPath);
-  const scope = manifest.current_scope;
-  const result = {
-    valid: false,
-    full_manuscript: false,
-    errors: [],
-    projectRoot,
-    scope_id: scope?.scope_id ?? null,
-    scope_fingerprint: scope?.scope_fingerprint ?? null,
-    inventory_fingerprint: null,
-    snapshot_path: scope?.snapshot_path ?? null
-  };
-  if (!scope) {
-    result.errors.push(scopeFailure("/current_scope", "a current scope is required"));
-    return result;
-  }
-  if (scope.status !== "confirmed") {
-    result.errors.push(
-      scopeFailure(
-        "/current_scope/status",
-        "full-manuscript validation requires a confirmed scope",
-        "scope-status"
-      )
-    );
-    return result;
-  }
-  const expectedFingerprint = computeScopeFingerprint(scope);
-  if (scope.scope_fingerprint !== expectedFingerprint) {
-    result.errors.push(
-      scopeFailure(
-        "/current_scope/scope_fingerprint",
-        `scope_fingerprint must be ${expectedFingerprint}`,
-        "scope-fingerprint"
-      )
-    );
-  }
-  const seen = /* @__PURE__ */ new Set();
-  for (const [index, file] of scope.files.entries()) {
-    if (seen.has(file.path)) {
-      result.errors.push(
-        scopeFailure(
-          `/current_scope/files/${index}/path`,
-          `duplicate manuscript path in scope: ${file.path}`,
-          "scope-uniqueness"
-        )
-      );
-    }
-    seen.add(file.path);
-  }
-  let snapshotText;
-  let snapshot;
-  try {
-    snapshotText = await readFile6(path7.resolve(projectRoot, scope.snapshot_path), "utf8");
-    snapshot = JSON.parse(snapshotText);
-    result.errors.push(...validateScopeSnapshot(snapshot).errors);
-    result.inventory_fingerprint = snapshot.inventory?.inventory_fingerprint ?? null;
-    if (sha256(snapshotText) !== scope.snapshot_sha256) {
-      result.errors.push(
-        scopeFailure(
-          "/current_scope/snapshot_sha256",
-          "scope snapshot content changed after confirmation",
-          "scope-snapshot"
-        )
-      );
-    }
-    const expectedSnapshotPath = path7.posix.join(
-      manifest.paths.convergence,
-      "scopes",
-      `${scope.scope_id}-${scope.scope_fingerprint}.json`
-    );
-    if (scope.snapshot_path !== expectedSnapshotPath) {
-      result.errors.push(
-        scopeFailure(
-          "/current_scope/snapshot_path",
-          `scope snapshot path must be ${expectedSnapshotPath}`,
-          "scope-snapshot"
-        )
-      );
-    }
-    if (snapshot.scope_id !== scope.scope_id || snapshot.scope_fingerprint !== scope.scope_fingerprint || snapshot.status !== "confirmed") {
-      result.errors.push(
-        scopeFailure(
-          "/current_scope/snapshot_path",
-          "scope snapshot identity or confirmation status does not match the manifest",
-          "scope-snapshot"
-        )
-      );
-    }
-    if (!sameFiles(snapshot.files, scope.files)) {
-      result.errors.push(
-        scopeFailure(
-          "/current_scope/files",
-          "scope files, hashes, or confirmed reading order differ from the immutable snapshot",
-          "scope-order"
-        )
-      );
-    }
-    if (!sameStrings(snapshot.excluded_files, scope.excluded_files)) {
-      result.errors.push(
-        scopeFailure(
-          "/current_scope/excluded_files",
-          "scope exclusions differ from the immutable snapshot",
-          "scope-exclusions"
-        )
-      );
-    }
-    if (snapshot.author_confirmation?.reading_order_confirmed !== true) {
-      result.errors.push(
-        scopeFailure(
-          "/current_scope/snapshot_path",
-          "the author did not confirm the snapshot reading order",
-          "scope-confirmation"
-        )
-      );
-    }
-  } catch (error) {
-    result.errors.push(
-      scopeFailure(
-        "/current_scope/snapshot_path",
-        `cannot read a valid immutable scope snapshot: ${error.message}`,
-        "scope-snapshot"
-      )
-    );
-  }
-  let inventory;
-  if (snapshot?.inventory) {
-    try {
-      const expectedInventoryPath = path7.posix.join(
-        manifest.paths.convergence,
-        "inventories",
-        `${snapshot.inventory.inventory_fingerprint}.json`
-      );
-      if (snapshot.inventory.path !== expectedInventoryPath) {
-        result.errors.push(
-          scopeFailure(
-            "/current_scope/snapshot_path",
-            `inventory snapshot path must be ${expectedInventoryPath}`,
-            "scope-inventory"
-          )
-        );
-      }
-      const inventoryText = await readFile6(
-        path7.resolve(projectRoot, snapshot.inventory.path),
-        "utf8"
-      );
-      inventory = JSON.parse(inventoryText);
-      result.errors.push(...validateInventorySnapshot(inventory).errors);
-      if (inventory.manuscript_root !== manifest.manuscript_root) {
-        result.errors.push(
-          scopeFailure(
-            "/current_scope/snapshot_path",
-            "inventory snapshot manuscript_root does not match the manifest",
-            "scope-inventory"
-          )
-        );
-      }
-      if (sha256(inventoryText) !== snapshot.inventory.sha256) {
-        result.errors.push(
-          scopeFailure(
-            "/current_scope/snapshot_path",
-            "inventory snapshot content changed after scope confirmation",
-            "scope-inventory"
-          )
-        );
-      }
-      if (computeInventoryFingerprint(inventory) !== snapshot.inventory.inventory_fingerprint || inventory.inventory_fingerprint !== snapshot.inventory.inventory_fingerprint) {
-        result.errors.push(
-          scopeFailure(
-            "/current_scope/snapshot_path",
-            "inventory snapshot fingerprint does not match its canonical content",
-            "scope-inventory"
-          )
-        );
-      }
-      if (!sameStrings(inventory.excluded_files, snapshot.excluded_files)) {
-        result.errors.push(
-          scopeFailure(
-            "/current_scope/excluded_files",
-            "scope exclusions differ from its inventory evidence",
-            "scope-exclusions"
-          )
-        );
-      }
-      if (inventory.files.length !== snapshot.files.length || !snapshot.files.every(
-        (file) => inventory.files.some(
-          (candidate) => candidate.path === file.path && candidate.sha256 === file.sha256
-        )
-      )) {
-        result.errors.push(
-          scopeFailure(
-            "/current_scope/files",
-            "confirmed scope is not the complete manuscript in its inventory evidence",
-            "scope-inventory"
-          )
-        );
-      }
-    } catch (error) {
-      result.errors.push(
-        scopeFailure(
-          "/current_scope/snapshot_path",
-          `cannot read valid inventory evidence: ${error.message}`,
-          "scope-inventory"
-        )
-      );
-    }
-  }
-  try {
-    const current = await currentInventory(projectRoot, manifest);
-    const scopeByPath = new Map(scope.files.map((file) => [file.path, file.sha256]));
-    for (const file of current.files) {
-      if (!scopeByPath.has(file.path)) {
-        result.errors.push(
-          scopeFailure(
-            "/current_scope/files",
-            `manuscript file is not registered in the current scope: ${file.path}`,
-            "scope-inventory"
-          )
-        );
-      }
-    }
-    for (const [index, file] of scope.files.entries()) {
-      const absolute = current.absoluteByPath.get(file.path);
-      if (!absolute) {
-        let message = `scope path is not a current manuscript-inventory path: ${file.path}`;
-        try {
-          await readFile6(path7.resolve(projectRoot, file.path));
-        } catch (error) {
-          message = `cannot read current manuscript ${file.path}: ${error.message}`;
-        }
-        result.errors.push(
-          scopeFailure(
-            `/current_scope/files/${index}/path`,
-            message,
-            "scope-inventory"
-          )
-        );
-        continue;
-      }
-      const currentHash = current.files.find((candidate) => candidate.path === file.path)?.sha256;
-      if (currentHash !== file.sha256) {
-        result.errors.push(
-          scopeFailure(
-            `/current_scope/files/${index}/sha256`,
-            `manuscript content changed since the scope was recorded: ${file.path}`,
-            "scope-currency"
-          )
-        );
-      }
-    }
-    if (!sameStrings(
-      relevantExclusions(current.excludedFiles, manifest.paths),
-      relevantExclusions(scope.excluded_files, manifest.paths)
-    )) {
-      result.errors.push(
-        scopeFailure(
-          "/current_scope/excluded_files",
-          "current non-operational manuscript exclusions changed after confirmation",
-          "scope-exclusions"
-        )
-      );
-    }
-  } catch (error) {
-    result.errors.push(
-      scopeFailure(
-        "/current_scope/files",
-        `cannot inventory current manuscript: ${error.message}`,
-        "scope-inventory"
-      )
-    );
-  }
-  result.valid = result.errors.length === 0;
-  result.full_manuscript = result.valid;
-  return result;
-}
-function validateScopeSnapshot(value, options = {}) {
-  const schema = validateScopeSnapshotSchema(value, options);
-  const errors = [...schema.errors];
-  if (Array.isArray(value?.files) && Array.isArray(value?.excluded_files)) {
-    const expected = computeScopeFingerprint(value);
-    if (value.scope_fingerprint !== expected) {
-      errors.push(
-        scopeFailure(
-          "/scope_fingerprint",
-          `scope_fingerprint does not match canonical content; expected ${expected}`,
-          "scope-fingerprint"
-        )
-      );
-    }
-    const paths = /* @__PURE__ */ new Set();
-    for (const [index, file] of value.files.entries()) {
-      if (paths.has(file.path)) {
-        errors.push(
-          scopeFailure(
-            `/files/${index}/path`,
-            `duplicate manuscript path in scope snapshot: ${file.path}`,
-            "scope-uniqueness"
-          )
-        );
-      }
-      paths.add(file.path);
-    }
-  }
-  return { valid: errors.length === 0, errors };
-}
-function validateInventorySnapshot(value, options = {}) {
-  const schema = validateInventorySnapshotSchema(value, options);
-  const errors = [...schema.errors];
-  if (typeof value?.manuscript_root === "string" && Array.isArray(value?.files) && Array.isArray(value?.excluded_files)) {
-    const expected = computeInventoryFingerprint(value);
-    if (value.inventory_fingerprint !== expected) {
-      errors.push(
-        scopeFailure(
-          "/inventory_fingerprint",
-          `inventory_fingerprint does not match canonical content; expected ${expected}`,
-          "inventory-fingerprint"
-        )
-      );
-    }
-    const paths = /* @__PURE__ */ new Set();
-    for (const [index, file] of value.files.entries()) {
-      if (paths.has(file.path)) {
-        errors.push(
-          scopeFailure(
-            `/files/${index}/path`,
-            `duplicate manuscript path in inventory snapshot: ${file.path}`,
-            "inventory-uniqueness"
-          )
-        );
-      }
-      paths.add(file.path);
-    }
-  }
-  return { valid: errors.length === 0, errors };
-}
-var init_scope = __esm({
-  "scripts/lib/scope.mjs"() {
-    init_manifest();
-    init_manuscript();
-    init_project_files();
-    init_cycle_coordination();
-    init_evaluation_artifacts();
-    init_schemas();
-    init_state_io();
-    init_time();
-  }
-});
-
-// scripts/lib/shared-references.mjs
-var shared_references_exports = {};
-__export(shared_references_exports, {
-  packagedReferences: () => packagedReferences2,
-  validateDeployedReferences: () => validateDeployedReferences
-});
-import { createHash as createHash4 } from "node:crypto";
-import { readFile as readFile7, readdir as readdir4 } from "node:fs/promises";
-import path8 from "node:path";
-import { fileURLToPath } from "node:url";
-function sha2562(bytes) {
-  return createHash4("sha256").update(bytes).digest("hex");
-}
-async function validateDeployedReferences(projectRoot) {
-  const errors = [];
-  const entries = await readdir4(packagedReferences2, { withFileTypes: true });
-  for (const entry of entries) {
-    if (!entry.isFile()) continue;
-    const relativePath = `.author-toolkit/references/${entry.name}`;
-    const packaged = await readFile7(path8.join(packagedReferences2, entry.name));
-    let deployed;
-    try {
-      deployed = await readFile7(path8.join(projectRoot, relativePath));
-    } catch (error) {
-      if (error.code !== "ENOENT") throw error;
-      errors.push({
-        instancePath: `/${relativePath}`,
-        code: "shared-reference-missing",
-        message: `missing shared reference ${relativePath}; run setup-author-toolkit`
-      });
-      continue;
-    }
-    const expectedHash = sha2562(packaged);
-    const actualHash = sha2562(deployed);
-    if (actualHash !== expectedHash) {
-      errors.push({
-        instancePath: `/${relativePath}`,
-        code: "reference-version-conflict",
-        expected_sha256: expectedHash,
-        actual_sha256: actualHash,
-        message: `reference-version-conflict: ${relativePath}; expected_sha256=${expectedHash} actual_sha256=${actualHash}; run setup-author-toolkit`
-      });
-    }
-  }
-  return { valid: errors.length === 0, errors };
-}
-var packagedReferenceUrl, packagedReferences2;
-var init_shared_references = __esm({
-  "scripts/lib/shared-references.mjs"() {
-    packagedReferenceUrl = globalThis[Symbol.for("author-toolkit.packaged-references")];
-    packagedReferences2 = fileURLToPath(
-      packagedReferenceUrl ?? new URL("../../skills/setup-author-toolkit/assets/references/", import.meta.url)
-    );
-  }
-});
-
 // scripts/lib/backup.mjs
 import { readFile as readFile8, rename as rename2 } from "node:fs/promises";
 import path9 from "node:path";
@@ -11844,23 +11642,93 @@ function validateFileActions(files) {
   }
   return errors;
 }
-function validateBackupManifest(value, options = {}) {
-  const schema = validateBackupManifestSchema(value, options);
+function manuscriptActionErrors(manifest, files, inputScope, code, checkScope = true) {
+  const errors = [];
+  const manuscriptRoot = manifest.manuscript_root.replace(/\/$/, "");
+  const singleFileRoot = MANUSCRIPT_EXTENSIONS2.has(path9.posix.extname(manuscriptRoot).toLowerCase());
+  const scopeFiles = new Map((inputScope?.files ?? []).map((file) => [file.path, file]));
+  for (const [index, file] of (files ?? []).entries()) {
+    const withinRoot = singleFileRoot ? file.path === manuscriptRoot : manuscriptRoot === "." || file.path.startsWith(`${manuscriptRoot}/`);
+    if (!withinRoot || !MANUSCRIPT_EXTENSIONS2.has(path9.posix.extname(file.path).toLowerCase()) || isOperationalManuscriptPath(file.path, manifest.paths)) {
+      errors.push(backupError(
+        `/files/${index}/path`,
+        `backup and restore actions require a manuscript path beneath ${manifest.manuscript_root}: ${file.path}`,
+        code
+      ));
+      continue;
+    }
+    if (!checkScope) continue;
+    const scoped = scopeFiles.get(file.path);
+    if (file.action === "create" && scoped) {
+      errors.push(backupError(
+        `/files/${index}/path`,
+        `create target already belongs to the input scope: ${file.path}`,
+        code
+      ));
+    } else if (file.action !== "create" && (!scoped || scoped.sha256 !== file.input_sha256)) {
+      errors.push(backupError(
+        `/files/${index}/input_sha256`,
+        `${file.action} input must belong to the applicable input scope with its exact hash: ${file.path}`,
+        code
+      ));
+    }
+  }
+  return errors;
+}
+function requireManuscriptActions(project, files, inputScope, code) {
+  const errors = manuscriptActionErrors(project.manifest, files, inputScope, code);
+  if (errors.length > 0) {
+    throw commandError(code, "Backup and restore actions are limited to exact manuscript-scope paths.", {
+      validation_errors: errors
+    });
+  }
+}
+async function readRestoreSourceScope(project, sourceManifest, options2) {
+  if (sourceManifest.files.every((file) => file.action === "create")) return null;
+  const code = "restore-source-scope-mismatch";
+  if (!sourceManifest.scope_id || !sourceManifest.scope_fingerprint) {
+    throw commandError(code, "Restoring original bytes requires the source backup's confirmed input scope.");
+  }
+  const relative = path9.posix.join(
+    project.manifest.paths.convergence,
+    "scopes",
+    `${sourceManifest.scope_id}-${sourceManifest.scope_fingerprint}.json`
+  );
+  let snapshot;
+  try {
+    snapshot = JSON.parse(await readFile8(path9.resolve(project.root, relative), "utf8"));
+  } catch (error) {
+    throw commandError(code, `Cannot read the source backup input scope: ${error.message}`, {
+      path: relative
+    });
+  }
+  const validation = validateScopeSnapshot(snapshot, options2);
+  if (!validation.valid || snapshot.scope_id !== sourceManifest.scope_id || snapshot.scope_fingerprint !== sourceManifest.scope_fingerprint || computeScopeFingerprint(snapshot) !== sourceManifest.scope_fingerprint) {
+    throw commandError(code, "The source backup input scope is not valid confirmed scope evidence.", {
+      path: relative,
+      validation_errors: validation.errors
+    });
+  }
+  return snapshot;
+}
+function validateBackupManifest(value, options2 = {}) {
+  const schema = validateBackupManifestSchema(value, options2);
   const errors = [...schema.errors, ...validateFileActions(value?.files)];
   return { valid: errors.length === 0, errors };
 }
-async function readManifest(projectRoot) {
+async function readProjectManifest(projectRoot, candidate = null) {
+  if (candidate !== null) return candidate;
   return JSON.parse(await readFile8(
     path9.join(projectRoot, ".author-toolkit", "project.json"),
     "utf8"
   ));
 }
-async function validateBackupIndex(projectRoot, value, options = {}) {
+async function validateBackupIndex(projectRoot, value, options2 = {}) {
   const root2 = path9.resolve(projectRoot);
-  const schema = validateBackupIndexSchema(value, options);
+  const schema = validateBackupIndexSchema(value, options2);
   if (!schema.valid) return schema;
   const errors = [];
-  const manifest = await readManifest(root2);
+  const manifest = await readProjectManifest(root2, options2.manifest ?? null);
   const backupRoot = manifest.paths.backups;
   const backupIds = /* @__PURE__ */ new Set();
   const backupEntries = /* @__PURE__ */ new Map();
@@ -11912,12 +11780,22 @@ async function validateBackupIndex(projectRoot, value, options = {}) {
       ));
       continue;
     }
-    const manifestValidation = validateBackupManifest(backupManifest, options);
+    const manifestValidation = validateBackupManifest(backupManifest, options2);
     errors.push(...manifestValidation.errors.map((error) => ({
       ...error,
       instancePath: `${entryPath}/manifest${error.instancePath}`
     })));
     if (!manifestValidation.valid) continue;
+    errors.push(...manuscriptActionErrors(
+      manifest,
+      backupManifest.files,
+      void 0,
+      "backup-manuscript-path-invalid",
+      false
+    ).map((error) => ({
+      ...error,
+      instancePath: `${entryPath}/manifest${error.instancePath}`
+    })));
     manifests.set(entry.backup_id, backupManifest);
     for (const field of [
       "backup_id",
@@ -11975,6 +11853,16 @@ async function validateBackupIndex(projectRoot, value, options = {}) {
     }
     restorationIds.add(restoration.restoration_id);
     errors.push(...validateFileActions(restoration.files).map((error) => ({
+      ...error,
+      instancePath: `/restorations/${index}${error.instancePath}`
+    })));
+    errors.push(...manuscriptActionErrors(
+      manifest,
+      restoration.files,
+      void 0,
+      "restore-manuscript-path-invalid",
+      false
+    ).map((error) => ({
       ...error,
       instancePath: `/restorations/${index}${error.instancePath}`
     })));
@@ -12048,7 +11936,7 @@ async function validateBackupIndex(projectRoot, value, options = {}) {
             sha256: restoration.source.manifest.sha256
           },
           value,
-          options
+          options2
         );
         if (sourceManifest.operation !== restoration.operation) {
           errors.push(backupError(
@@ -12100,10 +11988,10 @@ async function projectRootForBackupIndex(indexPath) {
     directory = parent;
   }
 }
-async function validateBackupIndexFile(indexPath, options = {}) {
+async function validateBackupIndexFile(indexPath, options2 = {}) {
   try {
-    const projectRoot = options.projectRoot ?? await projectRootForBackupIndex(indexPath);
-    const manifest = await readManifest(projectRoot);
+    const projectRoot = options2.projectRoot ?? await projectRootForBackupIndex(indexPath);
+    const manifest = await readProjectManifest(projectRoot, options2.manifest ?? null);
     const expected = path9.resolve(projectRoot, manifest.paths.backups, "index.json");
     if (path9.resolve(indexPath) !== expected) {
       return {
@@ -12112,7 +12000,7 @@ async function validateBackupIndexFile(indexPath, options = {}) {
       };
     }
     const value = JSON.parse(await readFile8(indexPath, "utf8"));
-    return await validateBackupIndex(projectRoot, value, options);
+    return await validateBackupIndex(projectRoot, value, options2);
   } catch (error) {
     return { valid: false, errors: [backupError("", error.message, "backup-index-unavailable")] };
   }
@@ -12229,7 +12117,7 @@ async function recoveryState(project, operation, progress) {
     index_updated: progress.indexUpdated === true
   };
 }
-async function recordBackup(projectRoot, request, options = {}) {
+async function recordBackup(projectRoot, request, options2 = {}) {
   const operation = "record-backup";
   const references = await validateDeployedReferences(projectRoot);
   if (!references.valid) {
@@ -12246,9 +12134,9 @@ async function recordBackup(projectRoot, request, options = {}) {
   const lock = await acquireDirectoryLock(
     path9.resolve(initial.root, initial.manifest.paths.convergence, "active-cycle.lock"),
     {
-      timeoutMs: options.lockTimeoutMs ?? 1e4,
-      retryMs: options.lockRetryMs ?? 20,
-      now: options.now
+      timeoutMs: options2.lockTimeoutMs ?? 1e4,
+      retryMs: options2.lockRetryMs ?? 20,
+      now: options2.now
     }
   );
   if (!lock.acquired) {
@@ -12264,9 +12152,9 @@ async function recordBackup(projectRoot, request, options = {}) {
   let operationError;
   const progress = { backupId: request.backup_id };
   try {
-    await runCheckpoint(options, "lock-acquired");
+    await runCheckpoint(options2, "lock-acquired");
     project = await readProject(projectRoot);
-    const validation = validateRecordBackupCommand(request, options);
+    const validation = validateRecordBackupCommand(request, options2);
     if (!validation.valid) {
       throw commandError("backup-command-invalid", "The backup command does not satisfy its typed input contract.", {
         validation_errors: validation.errors
@@ -12305,6 +12193,12 @@ async function recordBackup(projectRoot, request, options = {}) {
         });
       }
     }
+    requireManuscriptActions(
+      project,
+      request.files,
+      bootstrap ? null : currentScope,
+      "backup-manuscript-path-invalid"
+    );
     const tracker = await parseTrackerState(
       await readFile8(path9.resolve(project.root, project.manifest.paths.audit_tracker), "utf8"),
       project.root
@@ -12318,7 +12212,7 @@ async function recordBackup(projectRoot, request, options = {}) {
     const indexPath = path9.resolve(project.root, project.manifest.paths.backups, "index.json");
     const indexText = await readFile8(indexPath, "utf8");
     const index = JSON.parse(indexText);
-    const indexValidation = await validateBackupIndex(project.root, index, options);
+    const indexValidation = await validateBackupIndex(project.root, index, options2);
     if (!indexValidation.valid) {
       throw commandError("backup-index-invalid", "The existing backup index is invalid.", {
         validation_errors: indexValidation.errors
@@ -12369,14 +12263,14 @@ async function recordBackup(projectRoot, request, options = {}) {
         manifestFiles.push({ ...file, backup_path: backupPath });
       }
       for (const file of request.files) await readCurrentInput(project, file);
-      await runCheckpoint(options, "backup-bytes-written");
+      await runCheckpoint(options2, "backup-bytes-written");
       const relativeManifest = path9.posix.join(
         project.manifest.paths.backups,
         request.backup_id,
         "manifest.json"
       );
       progress.manifestPath = relativeManifest;
-      let createdAt = utcTimestamp(options);
+      let createdAt = utcTimestamp(options2);
       try {
         const orphan = JSON.parse(await readFile8(path9.resolve(project.root, relativeManifest), "utf8"));
         if (!manifestRequestMatches(orphan, request)) {
@@ -12396,7 +12290,7 @@ async function recordBackup(projectRoot, request, options = {}) {
         files: manifestFiles,
         created_at: createdAt
       };
-      const manifestValidation = validateBackupManifest(backupManifest, options);
+      const manifestValidation = validateBackupManifest(backupManifest, options2);
       if (!manifestValidation.valid) {
         throw commandError("backup-manifest-invalid", "The candidate backup manifest is invalid.", {
           validation_errors: manifestValidation.errors
@@ -12406,7 +12300,7 @@ async function recordBackup(projectRoot, request, options = {}) {
 `;
       await publishManifest(path9.resolve(project.root, relativeManifest), manifestText);
       progress.manifestPublished = true;
-      await runCheckpoint(options, "manifest-published");
+      await runCheckpoint(options2, "manifest-published");
       const manifestReference = { path: relativeManifest, sha256: sha256Bytes(manifestText) };
       const entry = {
         backup_id: request.backup_id,
@@ -12418,7 +12312,7 @@ async function recordBackup(projectRoot, request, options = {}) {
         created_at: createdAt
       };
       const updated = { ...index, backups: [...index.backups, entry] };
-      const updatedValidation = await validateBackupIndex(project.root, updated, options);
+      const updatedValidation = await validateBackupIndex(project.root, updated, options2);
       if (!updatedValidation.valid) {
         throw commandError("backup-index-invalid", "The candidate backup index is invalid.", {
           validation_errors: updatedValidation.errors
@@ -12428,7 +12322,7 @@ async function recordBackup(projectRoot, request, options = {}) {
 `;
       await writeAtomicVerified(indexPath, updatedText);
       progress.indexUpdated = true;
-      await runCheckpoint(options, "index-written");
+      await runCheckpoint(options2, "index-written");
       outcome = {
         valid: true,
         state_written: true,
@@ -12537,7 +12431,7 @@ function restoreRecoveryState(project, progress, indexPath) {
     index_updated: progress.indexUpdated === true
   };
 }
-async function recordRestore(projectRoot, request, options = {}) {
+async function recordRestore(projectRoot, request, options2 = {}) {
   const operation = "record-restore";
   const references = await validateDeployedReferences(projectRoot);
   if (!references.valid) {
@@ -12554,9 +12448,9 @@ async function recordRestore(projectRoot, request, options = {}) {
   const lock = await acquireDirectoryLock(
     path9.resolve(initial.root, initial.manifest.paths.convergence, "active-cycle.lock"),
     {
-      timeoutMs: options.lockTimeoutMs ?? 1e4,
-      retryMs: options.lockRetryMs ?? 20,
-      now: options.now
+      timeoutMs: options2.lockTimeoutMs ?? 1e4,
+      retryMs: options2.lockRetryMs ?? 20,
+      now: options2.now
     }
   );
   if (!lock.acquired) {
@@ -12576,9 +12470,9 @@ async function recordRestore(projectRoot, request, options = {}) {
   };
   const indexPath = path9.resolve(initial.root, initial.manifest.paths.backups, "index.json");
   try {
-    await runCheckpoint(options, "lock-acquired");
+    await runCheckpoint(options2, "lock-acquired");
     project = await readProject(projectRoot);
-    const validation = validateRecordRestoreCommand(request, options);
+    const validation = validateRecordRestoreCommand(request, options2);
     if (!validation.valid) {
       throw commandError("restore-command-invalid", "The restore command does not satisfy its typed input contract.", {
         validation_errors: validation.errors
@@ -12608,7 +12502,7 @@ async function recordRestore(projectRoot, request, options = {}) {
       if (manifestRequestMatches(candidate, {
         ...request,
         backup_id: request.safety_backup_id
-      }) && validateBackupManifest(candidate, options).valid) {
+      }) && validateBackupManifest(candidate, options2).valid) {
         let outputsReady = true;
         for (const file of request.files) {
           try {
@@ -12641,6 +12535,12 @@ async function recordRestore(projectRoot, request, options = {}) {
         });
       }
     }
+    requireManuscriptActions(
+      project,
+      request.files,
+      currentScope,
+      "restore-manuscript-path-invalid"
+    );
     const tracker = await parseTrackerState(
       await readFile8(path9.resolve(project.root, project.manifest.paths.audit_tracker), "utf8"),
       project.root
@@ -12656,7 +12556,7 @@ async function recordRestore(projectRoot, request, options = {}) {
     );
     const indexText = await readFile8(indexPath, "utf8");
     const index = JSON.parse(indexText);
-    const indexValidation = await validateBackupIndex(project.root, index, options);
+    const indexValidation = await validateBackupIndex(project.root, index, options2);
     if (!indexValidation.valid) {
       throw commandError("backup-index-invalid", "The existing backup index is invalid.", {
         validation_errors: indexValidation.errors
@@ -12686,12 +12586,21 @@ async function recordRestore(projectRoot, request, options = {}) {
       sourceEntry = {
         manifest: { path: request.source_commit.path, sha256: request.source_commit.sha256 }
       };
-      sourceManifest = await readCommitSource(project, request.source_commit, index, options);
+      sourceManifest = await readCommitSource(project, request.source_commit, index, options2);
     }
     if (sourceManifest.operation !== request.operation || JSON.stringify(inverseFiles(sourceManifest.files)) !== JSON.stringify(request.files)) {
       throw commandError(
         "restore-source-mismatch",
         "The requested restore files must be the complete ordered inverse of the source backup manifest."
+      );
+    }
+    const sourceScope = await readRestoreSourceScope(project, sourceManifest, options2);
+    if (sourceScope) {
+      requireManuscriptActions(
+        project,
+        sourceManifest.files,
+        sourceScope,
+        "restore-source-scope-mismatch"
       );
     }
     let safetyFiles;
@@ -12716,8 +12625,8 @@ async function recordRestore(projectRoot, request, options = {}) {
         safetyFiles.push({ ...file, backup_path: backupPath });
       }
       for (const file of request.files) await readCurrentInput(project, file);
-      await runCheckpoint(options, "safety-backup-written");
-      createdAt = utcTimestamp(options);
+      await runCheckpoint(options2, "safety-backup-written");
+      createdAt = utcTimestamp(options2);
       safetyManifest = {
         schema_version: "1.0.0",
         backup_id: request.safety_backup_id,
@@ -12728,7 +12637,7 @@ async function recordRestore(projectRoot, request, options = {}) {
         files: safetyFiles,
         created_at: createdAt
       };
-      const safetyValidation = validateBackupManifest(safetyManifest, options);
+      const safetyValidation = validateBackupManifest(safetyManifest, options2);
       if (!safetyValidation.valid) {
         throw commandError("backup-manifest-invalid", "The safety backup manifest is invalid.", {
           validation_errors: safetyValidation.errors
@@ -12738,7 +12647,7 @@ async function recordRestore(projectRoot, request, options = {}) {
 `;
       await publishManifest(path9.resolve(project.root, safetyManifestRelative), safetyManifestText);
       progress.manifestPublished = true;
-      await runCheckpoint(options, "manifest-published");
+      await runCheckpoint(options2, "manifest-published");
       for (const [index2, file] of request.files.entries()) {
         const currentPath = path9.resolve(project.root, file.path);
         const sourceFile = sourceManifest.files[index2];
@@ -12761,7 +12670,7 @@ async function recordRestore(projectRoot, request, options = {}) {
         await verifyRestoredOutput(project, file);
       }
       progress.manuscriptRestored = true;
-      await runCheckpoint(options, "manuscript-restored");
+      await runCheckpoint(options2, "manuscript-restored");
     }
     const safetyManifestReference = {
       path: safetyManifestRelative,
@@ -12800,7 +12709,7 @@ async function recordRestore(projectRoot, request, options = {}) {
       backups: [...index.backups, safetyEntry],
       restorations: [...index.restorations, restoration]
     };
-    const updatedValidation = await validateBackupIndex(project.root, updated, options);
+    const updatedValidation = await validateBackupIndex(project.root, updated, options2);
     if (!updatedValidation.valid) {
       throw commandError("backup-index-invalid", "The candidate restoration index is invalid.", {
         validation_errors: updatedValidation.errors
@@ -12810,7 +12719,7 @@ async function recordRestore(projectRoot, request, options = {}) {
 `;
     await writeAtomicVerified(indexPath, updatedText);
     progress.indexUpdated = true;
-    await runCheckpoint(options, "index-written");
+    await runCheckpoint(options2, "index-written");
     const scopeValidation = await validateFullManuscriptScope(project.manifest, project.manifestPath);
     outcome = {
       valid: true,
@@ -12874,7 +12783,7 @@ async function recordRestore(projectRoot, request, options = {}) {
 function restoreSourceId(request) {
   return request.source_backup_id ?? request.source_commit?.commit_id;
 }
-async function readCommitSource(project, reference, backupIndex, options = {}) {
+async function readCommitSource(project, reference, backupIndex, options2 = {}) {
   const expectedPath = path9.posix.join(
     project.manifest.paths.creation,
     "batches",
@@ -12896,7 +12805,7 @@ async function readCommitSource(project, reference, backupIndex, options = {}) {
     );
   }
   const commit = JSON.parse(contents.toString("utf8"));
-  const validation = validateCreationCommit(commit, options);
+  const validation = validateCreationCommit(commit, options2);
   if (!validation.valid || commit.commit_id !== reference.commit_id || commit.status !== "committed") {
     throw commandError(
       "restore-source-mismatch",
@@ -12905,6 +12814,7 @@ async function readCommitSource(project, reference, backupIndex, options = {}) {
     );
   }
   const files = [];
+  let sourceScope = null;
   for (const file of commit.files) {
     if (file.action === "create") {
       if (file.backup_id !== null) {
@@ -12928,6 +12838,18 @@ async function readCommitSource(project, reference, backupIndex, options = {}) {
       );
     }
     const originalManifest = JSON.parse(await readFile8(path9.resolve(project.root, indexed.manifest.path), "utf8"));
+    const originalScope = {
+      scope_id: originalManifest.scope_id,
+      scope_fingerprint: originalManifest.scope_fingerprint
+    };
+    if (originalManifest.scope_id !== commit.scope_before_id || sourceScope && JSON.stringify(sourceScope) !== JSON.stringify(originalScope)) {
+      throw commandError(
+        "restore-source-mismatch",
+        `Creation commit backup scope differs from its input scope: ${file.path}`,
+        { commit_id: reference.commit_id, backup_id: file.backup_id }
+      );
+    }
+    sourceScope = originalScope;
     const original = originalManifest.files.find((candidate) => candidate.path === file.path);
     if (!original || original.action !== file.action || original.input_sha256 !== file.input_sha256 || original.output_sha256 !== file.output_sha256) {
       throw commandError(
@@ -12944,1217 +12866,28 @@ async function readCommitSource(project, reference, backupIndex, options = {}) {
       backup_path: original.backup_path
     });
   }
-  return { operation: "creation-commit", files };
+  return { operation: "creation-commit", files, ...sourceScope };
 }
+var MANUSCRIPT_EXTENSIONS2;
 var init_backup = __esm({
   "scripts/lib/backup.mjs"() {
     init_artifacts();
     init_cycle_coordination();
     init_evaluation_artifacts();
+    init_manuscript();
     init_schemas();
     init_scope();
     init_shared_references();
     init_state_io();
     init_time();
     init_tracker();
-  }
-});
-
-// scripts/lib/revision-execution.mjs
-import { readFile as readFile9 } from "node:fs/promises";
-import path10 from "node:path";
-function executionError(instancePath, message, keyword = "revision-execution") {
-  return { instancePath, keyword, message, params: {} };
-}
-function sameReference2(left, right) {
-  return left?.path === right?.path && left?.sha256 === right?.sha256;
-}
-function samePassReference2(left, right) {
-  return sameReference2(left, right) && left?.pass_id === right?.pass_id && left?.pass_fingerprint === right?.pass_fingerprint;
-}
-function sameScopeReference2(left, right) {
-  return left?.scope_id === right?.scope_id && left?.scope_fingerprint === right?.scope_fingerprint && left?.snapshot_path === right?.snapshot_path && left?.snapshot_sha256 === right?.snapshot_sha256;
-}
-function scopeArtifact(reference) {
-  return { path: reference.snapshot_path, sha256: reference.snapshot_sha256 };
-}
-function pathWithin(root2, candidate) {
-  const base = root2.replace(/\/+$/, "");
-  return base === "." || candidate === base || candidate.startsWith(`${base}/`);
-}
-function formatErrors3(errors) {
-  return errors.map((error) => `${error.instancePath || "/"} ${error.message}`).join("; ");
-}
-function validateRevisionExecution(value, options = {}) {
-  const schema = validateRevisionExecutionSchema(value, options);
-  const errors = [...schema.errors];
-  const files = /* @__PURE__ */ new Set();
-  for (const [index, file] of (value?.files ?? []).entries()) {
-    if (files.has(file.path)) {
-      errors.push(executionError(`/files/${index}/path`, `duplicate execution path: ${file.path}`));
-    }
-    files.add(file.path);
-    if (file.action === "create" && file.input_sha256 !== null) {
-      errors.push(executionError(`/files/${index}/input_sha256`, "create requires a null input hash"));
-    }
-    if (file.action !== "create" && file.input_sha256 === null) {
-      errors.push(executionError(`/files/${index}/input_sha256`, `${file.action} requires an input hash`));
-    }
-    if (file.action === "delete" && file.output_sha256 !== null) {
-      errors.push(executionError(`/files/${index}/output_sha256`, "delete requires a null output hash"));
-    }
-    if (file.action !== "delete" && file.output_sha256 === null) {
-      errors.push(executionError(`/files/${index}/output_sha256`, `${file.action} requires an output hash`));
-    }
-    if (file.action === "modify" && file.input_sha256 === file.output_sha256) {
-      errors.push(executionError(`/files/${index}/output_sha256`, "modify must change manuscript content"));
-    }
-  }
-  const findingIds = /* @__PURE__ */ new Set();
-  for (const [index, finding] of (value?.finding_dispositions ?? []).entries()) {
-    if (findingIds.has(finding.finding_id)) {
-      errors.push(executionError(
-        `/finding_dispositions/${index}/finding_id`,
-        `duplicate finding disposition: ${finding.finding_id}`
-      ));
-    }
-    findingIds.add(finding.finding_id);
-  }
-  const backupIds = /* @__PURE__ */ new Set();
-  for (const [index, backup] of (value?.backups ?? []).entries()) {
-    if (backupIds.has(backup.backup_id)) {
-      errors.push(executionError(`/backups/${index}/backup_id`, `duplicate backup: ${backup.backup_id}`));
-    }
-    backupIds.add(backup.backup_id);
-  }
-  for (const file of value?.files ?? []) {
-    if (file.action === "create") continue;
-    const covered = (value?.backups ?? []).some(
-      (backup) => backup.files.some((candidate) => candidate.path === file.path)
-    );
-    if (!covered) {
-      errors.push(executionError("/backups", `${file.action} requires a backup for ${file.path}`));
-    }
-  }
-  return { valid: errors.length === 0, errors };
-}
-async function readProject2(projectRoot) {
-  const root2 = path10.resolve(projectRoot);
-  const manifestPath = path10.join(root2, ".author-toolkit", "project.json");
-  const manifest = JSON.parse(await readFile9(manifestPath, "utf8"));
-  const validation = validateManifest(manifest);
-  if (!validation.valid) throw new Error(formatErrors3(validation.errors));
-  return { root: root2, manifestPath, manifest };
-}
-async function readActiveCycle2(project) {
-  const file = path10.resolve(project.root, project.manifest.paths.convergence, "active-cycle.json");
-  const value = JSON.parse(await readFile9(file, "utf8"));
-  const validation = validateConvergenceCycleSchema(value);
-  if (!validation.valid || value.status !== "active") {
-    throw new Error(`Living cycle is invalid: ${formatErrors3(validation.errors)}`);
-  }
-  return { value, file };
-}
-async function readVerifiedArtifact(project, reference) {
-  const contents = await readFile9(path10.resolve(project.root, reference.path));
-  if (sha256Bytes(contents) !== reference.sha256) {
-    throw new Error(`Referenced artifact hash does not match: ${reference.path}`);
-  }
-  return contents;
-}
-async function readCurrentScope(project, reference) {
-  const contents = await readVerifiedArtifact(project, scopeArtifact(reference));
-  const snapshot = JSON.parse(contents.toString("utf8"));
-  const validation = validateScopeSnapshotSchema(snapshot);
-  if (!validation.valid) throw new Error(formatErrors3(validation.errors));
-  if (snapshot.scope_id !== reference.scope_id || snapshot.scope_fingerprint !== reference.scope_fingerprint) {
-    throw new Error("Scope snapshot identity differs from its reference");
-  }
-  return snapshot;
-}
-async function readCurrentPass(project, reference) {
-  const contents = await readVerifiedArtifact(project, reference);
-  const pass = JSON.parse(contents.toString("utf8"));
-  const validation = validateRequestedPassSchema(pass);
-  if (!validation.valid) throw new Error(formatErrors3(validation.errors));
-  if (pass.pass_id !== reference.pass_id || pass.pass_fingerprint !== reference.pass_fingerprint) {
-    throw new Error("Requested-pass identity differs from its reference");
-  }
-  return pass;
-}
-function contextError(code, message, pathValue = null, artifactId = null) {
-  return {
-    code,
-    message,
-    ...pathValue ? { path: pathValue } : {},
-    ...artifactId ? { artifact_id: artifactId } : {}
-  };
-}
-function revisionApprovalFingerprint(execution, operation) {
-  return sha256Bytes(JSON.stringify({
-    operation,
-    plan: {
-      plan_id: execution.plan.plan_id,
-      path: execution.plan.path,
-      sha256: execution.plan.sha256
-    },
-    batch: {
-      batch_id: execution.batch.batch_id,
-      path: execution.batch.path,
-      sha256: execution.batch.sha256
-    },
-    input_scope: {
-      scope_id: execution.input_scope.scope_id,
-      scope_fingerprint: execution.input_scope.scope_fingerprint
-    },
-    files: execution.files.map(({ path: filePath, action: action3, input_sha256, output_sha256 }) => ({
-      path: filePath,
-      action: action3,
-      input_sha256,
-      output_sha256
-    }))
-  }));
-}
-function revisionApprovalBindingMatches(approval, execution, operation) {
-  const expected = /* @__PURE__ */ new Map([
-    ["plan_id", execution.plan.plan_id],
-    ["plan_sha256", execution.plan.sha256],
-    ["batch_id", execution.batch.batch_id],
-    ["batch_sha256", execution.batch.sha256],
-    ["scope_fingerprint", execution.input_scope.scope_fingerprint],
-    ["revision_approval", revisionApprovalFingerprint(execution, operation)]
-  ]);
-  const tokens = String(approval.reason ?? "").split(/\s+/).filter(Boolean);
-  return [...expected].every(
-    ([token, value]) => tokens.filter((candidate) => candidate.startsWith(`${token}=`)).length === 1 && tokens.includes(`${token}=${value}`)
-  );
-}
-async function validateExecutionContext(project, execution, options = {}) {
-  const errors = [];
-  const structural = validateRevisionExecution(execution);
-  if (!structural.valid) return { valid: false, errors: structural.errors.map(
-    (error) => contextError("revision-execution-contract-invalid", error.message)
-  ) };
-  try {
-    await readVerifiedArtifact(project, execution.plan);
-    await readVerifiedArtifact(project, execution.batch);
-    const pass = await readCurrentPass(project, execution.requested_pass);
-    const inputScope = await readCurrentScope(project, execution.input_scope);
-    const targetScope = await readCurrentScope(project, execution.target_scope);
-    if (!sameScopeReference2(pass.target_scope, execution.target_scope)) {
-      errors.push(contextError(
-        "revision-pass-target-mismatch",
-        "The execution requested pass must name its target scope."
-      ));
-    }
-    if (options.expectedPass && !samePassReference2(execution.requested_pass, options.expectedPass)) {
-      errors.push(contextError("revision-pass-mismatch", "The execution pass differs from the active requested pass."));
-    }
-    if (options.expectedScope && !sameScopeReference2(execution.target_scope, options.expectedScope)) {
-      errors.push(contextError("revision-target-mismatch", "The execution target differs from the active target scope."));
-    }
-    if (options.requireCurrentTarget) {
-      if (!sameScopeReference2(execution.target_scope, project.manifest.current_scope)) {
-        errors.push(contextError(
-          "revision-target-mismatch",
-          "The verified execution target is not manifest current_scope."
-        ));
-      }
-      const full = await validateFullManuscriptScope(project.manifest, project.manifestPath);
-      if (!full.valid) {
-        errors.push(contextError(
-          "revision-target-not-current",
-          `The execution target is not a current full-manuscript scope: ${formatErrors3(full.errors)}`
-        ));
-      }
-    }
-    if (options.requireCurrentDecisions !== false) {
-      const trackerText = await readFile9(path10.resolve(project.root, project.manifest.paths.audit_tracker), "utf8");
-      const tracker = await parseTrackerState(trackerText, project.root);
-      if (!tracker.valid) {
-        errors.push(contextError("revision-tracker-invalid", formatErrors3(tracker.errors)));
-      }
-      const approvalById = new Map(tracker.approvals.map((approval) => [approval.id, approval]));
-      const allPaths = execution.files.map((file) => file.path);
-      for (const approvalId of execution.approval_ids) {
-        const approval = approvalById.get(approvalId);
-        if (!approval || approval.status !== "approved" || approval.type !== "edit" || approval.operation !== "chapter-revision" || approval.scopeId !== execution.input_scope.scope_id || JSON.stringify(approval.paths) !== JSON.stringify(allPaths) || !revisionApprovalBindingMatches(approval, execution, "chapter-revision")) {
-          errors.push(contextError(
-            "revision-approval-mismatch",
-            `Edit approval ${approvalId} does not authorize the exact plan, batch, input scope fingerprint, ordered paths, actions, input hashes, and approved outputs.`,
-            null,
-            approvalId
-          ));
-        }
-      }
-      const planDecisions = execution.author_decision_ids.map((decisionId) => approvalById.get(decisionId)).filter((decision) => decision?.type === "revision-plan");
-      if (planDecisions.length !== 1) {
-        errors.push(contextError(
-          "revision-author-decision-missing",
-          "The execution requires exactly one revision-plan author decision."
-        ));
-      } else {
-        const decision = planDecisions[0];
-        if (decision.status !== "approved" || decision.operation !== "revision-plan" || decision.scopeId !== execution.input_scope.scope_id || JSON.stringify(decision.paths) !== JSON.stringify(allPaths) || !revisionApprovalBindingMatches(decision, execution, "revision-plan")) {
-          errors.push(contextError(
-            "revision-author-decision-missing",
-            `Plan decision ${decision.id} does not authorize the exact plan, batch, operation, input scope fingerprint, ordered paths, actions, input hashes, and approved outputs.`,
-            null,
-            decision.id
-          ));
-        }
-      }
-      const decisionIds = /* @__PURE__ */ new Set([
-        ...execution.author_decision_ids,
-        ...execution.finding_dispositions.map((finding) => finding.author_decision_id)
-      ]);
-      for (const decisionId of decisionIds) {
-        const decision = approvalById.get(decisionId);
-        if (decision?.type === "revision-plan") continue;
-        if (!decision || decision.status !== "approved" || ![execution.input_scope.scope_id, execution.target_scope.scope_id].includes(decision.scopeId) || !allPaths.every((filePath) => decision.paths.includes(filePath))) {
-          errors.push(contextError(
-            "revision-author-decision-missing",
-            `Author decision ${decisionId} is not approved for the exact execution scope and paths.`,
-            null,
-            decisionId
-          ));
-        }
-      }
-      for (const finding of execution.finding_dispositions) {
-        const tracked = tracker.findings.find((candidate) => candidate.id === finding.finding_id);
-        const expectedStatus = {
-          execute: "resolved",
-          defer: "deferred",
-          dismiss: "dismissed"
-        }[finding.disposition];
-        const pendingDecision = options.pendingFindingDecision?.findingId === finding.finding_id && options.pendingFindingDecision.status === expectedStatus && tracked?.status === "open";
-        if (tracked && finding.disposition !== "execute" && tracked.status !== expectedStatus && !pendingDecision) {
-          errors.push(contextError(
-            "revision-finding-disposition-mismatch",
-            `Finding ${finding.finding_id} is ${tracked.status}, not ${expectedStatus}.`,
-            null,
-            finding.finding_id
-          ));
-        }
-        if (tracked && finding.disposition === "execute" && !["open", "resolved"].includes(tracked.status)) {
-          errors.push(contextError(
-            "revision-finding-disposition-mismatch",
-            `Finding ${finding.finding_id} cannot use verified execution while ${tracked.status}.`,
-            null,
-            finding.finding_id
-          ));
-        }
-      }
-    }
-    const backupIndexPath = path10.resolve(project.root, project.manifest.paths.backups, "index.json");
-    let backupIndex = null;
-    try {
-      backupIndex = JSON.parse(await readFile9(backupIndexPath, "utf8"));
-      const indexValidation = await validateBackupIndex(project.root, backupIndex);
-      if (!indexValidation.valid) {
-        errors.push(contextError(
-          "revision-backup-invalid",
-          `Backup index is invalid: ${formatErrors3(indexValidation.errors)}`,
-          backupIndexPath
-        ));
-      }
-    } catch (error) {
-      errors.push(contextError("revision-backup-invalid", `Cannot read backup index: ${error.message}`, backupIndexPath));
-    }
-    const backupsByPath = /* @__PURE__ */ new Map();
-    for (const backup of execution.backups) {
-      const indexedBackup = backupIndex?.backups.find((entry) => entry.backup_id === backup.backup_id);
-      if (!indexedBackup || indexedBackup.approval_id !== backup.approval_id || indexedBackup.operation !== "chapter-revision" || indexedBackup.scope_id !== execution.input_scope.scope_id || indexedBackup.scope_fingerprint !== execution.input_scope.scope_fingerprint || !sameReference2(indexedBackup.manifest, backup.manifest)) {
-        errors.push(contextError(
-          "revision-backup-invalid",
-          `Backup ${backup.backup_id} is not the same indexed backup evidence required by this execution.`,
-          backup.manifest.path,
-          backup.backup_id
-        ));
-      }
-      if (!execution.approval_ids.includes(backup.approval_id)) {
-        errors.push(contextError(
-          "revision-backup-approval-mismatch",
-          `Backup ${backup.backup_id} does not name an edit approval for this execution.`,
-          null,
-          backup.backup_id
-        ));
-      }
-      if (!pathWithin(project.manifest.paths.backups, backup.manifest.path)) {
-        errors.push(contextError(
-          "revision-backup-invalid",
-          `Backup manifest is outside registered paths.backups: ${backup.manifest.path}.`,
-          backup.manifest.path,
-          backup.backup_id
-        ));
-      }
-      try {
-        const contents = await readVerifiedArtifact(project, backup.manifest);
-        const manifest = JSON.parse(contents.toString("utf8"));
-        if (manifest.backup_id !== backup.backup_id || manifest.operation !== "chapter-revision" || manifest.approval_id !== backup.approval_id || manifest.scope_id !== execution.input_scope.scope_id || manifest.scope_fingerprint !== execution.input_scope.scope_fingerprint) {
-          errors.push(contextError(
-            "revision-backup-invalid",
-            `Backup manifest ${backup.manifest.path} does not bind the recorded backup, operation, approval, and input scope.`,
-            backup.manifest.path,
-            backup.backup_id
-          ));
-        }
-        const manifestBackupFiles = (manifest.files ?? []).filter((file) => file.action !== "create").map((file) => ({
-          path: file.path,
-          backup_path: file.backup_path,
-          sha256: file.input_sha256
-        }));
-        if (JSON.stringify(manifestBackupFiles) !== JSON.stringify(backup.files)) {
-          errors.push(contextError(
-            "revision-backup-invalid",
-            `Execution backup files differ from the indexed manifest for ${backup.backup_id}.`,
-            backup.manifest.path,
-            backup.backup_id
-          ));
-        }
-        for (const manifestFile of manifest.files ?? []) {
-          const executionFile = execution.files.find((file) => file.path === manifestFile.path);
-          if (!executionFile || executionFile.action !== manifestFile.action || executionFile.input_sha256 !== manifestFile.input_sha256 || executionFile.output_sha256 !== manifestFile.output_sha256) {
-            errors.push(contextError(
-              "revision-backup-invalid",
-              `Indexed backup action ${manifestFile.path} is not part of the exact approved execution.`,
-              manifestFile.path,
-              backup.backup_id
-            ));
-          }
-        }
-      } catch (error) {
-        errors.push(contextError("revision-backup-invalid", error.message, backup.manifest.path, backup.backup_id));
-      }
-      for (const file of backup.files) {
-        if (backupsByPath.has(file.path)) {
-          errors.push(contextError("revision-backup-invalid", `Duplicate backup content for ${file.path}.`, file.path));
-        }
-        backupsByPath.set(file.path, file);
-        if (!pathWithin(project.manifest.paths.backups, file.backup_path)) {
-          errors.push(contextError(
-            "revision-backup-invalid",
-            `Backup content is outside registered paths.backups: ${file.backup_path}.`,
-            file.backup_path
-          ));
-        }
-        try {
-          const contents = await readFile9(path10.resolve(project.root, file.backup_path));
-          if (sha256Bytes(contents) !== file.sha256) {
-            errors.push(contextError("revision-backup-invalid", `Backup content hash differs for ${file.path}.`, file.backup_path));
-          }
-        } catch (error) {
-          errors.push(contextError("revision-backup-invalid", error.message, file.backup_path));
-        }
-      }
-    }
-    const outputByPath = new Map(targetScope.files.map((file) => [file.path, file.sha256]));
-    for (const file of execution.files) {
-      const input = inputScope.files.find((candidate) => candidate.path === file.path);
-      if (file.action === "create") {
-        if (input) errors.push(contextError("revision-input-mismatch", `Create target already exists in the input scope: ${file.path}.`, file.path));
-      } else if (input?.sha256 !== file.input_sha256) {
-        errors.push(contextError("revision-input-mismatch", `Input scope hash differs for ${file.path}.`, file.path));
-      }
-      if (file.action !== "create") {
-        const backup = backupsByPath.get(file.path);
-        if (backup?.sha256 !== file.input_sha256) {
-          errors.push(contextError("revision-backup-invalid", `Backup does not preserve input ${file.path}@${file.input_sha256}.`, file.path));
-        }
-      }
-      if (execution.status === "verified") {
-        if (file.action === "delete") {
-          if (outputByPath.has(file.path)) {
-            errors.push(contextError("revision-target-diff-mismatch", `Deleted path remains in the target scope: ${file.path}.`, file.path));
-          }
-        } else if (outputByPath.get(file.path) !== file.output_sha256) {
-          errors.push(contextError("revision-target-diff-mismatch", `Target scope does not contain approved output ${file.path}@${file.output_sha256}.`, file.path));
-        }
-      }
-      try {
-        const contents = await readFile9(path10.resolve(project.root, file.path));
-        const currentHash = sha256Bytes(contents);
-        if (options.requireInputs && file.action !== "create" && currentHash !== file.input_sha256) {
-          errors.push(contextError("revision-input-mismatch", `Current manuscript input changed for ${file.path}.`, file.path));
-        }
-        if (options.requireInputs && file.action === "create") {
-          errors.push(contextError("revision-input-mismatch", `Create target is not absent: ${file.path}.`, file.path));
-        }
-        if (options.requireOutputs) {
-          if (file.action === "delete") {
-            errors.push(contextError("revision-output-mismatch", `Deleted output still exists: ${file.path}.`, file.path));
-          } else if (currentHash !== file.output_sha256) {
-            errors.push(contextError("revision-output-mismatch", `Current output hash differs for ${file.path}.`, file.path));
-          }
-        }
-      } catch (error) {
-        if (error.code === "ENOENT") {
-          if (options.requireInputs && file.action !== "create") {
-            errors.push(contextError("revision-input-mismatch", `Input manuscript is unavailable: ${file.path}.`, file.path));
-          }
-          if (options.requireOutputs && file.action !== "delete") {
-            errors.push(contextError("revision-output-mismatch", `Output manuscript is unavailable: ${file.path}.`, file.path));
-          }
-        } else {
-          errors.push(contextError("revision-manuscript-unreadable", error.message, file.path));
-        }
-      }
-    }
-    if (execution.status === "verified") {
-      const expectedActions = /* @__PURE__ */ new Map();
-      const targetChanges = diffManuscriptInventories(inputScope, targetScope);
-      for (const file of targetChanges.created) expectedActions.set(file.path, "create");
-      for (const file of targetChanges.modified) expectedActions.set(file.path, "modify");
-      for (const file of targetChanges.deleted) expectedActions.set(file.path, "delete");
-      for (const file of targetChanges.reordered) {
-        if (!expectedActions.has(file.path)) expectedActions.set(file.path, "reorder");
-      }
-      for (const [filePath, action3] of expectedActions) {
-        const actual = execution.files.find((file) => file.path === filePath);
-        if (!actual || actual.action !== action3) {
-          errors.push(contextError(
-            "revision-target-diff-mismatch",
-            `Target change ${filePath} (${action3}) is not the recorded approved action.`,
-            filePath
-          ));
-        }
-      }
-      for (const file of execution.files) {
-        if (!expectedActions.has(file.path) && file.action !== "reorder") {
-          errors.push(contextError(
-            "revision-target-diff-mismatch",
-            `Execution records a change absent from the verified target: ${file.path}.`,
-            file.path
-          ));
-        }
-      }
-    }
-  } catch (error) {
-    errors.push(contextError("revision-artifact-mismatch", error.message));
-  }
-  return { valid: errors.length === 0, errors };
-}
-async function validateRevisionExecutionAgainstDisk(projectRoot, execution, options = {}) {
-  const project = await readProject2(projectRoot);
-  return validateExecutionContext(project, execution, {
-    requireOutputs: execution.status === "verified",
-    requireCurrentTarget: execution.status === "verified",
-    ...options
-  });
-}
-function operationTime2(options) {
-  return utcTimestamp(options);
-}
-function executionReference(execution, relativePath, text) {
-  return {
-    execution_id: execution.execution_id,
-    path: relativePath,
-    sha256: sha256Bytes(text)
-  };
-}
-function requiredAction2(cycle) {
-  const position = cycle?.recovery_position;
-  return position ? {
-    strategy: position.required_strategy,
-    operation: position.operation,
-    command: position.required_strategy
-  } : null;
-}
-function failure2(code, message, cycle, errors = []) {
-  return {
-    valid: false,
-    cycle,
-    execution: null,
-    state_written: false,
-    blockers: [{
-      code,
-      message: errors.length > 0 ? `${message} ${errors.map((error) => error.message).join(" ")}` : message,
-      required_action: requiredAction2(cycle)
-    }]
-  };
-}
-function coordinationFailure(project, active, options = {}) {
-  const blockers = coordinationBlockers(project, active, options);
-  if (blockers.length === 0) return null;
-  return {
-    valid: false,
-    cycle: active?.value ?? null,
-    execution: null,
-    state_written: false,
-    blockers,
-    required_action: blockers[0].required_action
-  };
-}
-function checkCycleRequest(cycle, request) {
-  if (cycle.cycle_id !== request.cycle_id) {
-    return failure2("cycle-id-mismatch", `The requested cycle does not match active cycle ${cycle.cycle_id}.`, cycle);
-  }
-  if (cycle.revision !== request.expected_revision) {
-    return failure2(
-      "cycle-revision-conflict",
-      `Expected cycle revision ${request.expected_revision}, but the active revision is ${cycle.revision}.`,
-      cycle
-    );
-  }
-  return null;
-}
-async function withCycleLock(project, options, operation) {
-  const lock = await acquireDirectoryLock(
-    path10.resolve(project.root, project.manifest.paths.convergence, "active-cycle.lock"),
-    {
-      timeoutMs: options.lockTimeoutMs ?? 1e4,
-      retryMs: options.lockRetryMs ?? 20,
-      now: options.now
-    }
-  );
-  if (!lock.acquired) {
-    return failure2(
-      lock.code === "timeout" ? "cycle-transition-lock-timeout" : "cycle-transition-lock-error",
-      `Cannot coordinate revision execution at ${lock.directory}: ${lock.error.message}`,
-      null
-    );
-  }
-  let value;
-  let operationError;
-  try {
-    const pointer = await completedPointerBlocker(project);
-    value = pointer ? {
-      ...failure2(pointer.code, pointer.message, null),
-      blockers: [pointer],
-      required_action: pointer.required_action
-    } : await operation();
-  } catch (error) {
-    operationError = error;
-  }
-  const released = await releaseDirectoryLock(lock);
-  if (!released.released) {
-    return {
-      ...failure2(
-        "cycle-transition-lock-release-error",
-        `Cannot release revision execution lock ${lock.directory}: ${released.error.message}.${operationError ? ` Operation also failed: ${operationError.message}` : ""}`,
-        value?.cycle ?? null
-      ),
-      state_written: value?.state_written ?? null
-    };
-  }
-  if (operationError) throw operationError;
-  return value;
-}
-function validatePrepareRequest(request, { independent = false } = {}) {
-  const operation = independent ? "prepare-draft-revision-execution" : "prepare-revision-execution";
-  const allowed = /* @__PURE__ */ new Set([
-    "execution_id",
-    "plan",
-    "batch",
-    "requested_pass",
-    "input_scope",
-    "finding_dispositions",
-    "author_decision_ids",
-    "approval_ids",
-    "backups",
-    "files",
-    ...independent ? [] : ["cycle_id", "expected_revision"]
-  ]);
-  for (const key of Object.keys(request)) {
-    if (!allowed.has(key)) throw new Error(`Unknown ${operation} input field: ${key}`);
-  }
-  if (!/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(request.execution_id ?? "") || !independent && !Number.isInteger(request.expected_revision) || !Array.isArray(request.files)) {
-    throw new Error(`${operation} requires exact ${independent ? "independent" : "cycle"}, execution, and file batch identities`);
-  }
-}
-async function readOptionalActiveCycle(project) {
-  try {
-    return await readActiveCycle2(project);
-  } catch (error) {
-    if (error.code === "ENOENT") return null;
-    throw error;
-  }
-}
-function independentCycleFailure(active) {
-  return active ? failure2(
-    "active-cycle-exists",
-    `Cycle ${active.value.cycle_id} is active; use its cycle-bound revision execution operations instead of the independent draft path.`,
-    active.value
-  ) : null;
-}
-async function prepareDraftRevisionExecution(projectRoot, request, options = {}) {
-  validatePrepareRequest(request, { independent: true });
-  const project = await readProject2(projectRoot);
-  return withCycleLock(project, options, async () => {
-    const initial = await readOptionalActiveCycle(project);
-    const activeFailure = independentCycleFailure(initial);
-    if (activeFailure) return activeFailure;
-    const currentScope = project.manifest.current_scope;
-    const external = await externalReconciliationBlock(
-      project,
-      currentScope ? {
-        scope_id: currentScope.scope_id,
-        scope_fingerprint: currentScope.scope_fingerprint,
-        snapshot_path: currentScope.snapshot_path,
-        snapshot_sha256: currentScope.snapshot_sha256
-      } : null
-    );
-    if (external) return external;
-    const createdAt = operationTime2(options);
-    const execution = {
-      schema_version: "1.0.0",
-      execution_id: request.execution_id,
-      cycle_id: null,
-      plan: request.plan,
-      batch: request.batch,
-      requested_pass: request.requested_pass,
-      input_scope: request.input_scope,
-      target_scope: request.input_scope,
-      finding_dispositions: request.finding_dispositions,
-      author_decision_ids: request.author_decision_ids,
-      approval_ids: request.approval_ids,
-      backups: request.backups,
-      files: request.files,
-      status: "prepared",
-      created_at: createdAt,
-      verified_at: null
-    };
-    const validation = await validateExecutionContext(project, execution, {
-      requireInputs: true,
-      requireCurrentTarget: true,
-      expectedPass: request.requested_pass,
-      expectedScope: request.input_scope
-    });
-    if (!validation.valid) {
-      return failure2("revision-execution-preparation-invalid", "The approved independent batch, backups, decisions, or current inputs do not validate.", null, validation.errors);
-    }
-    const concurrent = await readOptionalActiveCycle(project);
-    const concurrentFailure = independentCycleFailure(concurrent);
-    if (concurrentFailure) return concurrentFailure;
-    const relative = path10.posix.join(
-      project.manifest.paths.convergence,
-      "executions",
-      `${execution.execution_id}.json`
-    );
-    const absolute = path10.resolve(project.root, relative);
-    const text = `${JSON.stringify(execution, null, 2)}
-`;
-    try {
-      await createNoClobberVerified(absolute, text);
-    } catch (error) {
-      if (error.code !== "EEXIST") throw error;
-      return failure2("revision-execution-already-exists", `Independent revision execution ${execution.execution_id} already exists; prepare a new execution ID instead of replacing it.`, null);
-    }
-    await runCheckpoint(options, "execution-written");
-    return {
-      valid: true,
-      cycle: null,
-      execution,
-      execution_path: absolute,
-      execution_reference: executionReference(execution, relative, text),
-      state_written: true,
-      blockers: []
-    };
-  });
-}
-async function prepareRevisionExecution(projectRoot, request, options = {}) {
-  validatePrepareRequest(request);
-  const project = await readProject2(projectRoot);
-  return withCycleLock(project, options, async () => {
-    const active = await readActiveCycle2(project);
-    const cycle = active.value;
-    const cycleFailure = checkCycleRequest(cycle, request);
-    if (cycleFailure) return cycleFailure;
-    const coordination = coordinationFailure(project, active, {
-      allowOperationId: options.recoveryOperationId ?? null
-    });
-    if (coordination) return coordination;
-    const external = await externalReconciliationBlock(
-      project,
-      cycle.target_scope ?? cycle.starting_scope,
-      cycle
-    );
-    if (external) return external;
-    if (cycle.recovery_position.operation !== "chapter-revision") {
-      return failure2("cycle-operation-mismatch", "Revision preparation requires the active chapter-revision recovery position.", cycle);
-    }
-    if (!sameScopeReference2(cycle.target_scope, request.input_scope)) {
-      return failure2("revision-input-scope-mismatch", "The execution input must be the active full-manuscript target before editing.", cycle);
-    }
-    if (!samePassReference2(cycle.requested_pass, request.requested_pass)) {
-      return failure2("revision-pass-mismatch", "The execution must name the active requested pass.", cycle);
-    }
-    const createdAt = operationTime2(options);
-    let execution = {
-      schema_version: "1.0.0",
-      execution_id: request.execution_id,
-      cycle_id: request.cycle_id,
-      plan: request.plan,
-      batch: request.batch,
-      requested_pass: request.requested_pass,
-      input_scope: request.input_scope,
-      target_scope: request.input_scope,
-      finding_dispositions: request.finding_dispositions,
-      author_decision_ids: request.author_decision_ids,
-      approval_ids: request.approval_ids,
-      backups: request.backups,
-      files: request.files,
-      status: "prepared",
-      created_at: createdAt,
-      verified_at: null
-    };
-    const validation = await validateExecutionContext(project, execution, {
-      requireInputs: true,
-      requireCurrentTarget: true,
-      expectedPass: cycle.requested_pass,
-      expectedScope: cycle.target_scope
-    });
-    if (!validation.valid) {
-      return failure2("revision-execution-preparation-invalid", "The approved batch, backups, decisions, or current inputs do not validate.", cycle, validation.errors);
-    }
-    const relative = path10.posix.join(
-      project.manifest.paths.convergence,
-      "executions",
-      `${execution.execution_id}.json`
-    );
-    const absolute = path10.resolve(project.root, relative);
-    if (options.recoveryOperationId !== execution.execution_id) {
-      try {
-        await readFile9(absolute, "utf8");
-        return failure2("revision-execution-already-exists", `Revision execution ${execution.execution_id} already exists; reconcile it explicitly instead of replacing it.`, cycle);
-      } catch (error) {
-        if (error.code !== "ENOENT") throw error;
-      }
-    }
-    await beginCycleOperation(project, active, {
-      kind: "revision-preparation",
-      operationId: execution.execution_id,
-      artifactId: execution.execution_id
-    }, options);
-    let text = `${JSON.stringify(execution, null, 2)}
-`;
-    try {
-      await createNoClobberVerified(absolute, text);
-    } catch (error) {
-      if (error.code !== "EEXIST") throw error;
-      if (options.recoveryOperationId !== execution.execution_id) {
-        return failure2("revision-execution-already-exists", `Revision execution ${execution.execution_id} already exists; reconcile it explicitly instead of replacing it.`, cycle);
-      }
-      const existingText = await readFile9(absolute, "utf8");
-      const existing = JSON.parse(existingText);
-      const expected = { ...execution, created_at: existing.created_at };
-      if (JSON.stringify(expected) !== JSON.stringify(existing)) {
-        return failure2("revision-execution-identity-mismatch", "The stored prepared execution differs from the interrupted operation.", cycle);
-      }
-      execution = existing;
-      text = existingText;
-    }
-    await runCheckpoint(options, "execution-written");
-    const reference = executionReference(execution, relative, text);
-    const updated = {
-      ...cycle,
-      revision: cycle.revision + 1,
-      related_artifacts: {
-        ...cycle.related_artifacts,
-        plans: cycle.related_artifacts.plans.some((plan) => plan.plan_id === execution.plan.plan_id) ? cycle.related_artifacts.plans : [...cycle.related_artifacts.plans, execution.plan],
-        revision_executions: [...cycle.related_artifacts.revision_executions, reference]
-      },
-      recovery_position: {
-        operation: "chapter-revision",
-        reason: "The prepared approved batch awaits verified manuscript outputs; approval alone does not establish execution.",
-        required_strategy: cycle.current_strategy,
-        operation_id: execution.execution_id
-      },
-      updated_at: createdAt
-    };
-    await writeAtomicVerified(active.file, `${JSON.stringify(updated, null, 2)}
-`);
-    await runCheckpoint(options, "cycle-written");
-    await finishCycleOperation(project, updated, execution.execution_id, options);
-    return {
-      valid: true,
-      cycle: updated,
-      execution,
-      execution_path: absolute,
-      execution_reference: reference,
-      state_written: true,
-      blockers: []
-    };
-  });
-}
-function validateVerifyRequest(request, { independent = false } = {}) {
-  const operation = independent ? "verify-draft-revision-execution" : "verify-revision-execution";
-  const allowed = /* @__PURE__ */ new Set([
-    "execution_id",
-    "requested_pass",
-    "target_scope",
-    ...independent ? [] : ["cycle_id", "expected_revision"]
-  ]);
-  for (const key of Object.keys(request)) {
-    if (!allowed.has(key)) throw new Error(`Unknown ${operation} input field: ${key}`);
-  }
-  if (!independent && !Number.isInteger(request.expected_revision) || !request.requested_pass || !request.target_scope) {
-    throw new Error(`${operation} requires exact ${independent ? "independent" : "cycle"}, execution, pass, and target identities`);
-  }
-}
-async function validateFinalPassExtension(project, preparedReference, finalReference) {
-  if (samePassReference2(preparedReference, finalReference)) return [];
-  const prepared = await readCurrentPass(project, preparedReference);
-  const final = await readCurrentPass(project, finalReference);
-  const errors = [];
-  for (const requirement of prepared.required_operations) {
-    const finalRequirement = final.required_operations.find(
-      (candidate) => candidate.operation === requirement.operation
-    );
-    if (!finalRequirement) {
-      errors.push(contextError(
-        "revision-pass-requirements-reduced",
-        `Final pass removed prepared operation ${requirement.operation}.`
-      ));
-      continue;
-    }
-    const missingSubchecks = requirement.subchecks.filter(
-      (subcheck) => !finalRequirement.subchecks.includes(subcheck)
-    );
-    if (missingSubchecks.length > 0) {
-      errors.push(contextError(
-        "revision-pass-requirements-reduced",
-        `Final pass reduced prepared ${requirement.operation} subchecks: ${missingSubchecks.join(", ")}.`
-      ));
-    }
-  }
-  for (const request of prepared.requested_subchecks) {
-    const finalRequirement = final.required_operations.find(
-      (candidate) => candidate.operation === request.operation
-    );
-    if (!finalRequirement?.subchecks.includes(request.subcheck)) {
-      errors.push(contextError(
-        "revision-pass-requirements-reduced",
-        `Final pass removed prepared requested subcheck ${request.operation}/${request.subcheck}.`,
-        null,
-        request.author_decision_id
-      ));
-    }
-  }
-  return errors;
-}
-function buildChangeSet(inputScope, targetScope) {
-  return diffManuscriptInventories(inputScope, targetScope);
-}
-async function verifyRevisionExecution(projectRoot, request, options = {}) {
-  validateVerifyRequest(request);
-  const project = await readProject2(projectRoot);
-  return withCycleLock(project, options, async () => {
-    const active = await readActiveCycle2(project);
-    const cycle = active.value;
-    const cycleFailure = checkCycleRequest(cycle, request);
-    if (cycleFailure) return cycleFailure;
-    const coordination = coordinationFailure(project, active, {
-      allowOperationId: options.recoveryOperationId ?? null
-    });
-    if (coordination) return coordination;
-    const relative = path10.posix.join(
-      project.manifest.paths.convergence,
-      "executions",
-      `${request.execution_id}.json`
-    );
-    const absolute = path10.resolve(project.root, relative);
-    const prepared = JSON.parse(await readFile9(absolute, "utf8"));
-    if (prepared.execution_id !== request.execution_id || prepared.cycle_id !== request.cycle_id || !["prepared", ...options.recoveryOperationId === request.execution_id ? ["verified"] : []].includes(prepared.status) || !cycle.related_artifacts.revision_executions.some((reference2) => reference2.execution_id === request.execution_id)) {
-      return failure2("revision-execution-identity-mismatch", "The prepared execution is not linked to this active cycle.", cycle);
-    }
-    let passReductions;
-    try {
-      passReductions = await validateFinalPassExtension(
-        project,
-        prepared.requested_pass,
-        request.requested_pass
-      );
-    } catch (error) {
-      return failure2("revision-execution-verification-invalid", "The prepared or final requested pass cannot be trusted.", cycle, [contextError("revision-artifact-mismatch", error.message)]);
-    }
-    if (passReductions.length > 0) {
-      return failure2("revision-pass-requirements-reduced", "The final pass must preserve every prepared operation and subcheck; it may only add requirements.", cycle, passReductions);
-    }
-    const verifiedAt = prepared.status === "verified" ? prepared.verified_at : operationTime2(options);
-    const execution = {
-      ...prepared,
-      requested_pass: request.requested_pass,
-      target_scope: request.target_scope,
-      status: "verified",
-      verified_at: verifiedAt
-    };
-    const validation = await validateExecutionContext(project, execution, {
-      requireOutputs: true,
-      requireCurrentTarget: true,
-      expectedPass: request.requested_pass,
-      expectedScope: request.target_scope
-    });
-    if (!validation.valid) {
-      const code = validation.errors.some((error) => error.code === "revision-output-mismatch") ? "revision-output-mismatch" : "revision-execution-verification-invalid";
-      return failure2(code, "The prepared batch cannot be verified against current manuscript and target evidence.", cycle, validation.errors);
-    }
-    await beginCycleOperation(project, active, {
-      kind: "revision-verification",
-      operationId: execution.execution_id,
-      artifactId: execution.execution_id
-    }, options);
-    const text = `${JSON.stringify(execution, null, 2)}
-`;
-    if (prepared.status === "prepared") await writeAtomicVerified(absolute, text);
-    await runCheckpoint(options, "execution-written");
-    const reference = executionReference(execution, relative, text);
-    const changeFromReference = cycle.bootstrap ? null : cycle.starting_scope ?? execution.input_scope;
-    const changeFromScope = cycle.bootstrap ? { files: [] } : await readCurrentScope(project, changeFromReference);
-    const targetScope = await readCurrentScope(project, execution.target_scope);
-    const changes = buildChangeSet(changeFromScope, targetScope);
-    const updated = {
-      ...cycle,
-      revision: cycle.revision + 1,
-      target_scope: request.target_scope,
-      requested_pass: request.requested_pass,
-      related_artifacts: {
-        ...cycle.related_artifacts,
-        revision_executions: cycle.related_artifacts.revision_executions.map(
-          (candidate) => candidate.execution_id === request.execution_id ? reference : candidate
-        )
-      },
-      change_set: {
-        from_scope: changeFromReference,
-        to_scope: execution.target_scope,
-        ...changes
-      },
-      recovery_position: {
-        operation: "current-scope-review",
-        reason: "Verified revision outputs require current affected coverage and another full-target current-scope review.",
-        required_strategy: cycle.current_strategy,
-        operation_id: execution.execution_id
-      },
-      updated_at: verifiedAt
-    };
-    const cycleValidation = validateConvergenceCycleSchema(updated);
-    if (!cycleValidation.valid) throw new Error(formatErrors3(cycleValidation.errors));
-    await writeAtomicVerified(active.file, `${JSON.stringify(updated, null, 2)}
-`);
-    await runCheckpoint(options, "cycle-written");
-    await finishCycleOperation(project, updated, execution.execution_id, options);
-    return {
-      valid: true,
-      cycle: updated,
-      execution,
-      execution_path: absolute,
-      execution_reference: reference,
-      state_written: true,
-      blockers: []
-    };
-  });
-}
-async function verifyDraftRevisionExecution(projectRoot, request, options = {}) {
-  validateVerifyRequest(request, { independent: true });
-  const project = await readProject2(projectRoot);
-  return withCycleLock(project, options, async () => {
-    const initial = await readOptionalActiveCycle(project);
-    const activeFailure = independentCycleFailure(initial);
-    if (activeFailure) return activeFailure;
-    const relative = path10.posix.join(
-      project.manifest.paths.convergence,
-      "executions",
-      `${request.execution_id}.json`
-    );
-    const absolute = path10.resolve(project.root, relative);
-    let prepared;
-    try {
-      prepared = JSON.parse(await readFile9(absolute, "utf8"));
-    } catch (error) {
-      return failure2("revision-execution-unavailable", `Cannot read independent prepared execution ${request.execution_id}: ${error.message}`, null);
-    }
-    if (prepared.execution_id !== request.execution_id || prepared.cycle_id !== null || prepared.status !== "prepared") {
-      return failure2("revision-execution-identity-mismatch", "The independent execution is missing, already verified, or bound to a cycle.", null);
-    }
-    let passReductions;
-    try {
-      passReductions = await validateFinalPassExtension(
-        project,
-        prepared.requested_pass,
-        request.requested_pass
-      );
-    } catch (error) {
-      return failure2("revision-execution-verification-invalid", "The prepared or final requested pass cannot be trusted.", null, [contextError("revision-artifact-mismatch", error.message)]);
-    }
-    if (passReductions.length > 0) {
-      return failure2("revision-pass-requirements-reduced", "The final pass must preserve every prepared operation and subcheck; it may only add requirements.", null, passReductions);
-    }
-    const verifiedAt = operationTime2(options);
-    const execution = {
-      ...prepared,
-      requested_pass: request.requested_pass,
-      target_scope: request.target_scope,
-      status: "verified",
-      verified_at: verifiedAt
-    };
-    const validation = await validateExecutionContext(project, execution, {
-      requireOutputs: true,
-      requireCurrentTarget: true,
-      expectedPass: request.requested_pass,
-      expectedScope: request.target_scope
-    });
-    if (!validation.valid) {
-      const code = validation.errors.some((error) => error.code === "revision-output-mismatch") ? "revision-output-mismatch" : "revision-execution-verification-invalid";
-      return failure2(code, "The independent prepared batch cannot be verified against current manuscript and target evidence.", null, validation.errors);
-    }
-    const concurrent = await readOptionalActiveCycle(project);
-    const concurrentFailure = independentCycleFailure(concurrent);
-    if (concurrentFailure) return concurrentFailure;
-    const text = `${JSON.stringify(execution, null, 2)}
-`;
-    await writeAtomicVerified(absolute, text);
-    await runCheckpoint(options, "execution-written");
-    return {
-      valid: true,
-      cycle: null,
-      execution,
-      execution_path: absolute,
-      execution_reference: executionReference(execution, relative, text),
-      state_written: true,
-      blockers: []
-    };
-  });
-}
-async function getRequestCompletion(projectRoot, cycle) {
-  if (!cycle || cycle.initiating_strategy !== "revise-request") return null;
-  const project = await readProject2(projectRoot);
-  const blockers = [];
-  const action3 = requiredAction2(cycle);
-  function block(code, message) {
-    if (!blockers.some((blocker2) => blocker2.code === code && blocker2.message === message)) {
-      blockers.push({ code, message, required_action: action3 });
-    }
-  }
-  let tracker = { findings: [], approvals: [], valid: false, errors: [] };
-  try {
-    const trackerText = await readFile9(
-      path10.resolve(project.root, project.manifest.paths.audit_tracker),
-      "utf8"
-    );
-    tracker = await parseTrackerState(trackerText, project.root);
-    if (!tracker.valid) block("request-tracker-invalid", formatErrors3(tracker.errors));
-  } catch (error) {
-    block("request-tracker-invalid", error.message);
-  }
-  const executions = [];
-  for (const reference of cycle.related_artifacts?.revision_executions ?? []) {
-    try {
-      const contents = await readVerifiedArtifact(project, reference);
-      const execution = JSON.parse(contents.toString("utf8"));
-      if (execution.execution_id !== reference.execution_id || execution.cycle_id !== cycle.cycle_id || !validateRevisionExecution(execution).valid) {
-        block("revision-execution-identity-mismatch", `Revision execution ${reference.execution_id} is invalid or belongs to another cycle.`);
-        continue;
-      }
-      const currentExecution = samePassReference2(execution.requested_pass, cycle.requested_pass) && sameScopeReference2(execution.target_scope, cycle.target_scope);
-      executions.push({ execution, currentExecution });
-      if (execution.status !== "verified") {
-        block("approved-edit-unexecuted", `Approved revision execution ${execution.execution_id} is not verified.`);
-        continue;
-      }
-      const disk = await validateExecutionContext(project, execution, {
-        requireOutputs: currentExecution,
-        requireCurrentTarget: currentExecution,
-        requireCurrentDecisions: currentExecution,
-        expectedPass: currentExecution ? cycle.requested_pass : execution.requested_pass,
-        expectedScope: currentExecution ? cycle.target_scope : execution.target_scope
-      });
-      for (const error of disk.errors) block(error.code, error.message);
-    } catch (error) {
-      block("revision-execution-unavailable", error.message);
-    }
-  }
-  const verifiedExecutions = executions.filter(({ execution, currentExecution }) => execution.status === "verified" && currentExecution).map(({ execution }) => execution);
-  const skips = [];
-  for (const reference of cycle.related_artifacts?.no_edit_skips ?? []) {
-    try {
-      const contents = await readVerifiedArtifact(project, reference);
-      const skip = JSON.parse(contents.toString("utf8"));
-      if (skip.skip_id !== reference.skip_id || !validateNoEditSkipSchema(skip).valid || !samePassReference2(skip.requested_pass, cycle.requested_pass) || skip.scope_fingerprint !== cycle.target_scope?.scope_fingerprint) {
-        block("no-edit-identity-mismatch", `No-edit skip ${reference.skip_id} is not bound to the active request.`);
-        continue;
-      }
-      skips.push(skip);
-      const decision = tracker.approvals.find((approval) => approval.id === skip.author_decision_id);
-      if (!decision || decision.status !== "approved" || decision.scopeId !== cycle.target_scope?.scope_id || !skip.operations.includes(decision.operation)) {
-        block("no-edit-author-decision-missing", `No-edit skip ${skip.skip_id} lacks its current author decision.`);
-      }
-    } catch (error) {
-      block("no-edit-evidence-missing", error.message);
-    }
-  }
-  if (verifiedExecutions.length === 0) {
-    for (const operation of ["revision-plan", "chapter-revision"]) {
-      if (!skips.some((skip) => skip.operations.includes(operation))) {
-        block("request-decision-incomplete", `The request has no verified execution or no-edit decision for ${operation}.`);
-      }
-    }
-  }
-  try {
-    const pass = await readCurrentPass(project, cycle.requested_pass);
-    for (const request of pass.requested_subchecks) {
-      const decision = tracker.approvals.find((approval) => approval.id === request.author_decision_id);
-      if (!decision || decision.status !== "approved" || decision.operation !== request.operation || decision.scopeId !== cycle.target_scope?.scope_id) {
-        block("requested-subcheck-author-decision-missing", `Newly requested ${request.operation}/${request.subcheck} lacks its current author decision.`);
-      }
-    }
-  } catch (error) {
-    block("requested-pass-unavailable", error.message);
-  }
-  const coveredFindings = new Set(skips.flatMap((skip) => skip.covered_findings));
-  for (const finding of tracker.findings) {
-    if (finding.status === "stale") continue;
-    if (finding.status === "open") {
-      block("open-findings", `Request finding ${finding.id} still awaits an author decision or verified resolution.`);
-      continue;
-    }
-    if (finding.status === "resolved") {
-      const executed = verifiedExecutions.some(
-        (execution) => execution.finding_dispositions.some(
-          (disposition) => disposition.finding_id === finding.id && disposition.disposition === "execute"
-        )
-      );
-      if (!executed) {
-        block("verified-execution-required", `Resolved request finding ${finding.id} lacks verified execution.`);
-      }
-    } else {
-      const requiredDisposition = finding.status === "deferred" ? "defer" : "dismiss";
-      const decidedByExecution = verifiedExecutions.some(
-        (execution) => execution.finding_dispositions.some(
-          (disposition) => disposition.finding_id === finding.id && disposition.disposition === requiredDisposition
-        )
-      );
-      if (!decidedByExecution && !coveredFindings.has(finding.id)) {
-        block(
-          "finding-author-decision-missing",
-          `Current ${finding.status} finding ${finding.id} lacks a matching execution disposition or an authorized no-edit skip.`
-        );
-      }
-    }
-  }
-  return {
-    status: blockers.length === 0 ? "complete" : "incomplete",
-    verified_execution_ids: verifiedExecutions.map((execution) => execution.execution_id),
-    no_edit_skip_ids: skips.map((skip) => skip.skip_id),
-    blockers
-  };
-}
-var init_revision_execution = __esm({
-  "scripts/lib/revision-execution.mjs"() {
-    init_backup();
-    init_cycles();
-    init_cycle_coordination();
-    init_manifest();
-    init_schemas();
-    init_scope();
-    init_state_io();
-    init_tracker();
-    init_time();
+    MANUSCRIPT_EXTENSIONS2 = /* @__PURE__ */ new Set([".md", ".markdown", ".txt"]);
   }
 });
 
 // scripts/lib/evaluation-chains.mjs
-import { readFile as readFile10 } from "node:fs/promises";
-import path11 from "node:path";
+import { readFile as readFile9 } from "node:fs/promises";
+import path10 from "node:path";
 function scopeEventIdentity(reference) {
   return reference === null || reference === void 0 ? null : JSON.stringify([
     reference.scope_id,
@@ -14218,12 +12951,12 @@ function buildScopeEventChain(cycle, roots, reconciliations, executionChain, cre
   }
   return visit(startingIdentity, false);
 }
-async function validateImportDecision(project, reconciliation, previousScope, targetScope, inventory) {
-  const trackerText = await readFile10(
-    path11.resolve(project.root, project.manifest.paths.audit_tracker),
+async function validateImportDecision(project, reconciliation, previousScope, targetScope, inventory, options2 = {}) {
+  const trackerText = await readFile9(
+    path10.resolve(project.root, project.manifest.paths.audit_tracker),
     "utf8"
   );
-  const tracker = await parseTrackerState(trackerText, project.root);
+  const tracker = await parseTrackerState(trackerText, project.root, options2);
   const decisions = tracker.approvals.filter(
     (approval) => approval.id === reconciliation.author_decision_id
   );
@@ -14368,7 +13101,8 @@ async function validateScopeEventChain(project, computation, cycle, roots, recon
         reconciliation,
         previousScope,
         targetScope,
-        inventory
+        inventory,
+        computation.options
       );
       if (!approved) approvalsValid = false;
     } catch {
@@ -14388,9 +13122,9 @@ var init_evaluation_chains = __esm({
 });
 
 // scripts/lib/evaluation-evaluator.mjs
-import { readFile as readFile11 } from "node:fs/promises";
-import path12 from "node:path";
-function newComputation(project, cycle, roots, evaluationId, createdAt) {
+import { readFile as readFile10 } from "node:fs/promises";
+import path11 from "node:path";
+function newComputation(project, cycle, roots, evaluationId, createdAt, options2 = {}) {
   const artifacts = /* @__PURE__ */ new Map();
   const blockers = [];
   const blockerKeys = /* @__PURE__ */ new Set();
@@ -14440,7 +13174,7 @@ function newComputation(project, cycle, roots, evaluationId, createdAt) {
     record(role, artifactId, reference);
     let contents;
     try {
-      contents = await readFile11(path12.resolve(project.root, reference.path));
+      contents = await readFile10(path11.resolve(project.root, reference.path));
     } catch (error) {
       block(
         "artifact-unavailable",
@@ -14476,7 +13210,7 @@ function newComputation(project, cycle, roots, evaluationId, createdAt) {
       return null;
     }
     if (validate) {
-      const validation = validate(value);
+      const validation = validate(value, options2);
       if (!validation.valid) {
         block(
           "artifact-contract-invalid",
@@ -14489,7 +13223,7 @@ function newComputation(project, cycle, roots, evaluationId, createdAt) {
     }
     return value;
   }
-  return { project, cycle, roots, evaluationId, createdAt, artifacts, blockers, block, record, bytes, json };
+  return { project, cycle, roots, evaluationId, createdAt, options: options2, artifacts, blockers, block, record, bytes, json };
 }
 function targetFiles(scope, paths = null) {
   const selected = paths ? new Set(paths) : null;
@@ -14513,7 +13247,7 @@ async function loadReport(computation, reference, { currentPass = true, inputFil
   const contents = await computation.bytes(reference, "report", referenceId ?? reference.path);
   if (!contents) return null;
   const markdown = contents.toString("utf8");
-  const validation = validateEvidenceReport(markdown);
+  const validation = validateEvidenceReport(markdown, computation.options);
   if (!validation.valid || !validation.envelope) {
     block(
       "report-contract-invalid",
@@ -14586,8 +13320,16 @@ async function loadReport(computation, reference, { currentPass = true, inputFil
   }
   return { report, reference: { ...reference, report_id: report.report_id }, markdown };
 }
-async function computeEvaluation(project, cycle, roots, evaluationId, createdAt) {
-  const computation = newComputation(project, cycle, roots, evaluationId, createdAt);
+async function loadDependencySource(computation, reference) {
+  if (!reference?.report_id || !reference?.path || !reference?.sha256) return null;
+  const contents = await computation.bytes(reference, "dependency-source", reference.report_id);
+  if (!contents) return null;
+  const validation = validateEvidenceReport(contents.toString("utf8"), computation.options);
+  if (!validation.valid || validation.envelope?.report_id !== reference.report_id) return null;
+  return validation.envelope;
+}
+async function computeEvaluation(project, cycle, roots, evaluationId, createdAt, options2 = {}) {
+  const computation = newComputation(project, cycle, roots, evaluationId, createdAt, options2);
   const { block, record } = computation;
   const relatedArtifacts = cycle?.related_artifacts ?? {
     revision_executions: roots.revision_executions ?? [],
@@ -14618,7 +13360,7 @@ async function computeEvaluation(project, cycle, roots, evaluationId, createdAt)
       `The previous manuscript inventory cannot be compared with current disk state: ${error.message}`
     );
   }
-  const fullScope = await validateFullManuscriptScope(project.manifest, project.manifestPath);
+  const fullScope = await validateFullManuscriptScope(project.manifest, project.manifestPath, options2);
   const inventory = await collectManuscriptInventory(
     project.root,
     project.manifest.manuscript_root,
@@ -14760,7 +13502,7 @@ async function computeEvaluation(project, cycle, roots, evaluationId, createdAt)
       for (const storyReference of reconciliation.story_state) {
         const contents = await computation.bytes(storyReference, "story-state", storyReference.path);
         if (!contents) continue;
-        const storyValidation = validateStoryStateMarkdown(contents.toString("utf8"));
+        const storyValidation = validateStoryStateMarkdown(contents.toString("utf8"), options2);
         if (!storyValidation.valid) {
           block(
             "story-state-contract-invalid",
@@ -14934,7 +13676,7 @@ async function computeEvaluation(project, cycle, roots, evaluationId, createdAt)
     for (const dependency of pass.dependencies) {
       await computation.bytes(dependency, "dependency", dependency.path);
     }
-    const baseline = await latestSatisfiedPass(project, roots.cycle_id, evaluationId);
+    const baseline = await latestSatisfiedPass(project, roots.cycle_id, evaluationId, options2);
     if (baseline && !pass.baseline_pass) {
       block(
         "requested-pass-baseline-missing",
@@ -14998,14 +13740,14 @@ async function computeEvaluation(project, cycle, roots, evaluationId, createdAt)
     sha256: ""
   };
   try {
-    trackerReference.sha256 = sha256Bytes(await readFile11(path12.resolve(project.root, trackerReference.path)));
+    trackerReference.sha256 = sha256Bytes(await readFile10(path11.resolve(project.root, trackerReference.path)));
   } catch {
     trackerReference.sha256 = "0".repeat(64);
   }
   const trackerText = await computation.bytes(trackerReference, "tracker", "audit-tracker");
   let tracker = { findings: [], approvals: [], completion_decisions: [], valid: false, errors: [] };
   if (trackerText) {
-    tracker = await parseTrackerState(trackerText.toString("utf8"), project.root);
+    tracker = await parseTrackerState(trackerText.toString("utf8"), project.root, options2);
     if (!tracker.valid) {
       block("tracker-invalid", `Tracker is invalid: ${formatErrors(tracker.errors)}`);
     }
@@ -15247,7 +13989,8 @@ async function computeEvaluation(project, cycle, roots, evaluationId, createdAt)
       expectedScope: currentExecution ? roots.target_scope : execution.target_scope,
       requireOutputs: currentExecution && execution.status === "verified",
       requireCurrentTarget: currentExecution && execution.status === "verified",
-      requireCurrentDecisions: currentExecution
+      requireCurrentDecisions: currentExecution,
+      now: options2.now
     });
     for (const error of disk.errors) {
       block(error.code, error.message, "indeterminate", {
@@ -15394,7 +14137,7 @@ async function computeEvaluation(project, cycle, roots, evaluationId, createdAt)
       const job = await computation.json(jobInput.job, "review-job", jobInput.job.job_id, validateReviewJobSchema);
       reviewClaimPaths.add(jobInput.job.path);
       if (!job) continue;
-      const jobValidation = validateReviewJob(job);
+      const jobValidation = validateReviewJob(job, options2);
       if (!jobValidation.valid) {
         block(
           "review-job-invalid",
@@ -15421,7 +14164,7 @@ async function computeEvaluation(project, cycle, roots, evaluationId, createdAt)
       }
       for (const file of job.files) {
         try {
-          const text = await readFile11(path12.resolve(project.root, file.path), "utf8");
+          const text = await readFile10(path11.resolve(project.root, file.path), "utf8");
           if (text.split(/\r?\n/).length !== file.line_count) {
             block(
               "review-source-range-mismatch",
@@ -15440,7 +14183,7 @@ async function computeEvaluation(project, cycle, roots, evaluationId, createdAt)
       if (/\.(?:md|markdown)$/i.test(jobInput.reader_state.path)) {
         const contents = await computation.bytes(jobInput.reader_state, "reader-state", jobInput.reader_state.state_id);
         if (contents) {
-          const parsed = validateReaderStateMarkdown(contents.toString("utf8"));
+          const parsed = validateReaderStateMarkdown(contents.toString("utf8"), options2);
           if (!parsed.valid || !parsed.envelope) {
             block("reader-state-invalid", `Reader state ${jobInput.reader_state.path} is invalid: ${formatErrors(parsed.errors)}`);
           } else {
@@ -15460,7 +14203,7 @@ async function computeEvaluation(project, cycle, roots, evaluationId, createdAt)
         if (state.state_id !== jobInput.reader_state.state_id) {
           block("reader-state-identity-mismatch", `Reader state identity differs from ${jobInput.reader_state.path}.`);
         }
-        const stateValidation = validateReaderStateForJob(state, job);
+        const stateValidation = validateReaderStateForJob(state, job, options2);
         if (!stateValidation.valid) {
           block("reader-state-chain-invalid", `Reader state ${state.state_id} does not match its job: ${formatErrors(stateValidation.errors)}`);
         }
@@ -15547,7 +14290,7 @@ async function computeEvaluation(project, cycle, roots, evaluationId, createdAt)
       project.manifest.paths.convergence
     ];
     const otherEvidenceRoles = [...computation.artifacts.values()].filter(
-      (artifact) => artifact.path === dependencyPath && !["dependency", "attested-artifact"].includes(artifact.role)
+      (artifact) => artifact.path === dependencyPath && !["dependency", "dependency-source", "attested-artifact"].includes(artifact.role)
     );
     const ineligibleReport = within(project.manifest.paths.reports) && !within(`${project.manifest.paths.reports}/${exception.operation}`);
     if (dependencyPath === project.manifest.paths.story_bible || dependencyPath === project.manifest.paths.audit_tracker || operationalRoots2.some(within) || otherEvidenceRoles.length > 0 || ineligibleReport) {
@@ -15579,6 +14322,18 @@ async function computeEvaluation(project, cycle, roots, evaluationId, createdAt)
         `Dependency exception ${unit.unit_id} must bind exactly one old and new dependency hash.`
       );
     }
+    const sourceReport = newDependency?.role === exception.operation ? await loadDependencySource(computation, newDependency.source) : null;
+    const sourceIsDependency = sameReference(newDependency?.source, newDependency);
+    const sourceBindsDependency = sourceIsDependency || sourceReport?.inputs.some(
+      (input) => input.path === dependencyPath && input.version === newDependency?.sha256 && input.version_type === "sha256"
+    );
+    if (!sourceReport || sourceReport.stage !== exception.operation || !sourceBindsDependency) {
+      exceptionBlock(
+        "dependency-exception-ineligible",
+        `Dependency exception ${unit.unit_id} requires a verifiable ${exception.operation} report source for ${dependencyPath}.`
+      );
+      continue;
+    }
     const matchingAttestations = attestationRecords.filter(
       ({ attestation: attestation2, reference }) => attestation2.attestation_id === exception.semantic_attestation.attestation_id && reference.attestation_id === exception.semantic_attestation.attestation_id && sameReference(reference, exception.semantic_attestation)
     );
@@ -15600,10 +14355,13 @@ async function computeEvaluation(project, cycle, roots, evaluationId, createdAt)
       );
       continue;
     }
-    const sourceReferences = claims[0].artifacts.filter(
-      (artifact) => artifact.path !== roots.requested_pass.path && artifact.path !== exception.dependency_path
+    const claimArtifacts = claims[0].artifacts;
+    const passArtifacts = claimArtifacts.filter((artifact) => sameReference(artifact, roots.requested_pass));
+    const dependencyArtifacts = claimArtifacts.filter((artifact) => sameReference(artifact, newDependency));
+    const sourceReferences = claimArtifacts.filter(
+      (artifact) => !sameReference(artifact, roots.requested_pass) && !sameReference(artifact, newDependency)
     );
-    if (sourceReferences.length !== 1) {
+    if (claimArtifacts.length !== 3 || passArtifacts.length !== 1 || dependencyArtifacts.length !== 1 || sourceReferences.length !== 1) {
       exceptionBlock(
         "dependency-exception-attestation-mismatch",
         `Dependency exception ${unit.unit_id} must attest one source unit, the requested pass, and the current dependency.`
@@ -15697,7 +14455,7 @@ async function computeEvaluation(project, cycle, roots, evaluationId, createdAt)
   for (const artifact of computation.artifacts.values()) {
     if (["manuscript", "execution-input-manuscript", "dependency", "attested-artifact"].includes(artifact.role)) continue;
     try {
-      const contents = await readFile11(path12.resolve(project.root, artifact.path));
+      const contents = await readFile10(path11.resolve(project.root, artifact.path));
       if (sha256Bytes(contents) !== artifact.sha256) {
         block(
           "artifact-hash-mismatch",
@@ -15735,7 +14493,7 @@ async function computeEvaluation(project, cycle, roots, evaluationId, createdAt)
     },
     created_at: createdAt
   };
-  const validation = validateConvergenceEvaluation(evaluation);
+  const validation = validateConvergenceEvaluation(evaluation, options2);
   if (!validation.valid) throw new Error(`Generated evaluation is invalid: ${formatErrors(validation.errors)}`);
   return evaluation;
 }
@@ -15758,8 +14516,8 @@ var init_evaluation_evaluator = __esm({
 });
 
 // scripts/lib/evaluation-recompute.mjs
-import { readFile as readFile12 } from "node:fs/promises";
-import path13 from "node:path";
+import { readFile as readFile11 } from "node:fs/promises";
+import path12 from "node:path";
 function sameEvidenceGraph(left, right) {
   return JSON.stringify(left?.artifacts ?? []) === JSON.stringify(right?.artifacts ?? []);
 }
@@ -15787,8 +14545,8 @@ function targetEvaluationIdentityBlockers(cycle, stored, reference) {
   }
   return blockers;
 }
-async function recomputeStoredEvaluation(project, cycle, reference) {
-  const { value: stored } = await readEvaluationReference(project, reference);
+async function recomputeStoredEvaluation(project, cycle, reference, options2 = {}) {
+  const { value: stored } = await readEvaluationReference(project, reference, options2);
   const identityBlockers = targetEvaluationIdentityBlockers(cycle, stored, reference);
   if (identityBlockers.length > 0) {
     return {
@@ -15827,7 +14585,8 @@ async function recomputeStoredEvaluation(project, cycle, reference) {
       ...independentRevisionExecutions ? { revision_executions: independentRevisionExecutions } : {}
     },
     stored.evaluation_id,
-    stored.created_at
+    stored.created_at,
+    options2
   );
   return {
     stored,
@@ -15835,20 +14594,21 @@ async function recomputeStoredEvaluation(project, cycle, reference) {
     current: stored.outcome === recomputed.outcome && sameEvidenceGraph(stored.evidence_graph, recomputed.evidence_graph)
   };
 }
-async function recomputeCompletedCycleForRecovery(project, completed) {
+async function recomputeCompletedCycleForRecovery(project, completed, options2 = {}) {
   if (completed?.status !== "completed" || !completed.target_evaluation) {
     throw new Error("A completed cycle and target evaluation are required for recovery");
   }
   const result = await recomputeStoredEvaluation(
     project,
     completed,
-    completed.target_evaluation
+    completed.target_evaluation,
+    options2
   );
-  const trackerText = await readFile12(
-    path13.resolve(project.root, project.manifest.paths.audit_tracker),
+  const trackerText = await readFile11(
+    path12.resolve(project.root, project.manifest.paths.audit_tracker),
     "utf8"
   );
-  const tracker = await parseTrackerState(trackerText, project.root);
+  const tracker = await parseTrackerState(trackerText, project.root, options2);
   const decision = tracker.completion_decisions.find(
     (candidate) => candidate.id === completed.completion?.decision_id
   );
@@ -15857,8 +14617,8 @@ async function recomputeCompletedCycleForRecovery(project, completed) {
   }
   return result;
 }
-async function recomputeCycleEvaluationForRecovery(project, cycle, reference) {
-  const result = await recomputeStoredEvaluation(project, cycle, reference);
+async function recomputeCycleEvaluationForRecovery(project, cycle, reference, options2 = {}) {
+  const result = await recomputeStoredEvaluation(project, cycle, reference, options2);
   if (result.stored.cycle_id !== cycle.cycle_id || !sameScopeReference(result.stored.target_scope, cycle.target_scope) || !samePassReference(result.stored.requested_pass, cycle.requested_pass)) {
     throw new Error("Published evaluation cycle, pass, or target scope does not match the interrupted cycle");
   }
@@ -15878,8 +14638,8 @@ var init_evaluation_recompute = __esm({
 });
 
 // scripts/lib/evaluation-operations.mjs
-import { readFile as readFile13 } from "node:fs/promises";
-import path14 from "node:path";
+import { readFile as readFile12 } from "node:fs/promises";
+import path13 from "node:path";
 function publicFailure(code, message, cycle = null, details = {}) {
   return {
     valid: false,
@@ -15894,8 +14654,8 @@ function publicFailure(code, message, cycle = null, details = {}) {
     ...details
   };
 }
-function coordinationFailure2(project, active, options = {}) {
-  const blockers = coordinationBlockers(project, active, options);
+function coordinationFailure(project, active, options2 = {}) {
+  const blockers = coordinationBlockers(project, active, options2);
   if (blockers.length === 0) return null;
   return {
     valid: false,
@@ -15949,13 +14709,13 @@ function validateEvaluationRequest(request, { independent = false } = {}) {
     }
   }
 }
-async function lockProjectCycle(project, options, operation) {
+async function lockProjectCycle(project, options2, operation) {
   const lock = await acquireDirectoryLock(
-    path14.resolve(project.root, project.manifest.paths.convergence, "active-cycle.lock"),
+    path13.resolve(project.root, project.manifest.paths.convergence, "active-cycle.lock"),
     {
-      timeoutMs: options.lockTimeoutMs ?? 1e4,
-      retryMs: options.lockRetryMs ?? 20,
-      now: options.now
+      timeoutMs: options2.lockTimeoutMs ?? 1e4,
+      retryMs: options2.lockRetryMs ?? 20,
+      now: options2.now
     }
   );
   if (!lock.acquired) {
@@ -15994,13 +14754,13 @@ async function lockProjectCycle(project, options, operation) {
   if (operationError) throw operationError;
   return { value };
 }
-async function evaluateCycle(projectRoot, request, options = {}) {
+async function evaluateCycle(projectRoot, request, options2 = {}) {
   validateEvaluationRequest(request);
-  const project = await readProject(projectRoot);
-  const initial = await readActiveCycle(project);
+  const project = await readProject(projectRoot, options2);
+  const initial = await readActiveCycle(project, options2);
   if (!initial) return publicFailure("active-cycle-required", "An active cycle is required for evaluation.");
-  const locked = await lockProjectCycle(project, options, async () => {
-    const active = await readActiveCycle(project);
+  const locked = await lockProjectCycle(project, options2, async () => {
+    const active = await readActiveCycle(project, options2);
     if (!active) return publicFailure("active-cycle-required", "An active cycle is required for evaluation.");
     const cycle = active.value;
     if (cycle.cycle_id !== request.cycle_id) {
@@ -16016,15 +14776,15 @@ async function evaluateCycle(projectRoot, request, options = {}) {
     if (!cycle.target_scope || !cycle.requested_pass) {
       return publicFailure("evaluation-input-unavailable", "The active cycle requires target scope and requested-pass references before evaluation.", cycle);
     }
-    const coordination = coordinationFailure2(project, active, {
-      allowOperationId: options.recoveryOperationId ?? null
+    const coordination = coordinationFailure(project, active, {
+      allowOperationId: options2.recoveryOperationId ?? null
     });
     if (coordination) return coordination;
     await beginCycleOperation(project, active, {
       kind: "evaluation",
       operationId: request.evaluation_id,
       artifactId: request.evaluation_id
-    }, options);
+    }, options2);
     const roots = {
       cycle_id: cycle.cycle_id,
       requested_pass: cycle.requested_pass,
@@ -16039,18 +14799,19 @@ async function evaluateCycle(projectRoot, request, options = {}) {
       cycle,
       roots,
       request.evaluation_id,
-      operationTime(options)
+      operationTime(options2),
+      options2
     );
-    const relative = path14.posix.join(
+    const relative = path13.posix.join(
       project.manifest.paths.convergence,
       "evaluations",
       `${evaluation.evaluation_id}.json`
     );
-    const absolute = path14.resolve(project.root, relative);
+    const absolute = path13.resolve(project.root, relative);
     const text = `${JSON.stringify(evaluation, null, 2)}
 `;
     await publishImmutable(absolute, text);
-    await runCheckpoint(options, "evaluation-published");
+    await runCheckpoint(options2, "evaluation-published");
     const reference = evaluationReference(evaluation, relative, text);
     const updated = {
       ...cycle,
@@ -16065,12 +14826,12 @@ async function evaluateCycle(projectRoot, request, options = {}) {
         ...cycle.recovery_position,
         operation_id: request.evaluation_id
       },
-      updated_at: operationTime(options)
+      updated_at: operationTime(options2)
     };
     await writeAtomicVerified(active.file, `${JSON.stringify(updated, null, 2)}
 `);
-    await runCheckpoint(options, "cycle-written");
-    await finishCycleOperation(project, updated, request.evaluation_id, options);
+    await runCheckpoint(options2, "cycle-written");
+    await finishCycleOperation(project, updated, request.evaluation_id, options2);
     return {
       valid: evaluation.outcome === "satisfied",
       cycle: updated,
@@ -16083,10 +14844,10 @@ async function evaluateCycle(projectRoot, request, options = {}) {
   });
   return locked.lockFailure ?? locked.value;
 }
-async function evaluateDraft(projectRoot, request, options = {}) {
+async function evaluateDraft(projectRoot, request, options2 = {}) {
   validateEvaluationRequest(request, { independent: true });
-  const project = await readProject(projectRoot);
-  const initial = await readActiveCycle(project);
+  const project = await readProject(projectRoot, options2);
+  const initial = await readActiveCycle(project, options2);
   if (initial) {
     return publicFailure(
       "active-cycle-exists",
@@ -16094,8 +14855,8 @@ async function evaluateDraft(projectRoot, request, options = {}) {
       initial.value
     );
   }
-  const locked = await lockProjectCycle(project, options, async () => {
-    const active = await readActiveCycle(project);
+  const locked = await lockProjectCycle(project, options2, async () => {
+    const active = await readActiveCycle(project, options2);
     if (active) {
       return publicFailure(
         "active-cycle-exists",
@@ -16119,18 +14880,19 @@ async function evaluateDraft(projectRoot, request, options = {}) {
       null,
       roots,
       request.evaluation_id,
-      operationTime(options)
+      operationTime(options2),
+      options2
     );
-    const relative = path14.posix.join(
+    const relative = path13.posix.join(
       project.manifest.paths.convergence,
       "evaluations",
       `${evaluation.evaluation_id}.json`
     );
-    const absolute = path14.resolve(project.root, relative);
+    const absolute = path13.resolve(project.root, relative);
     const text = `${JSON.stringify(evaluation, null, 2)}
 `;
     await publishImmutable(absolute, text);
-    await runCheckpoint(options, "evaluation-published");
+    await runCheckpoint(options2, "evaluation-published");
     return {
       valid: evaluation.outcome === "satisfied",
       cycle: null,
@@ -16158,13 +14920,13 @@ function validateCompletionRequest(request) {
     throw new Error("complete-cycle requires exact cycle, revision, new evaluation, decision ID, and explicit author confirmation");
   }
 }
-async function completeCycle(projectRoot, request, options = {}) {
+async function completeCycle(projectRoot, request, options2 = {}) {
   validateCompletionRequest(request);
-  const project = await readProject(projectRoot);
-  const initial = await readActiveCycle(project);
+  const project = await readProject(projectRoot, options2);
+  const initial = await readActiveCycle(project, options2);
   if (!initial) return publicFailure("active-cycle-required", "An active cycle is required for completion.");
-  const locked = await lockProjectCycle(project, options, async () => {
-    const active = await readActiveCycle(project);
+  const locked = await lockProjectCycle(project, options2, async () => {
+    const active = await readActiveCycle(project, options2);
     if (!active) return publicFailure("active-cycle-required", "An active cycle is required for completion.");
     const cycle = active.value;
     if (cycle.cycle_id !== request.cycle_id) {
@@ -16180,13 +14942,13 @@ async function completeCycle(projectRoot, request, options = {}) {
     if (!cycle.target_evaluation || !cycle.target_scope) {
       return publicFailure("completion-evaluation-not-satisfied", "A current satisfied target evaluation is required before completion.", cycle);
     }
-    const coordination = coordinationFailure2(project, active, {
-      allowOperationId: options.recoveryOperationId ?? null
+    const coordination = coordinationFailure(project, active, {
+      allowOperationId: options2.recoveryOperationId ?? null
     });
     if (coordination) return coordination;
     let current;
     try {
-      current = await recomputeStoredEvaluation(project, cycle, cycle.target_evaluation);
+      current = await recomputeStoredEvaluation(project, cycle, cycle.target_evaluation, options2);
     } catch (error) {
       return publicFailure("completion-evaluation-not-satisfied", `Target evaluation cannot be trusted: ${error.message}`, cycle);
     }
@@ -16200,9 +14962,9 @@ async function completeCycle(projectRoot, request, options = {}) {
         evaluation: current.recomputed
       };
     }
-    const trackerPath = path14.resolve(project.root, project.manifest.paths.audit_tracker);
-    const trackerBefore = await readFile13(trackerPath, "utf8");
-    const trackerState = await parseTrackerState(trackerBefore, project.root);
+    const trackerPath = path13.resolve(project.root, project.manifest.paths.audit_tracker);
+    const trackerBefore = await readFile12(trackerPath, "utf8");
+    const trackerState = await parseTrackerState(trackerBefore, project.root, options2);
     const existingDecision = trackerState.completion_decisions.find(
       (decision) => decision.id === request.decision_id
     );
@@ -16223,8 +14985,8 @@ async function completeCycle(projectRoot, request, options = {}) {
       kind: "completion",
       operationId: request.decision_id,
       artifactId: request.evaluation_id
-    }, options);
-    const completedAt = operationTime(options);
+    }, options2);
+    const completedAt = operationTime(options2);
     if (!existingDecision) {
       const trackerAfter = appendCycleCompletionDecision(trackerBefore, {
         decision_id: request.decision_id,
@@ -16235,16 +14997,16 @@ async function completeCycle(projectRoot, request, options = {}) {
       });
       await writeAtomicVerified(trackerPath, trackerAfter);
     }
-    await runCheckpoint(options, "completion-decision-written");
-    const relative = path14.posix.join(
+    await runCheckpoint(options2, "completion-decision-written");
+    const relative = path13.posix.join(
       project.manifest.paths.convergence,
       "evaluations",
       `${request.evaluation_id}.json`
     );
-    const absolute = path14.resolve(project.root, relative);
+    const absolute = path13.resolve(project.root, relative);
     let text;
     try {
-      text = await readFile13(absolute, "utf8");
+      text = await readFile12(absolute, "utf8");
     } catch (error) {
       if (error.code !== "ENOENT") throw error;
       text = null;
@@ -16257,7 +15019,7 @@ async function completeCycle(projectRoot, request, options = {}) {
         path: relative,
         sha256: sha256Bytes(text)
       };
-      const recovered = await recomputeCycleEvaluationForRecovery(project, cycle, reference);
+      const recovered = await recomputeCycleEvaluationForRecovery(project, cycle, reference, options2);
       evaluation = recovered.stored;
       reference = evaluationReference(evaluation, relative, text);
     } else {
@@ -16275,14 +15037,15 @@ async function completeCycle(projectRoot, request, options = {}) {
           semantic_attestations: previous.semantic_attestations
         },
         request.evaluation_id,
-        completedAt
+        completedAt,
+        options2
       );
       text = `${JSON.stringify(evaluation, null, 2)}
 `;
       await publishImmutable(absolute, text);
       reference = evaluationReference(evaluation, relative, text);
     }
-    await runCheckpoint(options, "evaluation-published");
+    await runCheckpoint(options2, "evaluation-published");
     if (evaluation.outcome !== "satisfied") {
       const updated = {
         ...cycle,
@@ -16296,8 +15059,8 @@ async function completeCycle(projectRoot, request, options = {}) {
       };
       await writeAtomicVerified(active.file, `${JSON.stringify(updated, null, 2)}
 `);
-      await runCheckpoint(options, "cycle-written");
-      await finishCycleOperation(project, updated, request.decision_id, options);
+      await runCheckpoint(options2, "cycle-written");
+      await finishCycleOperation(project, updated, request.decision_id, options2);
       return {
         valid: false,
         cycle: updated,
@@ -16325,7 +15088,7 @@ async function completeCycle(projectRoot, request, options = {}) {
     if (!completedValidation.valid || completed.completion.target_evaluation_id !== completed.target_evaluation.evaluation_id) {
       throw new Error(`Generated completed cycle is invalid: ${formatErrors(completedValidation.errors)}`);
     }
-    const completedRelative = path14.posix.join(
+    const completedRelative = path13.posix.join(
       project.manifest.paths.convergence,
       "cycles",
       `${cycle.cycle_id}.json`
@@ -16333,12 +15096,12 @@ async function completeCycle(projectRoot, request, options = {}) {
     const completedText = `${JSON.stringify(completed, null, 2)}
 `;
     await publishImmutable(
-      path14.resolve(project.root, completedRelative),
+      path13.resolve(project.root, completedRelative),
       completedText
     );
-    await runCheckpoint(options, "completed-cycle-published");
+    await runCheckpoint(options2, "completed-cycle-published");
     await finishCycleOperation(project, completed, request.decision_id, {
-      ...options,
+      ...options2,
       complete: true,
       completedAt,
       manifestChanges: {
@@ -16351,11 +15114,11 @@ async function completeCycle(projectRoot, request, options = {}) {
       }
     });
     await removeVerified(active.file, sha256Bytes(active.text));
-    await runCheckpoint(options, "active-cycle-removed");
+    await runCheckpoint(options2, "active-cycle-removed");
     return {
       valid: true,
       cycle: completed,
-      cycle_path: path14.resolve(project.root, completedRelative),
+      cycle_path: path13.resolve(project.root, completedRelative),
       evaluation,
       evaluation_path: absolute,
       evaluation_reference: reference,
@@ -16379,8 +15142,8 @@ var init_evaluation_operations = __esm({
 });
 
 // scripts/lib/evaluation-status.mjs
-import { readFile as readFile14 } from "node:fs/promises";
-import path15 from "node:path";
+import { readFile as readFile13 } from "node:fs/promises";
+import path14 from "node:path";
 function missingEvaluationStatus(cycle, pendingAction = null, requestCompletion = null) {
   const requiredAction6 = cycle?.recovery_position ? {
     strategy: cycle.recovery_position.required_strategy,
@@ -16403,25 +15166,7 @@ function missingEvaluationStatus(cycle, pendingAction = null, requestCompletion 
     }]
   };
 }
-async function getConvergenceStatus(projectRoot) {
-  let project;
-  let active;
-  try {
-    project = await readProject(projectRoot);
-    active = await readActiveCycle(project);
-  } catch (error) {
-    return {
-      query_valid: false,
-      outcome: "indeterminate",
-      current: false,
-      evaluation: null,
-      cycle: null,
-      pending_action: null,
-      request_completion: null,
-      required_action: null,
-      blockers: [{ code: "cycle-state-invalid", message: error.message, required_action: null }]
-    };
-  }
+async function computeConvergenceStatus(project, active, options2) {
   const coordination = coordinationBlockers(project, active);
   if (coordination.length > 0) {
     return {
@@ -16451,7 +15196,7 @@ async function getConvergenceStatus(projectRoot) {
     };
   }
   if (active) {
-    const completedPath = path15.resolve(
+    const completedPath = path14.resolve(
       project.root,
       project.manifest.paths.convergence,
       "cycles",
@@ -16459,7 +15204,7 @@ async function getConvergenceStatus(projectRoot) {
     );
     let completed = null;
     try {
-      completed = JSON.parse(await readFile14(completedPath, "utf8"));
+      completed = JSON.parse(await readFile13(completedPath, "utf8"));
     } catch (error) {
       if (error.code !== "ENOENT") throw error;
     }
@@ -16489,11 +15234,11 @@ async function getConvergenceStatus(projectRoot) {
   let cycle = active?.value ?? null;
   let reference = cycle?.target_evaluation ?? null;
   if (!reference && !cycle) {
-    const source = (await evaluationSources(project)).at(-1) ?? null;
+    const source = (await evaluationSources(project, options2)).at(-1) ?? null;
     cycle = source?.cycle ?? null;
     reference = source?.evaluationReference ?? null;
   }
-  const requestCompletion = await getRequestCompletion(project.root, cycle);
+  const requestCompletion = await getRequestCompletion(project.root, cycle, options2);
   const observedInventory = await collectManuscriptInventory(
     project.root,
     project.manifest.manuscript_root,
@@ -16540,7 +15285,7 @@ async function getConvergenceStatus(projectRoot) {
       if (active.value.starting_evaluation) historicalReferences.push(active.value.starting_evaluation);
       try {
         for (const historical of historicalReferences) {
-          const contents = await readFile14(path15.resolve(project.root, historical.path));
+          const contents = await readFile13(path14.resolve(project.root, historical.path));
           if (sha256Bytes(contents) !== historical.sha256) {
             throw new Error(`Historical artifact hash changed: ${historical.path}`);
           }
@@ -16561,7 +15306,7 @@ async function getConvergenceStatus(projectRoot) {
     if (reconciliations.length === 0) return missing;
     const reconciliationReference = reconciliations.at(-1);
     try {
-      const contents = await readFile14(path15.resolve(project.root, reconciliationReference.path), "utf8");
+      const contents = await readFile13(path14.resolve(project.root, reconciliationReference.path), "utf8");
       if (sha256Bytes(contents) !== reconciliationReference.sha256) {
         throw new Error("Reconciliation content hash changed");
       }
@@ -16588,7 +15333,7 @@ async function getConvergenceStatus(projectRoot) {
     }
   }
   try {
-    const result = await recomputeStoredEvaluation(project, cycle, reference);
+    const result = await recomputeStoredEvaluation(project, cycle, reference, options2);
     const requiredAction6 = active?.value?.recovery_position ? {
       strategy: active.value.recovery_position.required_strategy,
       operation: active.value.recovery_position.operation,
@@ -16626,14 +15371,42 @@ async function getConvergenceStatus(projectRoot) {
     };
   }
 }
-async function findSatisfiedStartingEvaluation(project, scopeReference) {
-  const source = (await evaluationSources(project)).at(-1);
+async function getConvergenceStatus(projectRoot, options2 = {}) {
+  let project;
+  let active;
+  try {
+    project = await readProject(projectRoot, options2);
+    active = await readActiveCycle(project, options2);
+    return await computeConvergenceStatus(project, active, options2);
+  } catch (error) {
+    return {
+      query_valid: false,
+      outcome: "indeterminate",
+      current: false,
+      evaluation: null,
+      evaluation_reference: null,
+      cycle: active?.value ?? null,
+      pending_action: project?.manifest.pending_action ?? null,
+      request_completion: null,
+      required_action: null,
+      blockers: [{
+        code: error.projectCode ?? (project ? "artifact-validation-failed" : "cycle-state-invalid"),
+        message: error.message,
+        required_action: null,
+        ...error.projectDetails ?? {}
+      }]
+    };
+  }
+}
+async function findSatisfiedStartingEvaluation(project, scopeReference, options2 = {}) {
+  const source = (await evaluationSources(project, options2)).at(-1);
   if (!source) return null;
   try {
     const result = await recomputeStoredEvaluation(
       project,
       source.cycle,
-      source.evaluationReference
+      source.evaluationReference,
+      options2
     );
     if (sameScopeReference(result.stored.target_scope, scopeReference) && result.stored.outcome === "satisfied" && result.current && result.recomputed.outcome === "satisfied") {
       return {
@@ -16648,27 +15421,27 @@ async function findSatisfiedStartingEvaluation(project, scopeReference) {
   }
   return null;
 }
-async function findHistoricalSatisfiedEvaluation(project, scopeReference, preferredReference = null) {
-  for (const source of (await evaluationSources(project)).reverse()) {
+async function findHistoricalSatisfiedEvaluation(project, scopeReference, preferredReference = null, options2 = {}) {
+  for (const source of (await evaluationSources(project, options2)).reverse()) {
     if (preferredReference && (source.evaluationReference.evaluation_id !== preferredReference.evaluation_id || source.evaluationReference.path !== preferredReference.path || source.evaluationReference.sha256 !== preferredReference.sha256)) continue;
     try {
-      const { value: evaluation } = await readEvaluationReference(project, source.evaluationReference);
+      const { value: evaluation } = await readEvaluationReference(project, source.evaluationReference, options2);
       if (evaluation.outcome !== "satisfied" || !sameScopeReference(evaluation.target_scope, scopeReference)) {
         continue;
       }
       for (const artifact of evaluation.evidence_graph.artifacts) {
         if (["manuscript", "tracker", "story-state"].includes(artifact.role)) continue;
-        const contents = await readFile14(path15.resolve(project.root, artifact.path));
+        const contents = await readFile13(path14.resolve(project.root, artifact.path));
         if (sha256Bytes(contents) !== artifact.sha256) throw new Error("Historical evidence changed");
       }
-      const scopeText = await readFile14(path15.resolve(project.root, scopeReference.snapshot_path), "utf8");
+      const scopeText = await readFile13(path14.resolve(project.root, scopeReference.snapshot_path), "utf8");
       if (sha256Bytes(scopeText) !== scopeReference.snapshot_sha256) continue;
       const scope = JSON.parse(scopeText);
-      if (!validateScopeSnapshot(scope).valid) continue;
-      const inventoryText = await readFile14(path15.resolve(project.root, scope.inventory.path), "utf8");
+      if (!validateScopeSnapshot(scope, options2).valid) continue;
+      const inventoryText = await readFile13(path14.resolve(project.root, scope.inventory.path), "utf8");
       if (sha256Bytes(inventoryText) !== scope.inventory.sha256) continue;
       const inventory = JSON.parse(inventoryText);
-      if (!validateInventorySnapshot(inventory).valid) continue;
+      if (!validateInventorySnapshot(inventory, options2).valid) continue;
       const scopeFiles = scope.files.map((file) => `${file.path}\0${file.sha256}`).sort();
       const inventoryFiles = inventory.files.map((file) => `${file.path}\0${file.sha256}`).sort();
       if (JSON.stringify(scopeFiles) !== JSON.stringify(inventoryFiles)) continue;
@@ -16725,13 +15498,13 @@ var init_convergence = __esm({
 });
 
 // scripts/lib/cycles.mjs
-import { readdir as readdir5, readFile as readFile15 } from "node:fs/promises";
-import path16 from "node:path";
+import { readdir as readdir5, readFile as readFile14 } from "node:fs/promises";
+import path15 from "node:path";
 function cycleError(instancePath, message, keyword = "cycle-identity") {
   return { instancePath, keyword, message, params: {} };
 }
-function validateConvergenceCycle(value, options = {}) {
-  const schema = validateConvergenceCycleSchema(value, options);
+function validateConvergenceCycle(value, options2 = {}) {
+  const schema = validateConvergenceCycleSchema(value, options2);
   const errors = [...schema.errors];
   if (value?.completion && value?.target_evaluation && value.completion.target_evaluation_id !== value.target_evaluation.evaluation_id) {
     errors.push(
@@ -16759,34 +15532,30 @@ function validationError2(result) {
 ${result.errors.map((error) => `${error.instancePath || "/"} ${error.message}`).join("\n")}`
   );
 }
-async function readProject3(projectRoot) {
-  const root2 = path16.resolve(projectRoot);
-  const manifestPath = path16.join(root2, ".author-toolkit", "project.json");
-  const manifest = JSON.parse(await readFile15(manifestPath, "utf8"));
-  const validation = validateManifest(manifest);
-  if (!validation.valid) throw validationError2(validation);
-  return { root: root2, manifestPath, manifest };
+async function readProject2(projectRoot, options2 = {}) {
+  const { readProject: readProjectWithReferences } = await Promise.resolve().then(() => (init_evaluation_artifacts(), evaluation_artifacts_exports));
+  return readProjectWithReferences(projectRoot, options2);
 }
 function activeCyclePath(root2, manifest) {
-  return path16.resolve(root2, manifest.paths.convergence, "active-cycle.json");
+  return path15.resolve(root2, manifest.paths.convergence, "active-cycle.json");
 }
-async function readActiveCycle3(root2, manifest) {
+async function readActiveCycle2(root2, manifest, options2 = {}) {
   const file = activeCyclePath(root2, manifest);
   let value;
   try {
-    value = JSON.parse(await readFile15(file, "utf8"));
+    value = JSON.parse(await readFile14(file, "utf8"));
   } catch (error) {
     if (error.code === "ENOENT") return null;
     throw error;
   }
-  const validation = validateConvergenceCycle(value);
+  const validation = validateConvergenceCycle(value, options2);
   if (!validation.valid) throw validationError2(validation);
   if (value.status !== "active") {
     throw new Error(`The living cycle record must be active: ${file}`);
   }
   return { value, file };
 }
-function requiredAction3(cycle) {
+function requiredAction2(cycle) {
   const position = cycle?.recovery_position;
   if (!position) return null;
   return {
@@ -16796,7 +15565,7 @@ function requiredAction3(cycle) {
   };
 }
 function blocked(code, message, cycle) {
-  const action3 = requiredAction3(cycle);
+  const action3 = requiredAction2(cycle);
   return {
     valid: false,
     cycle: cycle ?? null,
@@ -16804,8 +15573,8 @@ function blocked(code, message, cycle) {
     blockers: [{ code, message, required_action: action3 }]
   };
 }
-function coordinationFailure3(project, active, options = {}) {
-  const blockers = coordinationBlockers(project, active, options);
+function coordinationFailure2(project, active, options2 = {}) {
+  const blockers = coordinationBlockers(project, active, options2);
   if (blockers.length === 0) return null;
   return {
     valid: false,
@@ -16829,7 +15598,7 @@ async function completedPointerFailure(project, active = null) {
 async function externalReconciliationBlock(project, reference, cycle = null) {
   if (!reference?.snapshot_path) return null;
   const previous = JSON.parse(
-    await readFile15(path16.resolve(project.root, reference.snapshot_path), "utf8")
+    await readFile14(path15.resolve(project.root, reference.snapshot_path), "utf8")
   );
   const current = await collectVersionedInventory(project.root, project.manifest);
   const currentScope = project.manifest.current_scope;
@@ -16878,8 +15647,8 @@ function emptyChangeSet() {
     dependency_affected: []
   };
 }
-function operationTime3(options) {
-  return utcTimestamp(options);
+function operationTime2(options2) {
+  return utcTimestamp(options2);
 }
 function validateStartRequest(request) {
   const allowed = /* @__PURE__ */ new Set(["cycle_id", "initiating_strategy", "bootstrap", "starting_scope"]);
@@ -16899,8 +15668,8 @@ function validateStartRequest(request) {
     throw new Error("start-cycle requires starting_scope, which may be null only for bootstrap");
   }
 }
-async function completedBootstrapExists(root2, manifest) {
-  const directory = path16.resolve(root2, manifest.paths.convergence, "cycles");
+async function completedBootstrapExists(root2, manifest, options2 = {}) {
+  const directory = path15.resolve(root2, manifest.paths.convergence, "cycles");
   let entries;
   try {
     entries = await readdir5(directory, { withFileTypes: true });
@@ -16910,18 +15679,18 @@ async function completedBootstrapExists(root2, manifest) {
   }
   for (const entry of entries) {
     if (!entry.isFile() || !entry.name.endsWith(".json")) continue;
-    const value = JSON.parse(await readFile15(path16.join(directory, entry.name), "utf8"));
-    const validation = validateConvergenceCycle(value);
+    const value = JSON.parse(await readFile14(path15.join(directory, entry.name), "utf8"));
+    const validation = validateConvergenceCycle(value, options2);
     if (!validation.valid) throw validationError2(validation);
     if (value.status === "completed" && value.bootstrap) return true;
   }
   return false;
 }
-async function startCycle(projectRoot, request, options = {}) {
+async function startCycle(projectRoot, request, options2 = {}) {
   validateStartRequest(request);
-  const project = await readProject3(projectRoot);
+  const project = await readProject2(projectRoot, options2);
   const { root: root2, manifest } = project;
-  const active = await readActiveCycle3(root2, manifest);
+  const active = await readActiveCycle2(root2, manifest, options2);
   if (active) {
     return blocked(
       "active-cycle-exists",
@@ -16931,7 +15700,7 @@ async function startCycle(projectRoot, request, options = {}) {
   }
   const completedProblem = await completedPointerFailure(project, active);
   if (completedProblem) return completedProblem;
-  const coordination = coordinationFailure3(project, active);
+  const coordination = coordinationFailure2(project, active);
   if (coordination) return coordination;
   const currentScope = manifest.current_scope;
   const external = await externalReconciliationBlock(
@@ -16951,7 +15720,7 @@ async function startCycle(projectRoot, request, options = {}) {
       try {
         const reference = manifest.manuscript_reconciliation;
         await verifyArtifactReference(root2, reference);
-        const value = JSON.parse(await readFile15(path16.resolve(root2, reference.path), "utf8"));
+        const value = JSON.parse(await readFile14(path15.resolve(root2, reference.path), "utf8"));
         if (!validateManuscriptReconciliationSchema(value).valid) {
           throw new Error("The manifest reconciliation artifact is invalid");
         }
@@ -16972,10 +15741,11 @@ async function startCycle(projectRoot, request, options = {}) {
     try {
       if (!request.starting_scope) throw new Error("A starting scope snapshot is required");
       await verifyScopeReference(project, request.starting_scope, {
-        requireCurrent: !reconciledStart
+        requireCurrent: !reconciledStart,
+        ...options2
       });
       if (reconciledStart) {
-        await verifyScopeReference(project, reconciledStart.target_scope);
+        await verifyScopeReference(project, reconciledStart.target_scope, options2);
       }
     } catch (error) {
       return blocked(
@@ -16996,8 +15766,9 @@ async function startCycle(projectRoot, request, options = {}) {
     const starting = reconciledStart ? await findHistoricalSatisfiedEvaluation2(
       project,
       request.starting_scope,
-      reconciledStart.previous_evaluation
-    ) : await findSatisfiedStartingEvaluation2(project, request.starting_scope);
+      reconciledStart.previous_evaluation,
+      options2
+    ) : await findSatisfiedStartingEvaluation2(project, request.starting_scope, options2);
     if (!starting) {
       return blocked(
         "starting-evaluation-indeterminate",
@@ -17030,7 +15801,7 @@ async function startCycle(projectRoot, request, options = {}) {
       manifest.manuscript_root,
       manifest.paths
     );
-    if (inventory.files.length > 0 || await completedBootstrapExists(root2, manifest)) {
+    if (inventory.files.length > 0 || await completedBootstrapExists(root2, manifest, options2)) {
       return blocked(
         "bootstrap-requires-empty-project",
         "Bootstrap is available only for the first empty manuscript; use the full-manuscript recovery path instead.",
@@ -17040,7 +15811,7 @@ async function startCycle(projectRoot, request, options = {}) {
       );
     }
   }
-  const timestamp2 = operationTime3(options);
+  const timestamp2 = operationTime2(options2);
   const cycle = {
     schema_version: "1.0.0",
     cycle_id: request.cycle_id,
@@ -17070,7 +15841,7 @@ async function startCycle(projectRoot, request, options = {}) {
     created_at: timestamp2,
     updated_at: timestamp2
   };
-  const validation = validateConvergenceCycle(cycle);
+  const validation = validateConvergenceCycle(cycle, options2);
   if (!validation.valid) throw validationError2(validation);
   const file = activeCyclePath(root2, manifest);
   try {
@@ -17078,7 +15849,7 @@ async function startCycle(projectRoot, request, options = {}) {
 `);
   } catch (error) {
     if (error.code !== "EEXIST") throw error;
-    const concurrent = await readActiveCycle3(root2, manifest);
+    const concurrent = await readActiveCycle2(root2, manifest, options2);
     return blocked(
       "active-cycle-exists",
       `Cycle ${concurrent.value.cycle_id} is active; finish its required recovery action before starting another manuscript-changing cycle.`,
@@ -17089,29 +15860,29 @@ async function startCycle(projectRoot, request, options = {}) {
     valid: true,
     cycle,
     cycle_path: file,
-    required_action: requiredAction3(cycle),
+    required_action: requiredAction2(cycle),
     blockers: []
   };
 }
 function recoveryActionOrDefault(cycle) {
-  return requiredAction3(cycle) ?? {
+  return requiredAction2(cycle) ?? {
     strategy: "revise-draft",
     operation: "intake",
     command: "revise-draft"
   };
 }
-async function getCycleStatus(projectRoot) {
+async function getCycleStatus(projectRoot, options2 = {}) {
   const { getConvergenceStatus: getConvergenceStatus2 } = await Promise.resolve().then(() => (init_convergence(), convergence_exports));
-  return getConvergenceStatus2(projectRoot);
+  return getConvergenceStatus2(projectRoot, options2);
 }
-async function checkConvergenceGate(projectRoot) {
-  const status = await getCycleStatus(projectRoot);
+async function checkConvergenceGate(projectRoot, options2 = {}) {
+  const status = await getCycleStatus(projectRoot, options2);
   return {
     valid: status.query_valid && status.outcome === "satisfied" && status.current,
     ...status
   };
 }
-async function assertCycleAllowsOperation(projectRoot, request) {
+async function assertCycleAllowsOperation(projectRoot, request, options2 = {}) {
   if (!STRATEGIES.has(request.strategy)) throw new Error("A valid strategy is required");
   if (typeof request.operation !== "string" || request.operation.length === 0) {
     throw new Error("An operation is required");
@@ -17119,9 +15890,9 @@ async function assertCycleAllowsOperation(projectRoot, request) {
   if (typeof request.manuscript_change !== "boolean") {
     throw new Error("manuscript_change must be explicit");
   }
-  const project = await readProject3(projectRoot);
+  const project = await readProject2(projectRoot, options2);
   const { root: root2, manifest } = project;
-  const active = await readActiveCycle3(root2, manifest);
+  const active = await readActiveCycle2(root2, manifest, options2);
   if (!request.manuscript_change) {
     return {
       valid: true,
@@ -17133,7 +15904,7 @@ async function assertCycleAllowsOperation(projectRoot, request) {
   }
   const completedProblem = await completedPointerFailure(project, active);
   if (completedProblem) return { ...completedProblem, read_only: false };
-  const coordination = coordinationFailure3(project, active);
+  const coordination = coordinationFailure2(project, active);
   if (coordination) return { ...coordination, read_only: false };
   const currentScope = manifest.current_scope;
   const trackedReference = active?.value.target_scope ?? active?.value.starting_scope ?? (currentScope ? {
@@ -17197,7 +15968,7 @@ async function assertCycleAllowsOperation(projectRoot, request) {
       valid: true,
       read_only: false,
       cycle,
-      required_action: requiredAction3(cycle),
+      required_action: requiredAction2(cycle),
       blockers: []
     };
   }
@@ -17258,21 +16029,21 @@ function mergeRelatedArtifacts(current, requested) {
   return merged;
 }
 async function verifyArtifactReference(root2, reference) {
-  const contents = await readFile15(path16.resolve(root2, reference.path));
+  const contents = await readFile14(path15.resolve(root2, reference.path));
   if (sha256Bytes(contents) !== reference.sha256) {
     throw new Error(`Referenced artifact hash does not match: ${reference.path}`);
   }
 }
-async function verifyScopeReference(project, reference, { requireCurrent = true } = {}) {
+async function verifyScopeReference(project, reference, { requireCurrent = true, ...options2 } = {}) {
   const { root: root2, manifestPath, manifest } = project;
   await verifyArtifactReference(root2, {
     path: reference.snapshot_path,
     sha256: reference.snapshot_sha256
   });
-  const snapshot = JSON.parse(await readFile15(path16.resolve(root2, reference.snapshot_path), "utf8"));
-  const validation = validateScopeSnapshot(snapshot);
+  const snapshot = JSON.parse(await readFile14(path15.resolve(root2, reference.snapshot_path), "utf8"));
+  const validation = validateScopeSnapshot(snapshot, options2);
   if (!validation.valid) throw validationError2(validation);
-  const expectedPath = path16.posix.join(
+  const expectedPath = path15.posix.join(
     manifest.paths.convergence,
     "scopes",
     `${reference.scope_id}-${reference.scope_fingerprint}.json`
@@ -17294,7 +16065,7 @@ async function verifyScopeReference(project, reference, { requireCurrent = true 
 }
 async function readReferencedJson(root2, reference) {
   await verifyArtifactReference(root2, reference);
-  return JSON.parse(await readFile15(path16.resolve(root2, reference.path), "utf8"));
+  return JSON.parse(await readFile14(path15.resolve(root2, reference.path), "utf8"));
 }
 function creationFileIdentity(file) {
   return {
@@ -17305,7 +16076,7 @@ function creationFileIdentity(file) {
     status: file.status
   };
 }
-async function deriveCreationChangeSet(project, cycle, candidate, request) {
+async function deriveCreationChangeSet(project, cycle, candidate, request, options2 = {}) {
   if (!request.related_artifacts?.creation_commits) return null;
   const batchReferences = candidate.related_artifacts.creation_batches;
   const commitReferences = candidate.related_artifacts.creation_commits;
@@ -17322,8 +16093,8 @@ async function deriveCreationChangeSet(project, cycle, candidate, request) {
   const [commitReference] = commitReferences;
   const batch = await readReferencedJson(project.root, batchReference);
   const commit = await readReferencedJson(project.root, commitReference);
-  const batchValidation = validateCreationBatch(batch);
-  const commitValidation = validateCreationCommit(commit);
+  const batchValidation = validateCreationBatch(batch, options2);
+  const commitValidation = validateCreationCommit(commit, options2);
   if (!batchValidation.valid || !commitValidation.valid) {
     throw new Error(
       `Creation artifacts are invalid: ${[...batchValidation.errors, ...commitValidation.errors].map((error) => error.message).join("; ")}`
@@ -17346,11 +16117,11 @@ async function deriveCreationChangeSet(project, cycle, candidate, request) {
     path: candidate.target_scope.snapshot_path,
     sha256: candidate.target_scope.snapshot_sha256
   });
-  const trackerText = await readFile15(
-    path16.resolve(project.root, project.manifest.paths.audit_tracker),
+  const trackerText = await readFile14(
+    path15.resolve(project.root, project.manifest.paths.audit_tracker),
     "utf8"
   );
-  const tracker = await parseTrackerState(trackerText, project.root);
+  const tracker = await parseTrackerState(trackerText, project.root, options2);
   const acceptances = batch.approvals.map(
     (approvalId) => tracker.approvals.find((approval) => approval.id === approvalId)
   );
@@ -17443,12 +16214,12 @@ async function deriveCreationChangeSet(project, cycle, candidate, request) {
     dependency_affected: []
   };
 }
-async function deriveRejectedCreationChangeSet(project, cycle, candidate, request) {
+async function deriveRejectedCreationChangeSet(project, cycle, candidate, request, options2 = {}) {
   if (!request.related_artifacts?.creation_batches || candidate.related_artifacts.creation_commits.length > 0) return null;
   const references = candidate.related_artifacts.creation_batches;
   if (references.length !== 1) return null;
   const batch = await readReferencedJson(project.root, references[0]);
-  const validation = validateCreationBatch(batch);
+  const validation = validateCreationBatch(batch, options2);
   if (!validation.valid) throw validationError2(validation);
   if (batch.status !== "rejected") return null;
   if (cycle.initiating_strategy !== "write-fiction" || !cycle.starting_scope) {
@@ -17457,11 +16228,11 @@ async function deriveRejectedCreationChangeSet(project, cycle, candidate, reques
   if (batch.batch_id !== references[0].batch_id || batch.commit !== null || batch.scope_id !== cycle.starting_scope.scope_id || JSON.stringify(candidate.target_scope) !== JSON.stringify(cycle.starting_scope)) {
     throw new Error("Rejected staging must preserve the exact starting scope and have no commit journal");
   }
-  const trackerText = await readFile15(
-    path16.resolve(project.root, project.manifest.paths.audit_tracker),
+  const trackerText = await readFile14(
+    path15.resolve(project.root, project.manifest.paths.audit_tracker),
     "utf8"
   );
-  const tracker = await parseTrackerState(trackerText, project.root);
+  const tracker = await parseTrackerState(trackerText, project.root, options2);
   const rejectionApprovals = batch.approvals.map((approvalId) => tracker.approvals.find((approval2) => approval2.id === approvalId)).filter((approval2) => approval2?.type === "creation-rejection");
   const approval = rejectionApprovals.length === 1 ? rejectionApprovals[0] : null;
   const approved = tracker.valid && approval && approval.status === "approved" && approval.operation === "chapter-review" && approval.scopeId === cycle.starting_scope.scope_id && sameApprovalPaths(approval.paths, batch.files.map((file) => file.path)) && creationApprovalBindingMatches(approval, batch, cycle.starting_scope.scope_fingerprint);
@@ -17483,8 +16254,8 @@ async function deriveRejectedCreationChangeSet(project, cycle, candidate, reques
     dependency_affected: []
   };
 }
-async function transitionCycleLocked(project, request, options) {
-  const active = await readActiveCycle3(project.root, project.manifest);
+async function transitionCycleLocked(project, request, options2) {
+  const active = await readActiveCycle2(project.root, project.manifest, options2);
   if (!active) {
     return {
       stateWritten: false,
@@ -17518,8 +16289,8 @@ async function transitionCycleLocked(project, request, options) {
       )
     };
   }
-  const coordination = coordinationFailure3(project, active, {
-    allowOperationId: options.recoveryOperationId ?? null
+  const coordination = coordinationFailure2(project, active, {
+    allowOperationId: options2.recoveryOperationId ?? null
   });
   if (coordination) return { stateWritten: false, result: coordination };
   const creationDiagnosticLink = cycle.initiating_strategy === "write-fiction" && (request.related_artifacts?.creation_batches?.length ?? 0) > 0;
@@ -17578,21 +16349,22 @@ async function transitionCycleLocked(project, request, options) {
     related_artifacts: mergeRelatedArtifacts(cycle.related_artifacts, request.related_artifacts),
     change_set: request.change_set ?? cycle.change_set,
     work_set: request.work_set ?? cycle.work_set,
-    updated_at: operationTime3(options)
+    updated_at: operationTime2(options2)
   };
-  const validation = validateConvergenceCycle(candidate);
+  const validation = validateConvergenceCycle(candidate, options2);
   if (!validation.valid) throw validationError2(validation);
   try {
     if (candidate.target_scope) {
       await verifyScopeReference(project, candidate.target_scope, {
-        requireCurrent: Object.hasOwn(request, "target_scope")
+        requireCurrent: Object.hasOwn(request, "target_scope"),
+        ...options2
       });
     }
     if (candidate.change_set.from_scope) {
-      await verifyScopeReference(project, candidate.change_set.from_scope, { requireCurrent: false });
+      await verifyScopeReference(project, candidate.change_set.from_scope, { requireCurrent: false, ...options2 });
     }
     if (candidate.change_set.to_scope) {
-      await verifyScopeReference(project, candidate.change_set.to_scope, { requireCurrent: false });
+      await verifyScopeReference(project, candidate.change_set.to_scope, { requireCurrent: false, ...options2 });
     }
     if (candidate.requested_pass) {
       await verifyArtifactReference(project.root, candidate.requested_pass);
@@ -17602,11 +16374,11 @@ async function transitionCycleLocked(project, request, options) {
         await verifyArtifactReference(project.root, reference);
       }
     }
-    const creationChangeSet = await deriveCreationChangeSet(project, cycle, candidate, request);
+    const creationChangeSet = await deriveCreationChangeSet(project, cycle, candidate, request, options2);
     if (creationChangeSet) candidate.change_set = creationChangeSet;
-    const rejectedChangeSet = await deriveRejectedCreationChangeSet(project, cycle, candidate, request);
+    const rejectedChangeSet = await deriveRejectedCreationChangeSet(project, cycle, candidate, request, options2);
     if (rejectedChangeSet) candidate.change_set = rejectedChangeSet;
-    const validated = validateConvergenceCycle(candidate);
+    const validated = validateConvergenceCycle(candidate, options2);
     if (!validated.valid) throw validationError2(validated);
   } catch (error) {
     return {
@@ -17617,26 +16389,26 @@ async function transitionCycleLocked(project, request, options) {
   await beginCycleOperation(project, active, {
     kind: request.related_artifacts?.creation_commits ? "creation-publication" : "cycle-transition",
     operationId
-  }, options);
+  }, options2);
   await writeAtomicVerified(active.file, `${JSON.stringify(candidate, null, 2)}
 `);
-  await runCheckpoint(options, "cycle-written");
-  await finishCycleOperation(project, candidate, operationId, options);
+  await runCheckpoint(options2, "cycle-written");
+  await finishCycleOperation(project, candidate, operationId, options2);
   return {
     stateWritten: true,
     result: {
       valid: true,
       cycle: candidate,
       cycle_path: active.file,
-      required_action: requiredAction3(candidate),
+      required_action: requiredAction2(candidate),
       blockers: []
     }
   };
 }
-async function transitionCycle(projectRoot, request, options = {}) {
+async function transitionCycle(projectRoot, request, options2 = {}) {
   validateTransitionRequest(request);
-  const project = await readProject3(projectRoot);
-  const initial = await readActiveCycle3(project.root, project.manifest);
+  const project = await readProject2(projectRoot, options2);
+  const initial = await readActiveCycle2(project.root, project.manifest, options2);
   if (!initial) {
     return {
       ...blocked(
@@ -17650,11 +16422,11 @@ async function transitionCycle(projectRoot, request, options = {}) {
     };
   }
   const lock = await acquireDirectoryLock(
-    path16.resolve(project.root, project.manifest.paths.convergence, "active-cycle.lock"),
+    path15.resolve(project.root, project.manifest.paths.convergence, "active-cycle.lock"),
     {
-      timeoutMs: options.lockTimeoutMs ?? 1e4,
-      retryMs: options.lockRetryMs ?? 20,
-      now: options.now
+      timeoutMs: options2.lockTimeoutMs ?? 1e4,
+      retryMs: options2.lockRetryMs ?? 20,
+      now: options2.now
     }
   );
   if (!lock.acquired) {
@@ -17673,7 +16445,7 @@ async function transitionCycle(projectRoot, request, options = {}) {
   let operationError;
   try {
     const completedProblem = await completedPointerFailure(project, initial);
-    outcome = completedProblem ? { stateWritten: false, result: completedProblem } : await transitionCycleLocked(project, request, options);
+    outcome = completedProblem ? { stateWritten: false, result: completedProblem } : await transitionCycleLocked(project, request, options2);
   } catch (error) {
     operationError = error;
   }
@@ -17730,9 +16502,2314 @@ var init_cycles = __esm({
   }
 });
 
-// scripts/lib/reconciliation.mjs
+// scripts/lib/revision-execution.mjs
+import { readFile as readFile15 } from "node:fs/promises";
+import path16 from "node:path";
+function executionError(instancePath, message, keyword = "revision-execution") {
+  return { instancePath, keyword, message, params: {} };
+}
+function sameReference2(left, right) {
+  return left?.path === right?.path && left?.sha256 === right?.sha256;
+}
+function samePassReference2(left, right) {
+  return sameReference2(left, right) && left?.pass_id === right?.pass_id && left?.pass_fingerprint === right?.pass_fingerprint;
+}
+function sameScopeReference2(left, right) {
+  return left?.scope_id === right?.scope_id && left?.scope_fingerprint === right?.scope_fingerprint && left?.snapshot_path === right?.snapshot_path && left?.snapshot_sha256 === right?.snapshot_sha256;
+}
+function scopeArtifact(reference) {
+  return { path: reference.snapshot_path, sha256: reference.snapshot_sha256 };
+}
+function pathWithin(root2, candidate) {
+  const base = root2.replace(/\/+$/, "");
+  return base === "." || candidate === base || candidate.startsWith(`${base}/`);
+}
+function formatErrors3(errors) {
+  return errors.map((error) => `${error.instancePath || "/"} ${error.message}`).join("; ");
+}
+function validateRevisionExecution(value, options2 = {}) {
+  const schema = validateRevisionExecutionSchema(value, options2);
+  const errors = [...schema.errors];
+  const files = /* @__PURE__ */ new Set();
+  for (const [index, file] of (value?.files ?? []).entries()) {
+    if (files.has(file.path)) {
+      errors.push(executionError(`/files/${index}/path`, `duplicate execution path: ${file.path}`));
+    }
+    files.add(file.path);
+    if (file.action === "create" && file.input_sha256 !== null) {
+      errors.push(executionError(`/files/${index}/input_sha256`, "create requires a null input hash"));
+    }
+    if (file.action !== "create" && file.input_sha256 === null) {
+      errors.push(executionError(`/files/${index}/input_sha256`, `${file.action} requires an input hash`));
+    }
+    if (file.action === "delete" && file.output_sha256 !== null) {
+      errors.push(executionError(`/files/${index}/output_sha256`, "delete requires a null output hash"));
+    }
+    if (file.action !== "delete" && file.output_sha256 === null) {
+      errors.push(executionError(`/files/${index}/output_sha256`, `${file.action} requires an output hash`));
+    }
+    if (file.action === "modify" && file.input_sha256 === file.output_sha256) {
+      errors.push(executionError(`/files/${index}/output_sha256`, "modify must change manuscript content"));
+    }
+  }
+  const findingIds = /* @__PURE__ */ new Set();
+  for (const [index, finding] of (value?.finding_dispositions ?? []).entries()) {
+    if (findingIds.has(finding.finding_id)) {
+      errors.push(executionError(
+        `/finding_dispositions/${index}/finding_id`,
+        `duplicate finding disposition: ${finding.finding_id}`
+      ));
+    }
+    findingIds.add(finding.finding_id);
+  }
+  const backupIds = /* @__PURE__ */ new Set();
+  for (const [index, backup] of (value?.backups ?? []).entries()) {
+    if (backupIds.has(backup.backup_id)) {
+      errors.push(executionError(`/backups/${index}/backup_id`, `duplicate backup: ${backup.backup_id}`));
+    }
+    backupIds.add(backup.backup_id);
+  }
+  for (const file of value?.files ?? []) {
+    if (file.action === "create") continue;
+    const covered = (value?.backups ?? []).some(
+      (backup) => backup.files.some((candidate) => candidate.path === file.path)
+    );
+    if (!covered) {
+      errors.push(executionError("/backups", `${file.action} requires a backup for ${file.path}`));
+    }
+  }
+  return { valid: errors.length === 0, errors };
+}
+async function readProject3(projectRoot, options2 = {}) {
+  const { readProject: readProjectWithReferences } = await Promise.resolve().then(() => (init_evaluation_artifacts(), evaluation_artifacts_exports));
+  return readProjectWithReferences(projectRoot, options2);
+}
+async function readActiveCycle3(project, options2 = {}) {
+  const file = path16.resolve(project.root, project.manifest.paths.convergence, "active-cycle.json");
+  const value = JSON.parse(await readFile15(file, "utf8"));
+  const validation = validateConvergenceCycleSchema(value, options2);
+  if (!validation.valid || value.status !== "active") {
+    throw new Error(`Living cycle is invalid: ${formatErrors3(validation.errors)}`);
+  }
+  return { value, file };
+}
+async function readVerifiedArtifact(project, reference) {
+  const contents = await readFile15(path16.resolve(project.root, reference.path));
+  if (sha256Bytes(contents) !== reference.sha256) {
+    throw new Error(`Referenced artifact hash does not match: ${reference.path}`);
+  }
+  return contents;
+}
+async function readCurrentScope(project, reference, options2 = {}) {
+  const contents = await readVerifiedArtifact(project, scopeArtifact(reference));
+  const snapshot = JSON.parse(contents.toString("utf8"));
+  const validation = validateScopeSnapshotSchema(snapshot, options2);
+  if (!validation.valid) throw new Error(formatErrors3(validation.errors));
+  if (snapshot.scope_id !== reference.scope_id || snapshot.scope_fingerprint !== reference.scope_fingerprint) {
+    throw new Error("Scope snapshot identity differs from its reference");
+  }
+  return snapshot;
+}
+async function readCurrentPass(project, reference, options2 = {}) {
+  const contents = await readVerifiedArtifact(project, reference);
+  const pass = JSON.parse(contents.toString("utf8"));
+  const validation = validateRequestedPassSchema(pass, options2);
+  if (!validation.valid) throw new Error(formatErrors3(validation.errors));
+  if (pass.pass_id !== reference.pass_id || pass.pass_fingerprint !== reference.pass_fingerprint) {
+    throw new Error("Requested-pass identity differs from its reference");
+  }
+  return pass;
+}
+function contextError(code, message, pathValue = null, artifactId = null) {
+  return {
+    code,
+    message,
+    ...pathValue ? { path: pathValue } : {},
+    ...artifactId ? { artifact_id: artifactId } : {}
+  };
+}
+function revisionApprovalFingerprint(execution, operation) {
+  return sha256Bytes(JSON.stringify({
+    operation,
+    plan: {
+      plan_id: execution.plan.plan_id,
+      path: execution.plan.path,
+      sha256: execution.plan.sha256
+    },
+    batch: {
+      batch_id: execution.batch.batch_id,
+      path: execution.batch.path,
+      sha256: execution.batch.sha256
+    },
+    input_scope: {
+      scope_id: execution.input_scope.scope_id,
+      scope_fingerprint: execution.input_scope.scope_fingerprint
+    },
+    files: execution.files.map(({ path: filePath, action: action3, input_sha256, output_sha256 }) => ({
+      path: filePath,
+      action: action3,
+      input_sha256,
+      output_sha256
+    }))
+  }));
+}
+function revisionApprovalBindingMatches(approval, execution, operation) {
+  const expected = /* @__PURE__ */ new Map([
+    ["plan_id", execution.plan.plan_id],
+    ["plan_sha256", execution.plan.sha256],
+    ["batch_id", execution.batch.batch_id],
+    ["batch_sha256", execution.batch.sha256],
+    ["scope_fingerprint", execution.input_scope.scope_fingerprint],
+    ["revision_approval", revisionApprovalFingerprint(execution, operation)]
+  ]);
+  const tokens = String(approval.reason ?? "").split(/\s+/).filter(Boolean);
+  return [...expected].every(
+    ([token, value]) => tokens.filter((candidate) => candidate.startsWith(`${token}=`)).length === 1 && tokens.includes(`${token}=${value}`)
+  );
+}
+async function validateExecutionContext(project, execution, options2 = {}) {
+  const errors = [];
+  const structural = validateRevisionExecution(execution, options2);
+  if (!structural.valid) return { valid: false, errors: structural.errors.map(
+    (error) => contextError("revision-execution-contract-invalid", error.message)
+  ) };
+  try {
+    await readVerifiedArtifact(project, execution.plan);
+    await readVerifiedArtifact(project, execution.batch);
+    const pass = await readCurrentPass(project, execution.requested_pass, options2);
+    const inputScope = await readCurrentScope(project, execution.input_scope, options2);
+    const targetScope = await readCurrentScope(project, execution.target_scope, options2);
+    if (!sameScopeReference2(pass.target_scope, execution.target_scope)) {
+      errors.push(contextError(
+        "revision-pass-target-mismatch",
+        "The execution requested pass must name its target scope."
+      ));
+    }
+    if (options2.expectedPass && !samePassReference2(execution.requested_pass, options2.expectedPass)) {
+      errors.push(contextError("revision-pass-mismatch", "The execution pass differs from the active requested pass."));
+    }
+    if (options2.expectedScope && !sameScopeReference2(execution.target_scope, options2.expectedScope)) {
+      errors.push(contextError("revision-target-mismatch", "The execution target differs from the active target scope."));
+    }
+    if (options2.requireCurrentTarget) {
+      if (!sameScopeReference2(execution.target_scope, project.manifest.current_scope)) {
+        errors.push(contextError(
+          "revision-target-mismatch",
+          "The verified execution target is not manifest current_scope."
+        ));
+      }
+      const full = await validateFullManuscriptScope(project.manifest, project.manifestPath, options2);
+      if (!full.valid) {
+        errors.push(contextError(
+          "revision-target-not-current",
+          `The execution target is not a current full-manuscript scope: ${formatErrors3(full.errors)}`
+        ));
+      }
+    }
+    if (options2.requireCurrentDecisions !== false) {
+      const tracker = options2.trackerState ?? await parseTrackerState(
+        await readFile15(path16.resolve(project.root, project.manifest.paths.audit_tracker), "utf8"),
+        project.root,
+        options2
+      );
+      if (!tracker.valid) {
+        errors.push(contextError("revision-tracker-invalid", formatErrors3(tracker.errors)));
+      }
+      const approvalById = new Map(tracker.approvals.map((approval) => [approval.id, approval]));
+      const allPaths = execution.files.map((file) => file.path);
+      for (const approvalId of execution.approval_ids) {
+        const approval = approvalById.get(approvalId);
+        if (!approval || approval.status !== "approved" || approval.type !== "edit" || approval.operation !== "chapter-revision" || approval.scopeId !== execution.input_scope.scope_id || JSON.stringify(approval.paths) !== JSON.stringify(allPaths) || !revisionApprovalBindingMatches(approval, execution, "chapter-revision")) {
+          errors.push(contextError(
+            "revision-approval-mismatch",
+            `Edit approval ${approvalId} does not authorize the exact plan, batch, input scope fingerprint, ordered paths, actions, input hashes, and approved outputs.`,
+            null,
+            approvalId
+          ));
+        }
+      }
+      const planDecisions = execution.author_decision_ids.map((decisionId) => approvalById.get(decisionId)).filter((decision) => decision?.type === "revision-plan");
+      if (planDecisions.length !== 1) {
+        errors.push(contextError(
+          "revision-author-decision-missing",
+          "The execution requires exactly one revision-plan author decision."
+        ));
+      } else {
+        const decision = planDecisions[0];
+        if (decision.status !== "approved" || decision.operation !== "revision-plan" || decision.scopeId !== execution.input_scope.scope_id || JSON.stringify(decision.paths) !== JSON.stringify(allPaths) || !revisionApprovalBindingMatches(decision, execution, "revision-plan")) {
+          errors.push(contextError(
+            "revision-author-decision-missing",
+            `Plan decision ${decision.id} does not authorize the exact plan, batch, operation, input scope fingerprint, ordered paths, actions, input hashes, and approved outputs.`,
+            null,
+            decision.id
+          ));
+        }
+      }
+      const decisionIds = /* @__PURE__ */ new Set([
+        ...execution.author_decision_ids,
+        ...execution.finding_dispositions.map((finding) => finding.author_decision_id)
+      ]);
+      for (const decisionId of decisionIds) {
+        const decision = approvalById.get(decisionId);
+        if (decision?.type === "revision-plan") continue;
+        if (!decision || decision.status !== "approved" || ![execution.input_scope.scope_id, execution.target_scope.scope_id].includes(decision.scopeId) || !allPaths.every((filePath) => decision.paths.includes(filePath))) {
+          errors.push(contextError(
+            "revision-author-decision-missing",
+            `Author decision ${decisionId} is not approved for the exact execution scope and paths.`,
+            null,
+            decisionId
+          ));
+        }
+      }
+      for (const finding of execution.finding_dispositions) {
+        const tracked = tracker.findings.find((candidate) => candidate.id === finding.finding_id);
+        const expectedStatus = {
+          execute: "resolved",
+          defer: "deferred",
+          dismiss: "dismissed"
+        }[finding.disposition];
+        const pendingDecision = options2.pendingFindingDecision?.findingId === finding.finding_id && options2.pendingFindingDecision.status === expectedStatus && tracked?.status === "open";
+        if (tracked && finding.disposition !== "execute" && tracked.status !== expectedStatus && !pendingDecision) {
+          errors.push(contextError(
+            "revision-finding-disposition-mismatch",
+            `Finding ${finding.finding_id} is ${tracked.status}, not ${expectedStatus}.`,
+            null,
+            finding.finding_id
+          ));
+        }
+        if (tracked && finding.disposition === "execute" && !["open", "resolved"].includes(tracked.status)) {
+          errors.push(contextError(
+            "revision-finding-disposition-mismatch",
+            `Finding ${finding.finding_id} cannot use verified execution while ${tracked.status}.`,
+            null,
+            finding.finding_id
+          ));
+        }
+      }
+    }
+    const backupIndexPath = path16.resolve(project.root, project.manifest.paths.backups, "index.json");
+    let backupIndex = null;
+    try {
+      backupIndex = JSON.parse(await readFile15(backupIndexPath, "utf8"));
+      const indexValidation = await validateBackupIndex(project.root, backupIndex, options2);
+      if (!indexValidation.valid) {
+        errors.push(contextError(
+          "revision-backup-invalid",
+          `Backup index is invalid: ${formatErrors3(indexValidation.errors)}`,
+          backupIndexPath
+        ));
+      }
+    } catch (error) {
+      errors.push(contextError("revision-backup-invalid", `Cannot read backup index: ${error.message}`, backupIndexPath));
+    }
+    const backupsByPath = /* @__PURE__ */ new Map();
+    for (const backup of execution.backups) {
+      const indexedBackup = backupIndex?.backups.find((entry) => entry.backup_id === backup.backup_id);
+      if (!indexedBackup || indexedBackup.approval_id !== backup.approval_id || indexedBackup.operation !== "chapter-revision" || indexedBackup.scope_id !== execution.input_scope.scope_id || indexedBackup.scope_fingerprint !== execution.input_scope.scope_fingerprint || !sameReference2(indexedBackup.manifest, backup.manifest)) {
+        errors.push(contextError(
+          "revision-backup-invalid",
+          `Backup ${backup.backup_id} is not the same indexed backup evidence required by this execution.`,
+          backup.manifest.path,
+          backup.backup_id
+        ));
+      }
+      if (!execution.approval_ids.includes(backup.approval_id)) {
+        errors.push(contextError(
+          "revision-backup-approval-mismatch",
+          `Backup ${backup.backup_id} does not name an edit approval for this execution.`,
+          null,
+          backup.backup_id
+        ));
+      }
+      if (!pathWithin(project.manifest.paths.backups, backup.manifest.path)) {
+        errors.push(contextError(
+          "revision-backup-invalid",
+          `Backup manifest is outside registered paths.backups: ${backup.manifest.path}.`,
+          backup.manifest.path,
+          backup.backup_id
+        ));
+      }
+      try {
+        const contents = await readVerifiedArtifact(project, backup.manifest);
+        const manifest = JSON.parse(contents.toString("utf8"));
+        if (manifest.backup_id !== backup.backup_id || manifest.operation !== "chapter-revision" || manifest.approval_id !== backup.approval_id || manifest.scope_id !== execution.input_scope.scope_id || manifest.scope_fingerprint !== execution.input_scope.scope_fingerprint) {
+          errors.push(contextError(
+            "revision-backup-invalid",
+            `Backup manifest ${backup.manifest.path} does not bind the recorded backup, operation, approval, and input scope.`,
+            backup.manifest.path,
+            backup.backup_id
+          ));
+        }
+        const manifestBackupFiles = (manifest.files ?? []).filter((file) => file.action !== "create").map((file) => ({
+          path: file.path,
+          backup_path: file.backup_path,
+          sha256: file.input_sha256
+        }));
+        if (JSON.stringify(manifestBackupFiles) !== JSON.stringify(backup.files)) {
+          errors.push(contextError(
+            "revision-backup-invalid",
+            `Execution backup files differ from the indexed manifest for ${backup.backup_id}.`,
+            backup.manifest.path,
+            backup.backup_id
+          ));
+        }
+        for (const manifestFile of manifest.files ?? []) {
+          const executionFile = execution.files.find((file) => file.path === manifestFile.path);
+          if (!executionFile || executionFile.action !== manifestFile.action || executionFile.input_sha256 !== manifestFile.input_sha256 || executionFile.output_sha256 !== manifestFile.output_sha256) {
+            errors.push(contextError(
+              "revision-backup-invalid",
+              `Indexed backup action ${manifestFile.path} is not part of the exact approved execution.`,
+              manifestFile.path,
+              backup.backup_id
+            ));
+          }
+        }
+      } catch (error) {
+        errors.push(contextError("revision-backup-invalid", error.message, backup.manifest.path, backup.backup_id));
+      }
+      for (const file of backup.files) {
+        if (backupsByPath.has(file.path)) {
+          errors.push(contextError("revision-backup-invalid", `Duplicate backup content for ${file.path}.`, file.path));
+        }
+        backupsByPath.set(file.path, file);
+        if (!pathWithin(project.manifest.paths.backups, file.backup_path)) {
+          errors.push(contextError(
+            "revision-backup-invalid",
+            `Backup content is outside registered paths.backups: ${file.backup_path}.`,
+            file.backup_path
+          ));
+        }
+        try {
+          const contents = await readFile15(path16.resolve(project.root, file.backup_path));
+          if (sha256Bytes(contents) !== file.sha256) {
+            errors.push(contextError("revision-backup-invalid", `Backup content hash differs for ${file.path}.`, file.backup_path));
+          }
+        } catch (error) {
+          errors.push(contextError("revision-backup-invalid", error.message, file.backup_path));
+        }
+      }
+    }
+    const outputByPath = new Map(targetScope.files.map((file) => [file.path, file.sha256]));
+    for (const file of execution.files) {
+      const input = inputScope.files.find((candidate) => candidate.path === file.path);
+      if (file.action === "create") {
+        if (input) errors.push(contextError("revision-input-mismatch", `Create target already exists in the input scope: ${file.path}.`, file.path));
+      } else if (input?.sha256 !== file.input_sha256) {
+        errors.push(contextError("revision-input-mismatch", `Input scope hash differs for ${file.path}.`, file.path));
+      }
+      if (file.action !== "create") {
+        const backup = backupsByPath.get(file.path);
+        if (backup?.sha256 !== file.input_sha256) {
+          errors.push(contextError("revision-backup-invalid", `Backup does not preserve input ${file.path}@${file.input_sha256}.`, file.path));
+        }
+      }
+      if (execution.status === "verified") {
+        if (file.action === "delete") {
+          if (outputByPath.has(file.path)) {
+            errors.push(contextError("revision-target-diff-mismatch", `Deleted path remains in the target scope: ${file.path}.`, file.path));
+          }
+        } else if (outputByPath.get(file.path) !== file.output_sha256) {
+          errors.push(contextError("revision-target-diff-mismatch", `Target scope does not contain approved output ${file.path}@${file.output_sha256}.`, file.path));
+        }
+      }
+      try {
+        const contents = await readFile15(path16.resolve(project.root, file.path));
+        const currentHash = sha256Bytes(contents);
+        if (options2.requireInputs && file.action !== "create" && currentHash !== file.input_sha256) {
+          errors.push(contextError("revision-input-mismatch", `Current manuscript input changed for ${file.path}.`, file.path));
+        }
+        if (options2.requireInputs && file.action === "create") {
+          errors.push(contextError("revision-input-mismatch", `Create target is not absent: ${file.path}.`, file.path));
+        }
+        if (options2.requireOutputs) {
+          if (file.action === "delete") {
+            errors.push(contextError("revision-output-mismatch", `Deleted output still exists: ${file.path}.`, file.path));
+          } else if (currentHash !== file.output_sha256) {
+            errors.push(contextError("revision-output-mismatch", `Current output hash differs for ${file.path}.`, file.path));
+          }
+        }
+      } catch (error) {
+        if (error.code === "ENOENT") {
+          if (options2.requireInputs && file.action !== "create") {
+            errors.push(contextError("revision-input-mismatch", `Input manuscript is unavailable: ${file.path}.`, file.path));
+          }
+          if (options2.requireOutputs && file.action !== "delete") {
+            errors.push(contextError("revision-output-mismatch", `Output manuscript is unavailable: ${file.path}.`, file.path));
+          }
+        } else {
+          errors.push(contextError("revision-manuscript-unreadable", error.message, file.path));
+        }
+      }
+    }
+    if (execution.status === "verified") {
+      const expectedActions = /* @__PURE__ */ new Map();
+      const targetChanges = diffManuscriptInventories(inputScope, targetScope);
+      for (const file of targetChanges.created) expectedActions.set(file.path, "create");
+      for (const file of targetChanges.modified) expectedActions.set(file.path, "modify");
+      for (const file of targetChanges.deleted) expectedActions.set(file.path, "delete");
+      for (const file of targetChanges.reordered) {
+        if (!expectedActions.has(file.path)) expectedActions.set(file.path, "reorder");
+      }
+      for (const [filePath, action3] of expectedActions) {
+        const actual = execution.files.find((file) => file.path === filePath);
+        if (!actual || actual.action !== action3) {
+          errors.push(contextError(
+            "revision-target-diff-mismatch",
+            `Target change ${filePath} (${action3}) is not the recorded approved action.`,
+            filePath
+          ));
+        }
+      }
+      for (const file of execution.files) {
+        if (!expectedActions.has(file.path) && file.action !== "reorder") {
+          errors.push(contextError(
+            "revision-target-diff-mismatch",
+            `Execution records a change absent from the verified target: ${file.path}.`,
+            file.path
+          ));
+        }
+      }
+    }
+  } catch (error) {
+    errors.push(contextError("revision-artifact-mismatch", error.message));
+  }
+  return { valid: errors.length === 0, errors };
+}
+async function validateRevisionExecutionAgainstDisk(projectRoot, execution, options2 = {}) {
+  const project = await readProject3(projectRoot, options2);
+  return validateExecutionContext(project, execution, {
+    requireOutputs: execution.status === "verified",
+    requireCurrentTarget: execution.status === "verified",
+    ...options2
+  });
+}
+function operationTime3(options2) {
+  return utcTimestamp(options2);
+}
+function executionReference(execution, relativePath, text) {
+  return {
+    execution_id: execution.execution_id,
+    path: relativePath,
+    sha256: sha256Bytes(text)
+  };
+}
+function requiredAction3(cycle) {
+  const position = cycle?.recovery_position;
+  return position ? {
+    strategy: position.required_strategy,
+    operation: position.operation,
+    command: position.required_strategy
+  } : null;
+}
+function failure2(code, message, cycle, errors = []) {
+  return {
+    valid: false,
+    cycle,
+    execution: null,
+    state_written: false,
+    blockers: [{
+      code,
+      message: errors.length > 0 ? `${message} ${errors.map((error) => error.message).join(" ")}` : message,
+      required_action: requiredAction3(cycle)
+    }]
+  };
+}
+function coordinationFailure3(project, active, options2 = {}) {
+  const blockers = coordinationBlockers(project, active, options2);
+  if (blockers.length === 0) return null;
+  return {
+    valid: false,
+    cycle: active?.value ?? null,
+    execution: null,
+    state_written: false,
+    blockers,
+    required_action: blockers[0].required_action
+  };
+}
+function checkCycleRequest(cycle, request) {
+  if (cycle.cycle_id !== request.cycle_id) {
+    return failure2("cycle-id-mismatch", `The requested cycle does not match active cycle ${cycle.cycle_id}.`, cycle);
+  }
+  if (cycle.revision !== request.expected_revision) {
+    return failure2(
+      "cycle-revision-conflict",
+      `Expected cycle revision ${request.expected_revision}, but the active revision is ${cycle.revision}.`,
+      cycle
+    );
+  }
+  return null;
+}
+async function withCycleLock(project, options2, operation) {
+  const lock = await acquireDirectoryLock(
+    path16.resolve(project.root, project.manifest.paths.convergence, "active-cycle.lock"),
+    {
+      timeoutMs: options2.lockTimeoutMs ?? 1e4,
+      retryMs: options2.lockRetryMs ?? 20,
+      now: options2.now
+    }
+  );
+  if (!lock.acquired) {
+    return failure2(
+      lock.code === "timeout" ? "cycle-transition-lock-timeout" : "cycle-transition-lock-error",
+      `Cannot coordinate revision execution at ${lock.directory}: ${lock.error.message}`,
+      null
+    );
+  }
+  let value;
+  let operationError;
+  try {
+    const pointer = await completedPointerBlocker(project);
+    value = pointer ? {
+      ...failure2(pointer.code, pointer.message, null),
+      blockers: [pointer],
+      required_action: pointer.required_action
+    } : await operation();
+  } catch (error) {
+    operationError = error;
+  }
+  const released = await releaseDirectoryLock(lock);
+  if (!released.released) {
+    return {
+      ...failure2(
+        "cycle-transition-lock-release-error",
+        `Cannot release revision execution lock ${lock.directory}: ${released.error.message}.${operationError ? ` Operation also failed: ${operationError.message}` : ""}`,
+        value?.cycle ?? null
+      ),
+      state_written: value?.state_written ?? null
+    };
+  }
+  if (operationError) throw operationError;
+  return value;
+}
+function validatePrepareRequest(request, { independent = false } = {}) {
+  const operation = independent ? "prepare-draft-revision-execution" : "prepare-revision-execution";
+  const allowed = /* @__PURE__ */ new Set([
+    "execution_id",
+    "plan",
+    "batch",
+    "requested_pass",
+    "input_scope",
+    "finding_dispositions",
+    "author_decision_ids",
+    "approval_ids",
+    "backups",
+    "files",
+    ...independent ? [] : ["cycle_id", "expected_revision"]
+  ]);
+  for (const key of Object.keys(request)) {
+    if (!allowed.has(key)) throw new Error(`Unknown ${operation} input field: ${key}`);
+  }
+  if (!/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(request.execution_id ?? "") || !independent && !Number.isInteger(request.expected_revision) || !Array.isArray(request.files)) {
+    throw new Error(`${operation} requires exact ${independent ? "independent" : "cycle"}, execution, and file batch identities`);
+  }
+}
+async function readOptionalActiveCycle(project, options2 = {}) {
+  try {
+    return await readActiveCycle3(project, options2);
+  } catch (error) {
+    if (error.code === "ENOENT") return null;
+    throw error;
+  }
+}
+function independentCycleFailure(active) {
+  return active ? failure2(
+    "active-cycle-exists",
+    `Cycle ${active.value.cycle_id} is active; use its cycle-bound revision execution operations instead of the independent draft path.`,
+    active.value
+  ) : null;
+}
+async function prepareDraftRevisionExecution(projectRoot, request, options2 = {}) {
+  validatePrepareRequest(request, { independent: true });
+  const project = await readProject3(projectRoot, options2);
+  return withCycleLock(project, options2, async () => {
+    const initial = await readOptionalActiveCycle(project, options2);
+    const activeFailure = independentCycleFailure(initial);
+    if (activeFailure) return activeFailure;
+    const currentScope = project.manifest.current_scope;
+    const external = await externalReconciliationBlock(
+      project,
+      currentScope ? {
+        scope_id: currentScope.scope_id,
+        scope_fingerprint: currentScope.scope_fingerprint,
+        snapshot_path: currentScope.snapshot_path,
+        snapshot_sha256: currentScope.snapshot_sha256
+      } : null
+    );
+    if (external) return external;
+    const createdAt = operationTime3(options2);
+    const execution = {
+      schema_version: "1.0.0",
+      execution_id: request.execution_id,
+      cycle_id: null,
+      plan: request.plan,
+      batch: request.batch,
+      requested_pass: request.requested_pass,
+      input_scope: request.input_scope,
+      target_scope: request.input_scope,
+      finding_dispositions: request.finding_dispositions,
+      author_decision_ids: request.author_decision_ids,
+      approval_ids: request.approval_ids,
+      backups: request.backups,
+      files: request.files,
+      status: "prepared",
+      created_at: createdAt,
+      verified_at: null
+    };
+    const validation = await validateExecutionContext(project, execution, {
+      requireInputs: true,
+      requireCurrentTarget: true,
+      expectedPass: request.requested_pass,
+      expectedScope: request.input_scope
+    });
+    if (!validation.valid) {
+      return failure2("revision-execution-preparation-invalid", "The approved independent batch, backups, decisions, or current inputs do not validate.", null, validation.errors);
+    }
+    const concurrent = await readOptionalActiveCycle(project, options2);
+    const concurrentFailure = independentCycleFailure(concurrent);
+    if (concurrentFailure) return concurrentFailure;
+    const relative = path16.posix.join(
+      project.manifest.paths.convergence,
+      "executions",
+      `${execution.execution_id}.json`
+    );
+    const absolute = path16.resolve(project.root, relative);
+    const text = `${JSON.stringify(execution, null, 2)}
+`;
+    try {
+      await createNoClobberVerified(absolute, text);
+    } catch (error) {
+      if (error.code !== "EEXIST") throw error;
+      return failure2("revision-execution-already-exists", `Independent revision execution ${execution.execution_id} already exists; prepare a new execution ID instead of replacing it.`, null);
+    }
+    await runCheckpoint(options2, "execution-written");
+    return {
+      valid: true,
+      cycle: null,
+      execution,
+      execution_path: absolute,
+      execution_reference: executionReference(execution, relative, text),
+      state_written: true,
+      blockers: []
+    };
+  });
+}
+async function prepareRevisionExecution(projectRoot, request, options2 = {}) {
+  validatePrepareRequest(request);
+  const project = await readProject3(projectRoot, options2);
+  return withCycleLock(project, options2, async () => {
+    const active = await readActiveCycle3(project, options2);
+    const cycle = active.value;
+    const cycleFailure = checkCycleRequest(cycle, request);
+    if (cycleFailure) return cycleFailure;
+    const coordination = coordinationFailure3(project, active, {
+      allowOperationId: options2.recoveryOperationId ?? null
+    });
+    if (coordination) return coordination;
+    const external = await externalReconciliationBlock(
+      project,
+      cycle.target_scope ?? cycle.starting_scope,
+      cycle
+    );
+    if (external) return external;
+    if (cycle.recovery_position.operation !== "chapter-revision") {
+      return failure2("cycle-operation-mismatch", "Revision preparation requires the active chapter-revision recovery position.", cycle);
+    }
+    if (!sameScopeReference2(cycle.target_scope, request.input_scope)) {
+      return failure2("revision-input-scope-mismatch", "The execution input must be the active full-manuscript target before editing.", cycle);
+    }
+    if (!samePassReference2(cycle.requested_pass, request.requested_pass)) {
+      return failure2("revision-pass-mismatch", "The execution must name the active requested pass.", cycle);
+    }
+    const createdAt = operationTime3(options2);
+    let execution = {
+      schema_version: "1.0.0",
+      execution_id: request.execution_id,
+      cycle_id: request.cycle_id,
+      plan: request.plan,
+      batch: request.batch,
+      requested_pass: request.requested_pass,
+      input_scope: request.input_scope,
+      target_scope: request.input_scope,
+      finding_dispositions: request.finding_dispositions,
+      author_decision_ids: request.author_decision_ids,
+      approval_ids: request.approval_ids,
+      backups: request.backups,
+      files: request.files,
+      status: "prepared",
+      created_at: createdAt,
+      verified_at: null
+    };
+    const validation = await validateExecutionContext(project, execution, {
+      requireInputs: true,
+      requireCurrentTarget: true,
+      expectedPass: cycle.requested_pass,
+      expectedScope: cycle.target_scope
+    });
+    if (!validation.valid) {
+      return failure2("revision-execution-preparation-invalid", "The approved batch, backups, decisions, or current inputs do not validate.", cycle, validation.errors);
+    }
+    const relative = path16.posix.join(
+      project.manifest.paths.convergence,
+      "executions",
+      `${execution.execution_id}.json`
+    );
+    const absolute = path16.resolve(project.root, relative);
+    if (options2.recoveryOperationId !== execution.execution_id) {
+      try {
+        await readFile15(absolute, "utf8");
+        return failure2("revision-execution-already-exists", `Revision execution ${execution.execution_id} already exists; reconcile it explicitly instead of replacing it.`, cycle);
+      } catch (error) {
+        if (error.code !== "ENOENT") throw error;
+      }
+    }
+    await beginCycleOperation(project, active, {
+      kind: "revision-preparation",
+      operationId: execution.execution_id,
+      artifactId: execution.execution_id
+    }, options2);
+    let text = `${JSON.stringify(execution, null, 2)}
+`;
+    try {
+      await createNoClobberVerified(absolute, text);
+    } catch (error) {
+      if (error.code !== "EEXIST") throw error;
+      if (options2.recoveryOperationId !== execution.execution_id) {
+        return failure2("revision-execution-already-exists", `Revision execution ${execution.execution_id} already exists; reconcile it explicitly instead of replacing it.`, cycle);
+      }
+      const existingText = await readFile15(absolute, "utf8");
+      const existing = JSON.parse(existingText);
+      const expected = { ...execution, created_at: existing.created_at };
+      if (JSON.stringify(expected) !== JSON.stringify(existing)) {
+        return failure2("revision-execution-identity-mismatch", "The stored prepared execution differs from the interrupted operation.", cycle);
+      }
+      execution = existing;
+      text = existingText;
+    }
+    await runCheckpoint(options2, "execution-written");
+    const reference = executionReference(execution, relative, text);
+    const updated = {
+      ...cycle,
+      revision: cycle.revision + 1,
+      related_artifacts: {
+        ...cycle.related_artifacts,
+        plans: cycle.related_artifacts.plans.some((plan) => plan.plan_id === execution.plan.plan_id) ? cycle.related_artifacts.plans : [...cycle.related_artifacts.plans, execution.plan],
+        revision_executions: [...cycle.related_artifacts.revision_executions, reference]
+      },
+      recovery_position: {
+        operation: "chapter-revision",
+        reason: "The prepared approved batch awaits verified manuscript outputs; approval alone does not establish execution.",
+        required_strategy: cycle.current_strategy,
+        operation_id: execution.execution_id
+      },
+      updated_at: createdAt
+    };
+    await writeAtomicVerified(active.file, `${JSON.stringify(updated, null, 2)}
+`);
+    await runCheckpoint(options2, "cycle-written");
+    await finishCycleOperation(project, updated, execution.execution_id, options2);
+    return {
+      valid: true,
+      cycle: updated,
+      execution,
+      execution_path: absolute,
+      execution_reference: reference,
+      state_written: true,
+      blockers: []
+    };
+  });
+}
+function validateVerifyRequest(request, { independent = false } = {}) {
+  const operation = independent ? "verify-draft-revision-execution" : "verify-revision-execution";
+  const allowed = /* @__PURE__ */ new Set([
+    "execution_id",
+    "requested_pass",
+    "target_scope",
+    ...independent ? [] : ["cycle_id", "expected_revision"]
+  ]);
+  for (const key of Object.keys(request)) {
+    if (!allowed.has(key)) throw new Error(`Unknown ${operation} input field: ${key}`);
+  }
+  if (!independent && !Number.isInteger(request.expected_revision) || !request.requested_pass || !request.target_scope) {
+    throw new Error(`${operation} requires exact ${independent ? "independent" : "cycle"}, execution, pass, and target identities`);
+  }
+}
+async function validateFinalPassExtension(project, preparedReference, finalReference) {
+  if (samePassReference2(preparedReference, finalReference)) return [];
+  const prepared = await readCurrentPass(project, preparedReference);
+  const final = await readCurrentPass(project, finalReference);
+  const errors = [];
+  for (const requirement of prepared.required_operations) {
+    const finalRequirement = final.required_operations.find(
+      (candidate) => candidate.operation === requirement.operation
+    );
+    if (!finalRequirement) {
+      errors.push(contextError(
+        "revision-pass-requirements-reduced",
+        `Final pass removed prepared operation ${requirement.operation}.`
+      ));
+      continue;
+    }
+    const missingSubchecks = requirement.subchecks.filter(
+      (subcheck) => !finalRequirement.subchecks.includes(subcheck)
+    );
+    if (missingSubchecks.length > 0) {
+      errors.push(contextError(
+        "revision-pass-requirements-reduced",
+        `Final pass reduced prepared ${requirement.operation} subchecks: ${missingSubchecks.join(", ")}.`
+      ));
+    }
+  }
+  for (const request of prepared.requested_subchecks) {
+    const finalRequirement = final.required_operations.find(
+      (candidate) => candidate.operation === request.operation
+    );
+    if (!finalRequirement?.subchecks.includes(request.subcheck)) {
+      errors.push(contextError(
+        "revision-pass-requirements-reduced",
+        `Final pass removed prepared requested subcheck ${request.operation}/${request.subcheck}.`,
+        null,
+        request.author_decision_id
+      ));
+    }
+  }
+  return errors;
+}
+function buildChangeSet(inputScope, targetScope) {
+  return diffManuscriptInventories(inputScope, targetScope);
+}
+async function verifyRevisionExecution(projectRoot, request, options2 = {}) {
+  validateVerifyRequest(request);
+  const project = await readProject3(projectRoot, options2);
+  return withCycleLock(project, options2, async () => {
+    const active = await readActiveCycle3(project, options2);
+    const cycle = active.value;
+    const cycleFailure = checkCycleRequest(cycle, request);
+    if (cycleFailure) return cycleFailure;
+    const coordination = coordinationFailure3(project, active, {
+      allowOperationId: options2.recoveryOperationId ?? null
+    });
+    if (coordination) return coordination;
+    const relative = path16.posix.join(
+      project.manifest.paths.convergence,
+      "executions",
+      `${request.execution_id}.json`
+    );
+    const absolute = path16.resolve(project.root, relative);
+    const prepared = JSON.parse(await readFile15(absolute, "utf8"));
+    if (prepared.execution_id !== request.execution_id || prepared.cycle_id !== request.cycle_id || !["prepared", ...options2.recoveryOperationId === request.execution_id ? ["verified"] : []].includes(prepared.status) || !cycle.related_artifacts.revision_executions.some((reference2) => reference2.execution_id === request.execution_id)) {
+      return failure2("revision-execution-identity-mismatch", "The prepared execution is not linked to this active cycle.", cycle);
+    }
+    let passReductions;
+    try {
+      passReductions = await validateFinalPassExtension(
+        project,
+        prepared.requested_pass,
+        request.requested_pass
+      );
+    } catch (error) {
+      return failure2("revision-execution-verification-invalid", "The prepared or final requested pass cannot be trusted.", cycle, [contextError("revision-artifact-mismatch", error.message)]);
+    }
+    if (passReductions.length > 0) {
+      return failure2("revision-pass-requirements-reduced", "The final pass must preserve every prepared operation and subcheck; it may only add requirements.", cycle, passReductions);
+    }
+    const verifiedAt = prepared.status === "verified" ? prepared.verified_at : operationTime3(options2);
+    const execution = {
+      ...prepared,
+      requested_pass: request.requested_pass,
+      target_scope: request.target_scope,
+      status: "verified",
+      verified_at: verifiedAt
+    };
+    const validation = await validateExecutionContext(project, execution, {
+      requireOutputs: true,
+      requireCurrentTarget: true,
+      expectedPass: request.requested_pass,
+      expectedScope: request.target_scope
+    });
+    if (!validation.valid) {
+      const code = validation.errors.some((error) => error.code === "revision-output-mismatch") ? "revision-output-mismatch" : "revision-execution-verification-invalid";
+      return failure2(code, "The prepared batch cannot be verified against current manuscript and target evidence.", cycle, validation.errors);
+    }
+    await beginCycleOperation(project, active, {
+      kind: "revision-verification",
+      operationId: execution.execution_id,
+      artifactId: execution.execution_id
+    }, options2);
+    const text = `${JSON.stringify(execution, null, 2)}
+`;
+    if (prepared.status === "prepared") await writeAtomicVerified(absolute, text);
+    await runCheckpoint(options2, "execution-written");
+    const reference = executionReference(execution, relative, text);
+    const changeFromReference = cycle.bootstrap ? null : cycle.starting_scope ?? execution.input_scope;
+    const changeFromScope = cycle.bootstrap ? { files: [] } : await readCurrentScope(project, changeFromReference);
+    const targetScope = await readCurrentScope(project, execution.target_scope);
+    const changes = buildChangeSet(changeFromScope, targetScope);
+    const updated = {
+      ...cycle,
+      revision: cycle.revision + 1,
+      target_scope: request.target_scope,
+      requested_pass: request.requested_pass,
+      related_artifacts: {
+        ...cycle.related_artifacts,
+        revision_executions: cycle.related_artifacts.revision_executions.map(
+          (candidate) => candidate.execution_id === request.execution_id ? reference : candidate
+        )
+      },
+      change_set: {
+        from_scope: changeFromReference,
+        to_scope: execution.target_scope,
+        ...changes
+      },
+      recovery_position: {
+        operation: "current-scope-review",
+        reason: "Verified revision outputs require current affected coverage and another full-target current-scope review.",
+        required_strategy: cycle.current_strategy,
+        operation_id: execution.execution_id
+      },
+      updated_at: verifiedAt
+    };
+    const cycleValidation = validateConvergenceCycleSchema(updated);
+    if (!cycleValidation.valid) throw new Error(formatErrors3(cycleValidation.errors));
+    await writeAtomicVerified(active.file, `${JSON.stringify(updated, null, 2)}
+`);
+    await runCheckpoint(options2, "cycle-written");
+    await finishCycleOperation(project, updated, execution.execution_id, options2);
+    return {
+      valid: true,
+      cycle: updated,
+      execution,
+      execution_path: absolute,
+      execution_reference: reference,
+      state_written: true,
+      blockers: []
+    };
+  });
+}
+async function verifyDraftRevisionExecution(projectRoot, request, options2 = {}) {
+  validateVerifyRequest(request, { independent: true });
+  const project = await readProject3(projectRoot, options2);
+  return withCycleLock(project, options2, async () => {
+    const initial = await readOptionalActiveCycle(project, options2);
+    const activeFailure = independentCycleFailure(initial);
+    if (activeFailure) return activeFailure;
+    const relative = path16.posix.join(
+      project.manifest.paths.convergence,
+      "executions",
+      `${request.execution_id}.json`
+    );
+    const absolute = path16.resolve(project.root, relative);
+    let prepared;
+    try {
+      prepared = JSON.parse(await readFile15(absolute, "utf8"));
+    } catch (error) {
+      return failure2("revision-execution-unavailable", `Cannot read independent prepared execution ${request.execution_id}: ${error.message}`, null);
+    }
+    if (prepared.execution_id !== request.execution_id || prepared.cycle_id !== null || prepared.status !== "prepared") {
+      return failure2("revision-execution-identity-mismatch", "The independent execution is missing, already verified, or bound to a cycle.", null);
+    }
+    let passReductions;
+    try {
+      passReductions = await validateFinalPassExtension(
+        project,
+        prepared.requested_pass,
+        request.requested_pass
+      );
+    } catch (error) {
+      return failure2("revision-execution-verification-invalid", "The prepared or final requested pass cannot be trusted.", null, [contextError("revision-artifact-mismatch", error.message)]);
+    }
+    if (passReductions.length > 0) {
+      return failure2("revision-pass-requirements-reduced", "The final pass must preserve every prepared operation and subcheck; it may only add requirements.", null, passReductions);
+    }
+    const verifiedAt = operationTime3(options2);
+    const execution = {
+      ...prepared,
+      requested_pass: request.requested_pass,
+      target_scope: request.target_scope,
+      status: "verified",
+      verified_at: verifiedAt
+    };
+    const validation = await validateExecutionContext(project, execution, {
+      requireOutputs: true,
+      requireCurrentTarget: true,
+      expectedPass: request.requested_pass,
+      expectedScope: request.target_scope
+    });
+    if (!validation.valid) {
+      const code = validation.errors.some((error) => error.code === "revision-output-mismatch") ? "revision-output-mismatch" : "revision-execution-verification-invalid";
+      return failure2(code, "The independent prepared batch cannot be verified against current manuscript and target evidence.", null, validation.errors);
+    }
+    const concurrent = await readOptionalActiveCycle(project, options2);
+    const concurrentFailure = independentCycleFailure(concurrent);
+    if (concurrentFailure) return concurrentFailure;
+    const text = `${JSON.stringify(execution, null, 2)}
+`;
+    await writeAtomicVerified(absolute, text);
+    await runCheckpoint(options2, "execution-written");
+    return {
+      valid: true,
+      cycle: null,
+      execution,
+      execution_path: absolute,
+      execution_reference: executionReference(execution, relative, text),
+      state_written: true,
+      blockers: []
+    };
+  });
+}
+async function getRequestCompletion(projectRoot, cycle, options2 = {}) {
+  if (!cycle || cycle.initiating_strategy !== "revise-request") return null;
+  const project = await readProject3(projectRoot, options2);
+  const blockers = [];
+  const action3 = requiredAction3(cycle);
+  function block(code, message) {
+    if (!blockers.some((blocker2) => blocker2.code === code && blocker2.message === message)) {
+      blockers.push({ code, message, required_action: action3 });
+    }
+  }
+  let tracker = { findings: [], approvals: [], valid: false, errors: [] };
+  try {
+    const trackerText = await readFile15(
+      path16.resolve(project.root, project.manifest.paths.audit_tracker),
+      "utf8"
+    );
+    tracker = await parseTrackerState(trackerText, project.root, options2);
+    if (!tracker.valid) block("request-tracker-invalid", formatErrors3(tracker.errors));
+  } catch (error) {
+    block("request-tracker-invalid", error.message);
+  }
+  const executions = [];
+  for (const reference of cycle.related_artifacts?.revision_executions ?? []) {
+    try {
+      const contents = await readVerifiedArtifact(project, reference);
+      const execution = JSON.parse(contents.toString("utf8"));
+      if (execution.execution_id !== reference.execution_id || execution.cycle_id !== cycle.cycle_id || !validateRevisionExecution(execution, options2).valid) {
+        block("revision-execution-identity-mismatch", `Revision execution ${reference.execution_id} is invalid or belongs to another cycle.`);
+        continue;
+      }
+      const currentExecution = samePassReference2(execution.requested_pass, cycle.requested_pass) && sameScopeReference2(execution.target_scope, cycle.target_scope);
+      executions.push({ execution, currentExecution });
+      if (execution.status !== "verified") {
+        block("approved-edit-unexecuted", `Approved revision execution ${execution.execution_id} is not verified.`);
+        continue;
+      }
+      const disk = await validateExecutionContext(project, execution, {
+        requireOutputs: currentExecution,
+        requireCurrentTarget: currentExecution,
+        requireCurrentDecisions: currentExecution,
+        expectedPass: currentExecution ? cycle.requested_pass : execution.requested_pass,
+        expectedScope: currentExecution ? cycle.target_scope : execution.target_scope
+      });
+      for (const error of disk.errors) block(error.code, error.message);
+    } catch (error) {
+      block("revision-execution-unavailable", error.message);
+    }
+  }
+  const verifiedExecutions = executions.filter(({ execution, currentExecution }) => execution.status === "verified" && currentExecution).map(({ execution }) => execution);
+  const skips = [];
+  for (const reference of cycle.related_artifacts?.no_edit_skips ?? []) {
+    try {
+      const contents = await readVerifiedArtifact(project, reference);
+      const skip = JSON.parse(contents.toString("utf8"));
+      if (skip.skip_id !== reference.skip_id || !validateNoEditSkipSchema(skip).valid || !samePassReference2(skip.requested_pass, cycle.requested_pass) || skip.scope_fingerprint !== cycle.target_scope?.scope_fingerprint) {
+        block("no-edit-identity-mismatch", `No-edit skip ${reference.skip_id} is not bound to the active request.`);
+        continue;
+      }
+      skips.push(skip);
+      const decision = tracker.approvals.find((approval) => approval.id === skip.author_decision_id);
+      if (!decision || decision.status !== "approved" || decision.scopeId !== cycle.target_scope?.scope_id || !skip.operations.includes(decision.operation)) {
+        block("no-edit-author-decision-missing", `No-edit skip ${skip.skip_id} lacks its current author decision.`);
+      }
+    } catch (error) {
+      block("no-edit-evidence-missing", error.message);
+    }
+  }
+  if (verifiedExecutions.length === 0) {
+    for (const operation of ["revision-plan", "chapter-revision"]) {
+      if (!skips.some((skip) => skip.operations.includes(operation))) {
+        block("request-decision-incomplete", `The request has no verified execution or no-edit decision for ${operation}.`);
+      }
+    }
+  }
+  try {
+    const pass = await readCurrentPass(project, cycle.requested_pass);
+    for (const request of pass.requested_subchecks) {
+      const decision = tracker.approvals.find((approval) => approval.id === request.author_decision_id);
+      if (!decision || decision.status !== "approved" || decision.operation !== request.operation || decision.scopeId !== cycle.target_scope?.scope_id) {
+        block("requested-subcheck-author-decision-missing", `Newly requested ${request.operation}/${request.subcheck} lacks its current author decision.`);
+      }
+    }
+  } catch (error) {
+    block("requested-pass-unavailable", error.message);
+  }
+  const coveredFindings = new Set(skips.flatMap((skip) => skip.covered_findings));
+  for (const finding of tracker.findings) {
+    if (finding.status === "stale") continue;
+    if (finding.status === "open") {
+      block("open-findings", `Request finding ${finding.id} still awaits an author decision or verified resolution.`);
+      continue;
+    }
+    if (finding.status === "resolved") {
+      const executed = verifiedExecutions.some(
+        (execution) => execution.finding_dispositions.some(
+          (disposition) => disposition.finding_id === finding.id && disposition.disposition === "execute"
+        )
+      );
+      if (!executed) {
+        block("verified-execution-required", `Resolved request finding ${finding.id} lacks verified execution.`);
+      }
+    } else {
+      const requiredDisposition = finding.status === "deferred" ? "defer" : "dismiss";
+      const decidedByExecution = verifiedExecutions.some(
+        (execution) => execution.finding_dispositions.some(
+          (disposition) => disposition.finding_id === finding.id && disposition.disposition === requiredDisposition
+        )
+      );
+      if (!decidedByExecution && !coveredFindings.has(finding.id)) {
+        block(
+          "finding-author-decision-missing",
+          `Current ${finding.status} finding ${finding.id} lacks a matching execution disposition or an authorized no-edit skip.`
+        );
+      }
+    }
+  }
+  return {
+    status: blockers.length === 0 ? "complete" : "incomplete",
+    verified_execution_ids: verifiedExecutions.map((execution) => execution.execution_id),
+    no_edit_skip_ids: skips.map((skip) => skip.skip_id),
+    blockers
+  };
+}
+var init_revision_execution = __esm({
+  "scripts/lib/revision-execution.mjs"() {
+    init_backup();
+    init_cycles();
+    init_cycle_coordination();
+    init_manifest();
+    init_schemas();
+    init_scope();
+    init_state_io();
+    init_tracker();
+    init_time();
+  }
+});
+
+// scripts/lib/execution-decision.mjs
 import { readFile as readFile16 } from "node:fs/promises";
 import path17 from "node:path";
+function commandError2(code, message, details = {}) {
+  const error = new Error(message);
+  error.projectCode = code;
+  error.projectDetails = details;
+  return error;
+}
+function findingLocation(location) {
+  if (location.scope === "file") return location.file;
+  if (location.scope === "chapter") return `${location.file}#chapter-${location.chapter}`;
+  if (location.scope === "line") return `${location.file}:${location.line}`;
+  return `${location.file}: ${location.quote}`;
+}
+async function readDecisionArtifact(project, reference, identityField) {
+  let text;
+  try {
+    text = await readFile16(path17.resolve(project.root, reference.path), "utf8");
+  } catch (error) {
+    throw commandError2("finding-decision-evidence-unavailable", `Cannot read decision evidence ${reference.path}: ${error.message}`);
+  }
+  if (sha256Bytes(text) !== reference.sha256) {
+    throw commandError2("finding-decision-evidence-mismatch", `Decision evidence hash differs: ${reference.path}`);
+  }
+  let value;
+  try {
+    value = JSON.parse(text);
+  } catch (error) {
+    throw commandError2("finding-decision-evidence-mismatch", `Decision evidence is not valid JSON: ${error.message}`);
+  }
+  if (value[identityField] !== reference[identityField]) {
+    throw commandError2("finding-decision-evidence-mismatch", `Decision evidence identity differs: ${reference.path}`);
+  }
+  return value;
+}
+async function validateExecutionDecision(project, tracker, request, report, existing, options2 = {}) {
+  if (request.no_edit_skip) {
+    throw commandError2("finding-decision-evidence-mismatch", "Choose exactly one current evidence record for a finding decision.");
+  }
+  const execution = await readDecisionArtifact(project, request.revision_execution, "execution_id");
+  if (execution.status !== "verified") {
+    throw commandError2("finding-decision-evidence-mismatch", "A finding decision requires a verified revision execution.");
+  }
+  const expectedDisposition = {
+    resolved: "execute",
+    deferred: "defer",
+    dismissed: "dismiss"
+  }[request.status];
+  if (!expectedDisposition) {
+    throw commandError2("finding-decision-evidence-mismatch", "Revision execution evidence does not support a stale decision.");
+  }
+  const disposition = execution.finding_dispositions.find(
+    (candidate) => candidate.finding_id === request.finding_id && candidate.disposition === expectedDisposition
+  );
+  if (!disposition || disposition.author_decision_id !== request.author_decision_id) {
+    throw commandError2("finding-decision-evidence-mismatch", "The execution lacks this finding disposition and author decision.");
+  }
+  const disk = await validateRevisionExecutionAgainstDisk(project.root, execution, {
+    expectedPass: execution.requested_pass,
+    expectedScope: execution.target_scope,
+    requireOutputs: true,
+    requireCurrentTarget: true,
+    requireCurrentDecisions: true,
+    pendingFindingDecision: options2.pendingFindingDecision,
+    trackerState: tracker,
+    now: options2.now
+  });
+  if (!disk.valid) {
+    throw commandError2("finding-decision-evidence-mismatch", "The verified execution is not current for its approved inputs, decisions, outputs, and target.", {
+      validation_errors: disk.errors
+    });
+  }
+  const passReference = report.envelope.requested_pass;
+  if (report.envelope.scope_id !== execution.target_scope.scope_id || report.envelope.scope_fingerprint !== execution.target_scope.scope_fingerprint || !passReference || passReference.pass_id !== execution.requested_pass.pass_id || passReference.pass_fingerprint !== execution.requested_pass.pass_fingerprint || passReference.path !== execution.requested_pass.path || passReference.sha256 !== execution.requested_pass.sha256) {
+    throw commandError2("finding-decision-evidence-mismatch", "The current report and revision execution name different pass or scope evidence.");
+  }
+  if (report.reported && (report.reported.audit !== existing.audit || findingLocation(report.reported.location) !== existing.location)) {
+    throw commandError2("finding-decision-report-mismatch", "The current report finding has a different audit or location.");
+  }
+}
+var init_execution_decision = __esm({
+  "scripts/lib/execution-decision.mjs"() {
+    init_revision_execution();
+    init_state_io();
+  }
+});
+
+// scripts/lib/no-edit-decision.mjs
+import { readFile as readFile17 } from "node:fs/promises";
+import path18 from "node:path";
+function commandError3(code, message, details = {}) {
+  const error = new Error(message);
+  error.projectCode = code;
+  error.projectDetails = details;
+  return error;
+}
+function sameCurrentScope(passScope, currentScope) {
+  return currentScope && passScope.scope_id === currentScope.scope_id && passScope.scope_fingerprint === currentScope.scope_fingerprint && passScope.snapshot_path === currentScope.snapshot_path && passScope.snapshot_sha256 === currentScope.snapshot_sha256;
+}
+async function readDecisionArtifact2(project, reference, identityField) {
+  let text;
+  try {
+    text = await readFile17(path18.resolve(project.root, reference.path), "utf8");
+  } catch (error) {
+    throw commandError3("finding-decision-evidence-unavailable", `Cannot read decision evidence ${reference.path}: ${error.message}`);
+  }
+  if (sha256Bytes(text) !== reference.sha256) {
+    throw commandError3("finding-decision-evidence-mismatch", `Decision evidence hash differs: ${reference.path}`);
+  }
+  let value;
+  try {
+    value = JSON.parse(text);
+  } catch (error) {
+    throw commandError3("finding-decision-evidence-mismatch", `Decision evidence is not valid JSON: ${error.message}`);
+  }
+  if (value[identityField] !== reference[identityField]) {
+    throw commandError3("finding-decision-evidence-mismatch", `Decision evidence identity differs: ${reference.path}`);
+  }
+  return value;
+}
+async function validateNoEditDecision(project, tracker, request, report, options2 = {}) {
+  if (!["deferred", "dismissed"].includes(request.status) || request.revision_execution) {
+    throw commandError3("finding-decision-evidence-mismatch", "A no-edit skip supports only deferred or dismissed finding decisions.");
+  }
+  const skip = await readDecisionArtifact2(project, request.no_edit_skip, "skip_id");
+  const skipValidation = validateNoEditSkip(skip, options2);
+  if (!skipValidation.valid) {
+    throw commandError3("finding-decision-evidence-mismatch", "The no-edit skip is invalid.", {
+      validation_errors: skipValidation.errors
+    });
+  }
+  if (skip.author_decision_id !== request.author_decision_id || !skip.covered_findings.includes(request.finding_id)) {
+    throw commandError3("finding-decision-evidence-mismatch", "The no-edit skip does not cover this finding and author decision.");
+  }
+  const pass = await readDecisionArtifact2(project, skip.requested_pass, "pass_id");
+  const passValidation = validateRequestedPass(pass, options2);
+  if (!passValidation.valid || pass.pass_fingerprint !== skip.requested_pass.pass_fingerprint) {
+    throw commandError3("finding-decision-evidence-mismatch", "The no-edit skip requested pass is invalid.", {
+      validation_errors: passValidation.errors
+    });
+  }
+  if (skip.scope_fingerprint !== pass.target_scope.scope_fingerprint || !sameCurrentScope(pass.target_scope, project.manifest.current_scope)) {
+    throw commandError3("finding-decision-evidence-mismatch", "The no-edit skip is not bound to the current target scope.");
+  }
+  if (!pass.paths.includes(report.reported.location.file)) {
+    throw commandError3("finding-decision-evidence-mismatch", "The no-edit skip pass does not cover the finding location.");
+  }
+  const passReference = report.envelope.requested_pass;
+  if (report.envelope.scope_id !== pass.target_scope.scope_id || report.envelope.scope_fingerprint !== pass.target_scope.scope_fingerprint || !passReference || passReference.pass_id !== pass.pass_id || passReference.pass_fingerprint !== pass.pass_fingerprint || passReference.path !== skip.requested_pass.path || passReference.sha256 !== skip.requested_pass.sha256) {
+    throw commandError3("finding-decision-evidence-mismatch", "The current report and no-edit skip name different pass or scope evidence.");
+  }
+  const decision = tracker.approvals.find((approval) => approval.id === request.author_decision_id);
+  const tokens = String(decision?.reason ?? "").split(/\s+/).filter(Boolean);
+  if (!decision || decision.status !== "approved" || decision.type !== "no-edit-skip" || decision.scopeId !== pass.target_scope.scope_id || !skip.operations.includes(decision.operation) || !pass.paths.every((filePath) => decision.paths.includes(filePath)) || !tokens.includes(`finding_id=${request.finding_id}`) || !tokens.includes(`finding_status=${request.status}`)) {
+    throw commandError3("finding-author-decision-missing", "The no-edit skip lacks its approved author decision for the finding, status, complete pass paths, and current scope.");
+  }
+}
+var init_no_edit_decision = __esm({
+  "scripts/lib/no-edit-decision.mjs"() {
+    init_evaluation_contracts();
+    init_state_io();
+  }
+});
+
+// scripts/lib/stale-decision.mjs
+import { readFile as readFile18 } from "node:fs/promises";
+import path19 from "node:path";
+function commandError4(code, message, details = {}) {
+  const error = new Error(message);
+  error.projectCode = code;
+  error.projectDetails = details;
+  return error;
+}
+function findingLocation2(location) {
+  if (location.scope === "file") return location.file;
+  if (location.scope === "chapter") return `${location.file}#chapter-${location.chapter}`;
+  if (location.scope === "line") return `${location.file}:${location.line}`;
+  return `${location.file}: ${location.quote}`;
+}
+function sameCurrentScope2(passScope, currentScope) {
+  return currentScope && passScope.scope_id === currentScope.scope_id && passScope.scope_fingerprint === currentScope.scope_fingerprint && passScope.snapshot_path === currentScope.snapshot_path && passScope.snapshot_sha256 === currentScope.snapshot_sha256;
+}
+async function readDecisionArtifact3(project, reference, identityField) {
+  let text;
+  try {
+    text = await readFile18(path19.resolve(project.root, reference.path), "utf8");
+  } catch (error) {
+    throw commandError4("finding-decision-evidence-unavailable", `Cannot read decision evidence ${reference.path}: ${error.message}`);
+  }
+  if (sha256Bytes(text) !== reference.sha256) {
+    throw commandError4("finding-decision-evidence-mismatch", `Decision evidence hash differs: ${reference.path}`);
+  }
+  let value;
+  try {
+    value = JSON.parse(text);
+  } catch (error) {
+    throw commandError4("finding-decision-evidence-mismatch", `Decision evidence is not valid JSON: ${error.message}`);
+  }
+  if (value[identityField] !== reference[identityField]) {
+    throw commandError4("finding-decision-evidence-mismatch", `Decision evidence identity differs: ${reference.path}`);
+  }
+  return value;
+}
+async function validateStaleDecision(project, tracker, request, report, existing, options2 = {}) {
+  if (request.revision_execution || request.no_edit_skip) {
+    throw commandError4("finding-decision-evidence-mismatch", "A stale decision uses its equivalent current report, not execution or no-edit evidence.");
+  }
+  for (const input of report.envelope.inputs) {
+    if (input.version_type !== "sha256") {
+      throw commandError4("finding-decision-evidence-mismatch", "A stale decision requires SHA-256 input versions in the current report.");
+    }
+    let contents;
+    try {
+      contents = await readFile18(path19.resolve(project.root, input.path));
+    } catch (error) {
+      throw commandError4("finding-decision-evidence-unavailable", `Cannot read current report input ${input.path}: ${error.message}`);
+    }
+    if (sha256Bytes(contents) !== input.version) {
+      throw commandError4("finding-decision-evidence-mismatch", `Current report input hash differs: ${input.path}`);
+    }
+  }
+  const currentScope = project.manifest.current_scope;
+  const passReference = report.envelope.requested_pass;
+  if (!currentScope || currentScope.status !== "confirmed" || report.envelope.scope_id !== currentScope.scope_id || report.envelope.scope_fingerprint !== currentScope.scope_fingerprint || !passReference) {
+    throw commandError4("finding-decision-evidence-mismatch", "The stale rerun is not bound to the complete current scope and requested-pass identity.");
+  }
+  let pass;
+  try {
+    pass = await readDecisionArtifact3(project, passReference, "pass_id");
+  } catch (error) {
+    throw commandError4("finding-decision-evidence-mismatch", error.message);
+  }
+  const passValidation = validateRequestedPass(pass, options2);
+  if (!passValidation.valid || !samePassReference(passReference, {
+    pass_id: pass.pass_id,
+    pass_fingerprint: pass.pass_fingerprint,
+    path: passReference.path,
+    sha256: passReference.sha256
+  }) || !sameCurrentScope2(pass.target_scope, currentScope)) {
+    throw commandError4("finding-decision-evidence-mismatch", "The stale rerun requested pass is invalid or is not bound to the current target scope.", {
+      validation_errors: passValidation.errors
+    });
+  }
+  const activeCycle = await readActiveCycle(project);
+  if (activeCycle && !samePassReference(passReference, activeCycle.value.requested_pass)) {
+    throw commandError4("finding-decision-evidence-mismatch", "The stale rerun requested pass differs from the active cycle's requested pass.");
+  }
+  const originalReport = options2.originalReport ?? existing.report;
+  let originalFinding;
+  try {
+    const originalValidation = validateEvidenceReport(
+      await readFile18(path19.resolve(project.root, originalReport), "utf8"),
+      options2
+    );
+    originalFinding = originalValidation.envelope?.findings.find((finding) => finding.id === existing.id);
+    if (!originalValidation.valid || !originalFinding || originalFinding.audit !== existing.audit || findingLocation2(originalFinding.location) !== existing.location) {
+      throw new Error("The tracked finding is not preserved in its original report.");
+    }
+  } catch (error) {
+    throw commandError4("finding-decision-evidence-mismatch", `Cannot prove the original finding technique: ${error.message}`);
+  }
+  const requirement = passRequirements(pass, existing.stage);
+  const reportInputs = new Map(report.envelope.inputs.map((input) => [input.path, input]));
+  const reportSubchecks = report.envelope.engine.notes.match(/(?:^|\s)subchecks=([^\s]+)/)?.[1]?.split(",") ?? [];
+  if (!requirement || !requirement.subchecks.includes(originalFinding.technique) || requirement.subchecks.some((subcheck) => !reportSubchecks.includes(subcheck)) || requirement.paths.some((filePath) => !reportInputs.has(filePath))) {
+    throw commandError4("finding-decision-evidence-mismatch", "The stale rerun does not cover the complete operation paths and subchecks, including the finding technique.");
+  }
+  const decision = tracker.approvals.find((approval) => approval.id === request.author_decision_id);
+  const tokens = String(decision?.reason ?? "").split(/\s+/).filter(Boolean);
+  const expectedTokens = {
+    finding_id: request.finding_id,
+    finding_status: request.status,
+    scope_fingerprint: currentScope.scope_fingerprint,
+    pass_id: pass.pass_id,
+    pass_fingerprint: pass.pass_fingerprint,
+    pass_path: encodeURIComponent(passReference.path),
+    pass_sha256: passReference.sha256
+  };
+  const bindingsValid = Object.entries(expectedTokens).every(
+    ([name, value]) => tokens.filter((token) => token.startsWith(`${name}=`)).length === 1 && tokens.includes(`${name}=${value}`)
+  );
+  if (!decision || decision.status !== "approved" || decision.type !== "finding-decision" || decision.operation !== existing.stage || decision.scopeId !== currentScope.scope_id || !report.envelope.inputs.every((input) => decision.paths.includes(input.path)) || !bindingsValid) {
+    throw commandError4("finding-author-decision-missing", "A stale decision requires an approved finding-decision bound to the finding, status, operation, complete current scope, requested pass, and complete report inputs.");
+  }
+}
+var init_stale_decision = __esm({
+  "scripts/lib/stale-decision.mjs"() {
+    init_evaluation_artifacts();
+    init_evaluation_contracts();
+    init_markdown();
+    init_state_io();
+  }
+});
+
+// scripts/lib/tracker.mjs
+import { readFile as readFile19, stat as stat3 } from "node:fs/promises";
+import path20 from "node:path";
+function trackerError(instancePath, message) {
+  return { instancePath, keyword: "tracker", message, params: {} };
+}
+function cleanCell(value = "") {
+  return value.trim().replace(/^`([^`]*)`$/, "$1").trim();
+}
+function splitRow(line) {
+  const trimmed = line.trim();
+  if (!trimmed.startsWith("|") || !trimmed.endsWith("|")) return null;
+  const cells = [];
+  let value = "";
+  let escaped = false;
+  for (const character of trimmed.slice(1, -1)) {
+    if (escaped) {
+      value += character;
+      escaped = false;
+    } else if (character === "\\") {
+      escaped = true;
+      value += character;
+    } else if (character === "|") {
+      cells.push(value.trim());
+      value = "";
+    } else {
+      value += character;
+    }
+  }
+  cells.push(value.trim());
+  return cells;
+}
+function normalizeHeader(value) {
+  return cleanCell(value).toLowerCase().replace(/[_-]+/g, " ").replace(/\s+/g, " ");
+}
+function isSeparator(row) {
+  return row?.length > 0 && row.every((cell2) => /^:?-{3,}:?$/.test(cell2.trim()));
+}
+function findingsSection(markdown) {
+  const lines = markdown.split(/\r?\n/);
+  const headings = lines.flatMap(
+    (line, index) => /^ {0,3}##[ \t]+Findings[ \t]*$/.test(line) ? [index] : []
+  );
+  if (headings.length !== 1) return { lines, error: headings.length };
+  const start = headings[0] + 1;
+  let end = lines.length;
+  for (let index = start; index < lines.length; index += 1) {
+    if (/^ {0,3}##[ \t]+/.test(lines[index])) {
+      end = index;
+      break;
+    }
+  }
+  return { lines: lines.slice(start, end), start };
+}
+function pathCell(value) {
+  const trimmed = value.trim();
+  if (trimmed.startsWith("`")) {
+    const parsed = parseApprovalPaths(trimmed);
+    if (parsed.valid && parsed.paths.length === 1) return parsed.paths[0];
+  }
+  return cleanCell(trimmed).replace(/\\\|/g, "|");
+}
+function reportCell(value) {
+  const link2 = value.match(/\[[^\]]+\]\(([^)]+)\)/);
+  return pathCell(link2?.[1] ?? value);
+}
+async function validateTrackerMarkdown(markdown, projectRoot, options2 = {}) {
+  const errors = [];
+  const section = findingsSection(markdown);
+  if (section.error !== void 0) {
+    return {
+      valid: false,
+      errors: [
+        trackerError(
+          "/Findings",
+          `expected exactly one ## Findings heading; found ${section.error}`
+        )
+      ]
+    };
+  }
+  let headerIndex = -1;
+  let columns = null;
+  for (let index = 0; index < section.lines.length - 1; index += 1) {
+    const header = splitRow(section.lines[index]);
+    const separator = splitRow(section.lines[index + 1]);
+    if (!header || !isSeparator(separator)) continue;
+    const normalized = header.map(normalizeHeader);
+    const resolved = {};
+    for (const [name, aliases] of Object.entries(COLUMN_ALIASES)) {
+      resolved[name] = normalized.findIndex((column) => aliases.includes(column));
+    }
+    if (Object.values(resolved).every((index2) => index2 >= 0)) {
+      headerIndex = index;
+      columns = resolved;
+      break;
+    }
+  }
+  if (!columns) {
+    return {
+      valid: false,
+      errors: [
+        trackerError(
+          "/Findings",
+          "Findings table requires Finding ID, Stage, Audit, Location, Status, Current report, Updated, and Decision or stale reason columns"
+        )
+      ]
+    };
+  }
+  const ids = /* @__PURE__ */ new Set();
+  const dataLines = section.lines.slice(headerIndex + 2);
+  for (const [rowIndex, line] of dataLines.entries()) {
+    if (!line.trim()) continue;
+    const row = splitRow(line);
+    if (!row) break;
+    const rowPath = `/Findings/${rowIndex}`;
+    const get = (name) => cleanCell(row[columns[name]]);
+    const id = get("id");
+    const status = get("status").toLowerCase();
+    const report = reportCell(row[columns.report]);
+    const reason = get("reason");
+    if (row.length !== Object.keys(columns).length) {
+      errors.push(trackerError(rowPath, "finding row has the wrong number of columns"));
+      continue;
+    }
+    for (const field of ["stage", "audit", "location", "updated", "reason"]) {
+      if (!get(field)) errors.push(trackerError(`${rowPath}/${field}`, `${field} is required`));
+    }
+    if (get("updated")) {
+      errors.push(...validateTimestamp(get("updated"), `${rowPath}/updated`, options2).map((error) => ({
+        ...error,
+        code: error.keyword,
+        keyword: "tracker"
+      })));
+    }
+    if (!/^[A-Z][A-Z0-9]*-[0-9]{3,}$/.test(id)) {
+      errors.push(trackerError(`${rowPath}/id`, "finding ID must have an uppercase prefix and at least three digits"));
+    } else if (ids.has(id)) {
+      errors.push(trackerError(`${rowPath}/id`, `duplicate finding ID: ${id}`));
+    }
+    ids.add(id);
+    if (!TRACKER_STATUSES.includes(status)) {
+      errors.push(
+        trackerError(
+          `${rowPath}/status`,
+          `status must be one of ${TRACKER_STATUSES.join(", ")}; received ${status || "empty"}`
+        )
+      );
+    }
+    if (/pending|待决定/i.test(reason)) {
+      errors.push(trackerError(`${rowPath}/reason`, "record an actual decision or stale reason, not a pending placeholder"));
+    }
+    if (!report) {
+      errors.push(trackerError(`${rowPath}/report`, "current report is required"));
+      continue;
+    }
+    if (!validateRelativePath(report).valid) {
+      errors.push(trackerError(`${rowPath}/report`, "current report must be a portable project-relative path"));
+      continue;
+    }
+    try {
+      const reportStat = await stat3(path20.resolve(projectRoot, report));
+      if (!reportStat.isFile()) {
+        errors.push(trackerError(`${rowPath}/report`, `current report is not a file: ${report}`));
+      }
+    } catch (error) {
+      errors.push(trackerError(`${rowPath}/report`, `current report does not exist: ${report}`));
+    }
+  }
+  return { valid: errors.length === 0, errors };
+}
+function approvalsSection(markdown) {
+  const lines = markdown.split(/\r?\n/);
+  const headings = lines.flatMap(
+    (line, index) => /^ {0,3}##[ \t]+Approvals[ \t]*$/.test(line) ? [index] : []
+  );
+  if (headings.length !== 1) return { lines, error: headings.length };
+  const start = headings[0] + 1;
+  let end = lines.length;
+  for (let index = start; index < lines.length; index += 1) {
+    if (/^ {0,3}##[ \t]+/.test(lines[index])) {
+      end = index;
+      break;
+    }
+  }
+  return { lines: lines.slice(start, end) };
+}
+function validateApprovalsMarkdown(markdown, options2 = {}) {
+  const errors = [];
+  const section = approvalsSection(markdown);
+  if (section.error !== void 0) {
+    return {
+      valid: false,
+      errors: [
+        trackerError(
+          "/Approvals",
+          `expected exactly one ## Approvals heading; found ${section.error}`
+        )
+      ]
+    };
+  }
+  const tables = [];
+  for (let index = 0; index < section.lines.length - 1; index += 1) {
+    const header2 = splitRow(section.lines[index]);
+    const separator = splitRow(section.lines[index + 1]);
+    if (header2 && isSeparator(separator)) tables.push({ header: header2, index });
+  }
+  if (tables.length !== 1) {
+    return {
+      valid: false,
+      errors: [
+        trackerError(
+          "/Approvals",
+          `expected exactly one Approvals table; found ${tables.length}`
+        )
+      ]
+    };
+  }
+  const [{ header, index: headerIndex }] = tables;
+  const normalized = header.map(normalizeHeader);
+  const columns = Object.fromEntries(
+    APPROVAL_COLUMNS.map(([name, label]) => [name, normalized.indexOf(label)])
+  );
+  if (header.length !== APPROVAL_COLUMNS.length || Object.values(columns).some((index) => index < 0)) {
+    return {
+      valid: false,
+      errors: [
+        trackerError(
+          "/Approvals",
+          "Approvals table requires Approval ID, Type, Operation, Scope ID, Paths, Status, Reason, and Updated columns"
+        )
+      ]
+    };
+  }
+  const ids = /* @__PURE__ */ new Set();
+  const dataLines = section.lines.slice(headerIndex + 2);
+  for (const [rowIndex, line] of dataLines.entries()) {
+    if (!line.trim()) continue;
+    const row = splitRow(line);
+    if (!row) break;
+    const rowPath = `/Approvals/${rowIndex}`;
+    const get = (name) => cleanCell(row[columns[name]]);
+    if (row.length !== APPROVAL_COLUMNS.length) {
+      errors.push(trackerError(rowPath, "approval row has the wrong number of columns"));
+      continue;
+    }
+    const id = get("id");
+    if (!/^[A-Z][A-Z0-9]*-[0-9]{3,}$/.test(id)) {
+      errors.push(
+        trackerError(
+          `${rowPath}/id`,
+          "approval ID must have an uppercase prefix and at least three digits"
+        )
+      );
+    } else if (ids.has(id)) {
+      errors.push(trackerError(`${rowPath}/id`, `duplicate approval ID: ${id}`));
+    }
+    ids.add(id);
+    for (const field of ["type", "operation", "scopeId", "paths", "reason", "updated"]) {
+      if (!get(field)) errors.push(trackerError(`${rowPath}/${field}`, `${field} is required`));
+    }
+    if (get("updated")) {
+      errors.push(...validateTimestamp(get("updated"), `${rowPath}/updated`, options2).map((error) => ({
+        ...error,
+        code: error.keyword,
+        keyword: "tracker"
+      })));
+    }
+    const status = get("status");
+    if (!APPROVAL_STATUSES.includes(status)) {
+      errors.push(
+        trackerError(
+          `${rowPath}/status`,
+          `status must be one of ${APPROVAL_STATUSES.join(", ")}; received ${status || "empty"}`
+        )
+      );
+    }
+    const parsedPaths = parseApprovalPaths(row[columns.paths] ?? "");
+    if (!parsedPaths.valid || parsedPaths.paths.some((value) => !value || !validateRelativePath(value).valid)) {
+      errors.push(
+        trackerError(
+          `${rowPath}/paths`,
+          "paths must be comma-separated portable project-relative paths"
+        )
+      );
+    }
+  }
+  return { valid: errors.length === 0, errors };
+}
+function namedSection(markdown, name) {
+  const lines = markdown.split(/\r?\n/);
+  const headings = lines.flatMap(
+    (line, index) => new RegExp(`^ {0,3}##[ \\t]+${name}[ \\t]*$`).test(line) ? [index] : []
+  );
+  if (headings.length !== 1) return { lines, error: headings.length };
+  const start = headings[0] + 1;
+  let end = lines.length;
+  for (let index = start; index < lines.length; index += 1) {
+    if (/^ {0,3}##[ \t]+/.test(lines[index])) {
+      end = index;
+      break;
+    }
+  }
+  return { lines: lines.slice(start, end), heading: headings[0], error: void 0 };
+}
+function tableWithColumns(lines, definitions) {
+  for (let index = 0; index < lines.length - 1; index += 1) {
+    const header = splitRow(lines[index]);
+    const separator = splitRow(lines[index + 1]);
+    if (!header || !isSeparator(separator)) continue;
+    const normalized = header.map(normalizeHeader);
+    const columns = Object.fromEntries(
+      definitions.map(([name, label]) => [name, normalized.indexOf(label)])
+    );
+    if (Object.values(columns).every((column) => column >= 0)) {
+      return { header, columns, index };
+    }
+  }
+  return null;
+}
+function parsedRows(lines, table, definitions) {
+  const rows = [];
+  for (const line of lines.slice(table.index + 2)) {
+    if (!line.trim()) continue;
+    const cells = splitRow(line);
+    if (!cells) break;
+    const row = Object.fromEntries(
+      definitions.map(([name]) => [name, cleanCell(cells[table.columns[name]])])
+    );
+    row.cellCount = cells.length;
+    rows.push(row);
+  }
+  return rows;
+}
+function typedFindingDecisionErrors(findings, approvals) {
+  const errors = [];
+  for (const [index, finding] of findings.entries()) {
+    const tokens = finding.reason.split(/\s+/).filter(Boolean);
+    const decisionTokens = tokens.filter((token) => token.startsWith("author_decision_id="));
+    const statusTokens = tokens.filter((token) => token.startsWith("finding_status="));
+    if (decisionTokens.length === 0 && statusTokens.length === 0) {
+      if (finding.status !== "open") {
+        errors.push(trackerError(
+          `/Findings/${index}/reason`,
+          "every non-open finding requires exactly one author_decision_id and one finding_status token"
+        ));
+      }
+      continue;
+    }
+    const rowPath = `/Findings/${index}/reason`;
+    if (decisionTokens.length !== 1 || statusTokens.length !== 1) {
+      errors.push(trackerError(
+        rowPath,
+        "typed finding decision requires exactly one author_decision_id and one finding_status token"
+      ));
+      continue;
+    }
+    const decisionId = decisionTokens[0].slice("author_decision_id=".length);
+    const decisionStatus = statusTokens[0].slice("finding_status=".length);
+    if (!/^[A-Z][A-Z0-9]*-[0-9]{3,}$/.test(decisionId)) {
+      errors.push(trackerError(rowPath, `typed finding decision has an invalid author decision ID: ${decisionId}`));
+    }
+    if (finding.status === "open" || decisionStatus !== finding.status) {
+      errors.push(trackerError(
+        rowPath,
+        `typed finding decision status mismatch: row=${finding.status}, token=${decisionStatus}`
+      ));
+    }
+    if (finding.status !== "stale") {
+      const evidenceTypes = tokens.filter((token) => token.startsWith("evidence_type="));
+      const allowed = finding.status === "resolved" ? ["revision-execution"] : ["no-edit-skip", "revision-execution"];
+      if (evidenceTypes.length !== 1 || !allowed.includes(evidenceTypes[0].slice("evidence_type=".length))) {
+        errors.push(trackerError(
+          rowPath,
+          `finding status ${finding.status} requires one compatible evidence_type token`
+        ));
+      }
+    }
+    const decision = approvals.find((approval) => approval.id === decisionId);
+    if (!decision || decision.status !== "approved") {
+      errors.push(trackerError(
+        rowPath,
+        `typed finding decision lacks approved author decision: ${decisionId}`
+      ));
+    }
+  }
+  return errors;
+}
+function oneDecisionToken(tokens, name) {
+  const matches = tokens.filter((token) => token.startsWith(`${name}=`));
+  return matches.length === 1 ? matches[0].slice(name.length + 1) : null;
+}
+async function externalStaleDecisionErrors(findings, approvals, projectRoot, options2) {
+  const candidates = findings.filter((finding) => {
+    if (finding.status !== "stale") return false;
+    const tokens = finding.reason.split(/\s+/).filter(Boolean);
+    return oneDecisionToken(tokens, "author_decision_id") && oneDecisionToken(tokens, "finding_status") === finding.status;
+  });
+  if (candidates.length === 0) return [];
+  const project = await readProject(projectRoot);
+  const errors = [];
+  for (const finding of candidates) {
+    const rowPath = `/Findings/${findings.indexOf(finding)}/reason`;
+    const tokens = finding.reason.split(/\s+/).filter(Boolean);
+    const authorDecisionId = oneDecisionToken(tokens, "author_decision_id");
+    const previousReportToken = oneDecisionToken(tokens, "previous_report");
+    const previousReportSha256 = oneDecisionToken(tokens, "previous_report_sha256");
+    const reportSha256 = oneDecisionToken(tokens, "report_sha256");
+    let previousReport = null;
+    try {
+      previousReport = previousReportToken ? decodeURIComponent(previousReportToken) : null;
+    } catch {
+    }
+    if (!previousReport || !validateRelativePath(previousReport).valid || !/^[0-9a-f]{64}$/.test(previousReportSha256 ?? "") || !/^[0-9a-f]{64}$/.test(reportSha256 ?? "")) {
+      errors.push(trackerError(
+        rowPath,
+        "stale decisions require exact previous_report, previous_report_sha256, and report_sha256 bindings"
+      ));
+      continue;
+    }
+    const reportsRoot = project.manifest.paths.reports.replace(/\/$/, "");
+    if (finding.report !== reportsRoot && !finding.report.startsWith(`${reportsRoot}/`) || previousReport !== reportsRoot && !previousReport.startsWith(`${reportsRoot}/`)) {
+      errors.push(trackerError(rowPath, "stale decision reports must be beneath the registered reports path"));
+      continue;
+    }
+    let currentMarkdown;
+    let previousMarkdown;
+    try {
+      [currentMarkdown, previousMarkdown] = await Promise.all([
+        readFile19(path20.resolve(project.root, finding.report), "utf8"),
+        readFile19(path20.resolve(project.root, previousReport), "utf8")
+      ]);
+      if (sha256Bytes(currentMarkdown) !== reportSha256 || sha256Bytes(previousMarkdown) !== previousReportSha256) {
+        throw new Error("stale decision report bytes do not match their recorded hashes");
+      }
+    } catch (error) {
+      errors.push(trackerError(rowPath, error.message));
+      continue;
+    }
+    const validation = validateEvidenceReport(currentMarkdown, options2);
+    const reported = validation.envelope?.findings.find((candidate) => candidate.id === finding.id);
+    if (!validation.valid || validation.envelope.stage !== finding.stage || reported || !/(?:^|\s)operation_coverage=full(?:\s|$)/.test(validation.envelope.engine.notes)) {
+      errors.push(trackerError(
+        rowPath,
+        "stale decision requires a valid equivalent complete rerun in the same operation that no longer observes the finding"
+      ));
+      continue;
+    }
+    try {
+      await validateStaleDecision(
+        project,
+        { approvals },
+        {
+          finding_id: finding.id,
+          status: finding.status,
+          report: finding.report,
+          author_decision_id: authorDecisionId
+        },
+        { envelope: validation.envelope, reported: null },
+        finding,
+        { ...options2, originalReport: previousReport }
+      );
+    } catch (error) {
+      errors.push(trackerError(rowPath, error.message));
+    }
+  }
+  return errors;
+}
+function externalFindingLocation(location) {
+  if (location.scope === "file") return location.file;
+  if (location.scope === "chapter") return `${location.file}#chapter-${location.chapter}`;
+  if (location.scope === "line") return `${location.file}:${location.line}`;
+  return `${location.file}: ${location.quote}`;
+}
+async function externalNoEditDecisionErrors(findings, approvals, projectRoot, options2) {
+  const candidates = findings.filter((finding) => {
+    if (!["deferred", "dismissed"].includes(finding.status)) return false;
+    const tokens = finding.reason.split(/\s+/).filter(Boolean);
+    return oneDecisionToken(tokens, "author_decision_id") && oneDecisionToken(tokens, "finding_status") === finding.status && oneDecisionToken(tokens, "evidence_type") === "no-edit-skip";
+  });
+  if (candidates.length === 0) return [];
+  const project = await readProject(projectRoot);
+  const errors = [];
+  for (const finding of candidates) {
+    const rowPath = `/Findings/${findings.indexOf(finding)}/reason`;
+    const tokens = finding.reason.split(/\s+/).filter(Boolean);
+    const authorDecisionId = oneDecisionToken(tokens, "author_decision_id");
+    const evidenceId = oneDecisionToken(tokens, "evidence_id");
+    const evidencePathToken = oneDecisionToken(tokens, "evidence_path");
+    const evidenceSha256 = oneDecisionToken(tokens, "evidence_sha256");
+    const previousReportToken = oneDecisionToken(tokens, "previous_report");
+    const previousReportSha256 = oneDecisionToken(tokens, "previous_report_sha256");
+    const reportSha256 = oneDecisionToken(tokens, "report_sha256");
+    let evidencePath = null;
+    let previousReport = null;
+    try {
+      evidencePath = evidencePathToken ? decodeURIComponent(evidencePathToken) : null;
+      previousReport = previousReportToken ? decodeURIComponent(previousReportToken) : null;
+    } catch {
+    }
+    if (!evidenceId || !evidencePath || !validateRelativePath(evidencePath).valid || !/^[0-9a-f]{64}$/.test(evidenceSha256 ?? "") || !previousReport || !validateRelativePath(previousReport).valid || !/^[0-9a-f]{64}$/.test(previousReportSha256 ?? "") || !/^[0-9a-f]{64}$/.test(reportSha256 ?? "")) {
+      errors.push(trackerError(rowPath, "no-edit decisions require complete report and evidence identity bindings"));
+      continue;
+    }
+    let currentMarkdown;
+    let previousMarkdown;
+    try {
+      [currentMarkdown, previousMarkdown] = await Promise.all([
+        readFile19(path20.resolve(project.root, finding.report), "utf8"),
+        readFile19(path20.resolve(project.root, previousReport), "utf8")
+      ]);
+      if (sha256Bytes(currentMarkdown) !== reportSha256 || sha256Bytes(previousMarkdown) !== previousReportSha256) {
+        throw new Error("no-edit decision report bytes do not match their recorded hashes");
+      }
+    } catch (error) {
+      errors.push(trackerError(rowPath, error.message));
+      continue;
+    }
+    const validation = validateEvidenceReport(currentMarkdown, options2);
+    const reported = validation.envelope?.findings.find((candidate) => candidate.id === finding.id);
+    if (!validation.valid || validation.envelope.stage !== finding.stage || !reported || reported.audit !== finding.audit || externalFindingLocation(reported.location) !== finding.location) {
+      errors.push(trackerError(rowPath, "no-edit decision current report does not preserve the exact finding"));
+      continue;
+    }
+    try {
+      await validateNoEditDecision(
+        project,
+        { approvals },
+        {
+          finding_id: finding.id,
+          status: finding.status,
+          report: finding.report,
+          author_decision_id: authorDecisionId,
+          no_edit_skip: { skip_id: evidenceId, path: evidencePath, sha256: evidenceSha256 }
+        },
+        { envelope: validation.envelope, reported },
+        options2
+      );
+    } catch (error) {
+      errors.push(trackerError(rowPath, error.message));
+    }
+  }
+  return errors;
+}
+async function externalExecutionDecisionErrors(findings, approvals, projectRoot, options2) {
+  const candidates = findings.filter((finding) => {
+    if (!["resolved", "deferred", "dismissed"].includes(finding.status)) return false;
+    const tokens = finding.reason.split(/\s+/).filter(Boolean);
+    return oneDecisionToken(tokens, "author_decision_id") && oneDecisionToken(tokens, "finding_status") === finding.status && oneDecisionToken(tokens, "evidence_type") === "revision-execution";
+  });
+  if (candidates.length === 0) return [];
+  const project = await readProject(projectRoot);
+  const errors = [];
+  for (const finding of candidates) {
+    const rowPath = `/Findings/${findings.indexOf(finding)}/reason`;
+    const tokens = finding.reason.split(/\s+/).filter(Boolean);
+    const authorDecisionId = oneDecisionToken(tokens, "author_decision_id");
+    const evidenceId = oneDecisionToken(tokens, "evidence_id");
+    const evidencePathToken = oneDecisionToken(tokens, "evidence_path");
+    const evidenceSha256 = oneDecisionToken(tokens, "evidence_sha256");
+    const previousReportToken = oneDecisionToken(tokens, "previous_report");
+    const previousReportSha256 = oneDecisionToken(tokens, "previous_report_sha256");
+    const reportSha256 = oneDecisionToken(tokens, "report_sha256");
+    let evidencePath = null;
+    let previousReport = null;
+    try {
+      evidencePath = evidencePathToken ? decodeURIComponent(evidencePathToken) : null;
+      previousReport = previousReportToken ? decodeURIComponent(previousReportToken) : null;
+    } catch {
+    }
+    if (!evidenceId || !evidencePath || !validateRelativePath(evidencePath).valid || !/^[0-9a-f]{64}$/.test(evidenceSha256 ?? "") || !previousReport || !validateRelativePath(previousReport).valid || !/^[0-9a-f]{64}$/.test(previousReportSha256 ?? "") || !/^[0-9a-f]{64}$/.test(reportSha256 ?? "")) {
+      errors.push(trackerError(rowPath, "execution decisions require complete report and evidence identity bindings"));
+      continue;
+    }
+    let currentMarkdown;
+    let previousMarkdown;
+    try {
+      [currentMarkdown, previousMarkdown] = await Promise.all([
+        readFile19(path20.resolve(project.root, finding.report), "utf8"),
+        readFile19(path20.resolve(project.root, previousReport), "utf8")
+      ]);
+      if (sha256Bytes(currentMarkdown) !== reportSha256 || sha256Bytes(previousMarkdown) !== previousReportSha256) {
+        throw new Error("execution decision report bytes do not match their recorded hashes");
+      }
+    } catch (error) {
+      errors.push(trackerError(rowPath, error.message));
+      continue;
+    }
+    const validation = validateEvidenceReport(currentMarkdown, options2);
+    const reported = validation.envelope?.findings.find((candidate) => candidate.id === finding.id) ?? null;
+    if (!validation.valid || validation.envelope.stage !== finding.stage) {
+      errors.push(trackerError(rowPath, "execution decision current report is invalid or uses another operation"));
+      continue;
+    }
+    try {
+      await validateExecutionDecision(
+        project,
+        { findings, approvals, valid: true },
+        {
+          finding_id: finding.id,
+          status: finding.status,
+          report: finding.report,
+          author_decision_id: authorDecisionId,
+          revision_execution: { execution_id: evidenceId, path: evidencePath, sha256: evidenceSha256 }
+        },
+        { envelope: validation.envelope, reported },
+        finding,
+        options2
+      );
+    } catch (error) {
+      errors.push(trackerError(rowPath, error.message));
+    }
+  }
+  return errors;
+}
+async function parseTrackerState(markdown, projectRoot, options2 = {}) {
+  const findingValidation = await validateTrackerMarkdown(markdown, projectRoot, options2);
+  const approvalValidation = validateApprovalsMarkdown(markdown, options2);
+  const errors = [...findingValidation.errors, ...approvalValidation.errors];
+  const findings = [];
+  const findingSection = findingsSection(markdown);
+  if (findingSection.error === void 0) {
+    const definitions = Object.entries(COLUMN_ALIASES).map(([name, aliases]) => [name, aliases[0]]);
+    const table = tableWithColumns(findingSection.lines, definitions);
+    if (table) {
+      for (const row of parsedRows(findingSection.lines, table, definitions)) {
+        row.location = pathCell(row.location);
+        row.report = reportCell(row.report);
+        row.status = row.status.toLowerCase();
+        delete row.cellCount;
+        findings.push(row);
+      }
+    }
+  }
+  const approvals = [];
+  const approvalSection = approvalsSection(markdown);
+  if (approvalSection.error === void 0) {
+    const table = tableWithColumns(approvalSection.lines, APPROVAL_COLUMNS);
+    if (table) {
+      for (const row of parsedRows(approvalSection.lines, table, APPROVAL_COLUMNS)) {
+        row.paths = parseApprovalPaths(row.paths).paths;
+        delete row.cellCount;
+        approvals.push(row);
+      }
+    }
+  }
+  const completionDecisions = [];
+  const completionSection = namedSection(markdown, "Cycle completions");
+  if (completionSection.error === void 0) {
+    const table = tableWithColumns(completionSection.lines, CYCLE_COMPLETION_COLUMNS);
+    if (!table || table.header.length !== CYCLE_COMPLETION_COLUMNS.length) {
+      errors.push(trackerError(
+        "/Cycle completions",
+        "Cycle completions requires Decision ID, Cycle ID, Target scope fingerprint, Status, Reason, and Updated columns"
+      ));
+    } else {
+      const ids = /* @__PURE__ */ new Set();
+      for (const [index, row] of parsedRows(
+        completionSection.lines,
+        table,
+        CYCLE_COMPLETION_COLUMNS
+      ).entries()) {
+        const rowPath = `/Cycle completions/${index}`;
+        if (row.cellCount !== CYCLE_COMPLETION_COLUMNS.length) {
+          errors.push(trackerError(rowPath, "cycle completion row has the wrong number of columns"));
+        }
+        if (!/^[A-Z][A-Z0-9]*-[0-9]{3,}$/.test(row.id)) {
+          errors.push(trackerError(`${rowPath}/id`, "completion decision ID has an invalid format"));
+        } else if (ids.has(row.id)) {
+          errors.push(trackerError(`${rowPath}/id`, `duplicate completion decision ID: ${row.id}`));
+        }
+        ids.add(row.id);
+        if (!/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(row.cycleId)) {
+          errors.push(trackerError(`${rowPath}/cycleId`, "cycle ID has an invalid format"));
+        }
+        if (!/^[0-9a-f]{64}$/.test(row.scopeFingerprint)) {
+          errors.push(trackerError(`${rowPath}/scopeFingerprint`, "target scope fingerprint must be SHA-256"));
+        }
+        if (!APPROVAL_STATUSES.includes(row.status)) {
+          errors.push(trackerError(`${rowPath}/status`, "completion decision status is invalid"));
+        }
+        if (!row.reason || !row.updated) {
+          errors.push(trackerError(rowPath, "completion decision reason and updated time are required"));
+        }
+        if (row.updated) {
+          errors.push(...validateTimestamp(row.updated, `${rowPath}/updated`, options2).map((error) => ({
+            ...error,
+            code: error.keyword,
+            keyword: "tracker"
+          })));
+        }
+        delete row.cellCount;
+        completionDecisions.push(row);
+      }
+    }
+  } else if (completionSection.error > 1) {
+    errors.push(trackerError("/Cycle completions", "expected at most one ## Cycle completions heading"));
+  }
+  errors.push(...typedFindingDecisionErrors(findings, approvals));
+  errors.push(...await externalStaleDecisionErrors(findings, approvals, projectRoot, options2));
+  errors.push(...await externalNoEditDecisionErrors(findings, approvals, projectRoot, options2));
+  errors.push(...await externalExecutionDecisionErrors(findings, approvals, projectRoot, options2));
+  return {
+    valid: errors.length === 0,
+    errors,
+    findings,
+    approvals,
+    completion_decisions: completionDecisions
+  };
+}
+function completionCell(value) {
+  return String(value).replace(/\r?\n/g, " ").replaceAll("|", "\\|").trim();
+}
+function appendCycleCompletionDecision(markdown, decision) {
+  const section = namedSection(markdown, "Cycle completions");
+  const row = `| ${decision.decision_id} | ${decision.cycle_id} | ${decision.scope_fingerprint} | approved | ${completionCell(decision.reason)} | ${decision.updated_at} |
+`;
+  if (section.error === void 0) {
+    const table = tableWithColumns(section.lines, CYCLE_COMPLETION_COLUMNS);
+    if (!table) throw new Error("Cycle completions table is invalid");
+    for (const existing of parsedRows(section.lines, table, CYCLE_COMPLETION_COLUMNS)) {
+      if (existing.id === decision.decision_id) throw new Error(`Duplicate completion decision: ${decision.decision_id}`);
+    }
+    const lines = markdown.split(/\r?\n/);
+    const separatorIndex = section.heading + 1 + table.index + 1;
+    lines.splice(separatorIndex + 1, 0, row.trimEnd());
+    return lines.join("\n");
+  }
+  const block = `## Cycle completions
+
+| Decision ID | Cycle ID | Target scope fingerprint | Status | Reason | Updated |
+|---|---|---|---|---|---|
+${row}
+`;
+  const openQuestions = markdown.match(/^ {0,3}##[ \t]+Open questions[ \t]*$/m);
+  if (openQuestions?.index !== void 0) {
+    return `${markdown.slice(0, openQuestions.index)}${block}
+${markdown.slice(openQuestions.index)}`;
+  }
+  return `${markdown.trimEnd()}
+
+${block}`;
+}
+async function validateTrackerV3Markdown(markdown, projectRoot, options2 = {}) {
+  const state = await parseTrackerState(markdown, projectRoot, options2);
+  return { valid: state.valid, errors: state.errors };
+}
+async function validateTracker(manifest, manifestPath, options2 = {}) {
+  if (isUninitializedProjectTemplate(manifest)) {
+    return { valid: true, errors: [] };
+  }
+  const projectRoot = projectRootFromManifest(manifestPath);
+  const trackerPath = path20.resolve(projectRoot, manifest.paths.audit_tracker);
+  try {
+    const markdown = await readFile19(trackerPath, "utf8");
+    return validateTrackerV3Markdown(markdown, projectRoot, options2);
+  } catch (error) {
+    return {
+      valid: false,
+      errors: [trackerError("/paths/audit_tracker", `cannot read audit tracker: ${error.message}`)]
+    };
+  }
+}
+var TRACKER_STATUSES, COLUMN_ALIASES, APPROVAL_STATUSES, APPROVAL_COLUMNS, CYCLE_COMPLETION_COLUMNS;
+var init_tracker = __esm({
+  "scripts/lib/tracker.mjs"() {
+    init_approval_paths();
+    init_evaluation_artifacts();
+    init_execution_decision();
+    init_markdown();
+    init_no_edit_decision();
+    init_project_files();
+    init_schemas();
+    init_state_io();
+    init_stale_decision();
+    init_time();
+    TRACKER_STATUSES = Object.freeze([
+      "open",
+      "resolved",
+      "deferred",
+      "dismissed",
+      "stale"
+    ]);
+    COLUMN_ALIASES = {
+      id: ["finding id", "id"],
+      stage: ["stage"],
+      audit: ["audit"],
+      location: ["location"],
+      status: ["status"],
+      report: ["current report"],
+      updated: ["updated"],
+      reason: ["decision or stale reason", "decision reason"]
+    };
+    APPROVAL_STATUSES = Object.freeze([
+      "approved",
+      "deferred",
+      "cancelled",
+      "superseded"
+    ]);
+    APPROVAL_COLUMNS = [
+      ["id", "approval id"],
+      ["type", "type"],
+      ["operation", "operation"],
+      ["scopeId", "scope id"],
+      ["paths", "paths"],
+      ["status", "status"],
+      ["reason", "reason"],
+      ["updated", "updated"]
+    ];
+    CYCLE_COMPLETION_COLUMNS = [
+      ["id", "decision id"],
+      ["cycleId", "cycle id"],
+      ["scopeFingerprint", "target scope fingerprint"],
+      ["status", "status"],
+      ["reason", "reason"],
+      ["updated", "updated"]
+    ];
+  }
+});
+
+// scripts/lib/reconciliation.mjs
+import { readFile as readFile20 } from "node:fs/promises";
+import path21 from "node:path";
 function action2(strategy, operation) {
   return { strategy, operation, command: strategy };
 }
@@ -17748,20 +18825,14 @@ function failure3(code, message, cycle = null, details = {}) {
     ...details
   };
 }
-async function readProject4(projectRoot) {
-  const root2 = path17.resolve(projectRoot);
-  const manifestPath = path17.join(root2, ".author-toolkit", "project.json");
-  const manifest = JSON.parse(await readFile16(manifestPath, "utf8"));
-  const validation = validateManifest(manifest);
-  if (!validation.valid) {
-    throw new Error(validation.errors.map((error) => error.message).join("; "));
-  }
-  return { root: root2, manifestPath, manifest };
+async function readProject4(projectRoot, options2 = {}) {
+  const { readProject: readProjectWithReferences } = await Promise.resolve().then(() => (init_evaluation_artifacts(), evaluation_artifacts_exports));
+  return readProjectWithReferences(projectRoot, options2);
 }
-async function readActiveCycle4(project) {
-  const file = path17.resolve(project.root, project.manifest.paths.convergence, "active-cycle.json");
-  const value = JSON.parse(await readFile16(file, "utf8"));
-  const validation = validateConvergenceCycleSchema(value);
+async function readActiveCycle4(project, options2 = {}) {
+  const file = path21.resolve(project.root, project.manifest.paths.convergence, "active-cycle.json");
+  const value = JSON.parse(await readFile20(file, "utf8"));
+  const validation = validateConvergenceCycleSchema(value, options2);
   if (!validation.valid || value.status !== "active") {
     throw new Error(`Living cycle is invalid: ${file}`);
   }
@@ -17775,23 +18846,23 @@ function assertReference(reference, fields) {
     throw new Error("reconcile-manuscript requires safe project-relative artifact paths and SHA-256 hashes");
   }
 }
-async function readArtifact(project, reference) {
+async function readArtifact2(project, reference) {
   if (!validateRelativePath(reference.path).valid || !/^[0-9a-f]{64}$/.test(reference.sha256)) {
     throw new Error("reconcile-manuscript requires safe project-relative artifact paths and SHA-256 hashes");
   }
-  const contents = await readFile16(path17.resolve(project.root, reference.path));
+  const contents = await readFile20(path21.resolve(project.root, reference.path));
   if (sha256Bytes(contents) !== reference.sha256) {
     throw new Error(`Referenced artifact hash does not match: ${reference.path}`);
   }
   return contents;
 }
-async function readScope(project, reference) {
-  const contents = await readArtifact(project, {
+async function readScope(project, reference, options2 = {}) {
+  const contents = await readArtifact2(project, {
     path: reference.snapshot_path,
     sha256: reference.snapshot_sha256
   });
   const snapshot = JSON.parse(contents.toString("utf8"));
-  const validation = validateScopeSnapshot(snapshot);
+  const validation = validateScopeSnapshot(snapshot, options2);
   if (!validation.valid) throw new Error(`Scope snapshot is invalid: ${reference.snapshot_path}`);
   if (snapshot.scope_id !== reference.scope_id || snapshot.scope_fingerprint !== reference.scope_fingerprint) {
     throw new Error("Scope snapshot identity differs from its reference");
@@ -17825,11 +18896,11 @@ function validateRequest(request) {
     throw new Error("reconcile-manuscript cycle identity requires both cycle_id and integer expected_revision");
   }
 }
-async function validateStoryState2(project, references, target) {
+async function validateStoryState2(project, references, target, options2 = {}) {
   const states = [];
   for (const reference of references) {
-    const contents = await readArtifact(project, reference);
-    const validation = validateStoryStateMarkdown(contents.toString("utf8"));
+    const contents = await readArtifact2(project, reference);
+    const validation = validateStoryStateMarkdown(contents.toString("utf8"), options2);
     if (!validation.valid || !validation.envelope) {
       throw new Error(`Reconciled story state is invalid: ${reference.path}`);
     }
@@ -17843,7 +18914,7 @@ async function validateStoryState2(project, references, target) {
     if (states.length !== 1 || current[0].value.children.length !== 0) {
       throw new Error("Empty manuscript reconciliation requires one current story state with no chapter children");
     }
-    for (const source of current[0].value.sources) await readArtifact(project, source);
+    for (const source of current[0].value.sources) await readArtifact2(project, source);
     return;
   }
   const targetPaths = new Set(target.files.map((file) => file.path));
@@ -17890,12 +18961,12 @@ async function validateStoryState2(project, references, target) {
     }
   }
 }
-async function validateImportDecision2(project, request, previous, target, inventory) {
-  const trackerText = await readFile16(
-    path17.resolve(project.root, project.manifest.paths.audit_tracker),
+async function validateImportDecision2(project, request, previous, target, inventory, options2 = {}) {
+  const trackerText = await readFile20(
+    path21.resolve(project.root, project.manifest.paths.audit_tracker),
     "utf8"
   );
-  const tracker = await parseTrackerState(trackerText, project.root);
+  const tracker = await parseTrackerState(trackerText, project.root, options2);
   const decisions = tracker.approvals.filter((approval) => approval.id === request.author_decision_id);
   const decision = decisions.length === 1 ? decisions[0] : null;
   const tokens = new Set(decision?.reason.split(/\s+/) ?? []);
@@ -17911,7 +18982,7 @@ async function invalidatedHistory(project, evaluationReference2, changes) {
   const evaluations = [evaluationReference2];
   const coverage = [];
   try {
-    const contents = await readArtifact(project, evaluationReference2);
+    const contents = await readArtifact2(project, evaluationReference2);
     const evaluation = JSON.parse(contents.toString("utf8"));
     const affected = /* @__PURE__ */ new Set([
       ...changes.created.map((file) => file.path),
@@ -17924,7 +18995,7 @@ async function invalidatedHistory(project, evaluationReference2, changes) {
       }
       if (artifact.role !== "coverage-unit" || affected.size === 0) continue;
       try {
-        const unit = JSON.parse(await readFile16(path17.resolve(project.root, artifact.path), "utf8"));
+        const unit = JSON.parse(await readFile20(path21.resolve(project.root, artifact.path), "utf8"));
         if (unit.paths.some((file) => affected.has(file.path))) {
           coverage.push({ path: artifact.path, sha256: artifact.sha256 });
         }
@@ -17947,15 +19018,15 @@ function workSetForChanges(target, changes) {
     }))
   };
 }
-async function reconcileManuscript(projectRoot, request, options = {}) {
+async function reconcileManuscript(projectRoot, request, options2 = {}) {
   validateRequest(request);
-  const project = await readProject4(projectRoot);
+  const project = await readProject4(projectRoot, options2);
   const lock = await acquireDirectoryLock(
-    path17.resolve(project.root, project.manifest.paths.convergence, "active-cycle.lock"),
+    path21.resolve(project.root, project.manifest.paths.convergence, "active-cycle.lock"),
     {
-      timeoutMs: options.lockTimeoutMs ?? 1e4,
-      retryMs: options.lockRetryMs ?? 20,
-      now: options.now
+      timeoutMs: options2.lockTimeoutMs ?? 1e4,
+      retryMs: options2.lockRetryMs ?? 20,
+      now: options2.now
     }
   );
   if (!lock.acquired) {
@@ -17967,14 +19038,14 @@ async function reconcileManuscript(projectRoot, request, options = {}) {
   try {
     let active = null;
     try {
-      active = await readActiveCycle4(project);
+      active = await readActiveCycle4(project, options2);
       cycle = active.value;
     } catch (error) {
       if (error.code !== "ENOENT") throw error;
     }
     const completedPointer = await completedPointerBlocker(project);
     const coordination = coordinationBlockers(project, active, {
-      allowOperationId: options.recoveryOperationId ?? null
+      allowOperationId: options2.recoveryOperationId ?? null
     });
     if (completedPointer) {
       outcome = {
@@ -17998,7 +19069,7 @@ async function reconcileManuscript(projectRoot, request, options = {}) {
       }
       let previousEmptyReconciliation = false;
       if (project.manifest.manuscript_reconciliation) {
-        const previousReconciliation = JSON.parse((await readArtifact(
+        const previousReconciliation = JSON.parse((await readArtifact2(
           project,
           project.manifest.manuscript_reconciliation
         )).toString("utf8"));
@@ -18011,7 +19082,7 @@ async function reconcileManuscript(projectRoot, request, options = {}) {
       let previous = { files: [], excluded_files: [] };
       if (previousReference) {
         try {
-          previous = await readScope(project, previousReference);
+          previous = await readScope(project, previousReference, options2);
         } catch (error) {
           error.reconciliationCode = "starting-scope-indeterminate";
           error.reconciliationAction = action2("revise-draft", "intake");
@@ -18019,8 +19090,8 @@ async function reconcileManuscript(projectRoot, request, options = {}) {
         }
       }
       const targetReference = request.target_scope;
-      const target = targetReference ? await readScope(project, targetReference) : null;
-      let createdAt = utcTimestamp(options);
+      const target = targetReference ? await readScope(project, targetReference, options2) : null;
+      let createdAt = utcTimestamp(options2);
       let inventoryEvidence;
       let observedInventory = null;
       if (target) {
@@ -18028,7 +19099,7 @@ async function reconcileManuscript(projectRoot, request, options = {}) {
         if (current?.scope_id !== targetReference.scope_id || current?.scope_fingerprint !== targetReference.scope_fingerprint || current?.snapshot_path !== targetReference.snapshot_path || current?.snapshot_sha256 !== targetReference.snapshot_sha256) {
           throw new Error("The imported target must be manifest current_scope");
         }
-        const full = await validateFullManuscriptScope(project.manifest, project.manifestPath);
+        const full = await validateFullManuscriptScope(project.manifest, project.manifestPath, options2);
         if (!full.valid) throw new Error("The imported target is not a current full-manuscript scope");
         inventoryEvidence = target.inventory;
       } else {
@@ -18041,13 +19112,13 @@ async function reconcileManuscript(projectRoot, request, options = {}) {
         })).reference;
       }
       try {
-        await validateStoryState2(project, request.story_state, target);
+        await validateStoryState2(project, request.story_state, target, options2);
       } catch (error) {
         error.reconciliationCode = "story-state-reconciliation-required";
         error.reconciliationAction = action2("write-fiction", "creation-import");
         throw error;
       }
-      await validateImportDecision2(project, request, previous, target, inventoryEvidence);
+      await validateImportDecision2(project, request, previous, target, inventoryEvidence, options2);
       const bootstrapRecovery = Boolean(cycle?.bootstrap);
       const preferredEvaluation = cycle?.target_evaluation ?? cycle?.starting_evaluation ?? null;
       const proofScopeReference = cycle?.target_evaluation ? previousReference : cycle?.starting_scope ?? previousReference;
@@ -18062,7 +19133,7 @@ async function reconcileManuscript(projectRoot, request, options = {}) {
       const requiredStrategy = !target ? "write-fiction" : bootstrapRecovery || recoveringFromEmpty ? "revise-draft" : previousEvaluation ? "revise-increment" : "revise-draft";
       const recoveryOperation = target ? "intake" : "creation-import";
       const cumulativeReference = bootstrapRecovery ? null : cycle?.starting_scope ?? previousReference;
-      const cumulative = bootstrapRecovery ? { files: [], excluded_files: [] } : cumulativeReference ? await readScope(project, cumulativeReference) : previous;
+      const cumulative = bootstrapRecovery ? { files: [], excluded_files: [] } : cumulativeReference ? await readScope(project, cumulativeReference, options2) : previous;
       const changes = diffManuscriptInventories(cumulative, target ?? observedInventory);
       const workSet = !target ? { entries: [] } : previousEvaluation && !recoveringFromEmpty ? workSetForChanges(target, changes) : {
         entries: target.files.map((file) => ({
@@ -18108,28 +19179,28 @@ async function reconcileManuscript(projectRoot, request, options = {}) {
       if (!recordValidation.valid) {
         throw new Error(`Generated reconciliation is invalid: ${recordValidation.errors.map((error) => error.message).join("; ")}`);
       }
-      const relative = path17.posix.join(
+      const relative = path21.posix.join(
         project.manifest.paths.convergence,
         "reconciliations",
         `${reconciliation.reconciliation_id}.json`
       );
-      const absolute = path17.resolve(project.root, relative);
+      const absolute = path21.resolve(project.root, relative);
       if (cycle) {
         await beginCycleOperation(project, active, {
           kind: "manuscript-reconciliation",
           operationId: reconciliation.reconciliation_id,
           artifactId: reconciliation.reconciliation_id
-        }, options);
+        }, options2);
       }
       let text = `${JSON.stringify(reconciliation, null, 2)}
 `;
       try {
         await createNoClobberVerified(absolute, text);
       } catch (error) {
-        if (error.code !== "EEXIST" || options.recoveryOperationId !== reconciliation.reconciliation_id) {
+        if (error.code !== "EEXIST" || options2.recoveryOperationId !== reconciliation.reconciliation_id) {
           throw error;
         }
-        const existingText = await readFile16(absolute, "utf8");
+        const existingText = await readFile20(absolute, "utf8");
         const existing = JSON.parse(existingText);
         const expected = { ...reconciliation, created_at: existing.created_at };
         if (JSON.stringify(expected) !== JSON.stringify(existing)) {
@@ -18139,7 +19210,7 @@ async function reconcileManuscript(projectRoot, request, options = {}) {
         reconciliation = existing;
         text = existingText;
       }
-      await runCheckpoint(options, "reconciliation-published");
+      await runCheckpoint(options2, "reconciliation-published");
       const reference = {
         reconciliation_id: reconciliation.reconciliation_id,
         path: relative,
@@ -18174,9 +19245,9 @@ async function reconcileManuscript(projectRoot, request, options = {}) {
         }
         await writeAtomicVerified(active.file, `${JSON.stringify(updated, null, 2)}
 `);
-        await runCheckpoint(options, "cycle-written");
+        await runCheckpoint(options2, "cycle-written");
         await finishCycleOperation(project, updated, reconciliation.reconciliation_id, {
-          ...options,
+          ...options2,
           manifestChanges: { manuscript_reconciliation: reference },
           removeManifestFields: target ? [] : ["current_scope"]
         });
@@ -18189,7 +19260,7 @@ async function reconcileManuscript(projectRoot, request, options = {}) {
         if (!target) delete updatedManifest.current_scope;
         await writeAtomicVerified(project.manifestPath, `${JSON.stringify(updatedManifest, null, 2)}
 `);
-        await runCheckpoint(options, "manifest-updated");
+        await runCheckpoint(options2, "manifest-updated");
       }
       outcome = {
         valid: true,
@@ -18245,8 +19316,8 @@ var init_reconciliation = __esm({
 });
 
 // scripts/lib/project-commands.mjs
-import { readFile as readFile17 } from "node:fs/promises";
-import path18 from "node:path";
+import { readFile as readFile21 } from "node:fs/promises";
+import path22 from "node:path";
 function requiredAction4(operation) {
   return {
     strategy: "author-project",
@@ -18269,8 +19340,8 @@ function stateError(code, message, details = {}) {
   error.projectDetails = details;
   return error;
 }
-function operationTime4(options) {
-  return utcTimestamp(options);
+function operationTime4(options2) {
+  return utcTimestamp(options2);
 }
 function validatePendingRequest(request) {
   const allowed = /* @__PURE__ */ new Set([
@@ -18299,7 +19370,7 @@ async function recoveryState2(project, active, operation) {
   let manifest = null;
   let manifestText = null;
   try {
-    manifestText = await readFile17(project.manifestPath, "utf8");
+    manifestText = await readFile21(project.manifestPath, "utf8");
     manifest = JSON.parse(manifestText);
   } catch {
   }
@@ -18314,7 +19385,7 @@ async function recoveryState2(project, active, operation) {
     cycle_revision: active?.value.revision ?? null
   };
 }
-async function setPendingAction(projectRoot, request, options = {}) {
+async function setPendingAction(projectRoot, request, options2 = {}) {
   validatePendingRequest(request);
   const references = await validateDeployedReferences(projectRoot);
   if (!references.valid) {
@@ -18329,11 +19400,11 @@ async function setPendingAction(projectRoot, request, options = {}) {
   }
   const initial = await readProject(projectRoot);
   const lock = await acquireDirectoryLock(
-    path18.resolve(initial.root, initial.manifest.paths.convergence, "active-cycle.lock"),
+    path22.resolve(initial.root, initial.manifest.paths.convergence, "active-cycle.lock"),
     {
-      timeoutMs: options.lockTimeoutMs ?? 1e4,
-      retryMs: options.lockRetryMs ?? 20,
-      now: options.now
+      timeoutMs: options2.lockTimeoutMs ?? 1e4,
+      retryMs: options2.lockRetryMs ?? 20,
+      now: options2.now
     }
   );
   if (!lock.acquired) {
@@ -18353,10 +19424,10 @@ async function setPendingAction(projectRoot, request, options = {}) {
   let project = initial;
   let active = null;
   try {
-    await runCheckpoint(options, "lock-acquired");
+    await runCheckpoint(options2, "lock-acquired");
     project = await readProject(projectRoot);
     active = await readActiveCycle(project);
-    const manifestText = await readFile17(project.manifestPath, "utf8");
+    const manifestText = await readFile21(project.manifestPath, "utf8");
     if (request.expected_manifest_sha256 !== void 0 && sha256Bytes(manifestText) !== request.expected_manifest_sha256) {
       throw stateError(
         "manifest-hash-conflict",
@@ -18431,7 +19502,7 @@ async function setPendingAction(projectRoot, request, options = {}) {
         } : request.operation_id ? { operation_id: request.operation_id } : {},
         reason: request.reason,
         ...artifacts.length > 0 ? { artifacts } : {},
-        updated_at: operationTime4(options)
+        updated_at: operationTime4(options2)
       };
       const updated = {
         ...project.manifest,
@@ -18454,7 +19525,7 @@ async function setPendingAction(projectRoot, request, options = {}) {
         await writeAtomicVerified(project.manifestPath, `${JSON.stringify(updated, null, 2)}
 `);
         manifestWritten = true;
-        await runCheckpoint(options, "manifest-updated");
+        await runCheckpoint(options2, "manifest-updated");
         outcome = {
           valid: true,
           state_written: true,
@@ -18528,7 +19599,7 @@ function validationBlockers(errors) {
     message: error.message
   }));
 }
-async function recordProjectScope(projectRoot, request, options = {}) {
+async function recordProjectScope(projectRoot, request, options2 = {}) {
   validateScopeRequest(request);
   const references = await validateDeployedReferences(projectRoot);
   if (!references.valid) {
@@ -18558,21 +19629,21 @@ async function recordProjectScope(projectRoot, request, options = {}) {
       expectedManifestSha256: request.expected_manifest_sha256,
       cycleId: request.cycle_id,
       expectedRevision: request.expected_revision,
-      now: options.now,
-      checkpoint: options.checkpoint ? async (point) => {
+      now: options2.now,
+      checkpoint: options2.checkpoint ? async (point) => {
         try {
-          await options.checkpoint(point);
+          await options2.checkpoint(point);
         } catch (error) {
           error.projectCode ??= "scope-write-interrupted";
           error.projectDetails ??= { checkpoint: point };
           throw error;
         }
       } : void 0,
-      lockTimeoutMs: options.lockTimeoutMs,
-      lockRetryMs: options.lockRetryMs,
+      lockTimeoutMs: options2.lockTimeoutMs,
+      lockRetryMs: options2.lockRetryMs,
       progress
     });
-    const manifestText = await readFile17(initial.manifestPath, "utf8");
+    const manifestText = await readFile21(initial.manifestPath, "utf8");
     const manifest = JSON.parse(manifestText);
     const validation = await validateFullManuscriptScope(manifest, initial.manifestPath);
     return {
@@ -18633,8 +19704,8 @@ var init_project_commands = __esm({
 });
 
 // scripts/lib/tracker-commands.mjs
-import { readFile as readFile18 } from "node:fs/promises";
-import path19 from "node:path";
+import { readFile as readFile22 } from "node:fs/promises";
+import path23 from "node:path";
 import { isDeepStrictEqual } from "node:util";
 function requiredAction5(operation) {
   return {
@@ -18652,7 +19723,7 @@ function failure5(code, message, operation, details = {}) {
     ...details
   };
 }
-function commandError2(code, message, details = {}) {
+function commandError5(code, message, details = {}) {
   const error = new Error(message);
   error.projectCode = code;
   error.projectDetails = details;
@@ -18665,7 +19736,7 @@ function referenceCell(value) {
   const text = String(value);
   return cell(/[|`,\r\n]/.test(text) ? formatApprovalPaths([text]) : text);
 }
-function findingLocation(location) {
+function findingLocation3(location) {
   if (location.scope === "file") return location.file;
   if (location.scope === "chapter") return `${location.file}#chapter-${location.chapter}`;
   if (location.scope === "line") return `${location.file}:${location.line}`;
@@ -18682,13 +19753,13 @@ function appendFinding(markdown, row) {
       return lines.join(eol);
     }
   }
-  throw commandError2("tracker-invalid", "The Findings table separator is unavailable.");
+  throw commandError5("tracker-invalid", "The Findings table separator is unavailable.");
 }
 async function recoveryState3(project, operation) {
-  const trackerPath = path19.resolve(project.root, project.manifest.paths.audit_tracker);
+  const trackerPath = path23.resolve(project.root, project.manifest.paths.audit_tracker);
   let trackerSha256 = null;
   try {
-    trackerSha256 = sha256Bytes(await readFile18(trackerPath));
+    trackerSha256 = sha256Bytes(await readFile22(trackerPath));
   } catch {
   }
   return {
@@ -18697,36 +19768,36 @@ async function recoveryState3(project, operation) {
     tracker_sha256: trackerSha256
   };
 }
-async function validateFindingReport(project, request, options) {
+async function validateFindingReport(project, request, options2) {
   if (!validateRelativePath(request.finding.location.file).valid) {
-    throw commandError2("finding-location-invalid", "Finding location.file must be a portable project-relative path.");
+    throw commandError5("finding-location-invalid", "Finding location.file must be a portable project-relative path.");
   }
   const reportsRoot = project.manifest.paths.reports.replace(/\/?$/, "/");
   if (!request.report.startsWith(reportsRoot)) {
-    throw commandError2("finding-report-invalid", "The current report must be beneath the registered reports path.");
+    throw commandError5("finding-report-invalid", "The current report must be beneath the registered reports path.");
   }
   let markdown;
   try {
-    markdown = await readFile18(path19.resolve(project.root, request.report), "utf8");
+    markdown = await readFile22(path23.resolve(project.root, request.report), "utf8");
   } catch (error) {
-    throw commandError2("finding-report-unavailable", `Cannot read current report ${request.report}: ${error.message}`);
+    throw commandError5("finding-report-unavailable", `Cannot read current report ${request.report}: ${error.message}`);
   }
-  const validation = validateEvidenceReport(markdown, options);
+  const validation = validateEvidenceReport(markdown, options2);
   if (!validation.valid) {
-    throw commandError2("finding-report-invalid", "The current report does not satisfy report v2 evidence requirements.", {
+    throw commandError5("finding-report-invalid", "The current report does not satisfy report v2 evidence requirements.", {
       validation_errors: validation.errors
     });
   }
   const envelope = validation.envelope;
   const reported = envelope.findings.find((candidate) => candidate.id === request.finding.id);
   if (envelope.stage !== request.operation || !reported || !isDeepStrictEqual(reported, request.finding)) {
-    throw commandError2(
+    throw commandError5(
       "finding-report-mismatch",
       "The current report must contain the exact finding with the same operation and audit identity."
     );
   }
 }
-async function recordFinding(projectRoot, request, options = {}) {
+async function recordFinding(projectRoot, request, options2 = {}) {
   const operation = "record-finding";
   const references = await validateDeployedReferences(projectRoot);
   if (!references.valid) {
@@ -18741,11 +19812,11 @@ async function recordFinding(projectRoot, request, options = {}) {
   }
   const initial = await readProject(projectRoot);
   const lock = await acquireDirectoryLock(
-    path19.resolve(initial.root, initial.manifest.paths.convergence, "active-cycle.lock"),
+    path23.resolve(initial.root, initial.manifest.paths.convergence, "active-cycle.lock"),
     {
-      timeoutMs: options.lockTimeoutMs ?? 1e4,
-      retryMs: options.lockRetryMs ?? 20,
-      now: options.now
+      timeoutMs: options2.lockTimeoutMs ?? 1e4,
+      retryMs: options2.lockRetryMs ?? 20,
+      now: options2.now
     }
   );
   if (!lock.acquired) {
@@ -18761,12 +19832,12 @@ async function recordFinding(projectRoot, request, options = {}) {
   let operationError;
   let stateWritten = false;
   try {
-    await runCheckpoint(options, "lock-acquired");
+    await runCheckpoint(options2, "lock-acquired");
     project = await readProject(projectRoot);
-    const trackerPath = path19.resolve(project.root, project.manifest.paths.audit_tracker);
-    const trackerBefore = await readFile18(trackerPath, "utf8");
+    const trackerPath = path23.resolve(project.root, project.manifest.paths.audit_tracker);
+    const trackerBefore = await readFile22(trackerPath, "utf8");
     if (request.expected_tracker_sha256 !== void 0 && sha256Bytes(trackerBefore) !== request.expected_tracker_sha256) {
-      throw commandError2(
+      throw commandError5(
         "tracker-hash-conflict",
         "The tracker changed after the finding input was prepared; reread it before retrying.",
         {
@@ -18775,21 +19846,21 @@ async function recordFinding(projectRoot, request, options = {}) {
         }
       );
     }
-    const validation = validateRecordFindingCommand(request, options);
+    const validation = validateRecordFindingCommand(request, options2);
     if (!validation.valid) {
-      throw commandError2("finding-command-invalid", "The finding command does not satisfy its typed input contract.", {
+      throw commandError5("finding-command-invalid", "The finding command does not satisfy its typed input contract.", {
         validation_errors: validation.errors
       });
     }
     const tracker = await parseTrackerState(trackerBefore, project.root);
     if (!tracker.valid) {
-      throw commandError2("tracker-invalid", "The existing tracker is invalid; diagnose the external edit before recording a finding.", {
+      throw commandError5("tracker-invalid", "The existing tracker is invalid; diagnose the external edit before recording a finding.", {
         validation_errors: tracker.errors
       });
     }
     const duplicateIndex = tracker.findings.findIndex((candidate2) => candidate2.id === request.finding.id);
     if (duplicateIndex >= 0) {
-      throw commandError2("duplicate-finding-id", `Finding ID already exists: ${request.finding.id}`, {
+      throw commandError5("duplicate-finding-id", `Finding ID already exists: ${request.finding.id}`, {
         finding_id: request.finding.id,
         conflicts: [{
           finding_id: request.finding.id,
@@ -18798,19 +19869,19 @@ async function recordFinding(projectRoot, request, options = {}) {
         }]
       });
     }
-    await validateFindingReport(project, request, options);
-    const updatedAt = utcTimestamp(options);
-    const row = `| ${cell(request.finding.id)} | ${cell(request.operation)} | ${cell(request.finding.audit)} | ${referenceCell(findingLocation(request.finding.location))} | open | ${referenceCell(request.report)} | ${updatedAt} | ${cell(request.reason)} |`;
+    await validateFindingReport(project, request, options2);
+    const updatedAt = utcTimestamp(options2);
+    const row = `| ${cell(request.finding.id)} | ${cell(request.operation)} | ${cell(request.finding.audit)} | ${referenceCell(findingLocation3(request.finding.location))} | open | ${referenceCell(request.report)} | ${updatedAt} | ${cell(request.reason)} |`;
     const trackerAfter = appendFinding(trackerBefore, row);
     const candidate = await parseTrackerState(trackerAfter, project.root);
     if (!candidate.valid) {
-      throw commandError2("finding-command-invalid", "The finding row does not satisfy the living tracker contract.", {
+      throw commandError5("finding-command-invalid", "The finding row does not satisfy the living tracker contract.", {
         validation_errors: candidate.errors
       });
     }
     await writeAtomicVerified(trackerPath, trackerAfter);
     stateWritten = true;
-    await runCheckpoint(options, "tracker-written");
+    await runCheckpoint(options2, "tracker-written");
     outcome = {
       valid: true,
       state_written: true,
@@ -18863,15 +19934,15 @@ function appendApproval(markdown, row) {
       return lines.join(eol);
     }
   }
-  throw commandError2("tracker-invalid", "The Approvals table separator is unavailable.");
+  throw commandError5("tracker-invalid", "The Approvals table separator is unavailable.");
 }
 function approvalValidationError(message) {
-  return commandError2("approval-command-invalid", message);
+  return commandError5("approval-command-invalid", message);
 }
 async function validateRevisionArtifact(project, reference) {
   let contents;
   try {
-    contents = await readFile18(path19.resolve(project.root, reference.path));
+    contents = await readFile22(path23.resolve(project.root, reference.path));
   } catch (error) {
     throw approvalValidationError(`Cannot read revision artifact ${reference.path}: ${error.message}`);
   }
@@ -18946,7 +20017,7 @@ async function approvalReason(project, request) {
   }
   return `${request.reason.trim()} ${tokens.join(" ")}`;
 }
-async function recordApproval(projectRoot, request, options = {}) {
+async function recordApproval(projectRoot, request, options2 = {}) {
   const operation = "record-approval";
   const references = await validateDeployedReferences(projectRoot);
   if (!references.valid) {
@@ -18961,11 +20032,11 @@ async function recordApproval(projectRoot, request, options = {}) {
   }
   const initial = await readProject(projectRoot);
   const lock = await acquireDirectoryLock(
-    path19.resolve(initial.root, initial.manifest.paths.convergence, "active-cycle.lock"),
+    path23.resolve(initial.root, initial.manifest.paths.convergence, "active-cycle.lock"),
     {
-      timeoutMs: options.lockTimeoutMs ?? 1e4,
-      retryMs: options.lockRetryMs ?? 20,
-      now: options.now
+      timeoutMs: options2.lockTimeoutMs ?? 1e4,
+      retryMs: options2.lockRetryMs ?? 20,
+      now: options2.now
     }
   );
   if (!lock.acquired) {
@@ -18981,12 +20052,12 @@ async function recordApproval(projectRoot, request, options = {}) {
   let operationError;
   let stateWritten = false;
   try {
-    await runCheckpoint(options, "lock-acquired");
+    await runCheckpoint(options2, "lock-acquired");
     project = await readProject(projectRoot);
-    const trackerPath = path19.resolve(project.root, project.manifest.paths.audit_tracker);
-    const trackerBefore = await readFile18(trackerPath, "utf8");
+    const trackerPath = path23.resolve(project.root, project.manifest.paths.audit_tracker);
+    const trackerBefore = await readFile22(trackerPath, "utf8");
     if (request.expected_tracker_sha256 !== void 0 && sha256Bytes(trackerBefore) !== request.expected_tracker_sha256) {
-      throw commandError2(
+      throw commandError5(
         "tracker-hash-conflict",
         "The tracker changed after the approval input was prepared; reread it before retrying.",
         {
@@ -18995,21 +20066,21 @@ async function recordApproval(projectRoot, request, options = {}) {
         }
       );
     }
-    const validation = validateRecordApprovalCommand(request, options);
+    const validation = validateRecordApprovalCommand(request, options2);
     if (!validation.valid) {
-      throw commandError2("approval-command-invalid", "The approval command does not satisfy its typed input contract.", {
+      throw commandError5("approval-command-invalid", "The approval command does not satisfy its typed input contract.", {
         validation_errors: validation.errors
       });
     }
     const tracker = await parseTrackerState(trackerBefore, project.root);
     if (!tracker.valid) {
-      throw commandError2("tracker-invalid", "The existing tracker is invalid; diagnose the external edit before recording an approval.", {
+      throw commandError5("tracker-invalid", "The existing tracker is invalid; diagnose the external edit before recording an approval.", {
         validation_errors: tracker.errors
       });
     }
     const duplicateIndex = tracker.approvals.findIndex((candidate2) => candidate2.id === request.approval_id);
     if (duplicateIndex >= 0) {
-      throw commandError2("duplicate-approval-id", `Approval ID already exists: ${request.approval_id}`, {
+      throw commandError5("duplicate-approval-id", `Approval ID already exists: ${request.approval_id}`, {
         approval_id: request.approval_id,
         conflicts: [{
           approval_id: request.approval_id,
@@ -19020,18 +20091,18 @@ async function recordApproval(projectRoot, request, options = {}) {
       });
     }
     const reason = await approvalReason(project, request);
-    const updatedAt = utcTimestamp(options);
+    const updatedAt = utcTimestamp(options2);
     const row = `| ${cell(request.approval_id)} | ${cell(request.type)} | ${cell(request.operation)} | ${cell(request.scope_id)} | ${cell(formatApprovalPaths(request.paths))} | ${request.status} | ${cell(reason)} | ${updatedAt} |`;
     const trackerAfter = appendApproval(trackerBefore, row);
     const candidate = await parseTrackerState(trackerAfter, project.root);
     if (!candidate.valid) {
-      throw commandError2("approval-command-invalid", "The approval row does not satisfy the living tracker contract.", {
+      throw commandError5("approval-command-invalid", "The approval row does not satisfy the living tracker contract.", {
         validation_errors: candidate.errors
       });
     }
     await writeAtomicVerified(trackerPath, trackerAfter);
     stateWritten = true;
-    await runCheckpoint(options, "tracker-written");
+    await runCheckpoint(options2, "tracker-written");
     outcome = {
       valid: true,
       state_written: true,
@@ -19083,105 +20154,45 @@ function replaceFinding(markdown, findingId, row) {
       return lines.join(eol);
     }
   }
-  throw commandError2("finding-decision-target-missing", `Finding is unavailable: ${findingId}`);
+  throw commandError5("finding-decision-target-missing", `Finding is unavailable: ${findingId}`);
 }
-async function readDecisionArtifact(project, reference, identityField) {
-  let text;
-  try {
-    text = await readFile18(path19.resolve(project.root, reference.path), "utf8");
-  } catch (error) {
-    throw commandError2("finding-decision-evidence-unavailable", `Cannot read decision evidence ${reference.path}: ${error.message}`);
-  }
-  if (sha256Bytes(text) !== reference.sha256) {
-    throw commandError2("finding-decision-evidence-mismatch", `Decision evidence hash differs: ${reference.path}`);
-  }
-  let value;
-  try {
-    value = JSON.parse(text);
-  } catch (error) {
-    throw commandError2("finding-decision-evidence-mismatch", `Decision evidence is not valid JSON: ${error.message}`);
-  }
-  if (value[identityField] !== reference[identityField]) {
-    throw commandError2("finding-decision-evidence-mismatch", `Decision evidence identity differs: ${reference.path}`);
-  }
-  return value;
-}
-async function validateDecisionReport(project, request, existing, options) {
+async function validateDecisionReport(project, request, existing, options2) {
   const reportsRoot = project.manifest.paths.reports.replace(/\/?$/, "/");
   if (!request.report.startsWith(reportsRoot)) {
-    throw commandError2("finding-decision-report-invalid", "The current report must be beneath the registered reports path.");
+    throw commandError5("finding-decision-report-invalid", "The current report must be beneath the registered reports path.");
   }
   let markdown;
   try {
-    markdown = await readFile18(path19.resolve(project.root, request.report), "utf8");
+    markdown = await readFile22(path23.resolve(project.root, request.report), "utf8");
   } catch (error) {
-    throw commandError2("finding-decision-report-unavailable", `Cannot read current report ${request.report}: ${error.message}`);
+    throw commandError5("finding-decision-report-unavailable", `Cannot read current report ${request.report}: ${error.message}`);
   }
-  const validation = validateEvidenceReport(markdown, options);
+  const validation = validateEvidenceReport(markdown, options2);
   if (!validation.valid) {
-    throw commandError2("finding-decision-report-invalid", "The current report does not satisfy report v2 evidence requirements.", {
+    throw commandError5("finding-decision-report-invalid", "The current report does not satisfy report v2 evidence requirements.", {
       validation_errors: validation.errors
     });
   }
   if (validation.envelope.stage !== existing.stage) {
-    throw commandError2("finding-decision-report-mismatch", "The current report operation differs from the tracked finding.");
+    throw commandError5("finding-decision-report-mismatch", "The current report operation differs from the tracked finding.");
   }
   const reported = validation.envelope.findings.find((candidate) => candidate.id === request.finding_id) ?? null;
   if (["deferred", "dismissed"].includes(request.status)) {
-    if (!reported || reported.audit !== existing.audit || findingLocation(reported.location) !== existing.location) {
-      throw commandError2("finding-decision-report-mismatch", "The current report must retain the exact finding audit and location.");
+    if (!reported || reported.audit !== existing.audit || findingLocation3(reported.location) !== existing.location) {
+      throw commandError5("finding-decision-report-mismatch", "The current report must retain the exact finding audit and location.");
     }
   }
   if (request.status === "stale") {
     if (reported) {
-      throw commandError2("finding-decision-report-mismatch", "A stale decision requires an equivalent current report that no longer observes the finding.");
+      throw commandError5("finding-decision-report-mismatch", "A stale decision requires an equivalent current report that no longer observes the finding.");
     }
     if (!/(?:^|\s)operation_coverage=full(?:\s|$)/.test(validation.envelope.engine.notes)) {
-      throw commandError2("finding-decision-report-mismatch", "A stale decision requires an equivalent complete rerun.");
+      throw commandError5("finding-decision-report-mismatch", "A stale decision requires an equivalent complete rerun.");
     }
   }
-  return { envelope: validation.envelope, reported };
+  return { envelope: validation.envelope, reported, markdown };
 }
-function sameCurrentScope(passScope, currentScope) {
-  return currentScope && passScope.scope_id === currentScope.scope_id && passScope.scope_fingerprint === currentScope.scope_fingerprint && passScope.snapshot_path === currentScope.snapshot_path && passScope.snapshot_sha256 === currentScope.snapshot_sha256;
-}
-async function validateNoEditDecision(project, tracker, request, report, options) {
-  if (!["deferred", "dismissed"].includes(request.status) || request.revision_execution) {
-    throw commandError2("finding-decision-evidence-mismatch", "A no-edit skip supports only deferred or dismissed finding decisions.");
-  }
-  const skip = await readDecisionArtifact(project, request.no_edit_skip, "skip_id");
-  const skipValidation = validateNoEditSkip(skip, options);
-  if (!skipValidation.valid) {
-    throw commandError2("finding-decision-evidence-mismatch", "The no-edit skip is invalid.", {
-      validation_errors: skipValidation.errors
-    });
-  }
-  if (skip.author_decision_id !== request.author_decision_id || !skip.covered_findings.includes(request.finding_id)) {
-    throw commandError2("finding-decision-evidence-mismatch", "The no-edit skip does not cover this finding and author decision.");
-  }
-  const pass = await readDecisionArtifact(project, skip.requested_pass, "pass_id");
-  const passValidation = validateRequestedPass(pass, options);
-  if (!passValidation.valid || pass.pass_fingerprint !== skip.requested_pass.pass_fingerprint) {
-    throw commandError2("finding-decision-evidence-mismatch", "The no-edit skip requested pass is invalid.", {
-      validation_errors: passValidation.errors
-    });
-  }
-  if (skip.scope_fingerprint !== pass.target_scope.scope_fingerprint || !sameCurrentScope(pass.target_scope, project.manifest.current_scope)) {
-    throw commandError2("finding-decision-evidence-mismatch", "The no-edit skip is not bound to the current target scope.");
-  }
-  if (!pass.paths.includes(report.reported.location.file)) {
-    throw commandError2("finding-decision-evidence-mismatch", "The no-edit skip pass does not cover the finding location.");
-  }
-  const passReference = report.envelope.requested_pass;
-  if (report.envelope.scope_id !== pass.target_scope.scope_id || report.envelope.scope_fingerprint !== pass.target_scope.scope_fingerprint || !passReference || passReference.pass_id !== pass.pass_id || passReference.pass_fingerprint !== pass.pass_fingerprint || passReference.path !== skip.requested_pass.path || passReference.sha256 !== skip.requested_pass.sha256) {
-    throw commandError2("finding-decision-evidence-mismatch", "The current report and no-edit skip name different pass or scope evidence.");
-  }
-  const decision = tracker.approvals.find((approval) => approval.id === request.author_decision_id);
-  if (!decision || decision.status !== "approved" || decision.scopeId !== pass.target_scope.scope_id || !skip.operations.includes(decision.operation) || !pass.paths.every((filePath) => decision.paths.includes(filePath))) {
-    throw commandError2("finding-author-decision-missing", "The no-edit skip lacks its current approved author decision for the complete pass paths.");
-  }
-}
-async function recordFindingDecision(projectRoot, request, options = {}) {
+async function recordFindingDecision(projectRoot, request, options2 = {}) {
   const operation = "record-finding-decision";
   const references = await validateDeployedReferences(projectRoot);
   if (!references.valid) {
@@ -19196,11 +20207,11 @@ async function recordFindingDecision(projectRoot, request, options = {}) {
   }
   const initial = await readProject(projectRoot);
   const lock = await acquireDirectoryLock(
-    path19.resolve(initial.root, initial.manifest.paths.convergence, "active-cycle.lock"),
+    path23.resolve(initial.root, initial.manifest.paths.convergence, "active-cycle.lock"),
     {
-      timeoutMs: options.lockTimeoutMs ?? 1e4,
-      retryMs: options.lockRetryMs ?? 20,
-      now: options.now
+      timeoutMs: options2.lockTimeoutMs ?? 1e4,
+      retryMs: options2.lockRetryMs ?? 20,
+      now: options2.now
     }
   );
   if (!lock.acquired) {
@@ -19216,12 +20227,12 @@ async function recordFindingDecision(projectRoot, request, options = {}) {
   let operationError;
   let stateWritten = false;
   try {
-    await runCheckpoint(options, "lock-acquired");
+    await runCheckpoint(options2, "lock-acquired");
     project = await readProject(projectRoot);
-    const trackerPath = path19.resolve(project.root, project.manifest.paths.audit_tracker);
-    const trackerBefore = await readFile18(trackerPath, "utf8");
+    const trackerPath = path23.resolve(project.root, project.manifest.paths.audit_tracker);
+    const trackerBefore = await readFile22(trackerPath, "utf8");
     if (request.expected_tracker_sha256 !== void 0 && sha256Bytes(trackerBefore) !== request.expected_tracker_sha256) {
-      throw commandError2(
+      throw commandError5(
         "tracker-hash-conflict",
         "The tracker changed after the finding-decision input was prepared; reread it before retrying.",
         {
@@ -19230,51 +20241,57 @@ async function recordFindingDecision(projectRoot, request, options = {}) {
         }
       );
     }
-    const validation = validateRecordFindingDecisionCommand(request, options);
+    const validation = validateRecordFindingDecisionCommand(request, options2);
     if (!validation.valid) {
-      throw commandError2("finding-decision-command-invalid", "The finding-decision command does not satisfy its typed input contract.", {
+      throw commandError5("finding-decision-command-invalid", "The finding-decision command does not satisfy its typed input contract.", {
         validation_errors: validation.errors
       });
     }
     const tracker = await parseTrackerState(trackerBefore, project.root);
     if (!tracker.valid) {
-      throw commandError2("tracker-invalid", "The existing tracker is invalid; diagnose the external edit before recording a finding decision.", {
+      throw commandError5("tracker-invalid", "The existing tracker is invalid; diagnose the external edit before recording a finding decision.", {
         validation_errors: tracker.errors
       });
     }
     const existing = tracker.findings.find((candidate2) => candidate2.id === request.finding_id);
     if (!existing) {
-      throw commandError2("finding-decision-target-missing", `Finding is unavailable: ${request.finding_id}`);
+      throw commandError5("finding-decision-target-missing", `Finding is unavailable: ${request.finding_id}`);
     }
     if (existing.status === request.status || existing.status === "stale" || existing.status === "resolved" && request.status !== "stale") {
-      throw commandError2(
+      throw commandError5(
         "finding-decision-transition-invalid",
         `Cannot record ${request.status} after ${existing.status} for ${request.finding_id}.`
       );
     }
-    const report = await validateDecisionReport(project, request, existing, options);
+    const report = await validateDecisionReport(project, request, existing, options2);
     if (request.status === "stale") {
-      await validateStaleDecision(project, tracker, request, report, existing);
+      await validateStaleDecision(project, tracker, request, report, existing, options2);
     } else if (request.revision_execution) {
-      await validateExecutionDecision(project, request, report, options);
+      await validateExecutionDecision(project, tracker, request, report, existing, {
+        ...options2,
+        pendingFindingDecision: { findingId: request.finding_id, status: request.status }
+      });
     } else if (request.no_edit_skip) {
-      await validateNoEditDecision(project, tracker, request, report, options);
+      await validateNoEditDecision(project, tracker, request, report, options2);
     } else {
-      throw commandError2("finding-decision-evidence-required", "The requested finding decision requires current evidence.");
+      throw commandError5("finding-decision-evidence-required", "The requested finding decision requires current evidence.");
     }
-    const updatedAt = utcTimestamp(options);
-    const reason = `${request.reason.trim()} author_decision_id=${request.author_decision_id} finding_status=${request.status}`;
+    const updatedAt = utcTimestamp(options2);
+    const previousReportSha256 = sha256Bytes(await readFile22(path23.resolve(project.root, existing.report)));
+    const evidence = request.revision_execution ? { reference: request.revision_execution, id: request.revision_execution.execution_id, type: "revision-execution" } : request.no_edit_skip ? { reference: request.no_edit_skip, id: request.no_edit_skip.skip_id, type: "no-edit-skip" } : null;
+    const evidenceReason = evidence ? ` evidence_type=${evidence.type} evidence_id=${evidence.id} evidence_path=${encodeURIComponent(evidence.reference.path)} evidence_sha256=${evidence.reference.sha256}` : "";
+    const reason = `${request.reason.trim()} author_decision_id=${request.author_decision_id} finding_status=${request.status} previous_report=${encodeURIComponent(existing.report)} previous_report_sha256=${previousReportSha256} report_sha256=${sha256Bytes(report.markdown)}${evidenceReason}`;
     const row = `| ${cell(existing.id)} | ${cell(existing.stage)} | ${cell(existing.audit)} | ${referenceCell(existing.location)} | ${request.status} | ${referenceCell(request.report)} | ${updatedAt} | ${cell(reason)} |`;
     const trackerAfter = replaceFinding(trackerBefore, existing.id, row);
     const candidate = await parseTrackerState(trackerAfter, project.root);
     if (!candidate.valid) {
-      throw commandError2("finding-decision-command-invalid", "The finding decision does not satisfy the living tracker contract.", {
+      throw commandError5("finding-decision-command-invalid", "The finding decision does not satisfy the living tracker contract.", {
         validation_errors: candidate.errors
       });
     }
     await writeAtomicVerified(trackerPath, trackerAfter);
     stateWritten = true;
-    await runCheckpoint(options, "tracker-written");
+    await runCheckpoint(options2, "tracker-written");
     outcome = {
       valid: true,
       state_written: true,
@@ -19316,92 +20333,18 @@ async function recordFindingDecision(projectRoot, request, options = {}) {
   }
   return outcome;
 }
-async function validateExecutionDecision(project, request, report, options) {
-  if (request.no_edit_skip) {
-    throw commandError2("finding-decision-evidence-mismatch", "Choose exactly one current evidence record for a finding decision.");
-  }
-  const execution = await readDecisionArtifact(project, request.revision_execution, "execution_id");
-  if (execution.status !== "verified") {
-    throw commandError2("finding-decision-evidence-mismatch", "A finding decision requires a verified revision execution.");
-  }
-  const expectedDisposition = {
-    resolved: "execute",
-    deferred: "defer",
-    dismissed: "dismiss"
-  }[request.status];
-  if (!expectedDisposition) {
-    throw commandError2("finding-decision-evidence-mismatch", "Revision execution evidence does not support a stale decision.");
-  }
-  const disposition = execution.finding_dispositions.find(
-    (candidate) => candidate.finding_id === request.finding_id && candidate.disposition === expectedDisposition
-  );
-  if (!disposition || disposition.author_decision_id !== request.author_decision_id) {
-    throw commandError2("finding-decision-evidence-mismatch", "The execution lacks this finding disposition and author decision.");
-  }
-  const disk = await validateRevisionExecutionAgainstDisk(project.root, execution, {
-    expectedPass: execution.requested_pass,
-    expectedScope: execution.target_scope,
-    requireOutputs: true,
-    requireCurrentTarget: true,
-    requireCurrentDecisions: true,
-    pendingFindingDecision: { findingId: request.finding_id, status: request.status },
-    now: options.now
-  });
-  if (!disk.valid) {
-    throw commandError2("finding-decision-evidence-mismatch", "The verified execution is not current for its approved inputs, decisions, outputs, and target.", {
-      validation_errors: disk.errors
-    });
-  }
-  const passReference = report.envelope.requested_pass;
-  if (report.envelope.scope_id !== execution.target_scope.scope_id || report.envelope.scope_fingerprint !== execution.target_scope.scope_fingerprint || !passReference || passReference.pass_id !== execution.requested_pass.pass_id || passReference.pass_fingerprint !== execution.requested_pass.pass_fingerprint || passReference.path !== execution.requested_pass.path || passReference.sha256 !== execution.requested_pass.sha256) {
-    throw commandError2("finding-decision-evidence-mismatch", "The current report and revision execution name different pass or scope evidence.");
-  }
-  if (report.reported) {
-    const existing = (await parseTrackerState(
-      await readFile18(path19.resolve(project.root, project.manifest.paths.audit_tracker), "utf8"),
-      project.root
-    )).findings.find((candidate) => candidate.id === request.finding_id);
-    if (report.reported.audit !== existing.audit || findingLocation(report.reported.location) !== existing.location) {
-      throw commandError2("finding-decision-report-mismatch", "The current report finding has a different audit or location.");
-    }
-  }
-}
-async function validateStaleDecision(project, tracker, request, report, existing) {
-  if (request.revision_execution || request.no_edit_skip) {
-    throw commandError2("finding-decision-evidence-mismatch", "A stale decision uses its equivalent current report, not execution or no-edit evidence.");
-  }
-  for (const input of report.envelope.inputs) {
-    if (input.version_type !== "sha256") {
-      throw commandError2("finding-decision-evidence-mismatch", "A stale decision requires SHA-256 input versions in the current report.");
-    }
-    let contents;
-    try {
-      contents = await readFile18(path19.resolve(project.root, input.path));
-    } catch (error) {
-      throw commandError2("finding-decision-evidence-unavailable", `Cannot read current report input ${input.path}: ${error.message}`);
-    }
-    if (sha256Bytes(contents) !== input.version) {
-      throw commandError2("finding-decision-evidence-mismatch", `Current report input hash differs: ${input.path}`);
-    }
-  }
-  const decision = tracker.approvals.find((approval) => approval.id === request.author_decision_id);
-  const tokens = String(decision?.reason ?? "").split(/\s+/).filter(Boolean);
-  const expectedFindingToken = `finding_id=${request.finding_id}`;
-  const expectedStatusToken = `finding_status=${request.status}`;
-  if (!decision || decision.status !== "approved" || decision.type !== "finding-decision" || decision.operation !== existing.stage || decision.scopeId !== report.envelope.scope_id || decision.scopeId !== project.manifest.current_scope?.scope_id || !report.envelope.inputs.every((input) => decision.paths.includes(input.path)) || tokens.filter((token) => token.startsWith("finding_id=")).length !== 1 || !tokens.includes(expectedFindingToken) || tokens.filter((token) => token.startsWith("finding_status=")).length !== 1 || !tokens.includes(expectedStatusToken)) {
-    throw commandError2("finding-author-decision-missing", "A stale decision requires an approved finding-decision bound to the finding, status, operation, scope, and complete report inputs.");
-  }
-}
 var init_tracker_commands = __esm({
   "scripts/lib/tracker-commands.mjs"() {
     init_approval_paths();
     init_cycle_coordination();
+    init_execution_decision();
     init_evaluation_artifacts();
-    init_evaluation_contracts();
     init_markdown();
     init_revision_execution();
     init_schemas();
+    init_no_edit_decision();
     init_shared_references();
+    init_stale_decision();
     init_state_io();
     init_time();
     init_tracker();
@@ -19409,17 +20352,11 @@ var init_tracker_commands = __esm({
 });
 
 // scripts/lib/cycle-recovery.mjs
-import { readFile as readFile19 } from "node:fs/promises";
-import path20 from "node:path";
-async function readProject5(projectRoot) {
-  const root2 = path20.resolve(projectRoot);
-  const manifestPath = path20.join(root2, ".author-toolkit", "project.json");
-  const manifest = JSON.parse(await readFile19(manifestPath, "utf8"));
-  const validation = validateManifest(manifest);
-  if (!validation.valid) {
-    throw new Error(validation.errors.map((error) => error.message).join("; "));
-  }
-  return { root: root2, manifestPath, manifest };
+import { readFile as readFile23 } from "node:fs/promises";
+import path24 from "node:path";
+async function readProject5(projectRoot, options2 = {}) {
+  const { readProject: readProjectWithReferences } = await Promise.resolve().then(() => (init_evaluation_artifacts(), evaluation_artifacts_exports));
+  return readProjectWithReferences(projectRoot, options2);
 }
 function recoveryAction() {
   return {
@@ -19455,7 +20392,7 @@ function formatErrors4(errors) {
 }
 async function readJsonIfPresent(file) {
   try {
-    return { text: await readFile19(file, "utf8"), file };
+    return { text: await readFile23(file, "utf8"), file };
   } catch (error) {
     if (error.code === "ENOENT") return null;
     throw error;
@@ -19469,12 +20406,12 @@ function parseCycle(record) {
   return { ...record, value };
 }
 function completedCyclePath(project, cycleId) {
-  const relative = path20.posix.join(
+  const relative = path24.posix.join(
     project.manifest.paths.convergence,
     "cycles",
     `${cycleId}.json`
   );
-  return { relative, absolute: path20.resolve(project.root, relative) };
+  return { relative, absolute: path24.resolve(project.root, relative) };
 }
 function sameScope(left, right) {
   return JSON.stringify(left ?? null) === JSON.stringify(right ?? null);
@@ -19488,7 +20425,7 @@ function activeArtifactReferences(project, cycle) {
       role,
       path: reference.snapshot_path,
       sha256: reference.snapshot_sha256,
-      expectedPath: path20.posix.join(
+      expectedPath: path24.posix.join(
         project.manifest.paths.convergence,
         "scopes",
         `${reference.scope_id}-${reference.scope_fingerprint}.json`
@@ -19548,7 +20485,7 @@ async function artifactDiagnostics(project, active) {
   for (const reference of activeArtifactReferences(project, active?.value)) {
     let contents;
     try {
-      contents = await readFile19(path20.resolve(project.root, reference.path));
+      contents = await readFile23(path24.resolve(project.root, reference.path));
     } catch (error) {
       blockers.push({
         code: "cycle-artifact-unavailable",
@@ -19710,7 +20647,7 @@ async function finishCompletion(project, active, completed, request) {
   }
   let evaluation;
   try {
-    evaluation = await recomputeCompletedCycleForRecovery(project, completed.value);
+    evaluation = await recomputeCompletedCycleForRecovery(project, completed.value, options);
   } catch (error) {
     return failure6("completion-evaluation-unavailable", error.message, active.value);
   }
@@ -19775,19 +20712,19 @@ async function finishCompletion(project, active, completed, request) {
     required_action: null
   };
 }
-async function reconcileCycle(projectRoot, request = {}, options = {}) {
+async function reconcileCycle(projectRoot, request = {}, options2 = {}) {
   const allowed = /* @__PURE__ */ new Set(["cycle_id", "operation_id", "direction", "lock_owner"]);
   for (const key of Object.keys(request)) {
     if (!allowed.has(key)) throw new Error(`Unknown reconcile-cycle input field: ${key}`);
   }
-  const project = await readProject5(projectRoot);
-  const lockPath = path20.resolve(
+  const project = await readProject5(projectRoot, options2);
+  const lockPath = path24.resolve(
     project.root,
     project.manifest.paths.convergence,
     "active-cycle.lock"
   );
   const inspected = await inspectDirectoryLock(lockPath);
-  const active = parseCycle(await readJsonIfPresent(path20.resolve(
+  const active = parseCycle(await readJsonIfPresent(path24.resolve(
     project.root,
     project.manifest.paths.convergence,
     "active-cycle.json"
@@ -19829,9 +20766,9 @@ async function reconcileCycle(projectRoot, request = {}, options = {}) {
   let recoveryLock = null;
   if (needsLock) {
     recoveryLock = await acquireDirectoryLock(lockPath, {
-      timeoutMs: options.lockTimeoutMs ?? 1e4,
-      retryMs: options.lockRetryMs ?? 20,
-      now: options.now
+      timeoutMs: options2.lockTimeoutMs ?? 1e4,
+      retryMs: options2.lockRetryMs ?? 20,
+      now: options2.now
     });
     if (!recoveryLock.acquired) {
       return failure6(
@@ -19843,8 +20780,8 @@ async function reconcileCycle(projectRoot, request = {}, options = {}) {
     let currentManifest;
     let currentActiveText;
     try {
-      currentManifest = JSON.parse(await readFile19(project.manifestPath, "utf8"));
-      currentActiveText = active ? await readFile19(active.file, "utf8") : null;
+      currentManifest = JSON.parse(await readFile23(project.manifestPath, "utf8"));
+      currentActiveText = active ? await readFile23(active.file, "utf8") : null;
     } catch (error) {
       await releaseDirectoryLock(recoveryLock);
       return failure6(
@@ -19886,7 +20823,7 @@ async function reconcileCycle(projectRoot, request = {}, options = {}) {
       }
       let evaluation;
       try {
-        evaluation = await recomputeCompletedCycleForRecovery(project, completed.value);
+        evaluation = await recomputeCompletedCycleForRecovery(project, completed.value, options2);
       } catch (error) {
         return failure6("completion-evaluation-unavailable", error.message, completed.value);
       }
@@ -19921,19 +20858,19 @@ async function reconcileCycle(projectRoot, request = {}, options = {}) {
         return failure6("creation-publication-identity-mismatch", "Creation recovery requires the exact cycle, commit ID, pre-link active revision, and no leftover lock.", active?.value ?? null);
       }
       try {
-        const commitRelative = path20.posix.join(
+        const commitRelative = path24.posix.join(
           project.manifest.paths.creation,
           "batches",
           `${request.operation_id}.json`
         );
-        const commitText = await readFile19(path20.resolve(project.root, commitRelative), "utf8");
+        const commitText = await readFile23(path24.resolve(project.root, commitRelative), "utf8");
         const commit = JSON.parse(commitText);
-        const batchRelative = path20.posix.join(
+        const batchRelative = path24.posix.join(
           project.manifest.paths.creation,
           "batches",
           `${commit.batch_id}.json`
         );
-        const batchText = await readFile19(path20.resolve(project.root, batchRelative), "utf8");
+        const batchText = await readFile23(path24.resolve(project.root, batchRelative), "utf8");
         const current = project.manifest.current_scope;
         if (!current?.snapshot_path) throw new Error("The confirmed publication scope is unavailable");
         const targetScope = {
@@ -19965,7 +20902,7 @@ async function reconcileCycle(projectRoot, request = {}, options = {}) {
               sha256: sha256Bytes(commitText)
             }]
           }
-        }, { ...options, recoveryOperationId: request.operation_id });
+        }, { ...options2, recoveryOperationId: request.operation_id });
       } catch (error) {
         return failure6("creation-publication-evidence-unavailable", error.message, active.value);
       }
@@ -19975,14 +20912,14 @@ async function reconcileCycle(projectRoot, request = {}, options = {}) {
       if (inspected.present || !operation || operation.kind !== "manuscript-reconciliation" || operation.operation_id !== request.operation_id || operation.cycle_id !== request.cycle_id || active?.value.revision !== operation.expected_revision) {
         return failure6("reconciliation-identity-mismatch", "Manuscript reconciliation recovery requires the exact interrupted record, active revision, and no leftover lock.", active?.value ?? null);
       }
-      const relative = path20.posix.join(
+      const relative = path24.posix.join(
         project.manifest.paths.convergence,
         "reconciliations",
         `${operation.artifact_id ?? operation.operation_id}.json`
       );
       let reconciliation;
       try {
-        reconciliation = JSON.parse(await readFile19(path20.resolve(project.root, relative), "utf8"));
+        reconciliation = JSON.parse(await readFile23(path24.resolve(project.root, relative), "utf8"));
       } catch (error) {
         return failure6("reconciliation-artifact-unavailable", error.message, active.value);
       }
@@ -19993,25 +20930,25 @@ async function reconcileCycle(projectRoot, request = {}, options = {}) {
         author_decision_id: reconciliation.author_decision_id,
         target_scope: reconciliation.target_scope,
         story_state: reconciliation.story_state
-      }, { ...options, recoveryOperationId: operation.operation_id });
+      }, { ...options2, recoveryOperationId: operation.operation_id });
     }
     if (request.direction === "resume-revision-execution") {
       const operation = project.manifest.cycle_operation;
       if (inspected.present || !operation || !["revision-preparation", "revision-verification"].includes(operation.kind) || operation.operation_id !== request.operation_id || operation.cycle_id !== request.cycle_id || active?.value.revision !== operation.expected_revision) {
         return failure6("revision-execution-identity-mismatch", "Revision recovery requires the exact interrupted execution, active revision, and no leftover lock.", active?.value ?? null);
       }
-      const relative = path20.posix.join(
+      const relative = path24.posix.join(
         project.manifest.paths.convergence,
         "executions",
         `${operation.artifact_id ?? operation.operation_id}.json`
       );
       let execution;
       try {
-        execution = JSON.parse(await readFile19(path20.resolve(project.root, relative), "utf8"));
+        execution = JSON.parse(await readFile23(path24.resolve(project.root, relative), "utf8"));
       } catch (error) {
         return failure6("revision-execution-unavailable", error.message, active.value);
       }
-      const recoveryOptions = { ...options, recoveryOperationId: operation.operation_id };
+      const recoveryOptions = { ...options2, recoveryOperationId: operation.operation_id };
       if (operation.kind === "revision-verification") {
         return verifyRevisionExecution(projectRoot, {
           cycle_id: operation.cycle_id,
@@ -20051,7 +20988,7 @@ async function reconcileCycle(projectRoot, request = {}, options = {}) {
         evaluation_id: operation.artifact_id,
         decision_id: operation.operation_id,
         author_confirmed: true
-      }, { ...options, recoveryOperationId: operation.operation_id });
+      }, { ...options2, recoveryOperationId: operation.operation_id });
     }
     if (request.direction === "attach-interrupted-evaluation") {
       if (inspected.present) {
@@ -20062,18 +20999,18 @@ async function reconcileCycle(projectRoot, request = {}, options = {}) {
         return failure6("evaluation-identity-mismatch", "The evaluation recovery direction does not match the interrupted evaluation and active revision.", active?.value ?? null);
       }
       try {
-        const relative = path20.posix.join(
+        const relative = path24.posix.join(
           project.manifest.paths.convergence,
           "evaluations",
           `${operation.artifact_id ?? operation.operation_id}.json`
         );
-        const text = await readFile19(path20.resolve(project.root, relative), "utf8");
+        const text = await readFile23(path24.resolve(project.root, relative), "utf8");
         const reference = {
           evaluation_id: operation.artifact_id ?? operation.operation_id,
           path: relative,
           sha256: sha256Bytes(text)
         };
-        const evaluation = await recomputeCycleEvaluationForRecovery(project, active.value, reference);
+        const evaluation = await recomputeCycleEvaluationForRecovery(project, active.value, reference, options2);
         const updated = {
           ...active.value,
           revision: active.value.revision + 1,
@@ -20087,11 +21024,11 @@ async function reconcileCycle(projectRoot, request = {}, options = {}) {
             ...active.value.recovery_position,
             operation_id: operation.operation_id
           },
-          updated_at: utcTimestamp(options)
+          updated_at: utcTimestamp(options2)
         };
         await writeAtomicVerified(active.file, `${JSON.stringify(updated, null, 2)}
 `);
-        await finishCycleOperation(project, updated, operation.operation_id, options);
+        await finishCycleOperation(project, updated, operation.operation_id, options2);
         return {
           valid: true,
           diagnostic_only: false,
@@ -20130,7 +21067,7 @@ async function reconcileCycle(projectRoot, request = {}, options = {}) {
         }
         const unsafe = await unsafeDiscardResult(project, active, operation, artifacts);
         if (unsafe) return unsafe;
-        await discardCycleOperation(project, operation.operation_id, options);
+        await discardCycleOperation(project, operation.operation_id, options2);
       } else {
         if (artifacts.length > 0) {
           return {
@@ -20156,7 +21093,7 @@ async function reconcileCycle(projectRoot, request = {}, options = {}) {
         const reconciliation = active.value.related_artifacts.reconciliations?.at(-1) ?? null;
         const operationKind = operation?.kind ?? (reconciliation && project.manifest.manuscript_reconciliation?.path !== reconciliation.path ? "manuscript-reconciliation" : "cycle-transition");
         await finishCycleOperation(project, active.value, request.operation_id, {
-          ...options,
+          ...options2,
           allowMissingOperation: true,
           ...operationKind === "manuscript-reconciliation" && reconciliation ? {
             manifestChanges: { manuscript_reconciliation: reconciliation },
@@ -20298,6 +21235,7 @@ __export(lib_exports, {
   validateConvergenceEvaluation: () => validateConvergenceEvaluation,
   validateConvergenceEvaluationSchema: () => validateConvergenceEvaluationSchema,
   validateCoverageIndex: () => validateCoverageIndex,
+  validateCoverageIndexFile: () => validateCoverageIndexFile,
   validateCoverageIndexSchema: () => validateCoverageIndexSchema,
   validateCoverageUnit: () => validateCoverageUnitSchema,
   validateCoverageUnitSchema: () => validateCoverageUnitSchema,
@@ -20356,6 +21294,7 @@ var init_lib = __esm({
   "scripts/lib/index.mjs"() {
     init_time();
     init_artifacts();
+    init_coverage_index();
     init_manifest();
     init_review();
     init_project_files();
@@ -20380,8 +21319,8 @@ var init_lib = __esm({
 });
 
 // scripts/validate.mjs
-import { readFile as readFile20, readdir as readdir6 } from "node:fs/promises";
-import path21 from "node:path";
+import { readFile as readFile24, readdir as readdir6 } from "node:fs/promises";
+import path25 from "node:path";
 import { fileURLToPath as fileURLToPath2 } from "node:url";
 var root = fileURLToPath2(new URL("../", import.meta.url));
 var examples = ["fiction-revision-en", "fiction-revision-zh"];
@@ -20396,6 +21335,7 @@ function createArtifactTypes({
   validateRevisionExecution: validateRevisionExecution2,
   validateSemanticAttestation: validateSemanticAttestation2,
   validateCoverageIndex: validateCoverageIndex2,
+  validateCoverageIndexFile: validateCoverageIndexFile2,
   validateCoverageUnit,
   validateCreationBatch: validateCreationBatch2,
   validateCreationCommit: validateCreationCommit2,
@@ -20448,7 +21388,7 @@ function createArtifactTypes({
     { key: "creationBatches", option: "--creation-batch", validate: validateCreationBatch2 },
     { key: "creationCommits", option: "--creation-commit", validate: validateCreationCommit2 },
     { key: "coverageUnits", option: "--coverage-unit", validate: validateCoverageUnit },
-    { key: "coverageIndexes", option: "--coverage-index", validate: validateCoverageIndex2 },
+    { key: "coverageIndexes", option: "--coverage-index", validateFile: validateCoverageIndexFile2 },
     { key: "reviewJobs", option: "--review-job", validate: validateReviewJob2 },
     {
       key: "readerStates",
@@ -20488,13 +21428,33 @@ Project-root mode checks deployed shared-reference hashes, then the selected pro
 Repository and project-root modes cannot be combined with each other or individual checks.
 --now ISO_TIMESTAMP injects the UTC validation clock; current timestamps may be at most 60 seconds in the future.`);
 }
-async function readJson(file) {
-  return JSON.parse(await readFile20(file, "utf8"));
+function emitResponse(command, result, valid, errors) {
+  console.log(JSON.stringify({
+    response_contract_version: "1.0",
+    command,
+    valid,
+    result,
+    errors
+  }, null, 2));
+  if (!valid) process.exitCode = 1;
+}
+function emitUsageError(error) {
+  console.log(JSON.stringify({
+    response_contract_version: "1.0",
+    command: "validate",
+    valid: false,
+    result: null,
+    errors: [{ code: "usage-error", message: error.message }]
+  }, null, 2));
+  process.exitCode = 2;
+}
+async function readJson2(file) {
+  return JSON.parse(await readFile24(file, "utf8"));
 }
 async function markdownFiles(directory) {
   const files = [];
   for (const entry of await readdir6(directory, { withFileTypes: true })) {
-    const target = path21.join(directory, entry.name);
+    const target = path25.join(directory, entry.name);
     if (entry.isDirectory()) files.push(...await markdownFiles(target));
     else if (entry.isFile() && entry.name.endsWith(".md")) files.push(target);
   }
@@ -20530,7 +21490,7 @@ function parseArguments(args, artifactTypes) {
       continue;
     }
     if (argument === "--project-root" && args[index + 1]) {
-      selection.projectRoot = path21.resolve(args[index + 1]);
+      selection.projectRoot = path25.resolve(args[index + 1]);
       index += 1;
       continue;
     }
@@ -20544,7 +21504,7 @@ function parseArguments(args, artifactTypes) {
     if (!destination || !args[index + 1]) {
       throw new Error(`Unknown or incomplete argument: ${argument}`);
     }
-    selection[destination].push(path21.resolve(args[index + 1]));
+    selection[destination].push(path25.resolve(args[index + 1]));
     index += 1;
   }
   const individualChecks = Object.values(selection).reduce(
@@ -20594,28 +21554,19 @@ async function main() {
     const isStatus = selection.convergenceStatus.length === 1;
     const manifestPath = isStatus ? selection.convergenceStatus[0] : selection.convergenceGate[0];
     const projectRoot = projectRootFromManifest2(manifestPath);
-    const result = isStatus ? await getCycleStatus2(projectRoot) : await checkConvergenceGate2(projectRoot);
-    console.log(JSON.stringify(result, null, 2));
-    if (isStatus ? !result.query_valid : !result.valid) process.exitCode = 1;
+    const result = isStatus ? await getCycleStatus2(projectRoot, { now: selection.now ?? void 0 }) : await checkConvergenceGate2(projectRoot, { now: selection.now ?? void 0 });
+    const valid = isStatus ? result.query_valid : result.valid;
+    emitResponse(isStatus ? "convergence-status" : "convergence-gate", result, valid, valid ? [] : result.blockers);
     return;
   }
-  let checks = 0;
-  let failures = 0;
+  const results = [];
   function check(label, result) {
-    checks += 1;
-    if (result.valid) {
-      console.log(`ok - ${label}`);
-      return;
-    }
-    failures += 1;
-    console.error(`not ok - ${label}`);
-    for (const error of result.errors) {
-      console.error(`  ${error.instancePath || "/"} ${error.code ? `${error.code}: ` : ""}${error.message}`);
-    }
+    const { valid, errors: errors2, ...details } = result;
+    results.push({ label, valid, errors: errors2, ...details });
   }
   if (selection.projectRoot) {
     selection.manifests.push(
-      path21.join(selection.projectRoot, ".author-toolkit", "project.json")
+      path25.join(selection.projectRoot, ".author-toolkit", "project.json")
     );
     check(
       ".author-toolkit/references",
@@ -20625,36 +21576,39 @@ async function main() {
   if (selection.repository) {
     check("JSON Schema definitions", validateSchemaDefinitions2());
     for (const example of examples) {
-      const directory = path21.join(root, "examples", example);
-      selection.manifests.push(path21.join(directory, ".author-toolkit", "project.json"));
-      selection.reports.push(...await markdownFiles(path21.join(directory, "reports")));
+      const directory = path25.join(root, "examples", example);
+      selection.manifests.push(path25.join(directory, ".author-toolkit", "project.json"));
+      selection.reports.push(...await markdownFiles(path25.join(directory, "reports")));
     }
   }
   for (const file of selection.manifests) {
     try {
-      const manifest = await readJson(file);
+      const manifest = await readJson2(file);
       const result = validateManifest2(manifest, { now: selection.now ?? void 0 });
-      check(path21.relative(root, file), result);
+      check(path25.relative(root, file), result);
       if (result.valid) {
-        check(`${path21.relative(root, file)}#files`, await validateProjectFiles2(manifest, file));
+        check(`${path25.relative(root, file)}#files`, await validateProjectFiles2(manifest, file));
         if (manifest.current_scope) {
           const scopeResult = await validateFullManuscriptScope2(manifest, file);
-          check(`${path21.relative(root, file)}#scope`, scopeResult);
-          console.log(
-            `  scope_id=${scopeResult.scope_id} scope_fingerprint=${scopeResult.scope_fingerprint} full_manuscript=${scopeResult.full_manuscript}`
-          );
+          check(`${path25.relative(root, file)}#scope`, scopeResult);
         }
-        check(`${path21.relative(root, file)}#tracker`, await validateTracker2(manifest, file));
+        check(`${path25.relative(root, file)}#tracker`, await validateTracker2(manifest, file, {
+          now: selection.now ?? void 0
+        }));
         check(
-          `${path21.relative(root, file)}#backups`,
+          `${path25.relative(root, file)}#backups`,
           await runtime.validateBackupIndexFile(
-            path21.resolve(path21.dirname(file), "..", manifest.paths.backups, "index.json"),
-            { projectRoot: projectRootFromManifest2(file), now: selection.now ?? void 0 }
+            path25.resolve(projectRootFromManifest2(file), manifest.paths.backups, "index.json"),
+            {
+              projectRoot: projectRootFromManifest2(file),
+              manifest,
+              now: selection.now ?? void 0
+            }
           )
         );
       }
     } catch (error) {
-      check(path21.relative(root, file), {
+      check(path25.relative(root, file), {
         valid: false,
         errors: [{ instancePath: "", message: error.message }]
       });
@@ -20662,18 +21616,18 @@ async function main() {
   }
   for (const file of selection.reports) {
     try {
-      const markdown = await readFile20(file, "utf8");
-      const options = { now: selection.now ?? void 0 };
-      const parsed = validateMarkdownReport2(markdown, options);
+      const markdown = await readFile24(file, "utf8");
+      const options2 = { now: selection.now ?? void 0 };
+      const parsed = validateMarkdownReport2(markdown, options2);
       const needsEvidence = ["draft-baseline", "diagnostics", "current-scope-review"].includes(
         parsed.envelope?.stage
       );
       check(
-        path21.relative(root, file),
-        needsEvidence ? validateEvidenceReport2(markdown, options) : parsed
+        path25.relative(root, file),
+        needsEvidence ? validateEvidenceReport2(markdown, options2) : parsed
       );
     } catch (error) {
-      check(path21.relative(root, file), {
+      check(path25.relative(root, file), {
         valid: false,
         errors: [{ instancePath: "", message: error.message }]
       });
@@ -20683,24 +21637,31 @@ async function main() {
     for (const file of selection[type.key]) {
       try {
         const isMarkdown = type.validateMarkdown && /\.(?:md|markdown)$/i.test(file);
-        const options = { now: selection.now ?? void 0 };
-        const result = isMarkdown ? type.validateMarkdown(await readFile20(file, "utf8"), options) : type.validateFile ? await type.validateFile(file, options) : type.validate(await readJson(file), options);
-        check(path21.relative(root, file), result);
+        const options2 = { now: selection.now ?? void 0 };
+        const result = isMarkdown ? type.validateMarkdown(await readFile24(file, "utf8"), options2) : type.validateFile ? await type.validateFile(file, options2) : type.validate(await readJson2(file), options2);
+        check(path25.relative(root, file), result);
       } catch (error) {
-        check(path21.relative(root, file), {
+        check(path25.relative(root, file), {
           valid: false,
           errors: [{ instancePath: "", message: error.message }]
         });
       }
     }
   }
-  console.log(`${checks} checks, ${failures} failures`);
-  if (failures > 0) process.exitCode = 1;
+  const failed = results.filter((result) => !result.valid);
+  const errors = failed.flatMap((result) => result.errors.map((error) => ({
+    ...error,
+    check: result.label
+  })));
+  const mode = selection.repository ? "repository" : selection.projectRoot ? "project-root" : "artifacts";
+  emitResponse("validate", {
+    mode,
+    checks: results.length,
+    results
+  }, errors.length === 0, errors);
 }
 try {
   await main();
 } catch (error) {
-  console.error(error.message);
-  usage();
-  process.exitCode = 2;
+  emitUsageError(error);
 }

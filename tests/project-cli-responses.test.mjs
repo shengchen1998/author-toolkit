@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -415,4 +415,137 @@ test("init reentry preserves project state and rechecks references", async (t) =
   assert.equal(conflictResponse.valid, false);
   assert.equal(conflictResponse.errors[0].code, "reference-version-conflict");
   assert.deepEqual(JSON.parse(await readFile(manifestPath, "utf8")).pending_action, manifest.pending_action);
+});
+
+
+for (const historical of ["completed-cycle", "independent-evaluation"]) {
+  test(`corrupt ${historical} JSON returns structured status failures instead of usage errors`, async (t) => {
+    const { projectRoot, run } = await installedProject(t);
+    assert.equal(run(["init", "--project-root", projectRoot, "--language", "en"]).status, 0);
+    const relative = historical === "completed-cycle"
+      ? ".author-toolkit/convergence/cycles/corrupt.json"
+      : ".author-toolkit/convergence/evaluations/corrupt.json";
+    const file = path.join(projectRoot, relative);
+    await mkdir(path.dirname(file), { recursive: true });
+    await writeFile(file, "{not valid JSON\n", "utf8");
+
+    for (const command of ["cycle-status", "convergence-status", "convergence-gate", "status"]) {
+      const result = run([command, "--project-root", projectRoot]);
+      assert.equal(result.status, 1, `${command}: ${result.stdout}\n${result.stderr}`);
+      const response = envelope(result, command);
+      assert.equal(response.valid, false, command);
+      assert.notEqual(response.errors[0]?.code, "usage-error", command);
+      assert.ok(response.errors.some((error) => error.code === "artifact-validation-failed"), `${command}: ${result.stdout}`);
+      assert.match(JSON.stringify(response.errors), /corrupt\.json|JSON/i, command);
+    }
+  });
+}
+
+
+async function snapshotProjectTree(directory) {
+  const snapshot = {};
+  for (const entry of await readdir(directory, { recursive: true, withFileTypes: true })) {
+    if (!entry.isFile()) continue;
+    const file = path.join(entry.parentPath, entry.name);
+    snapshot[path.relative(directory, file)] = createHash("sha256").update(await readFile(file)).digest("hex");
+  }
+  return snapshot;
+}
+
+const skeletonCases = [
+  {
+    name: "Story Bible",
+    path: "story-bible.md",
+    async seed(projectRoot) {
+      await writeFile(path.join(projectRoot, this.path), "# Existing Story Bible\n", "utf8");
+    },
+    async seedInvalid(projectRoot) {
+      await mkdir(path.join(projectRoot, this.path), { recursive: true });
+    },
+  },
+  {
+    name: "tracker",
+    path: "audit-tracker.md",
+    async seed(projectRoot) {
+      await cp(path.join(packagedAssets, "audit-tracker-template.md"), path.join(projectRoot, this.path));
+    },
+    async seedInvalid(projectRoot) {
+      await cp(path.join(packagedAssets, "audit-tracker-template.md"), path.join(projectRoot, this.path));
+      const tracker = await readFile(path.join(projectRoot, this.path), "utf8");
+      const separator = "|---|---|---|---|---|---|---|---|\n";
+      const index = tracker.indexOf(separator, tracker.indexOf("## Findings"));
+      const row = "| TIME-001 | diagnostics | narrative | manuscript/chapter-001.md | open | reports/diagnostics/local.md | not-a-date | Author decision is required. |\n";
+      await writeFile(
+        path.join(projectRoot, this.path),
+        tracker.slice(0, index + separator.length) + row + tracker.slice(index + separator.length),
+        "utf8",
+      );
+    },
+  },
+  {
+    name: "backup index",
+    path: ".author-toolkit/backups/index.json",
+    async seed(projectRoot) {
+      await mkdir(path.dirname(path.join(projectRoot, this.path)), { recursive: true });
+      await cp(path.join(packagedAssets, "backup-index-template.json"), path.join(projectRoot, this.path));
+    },
+    async seedInvalid(projectRoot) {
+      await mkdir(path.dirname(path.join(projectRoot, this.path)), { recursive: true });
+      await writeFile(path.join(projectRoot, this.path), "{}\n", "utf8");
+    },
+  },
+];
+
+for (const skeleton of skeletonCases) {
+  test(`init preflights and preserves an existing ${skeleton.name}, including reentry`, async (t) => {
+    const { projectRoot, run } = await installedProject(t);
+    await skeleton.seed(projectRoot);
+    const original = await readFile(path.join(projectRoot, skeleton.path), "utf8");
+    for (const expectedStatus of [0, 0]) {
+      const initialized = run(["init", "--project-root", projectRoot, "--language", "en"]);
+      assert.equal(initialized.status, expectedStatus, `${initialized.stdout}\n${initialized.stderr}`);
+      assert.equal(await readFile(path.join(projectRoot, skeleton.path), "utf8"), original);
+    }
+  });
+
+  test(`invalid existing ${skeleton.name} causes no partial init publication on initial or repeated attempts`, async (t) => {
+    const { projectRoot, run } = await installedProject(t);
+    await skeleton.seedInvalid(projectRoot);
+    const before = await snapshotProjectTree(projectRoot);
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      const initialized = run(["init", "--project-root", projectRoot, "--language", "en"]);
+      assert.equal(initialized.status, 1, `${initialized.stdout}\n${initialized.stderr}`);
+      const response = envelope(initialized, "init");
+      assert.equal(response.valid, false);
+      assert.equal(response.result.initialized, false);
+      assert.ok(response.errors.some((error) => error.code === "initialization-conflict"), initialized.stdout);
+      assert.deepEqual(await snapshotProjectTree(projectRoot), before);
+    }
+  });
+
+  test(`init reentry recreates a missing ${skeleton.name} without rewriting other state`, async (t) => {
+    const { projectRoot, run } = await installedProject(t);
+    assert.equal(run(["init", "--project-root", projectRoot, "--language", "en"]).status, 0);
+    const manifestBefore = await readFile(path.join(projectRoot, ".author-toolkit", "project.json"), "utf8");
+    await rm(path.join(projectRoot, skeleton.path), { force: true });
+    const recreated = run(["init", "--project-root", projectRoot, "--language", "en"]);
+    assert.equal(recreated.status, 0, `${recreated.stdout}\n${recreated.stderr}`);
+    assert.equal(envelope(recreated, "init").valid, true);
+    assert.ok((await readFile(path.join(projectRoot, skeleton.path), "utf8")).length > 0);
+    assert.equal(await readFile(path.join(projectRoot, ".author-toolkit", "project.json"), "utf8"), manifestBefore);
+  });
+}
+
+test("init rejects imported operational state before writing any project file", async (t) => {
+  const { projectRoot, run } = await installedProject(t);
+  const imported = path.join(projectRoot, ".author-toolkit", "convergence", "active-cycle.json");
+  await mkdir(path.dirname(imported), { recursive: true });
+  await writeFile(imported, "{}\n", "utf8");
+  const before = await snapshotProjectTree(projectRoot);
+
+  const initialized = run(["init", "--project-root", projectRoot, "--language", "en"]);
+
+  assert.equal(initialized.status, 1, `${initialized.stdout}\n${initialized.stderr}`);
+  assert.ok(envelope(initialized, "init").errors.some((error) => error.code === "initialization-conflict"));
+  assert.deepEqual(await snapshotProjectTree(projectRoot), before);
 });

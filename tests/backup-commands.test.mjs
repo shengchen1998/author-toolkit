@@ -210,7 +210,10 @@ test("record-backup preserves approved original bytes and create absence in a va
     ["--backup-index", indexPath],
   );
   assert.equal(validated.status, 0, `${validated.stdout}\n${validated.stderr}`);
-  assert.match(validated.stdout, /1 checks, 0 failures/);
+  const response = JSON.parse(validated.stdout);
+  assert.equal(response.valid, true);
+  assert.equal(response.result.checks, 1);
+  assert.deepEqual(response.errors, []);
 });
 
 
@@ -364,7 +367,7 @@ test("record-restore uses independent approval and current safety backups before
   await writeJson(indexPath, mismatchedRestoration);
   const invalidRestoration = project.run(project.validateCli, ["--backup-index", indexPath]);
   assert.equal(invalidRestoration.status, 1, `${invalidRestoration.stdout}\n${invalidRestoration.stderr}`);
-  assert.match(invalidRestoration.stderr, /restoration|inverse|safety/i);
+  assert.match(invalidRestoration.stdout, /restoration|inverse|safety/i);
   await writeFile(indexPath, validIndexText, "utf8");
 
   const restoredScope = await project.command("record-scope", {
@@ -646,7 +649,7 @@ test("record-backup blocks changed inputs and validation rejects altered bytes a
   await writeFile(backupPath, "altered recovery bytes\n", "utf8");
   const altered = project.run(project.validateCli, ["--backup-index", indexPath]);
   assert.equal(altered.status, 1, `${altered.stdout}\n${altered.stderr}`);
-  assert.match(altered.stderr, /backup bytes|input hash|hash/i);
+  assert.match(altered.stdout, /backup bytes|input hash|hash/i);
   await writeFile(backupPath, validBytes);
 
   const danglingIndex = JSON.parse(validIndex);
@@ -654,7 +657,7 @@ test("record-backup blocks changed inputs and validation rejects altered bytes a
   await writeJson(indexPath, danglingIndex);
   const dangling = project.run(project.validateCli, ["--backup-index", indexPath]);
   assert.equal(dangling.status, 1, `${dangling.stdout}\n${dangling.stderr}`);
-  assert.match(dangling.stderr, /manifest path|backup manifest/i);
+  assert.match(dangling.stdout, /manifest path|backup manifest/i);
   await writeFile(indexPath, validIndex, "utf8");
   const valid = project.run(project.validateCli, ["--backup-index", indexPath]);
   assert.equal(valid.status, 0, `${valid.stdout}\n${valid.stderr}`);
@@ -1161,4 +1164,264 @@ test("record-backup permits pure-create bootstrap with a null input scope and re
     path.join(project.projectRoot, ".author-toolkit", "backups", "index.json"),
   ]);
   assert.equal(validated.status, 0, `${validated.stdout}\n${validated.stderr}`);
+});
+
+
+test("record-backup rejects operational and other non-manuscript paths before publication", async (t) => {
+  const targetPaths = [
+    "story-bible.md",
+    "audit-tracker.md",
+    ".author-toolkit/project.json",
+    ".author-toolkit/references/terminology.md",
+    ".author-toolkit/convergence/evaluations/external.md",
+  ];
+  for (const targetPath of targetPaths) {
+    await t.test(targetPath, async (t) => {
+      const project = await installedProject(t);
+      const scope = await confirmCurrentScope(project);
+      const absoluteTarget = path.join(project.projectRoot, targetPath);
+      await mkdir(path.dirname(absoluteTarget), { recursive: true });
+      if (targetPath.endsWith("/external.md")) {
+        await writeFile(absoluteTarget, "historical evidence\n", "utf8");
+      }
+      const original = await readFile(absoluteTarget);
+      const file = {
+        path: targetPath,
+        action: "modify",
+        input_sha256: sha256(original),
+        output_sha256: sha256("forged operational output\n"),
+      };
+      await recordEditApproval(project, scope, [file]);
+      const protectedOriginal = await readFile(absoluteTarget);
+      const indexPath = path.join(project.projectRoot, ".author-toolkit", "backups", "index.json");
+      const indexBefore = await readFile(indexPath, "utf8");
+
+      const recorded = await project.command("record-backup", {
+        backup_id: "backup-operational-001",
+        operation: "chapter-revision",
+        approval_id: "EDIT-001",
+        scope_id: scope.scope_id,
+        scope_fingerprint: scope.scope_fingerprint,
+        files: [file],
+      });
+
+      assert.equal(recorded.processResult.status, 1, recorded.processResult.stdout);
+      assert.equal(recorded.value.valid, false);
+      assert.ok(recorded.value.errors.some((error) => error.code === "backup-manuscript-path-invalid"));
+      assert.equal(recorded.value.result.state_written, false);
+      assert.deepEqual(await readFile(absoluteTarget), protectedOriginal);
+      assert.equal(await readFile(indexPath, "utf8"), indexBefore);
+    });
+  }
+});
+
+
+test("record-restore rejects operational targets before safety backups or manuscript writes", async (t) => {
+  const targetPaths = [
+    "story-bible.md",
+    "audit-tracker.md",
+    ".author-toolkit/project.json",
+    ".author-toolkit/references/terminology.md",
+    ".author-toolkit/convergence/evaluations/external.md",
+  ];
+  for (const targetPath of targetPaths) {
+    await t.test(targetPath, async (t) => {
+      const project = await installedProject(t);
+      const scope = await confirmCurrentScope(project);
+      const createFile = {
+        path: "manuscript/chapter-002.md",
+        action: "create",
+        input_sha256: null,
+        output_sha256: sha256("created manuscript output\n"),
+      };
+      await recordEditApproval(project, scope, [createFile]);
+      const sourceBackup = await project.command("record-backup", {
+        backup_id: "backup-source-001",
+        operation: "chapter-revision",
+        approval_id: "EDIT-001",
+        scope_id: scope.scope_id,
+        scope_fingerprint: scope.scope_fingerprint,
+        files: [createFile],
+      });
+      assert.equal(sourceBackup.processResult.status, 0, sourceBackup.processResult.stdout);
+
+      const absoluteTarget = path.join(project.projectRoot, targetPath);
+      await mkdir(path.dirname(absoluteTarget), { recursive: true });
+      if (targetPath.endsWith("/external.md")) {
+        await writeFile(absoluteTarget, "immutable historical evidence\n", "utf8");
+      }
+      const targetBeforeApproval = await readFile(absoluteTarget);
+      const restoreFile = {
+        path: targetPath,
+        action: "delete",
+        input_sha256: sha256(targetBeforeApproval),
+        output_sha256: null,
+      };
+      const sourceManifestPath = path.join(
+        project.projectRoot,
+        sourceBackup.value.result.backup.manifest.path,
+      );
+      const sourceManifest = JSON.parse(await readFile(sourceManifestPath, "utf8"));
+      sourceManifest.files = [{ ...createFile, path: targetPath, output_sha256: restoreFile.input_sha256, backup_path: null }];
+      await writeJson(sourceManifestPath, sourceManifest);
+      const indexPath = path.join(project.projectRoot, ".author-toolkit", "backups", "index.json");
+      const index = JSON.parse(await readFile(indexPath, "utf8"));
+      index.backups[0].manifest.sha256 = sha256(await readFile(sourceManifestPath));
+      await writeJson(indexPath, index);
+
+      const restoreApproval = await project.command("record-approval", {
+        approval_id: "RESTORE-001",
+        type: "restore",
+        operation: "chapter-revision",
+        scope_id: scope.scope_id,
+        paths: [targetPath],
+        files: [restoreFile],
+        status: "approved",
+        reason: "Author approved this exact restoration. restore_source=backup-source-001",
+      });
+      assert.equal(restoreApproval.processResult.status, 0, restoreApproval.processResult.stdout);
+      const protectedOriginal = await readFile(absoluteTarget);
+      const indexBefore = await readFile(indexPath, "utf8");
+
+      const restored = await project.command("record-restore", {
+        restoration_id: "restoration-operational-001",
+        source_backup_id: "backup-source-001",
+        safety_backup_id: "safety-operational-001",
+        operation: "chapter-revision",
+        approval_id: "RESTORE-001",
+        scope_id: scope.scope_id,
+        scope_fingerprint: scope.scope_fingerprint,
+        files: [restoreFile],
+      });
+
+      assert.equal(restored.processResult.status, 1, restored.processResult.stdout);
+      assert.equal(restored.value.valid, false);
+      assert.ok(restored.value.errors.some((error) => error.code === "restore-manuscript-path-invalid"));
+      assert.equal(restored.value.result.state_written, false);
+      assert.deepEqual(await readFile(absoluteTarget), protectedOriginal);
+      assert.equal(await readFile(indexPath, "utf8"), indexBefore);
+      const validated = project.run(project.validateCli, ["--backup-index", indexPath]);
+      assert.equal(validated.status, 1, `${validated.stdout}\n${validated.stderr}`);
+      assert.match(validated.stdout, /manuscript path/);
+    });
+  }
+});
+
+
+test("record-restore requires restored bytes in the source backup input scope", async (t) => {
+  const project = await installedProject(t);
+  const manuscriptPath = path.join(project.projectRoot, "manuscript", "chapter-001.md");
+  const original = await readFile(manuscriptPath);
+  const edited = "# Chapter One\n\nThe ferry leaves at dusk.\n";
+  const forged = "# Chapter One\n\nA version outside the source scope.\n";
+  const scope = await confirmCurrentScope(project);
+  const backupFile = {
+    path: "manuscript/chapter-001.md",
+    action: "modify",
+    input_sha256: sha256(original),
+    output_sha256: sha256(edited),
+  };
+  await recordEditApproval(project, scope, [backupFile]);
+  const backup = await project.command("record-backup", {
+    backup_id: "backup-source-scope-001",
+    operation: "chapter-revision",
+    approval_id: "EDIT-001",
+    scope_id: scope.scope_id,
+    scope_fingerprint: scope.scope_fingerprint,
+    files: [backupFile],
+  });
+  assert.equal(backup.processResult.status, 0, backup.processResult.stdout);
+
+  await writeFile(manuscriptPath, edited, "utf8");
+  const proposed = await project.command("record-scope", {
+    scope_id: "scope-edited-001",
+    description: "The current edited manuscript.",
+    status: "proposed",
+    files: ["manuscript/chapter-001.md"],
+  });
+  assert.equal(proposed.processResult.status, 0, proposed.processResult.stdout);
+  const confirmed = await project.command("record-scope", {
+    ...proposed.value.result.current_scope,
+    status: "confirmed",
+    author_confirmation: {
+      decision_id: "SCOPE-002",
+      confirmed_at: new Date().toISOString(),
+      reading_order_confirmed: true,
+    },
+  });
+  assert.equal(confirmed.processResult.status, 0, confirmed.processResult.stdout);
+  const editedScope = confirmed.value.result.current_scope;
+
+  const sourceManifestPath = path.join(project.projectRoot, backup.value.result.backup.manifest.path);
+  const sourceManifest = JSON.parse(await readFile(sourceManifestPath, "utf8"));
+  sourceManifest.files[0].input_sha256 = sha256(forged);
+  await writeJson(sourceManifestPath, sourceManifest);
+  const originalBytesPath = path.join(project.projectRoot, sourceManifest.files[0].backup_path);
+  await writeFile(originalBytesPath, forged, "utf8");
+  const indexPath = path.join(project.projectRoot, ".author-toolkit", "backups", "index.json");
+  const index = JSON.parse(await readFile(indexPath, "utf8"));
+  index.backups[0].manifest.sha256 = sha256(await readFile(sourceManifestPath));
+  await writeJson(indexPath, index);
+
+  const restoreFile = {
+    path: "manuscript/chapter-001.md",
+    action: "modify",
+    input_sha256: sha256(edited),
+    output_sha256: sha256(forged),
+  };
+  const approval = await project.command("record-approval", {
+    approval_id: "RESTORE-001",
+    type: "restore",
+    operation: "chapter-revision",
+    scope_id: editedScope.scope_id,
+    paths: [restoreFile.path],
+    files: [restoreFile],
+    status: "approved",
+    reason: "Author approved this exact restoration. restore_source=backup-source-scope-001",
+  });
+  assert.equal(approval.processResult.status, 0, approval.processResult.stdout);
+  const before = await readFile(manuscriptPath, "utf8");
+
+  const restored = await project.command("record-restore", {
+    restoration_id: "restoration-source-scope-001",
+    source_backup_id: "backup-source-scope-001",
+    safety_backup_id: "safety-source-scope-001",
+    operation: "chapter-revision",
+    approval_id: "RESTORE-001",
+    scope_id: editedScope.scope_id,
+    scope_fingerprint: editedScope.scope_fingerprint,
+    files: [restoreFile],
+  });
+
+  assert.equal(restored.processResult.status, 1, restored.processResult.stdout);
+  assert.ok(restored.value.errors.some((error) => error.code === "restore-source-scope-mismatch"));
+  assert.equal(restored.value.result.state_written, false);
+  assert.equal(await readFile(manuscriptPath, "utf8"), before);
+});
+
+
+test("direct manifest validation resolves backup index from a noncanonical project root", async (t) => {
+  const project = await installedProject(t);
+  const initialized = project.run(path.join(path.dirname(project.validateCli), "author-project.mjs"), [
+    "init",
+    "--project-root",
+    project.projectRoot,
+    "--language",
+    "en",
+  ]);
+  assert.equal(initialized.status, 0, `${initialized.stdout}\n${initialized.stderr}`);
+  const manifest = JSON.parse(await readFile(project.manifestPath, "utf8"));
+  const noncanonical = path.join(project.projectRoot, "project.json");
+  await writeJson(noncanonical, manifest);
+  await rm(project.manifestPath, { force: true });
+
+  const validated = project.run(project.validateCli, ["--manifest", noncanonical]);
+
+  assert.equal(validated.status, 0, `${validated.stdout}\n${validated.stderr}`);
+  assert.match(validated.stdout, /backups/);
+  const response = JSON.parse(validated.stdout);
+  assert.equal(response.valid, true);
+  assert.equal(response.result.mode, "artifacts");
+  assert.equal(response.result.checks, 4);
+  assert.deepEqual(response.errors, []);
 });

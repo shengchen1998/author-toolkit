@@ -30,7 +30,10 @@ test("tracked pre-commit hook runs fast validation and focused contracts", {
   });
   const output = `${result.stdout}\n${result.stderr}`;
   assert.equal(result.status, 0, output);
-  assert.match(output, /11 checks, 0 failures/);
+  const response = JSON.parse(result.stdout);
+  assert.equal(response.valid, true);
+  assert.equal(response.result.checks, 11);
+  assert.deepEqual(response.errors, []);
   assert.match(output, /Generated runtime artifacts are current/);
   assert.match(output, /# pass [1-9][0-9]*/);
   assert.match(output, /# fail 0/);

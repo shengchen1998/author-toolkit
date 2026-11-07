@@ -4,13 +4,19 @@ import path from "node:path";
 import { validateCreationCommit } from "./artifacts.mjs";
 import { runCheckpoint } from "./cycle-coordination.mjs";
 import { readProject } from "./evaluation-artifacts.mjs";
+import { isOperationalManuscriptPath } from "./manuscript.mjs";
 import {
   validateBackupIndexSchema,
   validateBackupManifestSchema,
   validateRecordBackupCommand,
   validateRecordRestoreCommand,
 } from "./schemas.mjs";
-import { collectVersionedInventory, validateFullManuscriptScope } from "./scope.mjs";
+import {
+  collectVersionedInventory,
+  computeScopeFingerprint,
+  validateFullManuscriptScope,
+  validateScopeSnapshot,
+} from "./scope.mjs";
 import { validateDeployedReferences } from "./shared-references.mjs";
 import {
   acquireDirectoryLock,
@@ -65,13 +71,99 @@ function validateFileActions(files) {
   return errors;
 }
 
+const MANUSCRIPT_EXTENSIONS = new Set([".md", ".markdown", ".txt"]);
+
+function manuscriptActionErrors(manifest, files, inputScope, code, checkScope = true) {
+  const errors = [];
+  const manuscriptRoot = manifest.manuscript_root.replace(/\/$/, "");
+  const singleFileRoot = MANUSCRIPT_EXTENSIONS.has(path.posix.extname(manuscriptRoot).toLowerCase());
+  const scopeFiles = new Map((inputScope?.files ?? []).map((file) => [file.path, file]));
+  for (const [index, file] of (files ?? []).entries()) {
+    const withinRoot = singleFileRoot
+      ? file.path === manuscriptRoot
+      : manuscriptRoot === "." || file.path.startsWith(`${manuscriptRoot}/`);
+    if (
+      !withinRoot ||
+      !MANUSCRIPT_EXTENSIONS.has(path.posix.extname(file.path).toLowerCase()) ||
+      isOperationalManuscriptPath(file.path, manifest.paths)
+    ) {
+      errors.push(backupError(
+        `/files/${index}/path`,
+        `backup and restore actions require a manuscript path beneath ${manifest.manuscript_root}: ${file.path}`,
+        code,
+      ));
+      continue;
+    }
+    if (!checkScope) continue;
+    const scoped = scopeFiles.get(file.path);
+    if (file.action === "create" && scoped) {
+      errors.push(backupError(
+        `/files/${index}/path`,
+        `create target already belongs to the input scope: ${file.path}`,
+        code,
+      ));
+    } else if (file.action !== "create" && (!scoped || scoped.sha256 !== file.input_sha256)) {
+      errors.push(backupError(
+        `/files/${index}/input_sha256`,
+        `${file.action} input must belong to the applicable input scope with its exact hash: ${file.path}`,
+        code,
+      ));
+    }
+  }
+  return errors;
+}
+
+function requireManuscriptActions(project, files, inputScope, code) {
+  const errors = manuscriptActionErrors(project.manifest, files, inputScope, code);
+  if (errors.length > 0) {
+    throw commandError(code, "Backup and restore actions are limited to exact manuscript-scope paths.", {
+      validation_errors: errors,
+    });
+  }
+}
+
+async function readRestoreSourceScope(project, sourceManifest, options) {
+  if (sourceManifest.files.every((file) => file.action === "create")) return null;
+  const code = "restore-source-scope-mismatch";
+  if (!sourceManifest.scope_id || !sourceManifest.scope_fingerprint) {
+    throw commandError(code, "Restoring original bytes requires the source backup's confirmed input scope.");
+  }
+  const relative = path.posix.join(
+    project.manifest.paths.convergence,
+    "scopes",
+    `${sourceManifest.scope_id}-${sourceManifest.scope_fingerprint}.json`,
+  );
+  let snapshot;
+  try {
+    snapshot = JSON.parse(await readFile(path.resolve(project.root, relative), "utf8"));
+  } catch (error) {
+    throw commandError(code, `Cannot read the source backup input scope: ${error.message}`, {
+      path: relative,
+    });
+  }
+  const validation = validateScopeSnapshot(snapshot, options);
+  if (
+    !validation.valid ||
+    snapshot.scope_id !== sourceManifest.scope_id ||
+    snapshot.scope_fingerprint !== sourceManifest.scope_fingerprint ||
+    computeScopeFingerprint(snapshot) !== sourceManifest.scope_fingerprint
+  ) {
+    throw commandError(code, "The source backup input scope is not valid confirmed scope evidence.", {
+      path: relative,
+      validation_errors: validation.errors,
+    });
+  }
+  return snapshot;
+}
+
 export function validateBackupManifest(value, options = {}) {
   const schema = validateBackupManifestSchema(value, options);
   const errors = [...schema.errors, ...validateFileActions(value?.files)];
   return { valid: errors.length === 0, errors };
 }
 
-async function readManifest(projectRoot) {
+async function readProjectManifest(projectRoot, candidate = null) {
+  if (candidate !== null) return candidate;
   return JSON.parse(await readFile(
     path.join(projectRoot, ".author-toolkit", "project.json"),
     "utf8",
@@ -83,7 +175,7 @@ export async function validateBackupIndex(projectRoot, value, options = {}) {
   const schema = validateBackupIndexSchema(value, options);
   if (!schema.valid) return schema;
   const errors = [];
-  const manifest = await readManifest(root);
+  const manifest = await readProjectManifest(root, options.manifest ?? null);
   const backupRoot = manifest.paths.backups;
   const backupIds = new Set();
   const backupEntries = new Map();
@@ -142,6 +234,16 @@ export async function validateBackupIndex(projectRoot, value, options = {}) {
       instancePath: `${entryPath}/manifest${error.instancePath}`,
     })));
     if (!manifestValidation.valid) continue;
+    errors.push(...manuscriptActionErrors(
+      manifest,
+      backupManifest.files,
+      undefined,
+      "backup-manuscript-path-invalid",
+      false,
+    ).map((error) => ({
+      ...error,
+      instancePath: `${entryPath}/manifest${error.instancePath}`,
+    })));
     manifests.set(entry.backup_id, backupManifest);
     for (const field of [
       "backup_id",
@@ -202,6 +304,16 @@ export async function validateBackupIndex(projectRoot, value, options = {}) {
     }
     restorationIds.add(restoration.restoration_id);
     errors.push(...validateFileActions(restoration.files).map((error) => ({
+      ...error,
+      instancePath: `/restorations/${index}${error.instancePath}`,
+    })));
+    errors.push(...manuscriptActionErrors(
+      manifest,
+      restoration.files,
+      undefined,
+      "restore-manuscript-path-invalid",
+      false,
+    ).map((error) => ({
       ...error,
       instancePath: `/restorations/${index}${error.instancePath}`,
     })));
@@ -332,7 +444,7 @@ async function projectRootForBackupIndex(indexPath) {
 export async function validateBackupIndexFile(indexPath, options = {}) {
   try {
     const projectRoot = options.projectRoot ?? await projectRootForBackupIndex(indexPath);
-    const manifest = await readManifest(projectRoot);
+    const manifest = await readProjectManifest(projectRoot, options.manifest ?? null);
     const expected = path.resolve(projectRoot, manifest.paths.backups, "index.json");
     if (path.resolve(indexPath) !== expected) {
       return {
@@ -566,6 +678,12 @@ export async function recordBackup(projectRoot, request, options = {}) {
         });
       }
     }
+    requireManuscriptActions(
+      project,
+      request.files,
+      bootstrap ? null : currentScope,
+      "backup-manuscript-path-invalid",
+    );
     const tracker = await parseTrackerState(
       await readFile(path.resolve(project.root, project.manifest.paths.audit_tracker), "utf8"),
       project.root,
@@ -928,6 +1046,12 @@ export async function recordRestore(projectRoot, request, options = {}) {
         });
       }
     }
+    requireManuscriptActions(
+      project,
+      request.files,
+      currentScope,
+      "restore-manuscript-path-invalid",
+    );
     const tracker = await parseTrackerState(
       await readFile(path.resolve(project.root, project.manifest.paths.audit_tracker), "utf8"),
       project.root,
@@ -983,6 +1107,15 @@ export async function recordRestore(projectRoot, request, options = {}) {
       throw commandError(
         "restore-source-mismatch",
         "The requested restore files must be the complete ordered inverse of the source backup manifest.",
+      );
+    }
+    const sourceScope = await readRestoreSourceScope(project, sourceManifest, options);
+    if (sourceScope) {
+      requireManuscriptActions(
+        project,
+        sourceManifest.files,
+        sourceScope,
+        "restore-source-scope-mismatch",
       );
     }
 
@@ -1210,6 +1343,7 @@ async function readCommitSource(project, reference, backupIndex, options = {}) {
     );
   }
   const files = [];
+  let sourceScope = null;
   for (const file of commit.files) {
     if (file.action === "create") {
       if (file.backup_id !== null) {
@@ -1233,6 +1367,21 @@ async function readCommitSource(project, reference, backupIndex, options = {}) {
       );
     }
     const originalManifest = JSON.parse(await readFile(path.resolve(project.root, indexed.manifest.path), "utf8"));
+    const originalScope = {
+      scope_id: originalManifest.scope_id,
+      scope_fingerprint: originalManifest.scope_fingerprint,
+    };
+    if (
+      originalManifest.scope_id !== commit.scope_before_id ||
+      (sourceScope && JSON.stringify(sourceScope) !== JSON.stringify(originalScope))
+    ) {
+      throw commandError(
+        "restore-source-mismatch",
+        `Creation commit backup scope differs from its input scope: ${file.path}`,
+        { commit_id: reference.commit_id, backup_id: file.backup_id },
+      );
+    }
+    sourceScope = originalScope;
     const original = originalManifest.files.find((candidate) => candidate.path === file.path);
     if (
       !original ||
@@ -1254,5 +1403,5 @@ async function readCommitSource(project, reference, backupIndex, options = {}) {
       backup_path: original.backup_path,
     });
   }
-  return { operation: "creation-commit", files };
+  return { operation: "creation-commit", files, ...sourceScope };
 }
