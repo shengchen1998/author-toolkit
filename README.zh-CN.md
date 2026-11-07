@@ -78,6 +78,9 @@ node <setup-skill>/assets/runtime/author-project.mjs record-scope --project-root
 node <setup-skill>/assets/runtime/author-project.mjs record-finding --project-root <project-root> --input <finding.json>
 node <setup-skill>/assets/runtime/author-project.mjs record-finding-decision --project-root <project-root> --input <finding-decision.json>
 node <setup-skill>/assets/runtime/author-project.mjs record-approval --project-root <project-root> --input <approval.json>
+node <setup-skill>/assets/runtime/author-project.mjs record-backup --project-root <project-root> --input <backup.json>
+node <setup-skill>/assets/runtime/author-project.mjs record-restore --project-root <project-root> --input <restoration.json>
+node <setup-skill>/assets/runtime/validate.mjs --backup-index <project-root>/<paths.backups>/index.json
 node <setup-skill>/assets/runtime/author-project.mjs timestamp
 ```
 
@@ -86,6 +89,8 @@ node <setup-skill>/assets/runtime/author-project.mjs timestamp
 `set-pending` 记录操作范围内的待处理工作和产物引用, 保留当前范围及活跃周期协调标识, 不创建任何批准. `record-scope` 接受有序路径或路径/hash 项, 在共享锁内重新计算当前正文 hash 和排除项, 支持 proposed 与 confirmed 范围. 确认必须提供明确的阅读顺序证据. 已确认结果包含确定性的范围和清单指纹, 不可变快照引用, 全稿校验结果和具体阻断项. 两个命令都会复核可选的 manifest hash 与周期 revision, 并通过经过校验的原子写入发布. 输入字段和中断恢复见 author-project 操作参考.
 
 `record-finding` 将精确的 finding v2 对象绑定到当前操作报告并记录为 `open`. `record-finding-decision` 要求与状态对应的当前执行记录或无修改跳过证据以及已批准的作者决定; `stale` 使用等价的完整复核和明确的发现项决定. `record-approval` 绑定操作, 范围, 完整有序路径, 动作, 输入与输出版本, 状态和原因, 包括规范的修订批准指纹. 三个命令都拒绝重复 ID, 在共享周期锁内复核可选的 tracker hash, 通过共享时钟生成 UTC 时间, 并在写入中断后保留实际恢复状态. 外部 tracker 编辑只接收校验诊断, 不自动合并, 重编号, 删除或修复. 未决定的 `open` 发现项阻断 satisfied 评估; 当前 deferred 和 dismissed 决定保留既有资格.
+
+`record-backup` 先校验精确批准, 操作, 当前已确认范围, 有序动作, 输入 hash 和 create 缺失状态, 再保存原始字节并发布封闭的备份清单与备份索引. 修订准备消费同一索引, 清单和字节证据, 不跳过当前输入或输出检查. `record-restore` 要求独立的精确恢复批准和当前安全备份, 通过经过校验的写入处理 create, modify, delete 和 reorder 的逆向恢复, 追加恢复记录而不改写来源备份或已提交日志. 恢复会报告范围与证据失效, 不会静默确认新范围. 项目校验和 `--backup-index` 会拒绝悬空清单, 被篡改的字节和不一致的恢复记录.
 
 所有公共项目命令, 包括 cycle, reconciliation, execution, evaluation 和 completion, 都返回统一 JSON 项目响应信封: `response_contract_version: "1.0"`, `command`, 布尔值 `valid`, 命令对应的 `result` 和结构化 `errors`. 原操作结果位于 `result` 内, 错误以 stdout 上的 JSON 返回, 不再提供并行文本错误契约. 成功命令和有效的只读状态查询退出码为 0, 包括 `not_satisfied` 和 `indeterminate` 生命周期状态. 项目, 操作, 证据或门禁校验失败退出码为 1. 参数, 输入文件或输入结构用法错误退出码为 2.
 

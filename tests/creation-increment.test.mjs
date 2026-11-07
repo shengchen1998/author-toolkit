@@ -15,6 +15,7 @@ import {
   currentScopeReference,
   runInput,
   timestamp,
+  writeBackupEvidence,
   writeJson,
 } from "./convergence-helpers.mjs";
 
@@ -750,13 +751,18 @@ test("accepted increment review findings reenter verified execution before conve
   const originalChapter = publication.chapters[0].contents;
   const reworkedChapter = "The next ferry arrives at noon.\nMara finds the missing letter beside her ticket.";
   const backupRelative = ".author-toolkit/backups/backup-102/manuscript/chapter-002.md";
-  await mkdir(path.dirname(path.join(fixture.projectRoot, backupRelative)), { recursive: true });
-  await writeFile(path.join(fixture.projectRoot, backupRelative), originalChapter, "utf8");
   const backupManifestRelative = ".author-toolkit/backups/backup-102/manifest.json";
-  await writeJson(path.join(fixture.projectRoot, backupManifestRelative), {
-    backup_id: "backup-102",
-    approval_id: "EDIT-102",
-    scope_id: publication.targetScope.scope_id,
+  await writeBackupEvidence(fixture.projectRoot, {
+    backupId: "backup-102",
+    approvalId: "EDIT-102",
+    scope: publication.targetScope,
+    files: [{
+      path: "manuscript/chapter-002.md",
+      action: "modify",
+      input_sha256: sha256(originalChapter),
+      output_sha256: sha256(reworkedChapter),
+      contents: originalChapter,
+    }],
   });
   const reworkPlanned = await runInput(fixture.projectRoot, "transition-cycle", {
     cycle_id: cycle.cycle_id,

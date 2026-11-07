@@ -26,6 +26,7 @@ import {
   currentScopeReference,
   runAuthorProject,
   timestamp,
+  writeBackupEvidence,
   writeJson,
 } from "./convergence-helpers.mjs";
 
@@ -539,13 +540,18 @@ async function establishChapterRevision(t, { strategy = null } = {}) {
     action: "Change dawn to dusk.",
   });
   const backupRelative = ".author-toolkit/backups/backup-001/manuscript/chapter-001.md";
-  await mkdir(path.dirname(path.join(fixture.projectRoot, backupRelative)), { recursive: true });
-  await writeFile(path.join(fixture.projectRoot, backupRelative), original, "utf8");
   const backupManifestRelative = ".author-toolkit/backups/backup-001/manifest.json";
-  await writeJson(path.join(fixture.projectRoot, backupManifestRelative), {
-    backup_id: "backup-001",
-    approval_id: "EDIT-001",
-    scope_id: scope.scope_id,
+  await writeBackupEvidence(fixture.projectRoot, {
+    backupId: "backup-001",
+    approvalId: "EDIT-001",
+    scope,
+    files: [{
+      path: "manuscript/chapter-001.md",
+      action: "modify",
+      input_sha256: createHash("sha256").update(original).digest("hex"),
+      output_sha256: createHash("sha256").update(output).digest("hex"),
+      contents: original,
+    }],
   });
   const execution = {
     cycle_id: cycleId,

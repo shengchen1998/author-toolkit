@@ -15,6 +15,7 @@ import {
   runInput,
   runValidator,
   timestamp,
+  writeBackupEvidence,
   writeJson,
 } from "./convergence-helpers.mjs";
 
@@ -396,13 +397,18 @@ test("manuscript-changing revise-fiction uses verified execution and restores fu
     action: "Change dawn to dusk in chapter 1.",
   });
   const backupRelative = ".author-toolkit/backups/backup-fiction-001/manuscript/chapter-001.md";
-  await mkdir(path.dirname(path.join(projectRoot, backupRelative)), { recursive: true });
-  await writeFile(path.join(projectRoot, backupRelative), original, "utf8");
   const backupManifestRelative = ".author-toolkit/backups/backup-fiction-001/manifest.json";
-  await writeJson(path.join(projectRoot, backupManifestRelative), {
-    backup_id: "backup-fiction-001",
-    approval_id: "EDIT-001",
-    scope_id: "scope-001",
+  await writeBackupEvidence(projectRoot, {
+    backupId: "backup-fiction-001",
+    approvalId: "EDIT-001",
+    scope: base.scopeReference,
+    files: [{
+      path: "manuscript/chapter-001.md",
+      action: "modify",
+      input_sha256: createHash("sha256").update(original).digest("hex"),
+      output_sha256: createHash("sha256").update(output).digest("hex"),
+      contents: original,
+    }],
   });
   const execution = {
     cycle_id: "cycle-fiction-001",

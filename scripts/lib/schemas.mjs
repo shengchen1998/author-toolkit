@@ -42,6 +42,10 @@ const readerStateSchema = readSchema("reader-state-schema.json");
 const recordFindingCommandSchema = readSchema("record-finding-command-schema.json");
 const recordApprovalCommandSchema = readSchema("record-approval-command-schema.json");
 const recordFindingDecisionCommandSchema = readSchema("record-finding-decision-command-schema.json");
+const backupManifestSchema = readSchema("backup-manifest-schema.json");
+const backupIndexSchema = readSchema("backup-index-schema.json");
+const recordBackupCommandSchema = readSchema("record-backup-command-schema.json");
+const recordRestoreCommandSchema = readSchema("record-restore-command-schema.json");
 
 const ajv = new Ajv2020({ allErrors: true, strict: true });
 addFormats(ajv);
@@ -73,6 +77,10 @@ ajv.addSchema(readerStateSchema);
 ajv.addSchema(recordFindingCommandSchema);
 ajv.addSchema(recordApprovalCommandSchema);
 ajv.addSchema(recordFindingDecisionCommandSchema);
+ajv.addSchema(backupManifestSchema);
+ajv.addSchema(backupIndexSchema);
+ajv.addSchema(recordBackupCommandSchema);
+ajv.addSchema(recordRestoreCommandSchema);
 
 const findingV1Validator = ajv.getSchema("finding-schema-v1.json");
 const findingV2Validator = ajv.getSchema("finding-schema-v2.json");
@@ -102,6 +110,10 @@ const readerStateValidator = ajv.getSchema("reader-state-schema.json");
 const recordFindingCommandValidator = ajv.getSchema("record-finding-command-schema.json");
 const recordApprovalCommandValidator = ajv.getSchema("record-approval-command-schema.json");
 const recordFindingDecisionCommandValidator = ajv.getSchema("record-finding-decision-command-schema.json");
+const backupManifestValidator = ajv.getSchema("backup-manifest-schema.json");
+const backupIndexValidator = ajv.getSchema("backup-index-schema.json");
+const recordBackupCommandValidator = ajv.getSchema("record-backup-command-schema.json");
+const recordRestoreCommandValidator = ajv.getSchema("record-restore-command-schema.json");
 
 function evaluate(validator, value, options = {}) {
   const schemaValid = validator(value);
@@ -224,6 +236,22 @@ export function validateRecordFindingDecisionCommand(value, options = {}) {
   return evaluate(recordFindingDecisionCommandValidator, value, options);
 }
 
+export function validateBackupManifestSchema(value, options = {}) {
+  return evaluate(backupManifestValidator, value, options);
+}
+
+export function validateBackupIndexSchema(value, options = {}) {
+  return evaluate(backupIndexValidator, value, options);
+}
+
+export function validateRecordBackupCommand(value, options = {}) {
+  return evaluate(recordBackupCommandValidator, value, options);
+}
+
+export function validateRecordRestoreCommand(value, options = {}) {
+  return evaluate(recordRestoreCommandValidator, value, options);
+}
+
 export function validateSchemaDefinitions() {
   const errors = [];
   const schemas = [
@@ -255,6 +283,10 @@ export function validateSchemaDefinitions() {
     ["record-finding-command-schema.json", recordFindingCommandSchema],
     ["record-approval-command-schema.json", recordApprovalCommandSchema],
     ["record-finding-decision-command-schema.json", recordFindingDecisionCommandSchema],
+    ["backup-manifest-schema.json", backupManifestSchema],
+    ["backup-index-schema.json", backupIndexSchema],
+    ["record-backup-command-schema.json", recordBackupCommandSchema],
+    ["record-restore-command-schema.json", recordRestoreCommandSchema],
   ];
 
   for (const [name, schema] of schemas) {

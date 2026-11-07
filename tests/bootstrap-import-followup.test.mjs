@@ -14,6 +14,7 @@ import {
   currentScopeReference,
   runInput,
   timestamp,
+  writeBackupEvidence,
   writeJson,
 } from "./convergence-helpers.mjs";
 
@@ -271,13 +272,18 @@ async function prepareVerifiedPostImportEdit(t) {
   await writeJson(path.join(projectRoot, planRelative), { plan_id: "post-import-plan" });
   await writeJson(path.join(projectRoot, batchRelative), { batch_id: "post-import-batch" });
   const backupRelative = ".author-toolkit/backups/backup-806/manuscript/chapter-001.md";
-  await mkdir(path.dirname(path.join(projectRoot, backupRelative)), { recursive: true });
-  await writeFile(path.join(projectRoot, backupRelative), original, "utf8");
   const backupManifestRelative = ".author-toolkit/backups/backup-806/manifest.json";
-  await writeJson(path.join(projectRoot, backupManifestRelative), {
-    backup_id: "backup-806",
-    approval_id: "EDIT-806",
-    scope_id: imported.targetScope.scope_id,
+  await writeBackupEvidence(projectRoot, {
+    backupId: "backup-806",
+    approvalId: "EDIT-806",
+    scope: imported.targetScope,
+    files: [{
+      path: "manuscript/chapter-001.md",
+      action: "modify",
+      input_sha256: sha256(original),
+      output_sha256: sha256(output),
+      contents: original,
+    }],
   });
   const artifact = async (relative) => ({
     path: relative,
@@ -637,13 +643,18 @@ async function verifyBootstrapEdit(projectRoot, cycleId, expectedRevision, input
   await writeJson(path.join(projectRoot, planRelative), { plan_id: `execution-chain-plan-${id}` });
   await writeJson(path.join(projectRoot, batchRelative), { batch_id: `execution-chain-batch-${id}` });
   const backupRelative = `.author-toolkit/backups/backup-${id}/manuscript/chapter-001.md`;
-  await mkdir(path.dirname(path.join(projectRoot, backupRelative)), { recursive: true });
-  await writeFile(path.join(projectRoot, backupRelative), original, "utf8");
   const backupManifestRelative = `.author-toolkit/backups/backup-${id}/manifest.json`;
-  await writeJson(path.join(projectRoot, backupManifestRelative), {
-    backup_id: `backup-${id}`,
-    approval_id: `EDIT-${id}`,
-    scope_id: inputScope.scope_id,
+  await writeBackupEvidence(projectRoot, {
+    backupId: `backup-${id}`,
+    approvalId: `EDIT-${id}`,
+    scope: inputScope,
+    files: [{
+      path: "manuscript/chapter-001.md",
+      action: "modify",
+      input_sha256: sha256(original),
+      output_sha256: sha256(output),
+      contents: original,
+    }],
   });
   const artifact = async (relative) => ({
     path: relative,

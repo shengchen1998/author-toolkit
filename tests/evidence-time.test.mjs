@@ -17,6 +17,7 @@ import {
   createConvergenceProject,
   createFirstPublicationArtifacts,
   createNoEditEvidence,
+  writeBackupEvidence,
 } from "./convergence-helpers.mjs";
 import { root } from "./helpers.mjs";
 
@@ -83,6 +84,19 @@ async function currentArtifacts(t) {
   });
   const publication = await createFirstPublicationArtifacts(projectRoot);
   const evidence = await createNoEditEvidence(projectRoot);
+  await writeBackupEvidence(projectRoot, {
+    backupId: "backup-time-001",
+    approvalId: "EDIT-001",
+    scope: evidence.scopeReference,
+    createdAt: NOW,
+    files: [{
+      path: "manuscript/chapter-001.md",
+      action: "modify",
+      input_sha256: createHash("sha256").update(manuscript).digest("hex"),
+      output_sha256: hash,
+      contents: manuscript,
+    }],
+  });
   let lockAcquiredAt = null;
   const transitioned = await transitionCycle(projectRoot, {
     cycle_id: "cycle-time-001",
@@ -237,6 +251,19 @@ async function currentArtifacts(t) {
         markdown: "report",
       },
       {
+        name: "backup manifest",
+        option: "--backup-manifest",
+        value: await readJson(projectRoot, ".author-toolkit/backups/backup-time-001/manifest.json"),
+        fields: ["/created_at"],
+      },
+      {
+        name: "backup index",
+        option: "--backup-index",
+        value: await readJson(projectRoot, ".author-toolkit/backups/index.json"),
+        fields: ["/backups/0/created_at"],
+        backupIndex: true,
+      },
+      {
         name: "scope snapshot",
         option: "--scope-snapshot",
         value: scope,
@@ -352,7 +379,7 @@ function runValidator(option, file) {
 
 test("installed validation applies one fixed UTC clock and 60-second allowance to every current artifact family", async (t) => {
   const { projectRoot, manifestPath, cases } = await currentArtifacts(t);
-  assert.equal(cases.length, 19);
+  assert.equal(cases.length, 21);
   const fixtures = path.join(projectRoot, "time-fixtures");
   await mkdir(fixtures, { recursive: true });
 
@@ -364,10 +391,20 @@ test("installed validation applies one fixed UTC clock and 60-second allowance t
           setTimestamp(value, field, atOffset(offset));
           const file = artifactCase.manifest
             ? manifestPath
-            : path.join(
-                fixtures,
-                `${offset > 60 ? "2000" : "2099"}-${caseIndex}-${field.replaceAll("/", "-")}.${artifactCase.markdown ? "md" : "json"}`,
-              );
+            : artifactCase.backupIndex
+              ? path.join(projectRoot, ".author-toolkit", "backups", "index.json")
+              : path.join(
+                  fixtures,
+                  `${offset > 60 ? "2000" : "2099"}-${caseIndex}-${field.replaceAll("/", "-")}.${artifactCase.markdown ? "md" : "json"}`,
+                );
+          if (artifactCase.backupIndex) {
+            const manifestReference = artifactCase.value.backups[0].manifest;
+            const backupManifest = await readJson(projectRoot, manifestReference.path);
+            setTimestamp(backupManifest, "/created_at", atOffset(offset));
+            const manifestText = `${JSON.stringify(backupManifest, null, 2)}\n`;
+            await writeFile(path.join(projectRoot, manifestReference.path), manifestText, "utf8");
+            value.backups[0].manifest.sha256 = createHash("sha256").update(manifestText).digest("hex");
+          }
           const contents = artifactCase.markdown
             ? markdownEnvelope(value, artifactCase.markdown === "report")
             : `${JSON.stringify(value, null, 2)}\n`;
