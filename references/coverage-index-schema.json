@@ -3,7 +3,7 @@
   "$id": "coverage-index-schema.json",
   "title": "author-toolkit living operation coverage index",
   "type": "object",
-  "required": ["schema_version", "scope_id", "entries", "updated_at"],
+  "required": ["schema_version", "scope_id", "scope_fingerprint", "requested_pass", "entries", "updated_at"],
   "additionalProperties": false,
   "properties": {
     "schema_version": { "const": "1.0.0" },
@@ -22,7 +22,7 @@
             "type": "array",
             "items": {
               "type": "object",
-              "required": ["unit_id", "path"],
+              "required": ["unit_id", "path", "sha256"],
               "additionalProperties": false,
               "properties": {
                 "unit_id": { "$ref": "#/$defs/id" },
@@ -38,7 +38,20 @@
           "synthesis_coverage": {
             "anyOf": [{ "enum": ["full", "partial", "skipped"] }, { "type": "null" }]
           }
-        }
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": { "synthesis_report": { "type": "string" } }
+            },
+            "then": {
+              "required": ["synthesis_report_sha256"],
+              "properties": {
+                "synthesis_report_sha256": { "$ref": "#/$defs/sha256" }
+              }
+            }
+          }
+        ]
       }
     },
     "updated_at": { "type": "string", "format": "date-time" }

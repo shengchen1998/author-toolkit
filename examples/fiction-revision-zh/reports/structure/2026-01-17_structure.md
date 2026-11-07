@@ -68,6 +68,14 @@ Coverage: full. 这份 handwritten fixture 代表全部三章中文正文和全�
     "degraded": true,
     "notes": "手写 fixture envelope；未执行任何引擎或模型。Coverage: full - 全部三章中文正文和全部 11 个 landmark 检查。"
   },
+  "scope_id": "fixture-scope-zh",
+  "scope_fingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "requested_pass": {
+    "pass_id": "fixture-pass-zh",
+    "pass_fingerprint": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "path": ".author-toolkit/convergence/passes/fixture-pass-zh.json",
+    "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+  },
   "findings": [
     {
       "id": "STRUCT-001",

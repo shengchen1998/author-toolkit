@@ -8,9 +8,9 @@ import { root } from "./helpers.mjs";
 export const timestamp = "2026-11-05T00:00:00Z";
 export const authorProjectCli = path.join(root, "scripts", "author-project.mjs");
 
-export function manifestV32() {
+export function currentManifest() {
   return {
-    schema_version: "3.2.0",
+    schema_version: "4.0.0",
     project_type: "fiction",
     language: "en",
     manuscript_root: "manuscript",
@@ -64,7 +64,7 @@ export async function createConvergenceProject(t, { manuscripts = [] } = {}) {
     await writeFile(target, file.contents, "utf8");
   }
   const manifestPath = path.join(projectRoot, ".author-toolkit", "project.json");
-  await writeJson(manifestPath, manifestV32());
+  await writeJson(manifestPath, currentManifest());
   await writeJson(path.join(projectRoot, ".author-toolkit", "backups", "index.json"), {
     schema_version: "1.0.0",
     backups: [],
@@ -522,7 +522,7 @@ export async function createNoEditEvidence(projectRoot, options = {}) {
       stage,
       created_at: timestamp,
       language: manifest.language,
-      skill: { name: options.wholeBook ? "revise-fiction" : "revise-draft", version: "3.2.0" },
+      skill: { name: options.wholeBook ? "revise-fiction" : "revise-draft", version: "4.0.0" },
       inputs: reportFiles.map((file) => ({
         path: file.path,
         version: file.sha256,

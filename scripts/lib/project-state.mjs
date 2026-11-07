@@ -72,6 +72,16 @@ export async function initializeProject(projectRoot, input = {}, options = {}) {
   const manifestPath = path.join(root, ".author-toolkit", "project.json");
   try {
     const existing = JSON.parse(await readFile(manifestPath, "utf8"));
+    const validation = validateManifest(existing);
+    if (!validation.valid) {
+      return {
+        valid: false,
+        initialized: false,
+        manifest_path: manifestPath,
+        created: [],
+        errors: validation.errors,
+      };
+    }
     const references = await deployReferences(root);
     if (!references.valid) {
       return {
@@ -82,27 +92,18 @@ export async function initializeProject(projectRoot, input = {}, options = {}) {
         errors: references.errors,
       };
     }
-    const validation = validateManifest(existing);
-    const errors = [...validation.errors];
-    if (existing.schema_version !== "3.2.0" && validation.valid) {
-      errors.push({
-        code: "project-version-requires-migration",
-        instancePath: "/schema_version",
-        message: "This project requires the documented setup migration before current project operations.",
-      });
-    }
-    if (validation.valid && existing.schema_version === "3.2.0") {
-      errors.push(...(await validateProjectFiles(existing, manifestPath)).errors);
-      errors.push(...(await validateTracker(existing, manifestPath)).errors);
-      errors.push(...(await validateBackupIndexFile(
+    const errors = [
+      ...(await validateProjectFiles(existing, manifestPath)).errors,
+      ...(await validateTracker(existing, manifestPath)).errors,
+      ...(await validateBackupIndexFile(
         path.resolve(root, existing.paths.backups, "index.json"),
         { projectRoot: root },
-      )).errors);
-      if (existing.current_scope) {
-        errors.push(...(existing.current_scope.status === "confirmed"
-          ? await validateFullManuscriptScope(existing, manifestPath)
-          : await validateScopeCurrency(existing, manifestPath)).errors);
-      }
+      )).errors,
+    ];
+    if (existing.current_scope) {
+      errors.push(...(existing.current_scope.status === "confirmed"
+        ? await validateFullManuscriptScope(existing, manifestPath)
+        : await validateScopeCurrency(existing, manifestPath)).errors);
     }
     return {
       valid: errors.length === 0,
@@ -241,8 +242,8 @@ function setupAction() {
   };
 }
 
-function unavailableStatus(root, references, projectErrors, message) {
-  const errors = [...references.errors, ...projectErrors];
+function unavailableStatus(root, references, projectErrors, message, action = setupAction()) {
+  const errors = [...projectErrors, ...references.errors];
   return {
     valid: false,
     result: {
@@ -266,11 +267,11 @@ function unavailableStatus(root, references, projectErrors, message) {
       evaluation: {
         outcome: "indeterminate",
         current: false,
-        blockers: [{ code: "project-state-unavailable", message, required_action: setupAction() }],
+        blockers: [{ code: "project-state-unavailable", message, required_action: action }],
         request_completion: null,
       },
       decisions: emptyDecisions(),
-      next_action: setupAction(),
+      next_action: action,
     },
     errors,
   };
@@ -302,6 +303,33 @@ function compactCycle(cycle, interruptedOperation) {
 
 export async function getCompactProjectStatus(projectRoot) {
   const root = path.resolve(projectRoot);
+  const manifestPath = path.join(root, ".author-toolkit", "project.json");
+  let manifest;
+  try {
+    manifest = JSON.parse(await readFile(manifestPath, "utf8"));
+  } catch (error) {
+    const references = await validateDeployedReferences(root);
+    return unavailableStatus(
+      root,
+      references,
+      [{ code: "manifest-invalid", instancePath: "/.author-toolkit/project.json", message: error.message }],
+      "The project manifest cannot be read; repair or reinitialize the project state.",
+    );
+  }
+
+  const manifestValidation = validateManifest(manifest);
+  if (!manifestValidation.valid) {
+    const references = await validateDeployedReferences(root);
+    const error = manifestValidation.errors[0];
+    return unavailableStatus(
+      root,
+      references,
+      manifestValidation.errors,
+      error.message,
+      error.required_action ?? setupAction(),
+    );
+  }
+
   const references = await validateDeployedReferences(root);
   if (!references.valid) {
     return unavailableStatus(
@@ -312,25 +340,12 @@ export async function getCompactProjectStatus(projectRoot) {
     );
   }
 
-  const manifestPath = path.join(root, ".author-toolkit", "project.json");
-  let manifest;
-  try {
-    manifest = JSON.parse(await readFile(manifestPath, "utf8"));
-  } catch (error) {
-    return unavailableStatus(
-      root,
-      references,
-      [{ code: "manifest-invalid", instancePath: "/.author-toolkit/project.json", message: error.message }],
-      "The project manifest cannot be read; repair or reinitialize the project state.",
-    );
-  }
-
-  const projectChecks = [{ name: "manifest", ...validateManifest(manifest) }];
+  const projectChecks = [{ name: "manifest", ...manifestValidation }];
   if (projectChecks[0].valid) {
     projectChecks.push(
       { name: "files", ...await validateProjectFiles(manifest, manifestPath) },
       { name: "tracker", ...await validateTracker(manifest, manifestPath) },
-      ...(manifest.schema_version === "3.2.0" ? [{
+      ...(manifest.schema_version === "4.0.0" ? [{
         name: "backups",
         ...await validateBackupIndexFile(
           path.resolve(root, manifest.paths.backups, "index.json"),
@@ -341,7 +356,7 @@ export async function getCompactProjectStatus(projectRoot) {
     if (manifest.current_scope) {
       projectChecks.push({
         name: "scope",
-        ...manifest.schema_version === "3.2.0" && manifest.current_scope.status === "confirmed"
+        ...manifest.schema_version === "4.0.0" && manifest.current_scope.status === "confirmed"
           ? await validateFullManuscriptScope(manifest, manifestPath)
           : await validateScopeCurrency(manifest, manifestPath),
       });
@@ -353,7 +368,7 @@ export async function getCompactProjectStatus(projectRoot) {
   const projectValid = projectErrors.length === 0;
 
   let convergence;
-  if (projectChecks[0].valid && manifest.schema_version === "3.2.0") {
+  if (projectChecks[0].valid && manifest.schema_version === "4.0.0") {
     convergence = await getCycleStatus(root);
   } else {
     convergence = {
@@ -362,7 +377,7 @@ export async function getCompactProjectStatus(projectRoot) {
       current: false,
       blockers: [{
         code: "project-validation-failed",
-        message: "A valid v3.2 manifest is required before convergence status is available.",
+        message: "A valid 4.0.0 manifest is required before convergence status is available.",
         required_action: setupAction(),
       }],
       required_action: setupAction(),
@@ -441,7 +456,7 @@ export async function getFullProjectStatus(projectRoot) {
       manifest = null;
     }
   }
-  if (manifest?.schema_version === "3.2.0" && compact.result.project.valid) {
+  if (manifest?.schema_version === "4.0.0" && compact.result.project.valid) {
     status = await getCycleStatus(projectRoot);
   }
   return {

@@ -11,8 +11,8 @@ Route the author to an explicit next command. This is a router, not an orchestra
 ## Route
 
 1. Establish whether the author wants shared fiction creation from scratch, continuation of an existing creation project, revision of an existing manuscript, revision after incremental creation, a new request-driven revision from a full-manuscript base scope that has reached current-draft revision convergence, standalone fiction work, or narrative nonfiction. Select the project root when one exists. For revision, establish whether the goal is whole-book work, scoped revision of an unfinished draft, current-draft revision convergence after scope growth, or revision of existing content while preserving current-draft revision convergence for the full-manuscript target scope.
-2. Look for `<project-root>/.author-toolkit/project.json`. If it is missing or has `schema_version: "2.0.0"`, recommend setup first. Display the `setup-author-toolkit` host command and explain that setup registers existing paths without moving files and migrates v2 with a preserved snapshot. After setup, show the creation and revision commands that fit the author's goals. Do not route a missing or v2 manifest directly into shared creation or revision work.
-3. For a v3.0, v3.1, or v3.2 manifest, resolve `author-project` in the current skill listing and invoke its exact registered name in separate calls with `read`, `validate`, and `status`. Bare and `author-toolkit:` qualified names are valid when listed. These calls check the deployed shared references. If they report missing or mismatched files, display the setup command from step 2 and stop; a valid manifest does not prove reference deployment. Display:
+2. Look for `<project-root>/.author-toolkit/project.json`. If it is missing, recommend setup first. If it has any schema version other than `4.0.0`, display the `setup-author-toolkit` host command and explain that 4.0.0 requires a separate manuscript-only project; old shared state is preserved and never migrated or imported. Do not route a missing or old manifest directly into shared creation or revision work.
+3. For a 4.0.0 manifest, resolve `author-project` in the current skill listing and invoke its exact registered name in separate calls with `read`, `validate`, and `status`. Bare and `author-toolkit:` qualified names are valid when listed. These calls check the deployed shared references after diagnosing the manifest contract. If they report missing or mismatched files, display the setup command from step 2 and stop; a valid manifest does not prove reference deployment. Display:
    - current scope ID and confirmation status;
    - the active current-draft convergence cycle, recovery position, evaluation outcome, and blockers, or its absence;
    - pending action, status, scope ID, reason, and artifacts, or its absence;
@@ -25,7 +25,7 @@ Route the author to an explicit next command. This is a router, not an orchestra
 5. Keep standalone `fiction-workshop` available for Story Bible, brainstorming, drafting, or editing outside the shared workflow. Do not claim that standalone work updates shared creation or revision state. For standalone Chinese AI-associated pattern detection or approved rewriting, route to `prose-mechanics` with its AI-Isms audit; the upstream standalone `avoid-ai-writing` skill retains its English catalog.
 6. If the project is narrative nonfiction, route to standalone `narrative-nonfiction`; do not claim equivalent orchestration through a fiction entry.
 
-Show only the routes matching the author's situation and wait for the author to choose. Do not call `setup-author-toolkit`, `write-fiction`, `revise-fiction`, `revise-draft`, `revise-increment`, `revise-request`, or another routed entry through the Skill tool from this router. `author-project` is permitted only for reading and validating existing v3 state.
+Show only the routes matching the author's situation and wait for the author to choose. Do not call `setup-author-toolkit`, `write-fiction`, `revise-fiction`, `revise-draft`, `revise-increment`, `revise-request`, or another routed entry through the Skill tool from this router. `author-project` is permitted only for reading and validating existing 4.0.0 state.
 
 ## Author-facing commands
 
@@ -33,7 +33,7 @@ Use the host's actual documented syntax. The table shows qualified plugin comman
 
 | Need | Claude Code | Kimi Code |
 |---|---|---|
-| Set up, register, or migrate a manuscript project | `/author-toolkit:setup-author-toolkit` | `/skill:author-toolkit:setup-author-toolkit` |
+| Set up or validate a 4.0.0 manuscript project | `/author-toolkit:setup-author-toolkit` | `/skill:author-toolkit:setup-author-toolkit` |
 | Create fiction from scratch or continue shared creation | `/author-toolkit:write-fiction` | `/skill:author-toolkit:write-fiction` |
 | Revise a whole-book baseline, structure, or final review | `/author-toolkit:revise-fiction` | `/skill:author-toolkit:revise-fiction` |
 | Continue first-time bootstrap publication through its initial full-manuscript evaluation | `/author-toolkit:revise-draft` | `/skill:author-toolkit:revise-draft` |

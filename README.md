@@ -5,15 +5,12 @@ project evidence model, plus six independent writing skills for Claude Code and
 Kimi Code.
 
 [Chinese quick start](README.zh-CN.md) | [Controlled terminology](references/terminology.md) |
-[3.2 migration](docs/MIGRATION-3.2.md) |
-[3.1 migration history](docs/MIGRATION-3.1.md) |
-[3.0 migration history](docs/MIGRATION-3.0.md) |
-[2.0 migration history](docs/MIGRATION-2.0.md) |
+[Greenfield 4.0 ADR](docs/adr/0002-greenfield-4-0.md) |
 [Validation status](docs/VALIDATION.md)
 
 ## What is included
 
-Version 3.2.0 contains 16 skills in three groups.
+Version 4.0.0 contains 16 skills in three groups and supports one current project contract.
 
 ### User entry points
 
@@ -385,10 +382,10 @@ The skill definitions contain the full gates and audit rules.
 ## Shared project files and evidence
 
 All five strategies use the same neutral `.author-toolkit/project.json` and
-artifact paths. New projects use schema 3.2.0; v3.0 and v3.1 manifests remain
-readable. `scripts/migrate-v32.mjs` migrates v2, v3.0, and v3.1 projects directly
-to v3.2. The existing `scripts/migrate-v3.mjs` command and
-`migrateProjectToV3` function are compatibility wrappers with the same target.
+artifact paths. Every project uses schema 4.0.0. Old manifests and old shared
+artifacts are rejected with `greenfield-initialization-required` before setup
+writes anything. Initialize a separate project from manuscript-only input and
+preserve the old project; no migration or old shared-state import is available.
 
 - `project.json` records project registration, artifact locations, and optional
   `current_scope` and `pending_action`. It has no `workflow.name`,
@@ -414,22 +411,17 @@ to v3.2. The existing `scripts/migrate-v3.mjs` command and
 - `paths.creation` registers creation state and defaults to
   `.author-toolkit/creation/`. It contains `state/current.md`,
   `state/chapters/`, `state/volumes/`, `batches/`, and `staging/`.
-- The convergence state root defaults to `.author-toolkit/convergence/` on v3.2.
+- The convergence state root defaults to `.author-toolkit/convergence/` in 4.0.0.
   Confirming a scope preserves an immutable scope snapshot and inventory snapshot
   there. The scope fingerprint covers ordered path/hash pairs and sorted
   exclusions; record metadata and timestamps are excluded.
 
-Project migration preserves manuscripts, reports, findings, approvals, scopes,
-sessions, staging, backups, batches, journals, and pending work. Only an exact
-legacy scope confirmation supports a confirmed scope snapshot; other legacy
-confirmed scopes become proposed for reconfirmation. Legacy reports and pending
-actions create no satisfied evaluation or active cycle. Reconcile interrupted
-journals and writes before dependent cycle work. Explicitly reject legacy
-staging, or reapprove its exact content in a new cycle only after a current
-satisfied starting evaluation. An unproven legacy revision base uses current
-full-manuscript `revise-draft` recovery with the normal coverage-reuse rules.
-See [Migrating to 3.2](docs/MIGRATION-3.2.md) for the migration matrix and
-recovery procedure.
+Within a 4.0.0 project, reports, findings, approvals, scopes, sessions, staging,
+backups, batches, journals, evaluations, and pending work retain their existing
+safety and immutable-history rules. Cycle recovery and `creation-import` remain
+available for current work. The greenfield no-migration decision is a one-time
+exception; future incompatible releases must provide migration by default. See
+the [greenfield 4.0 ADR](docs/adr/0002-greenfield-4-0.md).
 
 Chapter and volume story state is derived from accepted manuscript text and
 versioned source artifacts. It supports continuation; it does not replace the
@@ -446,7 +438,7 @@ no switch automatically resumes a pending write.
 
 ### Current-draft convergence cycles
 
-V3.2 stores at most one active current-draft convergence cycle in
+4.0.0 stores at most one active current-draft convergence cycle in
 `<convergence-state-root>/active-cycle.json`. Completed records remain immutable under
 `<convergence-state-root>/cycles/`. The versioned contract records initiating and
 current strategies, bootstrap, starting and target scope references, requested
@@ -674,21 +666,16 @@ review jobs, and reader state use their own artifact contracts rather than
 masquerading as revision reports. External changes use the closed
 `references/manuscript-reconciliation-schema.json` artifact and the optional
 manifest `manuscript_reconciliation` reference to its latest immutable record.
-The canonical project registration schema is
-`references/project-schema-v3.2.json`; setup deploys it with the other shared
-contracts into the writing project. The v3.0 and v3.1 schemas remain available
-for reading and upgrading existing projects.
+The only canonical project registration schema is
+`references/project-schema-v4.json`; setup deploys it with the other shared
+contracts into the writing project. No older project schemas or migration
+commands are shipped.
 
-Existing reports are not automatically rewritten. See
-[Migrating to 3.2](docs/MIGRATION-3.2.md). The
-[3.1 migration guide](docs/MIGRATION-3.1.md),
-[3.0 migration guide](docs/MIGRATION-3.0.md), and
-[2.0 migration guide](docs/MIGRATION-2.0.md) remain available as historical
-documentation.
-
-The shipped English and Chinese examples intentionally retain legacy v2
-manifests and workflow fixtures for compatibility testing. Do not migrate them
-in place merely to make them look current.
+Current 4.0.0 reports remain immutable after publication. Old shared artifacts
+are not rewritten or imported into a new project. The shipped English and
+Chinese examples use 4.0.0 manifests with empty operational evidence; their
+manuscripts and handwritten reports remain language and Markdown fixtures, not
+creative-quality or host-run evidence.
 
 ## Invoke an independent skill directly
 

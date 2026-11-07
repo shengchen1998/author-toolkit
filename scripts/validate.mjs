@@ -92,7 +92,7 @@ function usage() {
   node ${process.argv[1] ?? "validate.mjs"}
   node ${process.argv[1] ?? "validate.mjs"} --repository
   node ${process.argv[1] ?? "validate.mjs"} --project-root ROOT
-  node ${process.argv[1] ?? "validate.mjs"} [--manifest FILE] [--report FILE] [--workflow-fixture FILE]...
+  node ${process.argv[1] ?? "validate.mjs"} [--manifest FILE] [--report FILE]...
   node ${process.argv[1] ?? "validate.mjs"} [--backup-manifest FILE] [--backup-index FILE]
   node ${process.argv[1] ?? "validate.mjs"} [--scope-snapshot FILE] [--inventory-snapshot FILE]...
   node ${process.argv[1] ?? "validate.mjs"} [--convergence-cycle FILE] [--requested-pass FILE]...
@@ -106,7 +106,7 @@ function usage() {
   node ${process.argv[1] ?? "validate.mjs"} [--review-job FILE] [--reader-state FILE] [--story-state FILE]...
 
 With no options, print this help without inspecting state.
-Repository mode checks all schemas, example manifests, reports, and workflow fixtures.
+Repository mode checks all schemas and current example manifests and reports.
 Project-root mode checks deployed shared-reference hashes, then the selected project's manifest, files, and tracker.
 Repository and project-root modes cannot be combined with each other or individual checks.
 --now ISO_TIMESTAMP injects the UTC validation clock; current timestamps may be at most 60 seconds in the future.`);
@@ -130,7 +130,6 @@ function parseArguments(args, artifactTypes) {
   const selection = {
     manifests: [],
     reports: [],
-    workflowFixtures: [],
     convergenceStatus: [],
     convergenceGate: [],
     ...Object.fromEntries(artifactTypes.map(({ key }) => [key, []])),
@@ -142,7 +141,6 @@ function parseArguments(args, artifactTypes) {
   const destinations = {
     "--manifest": "manifests",
     "--report": "reports",
-    "--workflow-fixture": "workflowFixtures",
     "--convergence-status": "convergenceStatus",
     "--convergence-gate": "convergenceGate",
     ...Object.fromEntries(artifactTypes.map(({ key, option }) => [option, key])),
@@ -197,9 +195,8 @@ async function main() {
     usage();
     return;
   }
-  const [runtime, { V3_SCHEMA_VERSIONS }, { validateDeployedReferences }] = await Promise.all([
+  const [runtime, { validateDeployedReferences }] = await Promise.all([
     import("./lib/index.mjs"),
-    import("./lib/constants.mjs"),
     import("./lib/shared-references.mjs"),
   ]);
   const {
@@ -212,9 +209,7 @@ async function main() {
     validateMarkdownReport,
     validateProjectFiles,
     validateSchemaDefinitions,
-    validateScopeCurrency,
     validateTracker,
-    validateWorkflowSequence,
   } = runtime;
   const artifactTypes = createArtifactTypes(runtime);
   const selection = parseArguments(args, artifactTypes);
@@ -250,18 +245,18 @@ async function main() {
     failures += 1;
     console.error(`not ok - ${label}`);
     for (const error of result.errors) {
-      console.error(`  ${error.instancePath || "/"} ${error.message}`);
+      console.error(`  ${error.instancePath || "/"} ${error.code ? `${error.code}: ` : ""}${error.message}`);
     }
   }
 
   if (selection.projectRoot) {
-    const references = await validateDeployedReferences(selection.projectRoot);
-    check(".author-toolkit/references", references);
-    if (references.valid) {
-      selection.manifests.push(
-        path.join(selection.projectRoot, ".author-toolkit", "project.json"),
-      );
-    }
+    selection.manifests.push(
+      path.join(selection.projectRoot, ".author-toolkit", "project.json"),
+    );
+    check(
+      ".author-toolkit/references",
+      await validateDeployedReferences(selection.projectRoot),
+    );
   }
 
   if (selection.repository) {
@@ -270,12 +265,6 @@ async function main() {
       const directory = path.join(root, "examples", example);
       selection.manifests.push(path.join(directory, ".author-toolkit", "project.json"));
       selection.reports.push(...(await markdownFiles(path.join(directory, "reports"))));
-      const sessions = await readdir(path.join(directory, "sessions"));
-      selection.workflowFixtures.push(
-        ...sessions
-          .filter((file) => file.endsWith(".fixture.json"))
-          .map((file) => path.join(directory, "sessions", file)),
-      );
     }
   }
 
@@ -287,36 +276,20 @@ async function main() {
 
       if (result.valid) {
         check(`${path.relative(root, file)}#files`, await validateProjectFiles(manifest, file));
-        if (V3_SCHEMA_VERSIONS.has(manifest.schema_version) && manifest.current_scope) {
-          const scopeResult =
-            manifest.schema_version === "3.2.0"
-              ? await validateFullManuscriptScope(manifest, file)
-              : await validateScopeCurrency(manifest, file);
+        if (manifest.current_scope) {
+          const scopeResult = await validateFullManuscriptScope(manifest, file);
           check(`${path.relative(root, file)}#scope`, scopeResult);
-          if (manifest.schema_version === "3.2.0") {
-            console.log(
-              `  scope_id=${scopeResult.scope_id} scope_fingerprint=${scopeResult.scope_fingerprint} full_manuscript=${scopeResult.full_manuscript}`,
-            );
-          }
-        }
-        check(`${path.relative(root, file)}#tracker`, await validateTracker(manifest, file));
-        if (manifest.schema_version === "3.2.0") {
-          check(
-            `${path.relative(root, file)}#backups`,
-            await runtime.validateBackupIndexFile(
-              path.resolve(path.dirname(file), "..", manifest.paths.backups, "index.json"),
-              { projectRoot: projectRootFromManifest(file), now: selection.now ?? undefined },
-            ),
+          console.log(
+            `  scope_id=${scopeResult.scope_id} scope_fingerprint=${scopeResult.scope_fingerprint} full_manuscript=${scopeResult.full_manuscript}`,
           );
         }
-      } else if (
-        !["2.0.0", "3.0.0", "3.1.0", "3.2.0"].includes(manifest?.schema_version) ||
-        manifest?.project_type !== "fiction" ||
-        (manifest?.schema_version === "2.0.0" &&
-          manifest?.workflow?.name !== "revise-fiction")
-      ) {
-        console.error(
-          "  legacy or standalone project detected; run setup-author-toolkit to register or migrate it before revision",
+        check(`${path.relative(root, file)}#tracker`, await validateTracker(manifest, file));
+        check(
+          `${path.relative(root, file)}#backups`,
+          await runtime.validateBackupIndexFile(
+            path.resolve(path.dirname(file), "..", manifest.paths.backups, "index.json"),
+            { projectRoot: projectRootFromManifest(file), now: selection.now ?? undefined },
+          ),
         );
       }
     } catch (error) {
@@ -339,42 +312,6 @@ async function main() {
         path.relative(root, file),
         needsEvidence ? validateEvidenceReport(markdown, options) : parsed,
       );
-    } catch (error) {
-      check(path.relative(root, file), {
-        valid: false,
-        errors: [{ instancePath: "", message: error.message }],
-      });
-    }
-  }
-
-  for (const file of selection.workflowFixtures) {
-    try {
-      const fixture = await readJson(file);
-      if (fixture.fixture !== true || !Array.isArray(fixture.snapshots) || !fixture.project) {
-        throw new Error("Workflow fixture requires fixture=true, project, and snapshots");
-      }
-      const base = await readJson(path.resolve(path.dirname(file), fixture.project));
-      const projects = fixture.snapshots.map((snapshot) => {
-        if (!snapshot.label || !snapshot.paths || !snapshot.workflow || !snapshot.updated_at) {
-          throw new Error(
-            "Every workflow snapshot requires label, paths, updated_at, and workflow",
-          );
-        }
-        return {
-          ...base,
-          paths: snapshot.paths,
-          updated_at: snapshot.updated_at,
-          workflow: snapshot.workflow,
-        };
-      });
-
-      projects.forEach((project, index) => {
-        check(
-          `${path.relative(root, file)}#${fixture.snapshots[index].label}`,
-          validateManifest(project),
-        );
-      });
-      check(`${path.relative(root, file)}#sequence`, validateWorkflowSequence(projects));
     } catch (error) {
       check(path.relative(root, file), {
         valid: false,

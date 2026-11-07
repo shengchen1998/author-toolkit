@@ -1,10 +1,9 @@
-# author-toolkit 3.1 人工评审检查清单
+# author-toolkit 4.0.0 人工评审检查清单
 
 本清单用于真实运行技能, 不是自动测试的替代品. `fiction-revision-en` 与 `fiction-revision-zh`
-是同一原创故事的两个语言版本, 预置报告和会话记录全部是手写 fixture, 不得写成 "模型运行结果".
-其中旧 v2 manifest, 阶段状态快照和 override 样例只用于迁移及 legacy 兼容性验证, 不是 v3.1
-项目的操作模板. 只在副本上运行迁移, 不转换仓库内原始 examples. 共享自然语言使用
-[受控术语表](../references/terminology.md) 中的固定中文用语.
+是同一原创故事的两个语言版本, 预置报告全部是手写 fixture, 不得写成 "模型运行结果".
+两个项目使用空操作证据的 4.0.0 manifest; 正文和报告只用于语言与 Markdown 合约验证.
+共享自然语言使用 [受控术语表](../references/terminology.md) 中的固定中文用语.
 
 ## 1. 评审准备与证据
 
@@ -19,13 +18,13 @@
 
 - [ ] 对 `write-fiction`, `revise-fiction`, `revise-draft`, `revise-increment` 和 `revise-request` 都先运行同一个 `setup-author-toolkit`; 确认 setup 不接受工作流或操作参数, 五个用户入口的登记和 `intake` 行为一致.
 - [ ] 确认 setup 将随技能部署的全部共享契约写入 `.author-toolkit/references/`; 已匹配文件保持不变. 制造一个 `reference-version-conflict`, 确认共享工作流停止且原文件未被覆盖; 单独批准替换后, 核对原文件已保存到 `<paths.backups>/reference-updates/<UTC-stamp>/`.
-- [ ] 确认五个用户入口使用同一份中性 `.author-toolkit/project.json` (v3.1), 以及共享的 `audit-tracker.md`, `story-bible.md`, `reports/`, `sessions/`, `backups/` 和 `handoffs/`.
-- [ ] 检查 v3.1 manifest 只将 `current_scope` 与 `pending_action` 作为可选进度字段, 其余内容用于项目登记, 证据和路径; 不读取或手改 v2 阶段状态.
+- [ ] 确认五个用户入口使用同一份中性 `.author-toolkit/project.json` (4.0.0), 以及共享的 `audit-tracker.md`, `story-bible.md`, `reports/`, `sessions/`, `backups/` 和 `handoffs/`.
+- [ ] 检查 4.0.0 manifest 只将 `current_scope` 与 `pending_action` 作为可选进度字段, 其余内容用于项目登记, 证据和路径; 不接受旧阶段状态或旧共享产物.
 - [ ] 确认 `paths.creation` 默认指向 `.author-toolkit/creation/`, 自定义路径也按 manifest 解析; `state/current.md`, `state/chapters/`, `state/volumes/`, `batches/` 和 `staging/` 位于该根目录下.
 - [ ] 确认创作根目录和 staging 被排除在正文清单外, 没有把故事状态, 创作批次或暂存稿统计为正文.
 - [ ] 确认没有策略专属目录或第二套状态. 在五个技能的稳定操作门禁之间切换后复用共享产物, 不执行迁移.
 - [ ] 登记后核对稿件仍在原路径, 自定义产物路径仍有效; setup 和技能切换都不移动正文稿件, 报告或备份.
-- [ ] 对 v3.0 项目确认 3.1 工具仍可读取; 在创作写入前完成作者确认的增量 `upgrade-v31`, 并核对原有范围, 待处理操作, 发现项, 批准和备份未丢失.
+- [ ] 对旧 manifest 和缺失或冲突 references 的组合确认 setup 先返回 `greenfield-initialization-required`, 不写入任何文件; 在独立项目根目录仅复制正文并初始化空操作证据, 不导入旧共享状态.
 
 ## 3. `revise-fiction` 全书九项操作
 
@@ -139,25 +138,19 @@
 - [ ] 对 `revise-draft` 的 `current-scope-review`, 把完整结局, 全书节拍和完整弧线等不适用项记为 `skipped`; 不因无结局而给当前正文稿件判定全书失败.
 - [ ] 汇总三种视角的分歧, 交作者决定. 复核不能只检查 schema, 也不能把当前范围或里程碑结论表述为全书结论.
 
-## 11. v2/v3.0 迁移与 legacy 验证
+## 11. 4.0.0 greenfield 与当前契约
 
-只在旧 fixture 的副本上执行本节. 旧阶段快照用于核对转换结果, 不用于指导 v3.1 日常操作.
-
-- [ ] 分别验证统一 `setup-author-toolkit` 路径和 `node <toolkit-root>/scripts/migrate-v3.mjs --project-root <project-root>` 命令路径.
-- [ ] 对 v3.0 副本确认增量终态为 schema 3.1.0, 只新增 `paths.creation` 和创作目录骨架并更新版本字段; 原有正文稿件, 报告, 发现项, 批准, 范围, 待处理工作和备份保持不变.
-- [ ] 确认 v3.0 快照位于 `.author-toolkit/migrations/<stamp>-v3_0-v3_1/`; 对 v2 副本确认直达 v3.1, 快照仍位于 `.author-toolkit/migrations/<stamp>-v2-v3/`.
-- [ ] 对 v2 副本确认旧 stage 只保留为历史证据, 旧 current stage 转为 `awaiting_author` 待处理操作; v3.1 不延续 v2 阶段状态机.
-- [ ] 确认旧 override 转为共享 tracker 中的 `deferred` `LEGACY` 批准, 未被当成当前批准; 迁移生成的范围为 `proposed`, 含可复算 SHA-256, 并由作者确认后才使用.
-- [ ] 在无稿件 v2 副本上验证迁移失败且原 manifest 保持不变; 不通过手工修补 manifest 掩盖失败.
-- [ ] 对有效 v3.1 项目重复执行迁移, 确认幂等且 `snapshot: null`, 不重复转换或重复写入 legacy approvals.
-- [ ] 确认 report v2 和 finding v2 版本不变, 创作操作未加入报告 v2 `stage`; 新创作和复核产物使用各自独立契约.
-- [ ] 用旧 3.0 工具边界做兼容性说明: 3.1 工具可读取 v3.0, 旧工具可能拒绝 v3.1 或不理解创作契约; 不删除 `paths.creation` 或伪造版本号强行兼容.
-- [ ] 对 legacy v1 findings 和六个独立技能产物验证原有读取行为, 不把它们批量改写成 v2 或搬入新目录.
+- [ ] 分别对 v2, v3.0, v3.1 和 v3.2 manifest 验证 source 与隔离安装后的 CLI 都返回 `greenfield-initialization-required`, 下一步是独立的仅正文初始化, 旧目录逐字节不变.
+- [ ] 确认旧项目没有 references 或 references 冲突时仍先得到旧契约诊断; 不提供 3.x 到 4.0 的迁移命令或旧共享状态导入.
+- [ ] 确认 report v2 和 finding v2 版本不变, 当前报告必须含 scope 与 requested-pass 身份; 创作操作未加入报告 v2 `stage`.
+- [ ] 确认覆盖单元来源报告 hash, 索引单元 hash 和非空综合报告 hash 均为必填; 合法 null synthesis 不需要 hash.
+- [ ] 确认当前项目的不可变历史, 周期恢复, `creation-import`, 空稿恢复和 dependency exception 仍按原边界工作.
+- [ ] 对 standalone finding v1 和六个独立技能产物验证原有读取行为, 不把它们批量改写成 finding v2 或搬入新目录.
 
 ## 12. 六个底层 skill 独立调用
 
 每项都单独启动, 单独给输入, 单独保存结果. 不能用一个总控工作流或一次 `fiction-workshop`
-调用冒充其他技能已经运行. 确认 3.1 没有改变它们的名称, 触发方式, 停止点和独立行为.
+调用冒充其他技能已经运行. 确认 4.0.0 没有改变它们的名称, 触发方式, 停止点和独立行为.
 在未运行 setup 的独立项目中, 确认各技能的 `references/finding-schema.json` 可以直接读取;
 `prose-mechanics` 的 AI-writing 适配器和中文目录也从其技能目录读取, 不依赖仓库根目录.
 

@@ -34,7 +34,7 @@ test("a million Chinese characters scale without importing creation state as man
   await writeFile(creationState, "# Current story state\n", "utf8");
   const manifestPath = path.join(temporary, ".author-toolkit", "project.json");
   const manifest = {
-    schema_version: "3.1.0",
+    schema_version: "4.0.0",
     language: "zh-CN",
     created_at: timestamp,
     updated_at: timestamp,
@@ -47,6 +47,7 @@ test("a million Chinese characters scale without importing creation state as man
       backups: ".author-toolkit/backups",
       handoffs: ".author-toolkit/handoffs",
       creation: ".author-toolkit/creation",
+      convergence: ".author-toolkit/convergence",
     },
     current_scope: {
       scope_id: "scope-million",

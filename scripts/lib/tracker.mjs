@@ -2,7 +2,6 @@ import { readFile, stat } from "node:fs/promises";
 import path from "node:path";
 
 import { parseApprovalPaths } from "./approval-paths.mjs";
-import { V3_SCHEMA_VERSIONS } from "./constants.mjs";
 import { isUninitializedProjectTemplate, projectRootFromManifest } from "./project-files.mjs";
 import { validateRelativePath } from "./schemas.mjs";
 
@@ -576,9 +575,7 @@ export async function validateTracker(manifest, manifestPath) {
   const trackerPath = path.resolve(projectRoot, manifest.paths.audit_tracker);
   try {
     const markdown = await readFile(trackerPath, "utf8");
-    return V3_SCHEMA_VERSIONS.has(manifest.schema_version)
-      ? await validateTrackerV3Markdown(markdown, projectRoot)
-      : await validateTrackerMarkdown(markdown, projectRoot);
+    return validateTrackerV3Markdown(markdown, projectRoot);
   } catch (error) {
     return {
       valid: false,

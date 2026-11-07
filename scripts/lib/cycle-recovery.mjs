@@ -13,7 +13,6 @@ import {
   finishCycleOperation,
 } from "./cycle-coordination.mjs";
 import { transitionCycle } from "./cycles.mjs";
-import { inspectLegacyRecovery } from "./legacy-recovery.mjs";
 import { validateManifest } from "./manifest.mjs";
 import {
   prepareRevisionExecution,
@@ -37,8 +36,8 @@ async function readProject(projectRoot) {
   const manifestPath = path.join(root, ".author-toolkit", "project.json");
   const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
   const validation = validateManifest(manifest);
-  if (!validation.valid || manifest.schema_version !== "3.2.0") {
-    throw new Error("Cycle reconciliation requires a valid v3.2 project");
+  if (!validation.valid) {
+    throw new Error(validation.errors.map((error) => error.message).join("; "));
   }
   return { root, manifestPath, manifest };
 }
@@ -460,8 +459,6 @@ export async function reconcileCycle(projectRoot, request = {}, options = {}) {
   ];
   const completedPointer = await completedPointerBlocker(project);
   if (completedPointer) blockers.push(completedPointer);
-  const legacyRecovery = active ? null : await inspectLegacyRecovery(project.root, project.manifest);
-  if (legacyRecovery) blockers.push(...legacyRecovery.blockers);
   const lockDiagnostic = lockBlocker(inspected);
   if (lockDiagnostic) blockers.push(lockDiagnostic);
 
@@ -478,17 +475,6 @@ export async function reconcileCycle(projectRoot, request = {}, options = {}) {
       required_action: blockers.length > 0
         ? blockers[0].required_action ?? recoveryAction()
         : null,
-    };
-  }
-  if (legacyRecovery?.recovery_required) {
-    return {
-      valid: false,
-      diagnostic_only: false,
-      state_written: false,
-      cycle: null,
-      blockers,
-      available_directions: [],
-      required_action: legacyRecovery.required_action,
     };
   }
   const needsLock = [

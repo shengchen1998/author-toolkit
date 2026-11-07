@@ -67,8 +67,8 @@ async function readProject(projectRoot) {
   const manifestPath = path.join(root, ".author-toolkit", "project.json");
   const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
   const validation = validateManifest(manifest);
-  if (!validation.valid || manifest.schema_version !== "3.2.0") {
-    throw new Error("External manuscript reconciliation requires a valid v3.2 project");
+  if (!validation.valid) {
+    throw new Error(validation.errors.map((error) => error.message).join("; "));
   }
   return { root, manifestPath, manifest };
 }

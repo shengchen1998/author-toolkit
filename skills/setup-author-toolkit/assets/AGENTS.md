@@ -14,13 +14,15 @@ These entries require an explicit author command. Display the exact host command
 
 | Need | User entry |
 | --- | --- |
-| Setup; missing or legacy manifest; missing or mismatched references | `setup-author-toolkit`; stop shared work |
+| Setup; old or missing state | `setup-author-toolkit`; stop shared work |
 | Create or continue fiction | `write-fiction` |
 | Available-draft revision; first-time bootstrap publication; previous full-manuscript scope without current-draft revision convergence | `revise-draft` |
 | Added or affected paths from a previous full-manuscript scope with current-draft revision convergence | `revise-increment` |
 | Author-defined revision from a full-manuscript base scope with current-draft revision convergence | `revise-request` |
 | Whole-book Story Bible, structure, character, or final-review work | `revise-fiction` |
 | Inspect state or clarify routing | `ask-author` |
+
+Old manifests require a separate manuscript-only project.
 
 ## Manuscript safety
 

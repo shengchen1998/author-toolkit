@@ -7,6 +7,7 @@
     "schema_version",
     "unit_id",
     "source_report",
+    "source_report_sha256",
     "scope_id",
     "operation",
     "kind",
