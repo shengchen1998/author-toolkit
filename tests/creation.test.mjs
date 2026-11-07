@@ -256,12 +256,14 @@ function coverageUnit() {
     schema_version: "1.0.0",
     unit_id: "unit-001",
     source_report: "reports/diagnostics/2026-11-04_chapter-001.md",
+    source_report_sha256: hash,
     scope_id: "scope-1",
     operation: "diagnostics",
     kind: "local",
     paths: [{ path: "manuscript/chapter-001.md", sha256: hash }],
     subchecks: ["scene-causality", "chapter-transitions"],
     dependencies: [{ path: "story-bible.md", sha256: "b".repeat(64) }],
+    dependency_exception: null,
     coverage: "full",
     created_at: timestamp,
   };
@@ -297,11 +299,19 @@ test("a living coverage index tracks operation units and honest synthesis covera
   const index = {
     schema_version: "1.0.0",
     scope_id: "scope-2",
+    scope_fingerprint: hash,
+    requested_pass: {
+      pass_id: "pass-001",
+      pass_fingerprint: hash,
+      path: ".author-toolkit/convergence/passes/pass-001.json",
+      sha256: hash,
+    },
     entries: [
       {
         operation: "diagnostics",
-        units: [{ unit_id: "unit-001", path: "coverage/units/unit-001.json" }],
+        units: [{ unit_id: "unit-001", path: "coverage/units/unit-001.json", sha256: hash }],
         synthesis_report: "reports/diagnostics/2026-11-04_synthesis.md",
+        synthesis_report_sha256: hash,
         synthesis_coverage: "full",
       },
     ],

@@ -1,6 +1,6 @@
 # Author Toolkit 中文快速上手
 
-Author Toolkit 3.2.0 提供增量小说创作, 四个小说修订策略和六个独立写作技能. 创作与修订共享
+Author Toolkit 4.0.0 提供增量小说创作, 四个小说修订策略和六个独立写作技能. 创作与修订共享
 同一项目证据模型, 支持 Claude Code 与 Kimi Code. 完整说明见 [英文 README](README.md),
 共享用语见 [受控术语表](references/terminology.md).
 
@@ -57,6 +57,45 @@ npx skills@latest add shengchen1998/author-toolkit -a claude-code -a kimi-code-c
 npx skills@latest add shengchen1998/author-toolkit -a claude-code -a kimi-code-cli -g
 ```
 
+安装后的 setup 技能包含自包含的 ESM 校验和项目操作 CLI. 它们已打包 Ajv 及全部运行时依赖, 从该技能的 `assets/references/` 载荷加载 schema, 从 assets 载荷加载初始化模板, 使用时不需要仓库检出, 项目内运行时副本, npm 安装或网络. 将 `<setup-skill>` 解析为已安装的 `setup-author-toolkit` 目录后运行:
+
+```bash
+node <setup-skill>/assets/runtime/validate.mjs --project-root <project-root>
+node <setup-skill>/assets/runtime/author-project.mjs --help
+```
+
+项目根目录校验先用真实 JSON Schema 校验器检查所选项目, 并在读取项目状态前核对所有已部署共享引用的哈希. 两个 CLI 无参数时都显示帮助. 校验成功退出码为 0, 校验失败为 1, 参数或用法错误为 2.
+
+项目 CLI 还可以直接从 manuscript-only 状态初始化并恢复项目, 无需手写 manifest:
+
+```bash
+node <setup-skill>/assets/runtime/author-project.mjs init --project-root <project-root> --language en
+node <setup-skill>/assets/runtime/author-project.mjs read --project-root <project-root>
+node <setup-skill>/assets/runtime/author-project.mjs status --project-root <project-root>
+node <setup-skill>/assets/runtime/author-project.mjs status --project-root <project-root> --full
+node <setup-skill>/assets/runtime/author-project.mjs set-pending --project-root <project-root> --input <pending-action.json>
+node <setup-skill>/assets/runtime/author-project.mjs record-scope --project-root <project-root> --input <scope.json>
+node <setup-skill>/assets/runtime/author-project.mjs record-finding --project-root <project-root> --input <finding.json>
+node <setup-skill>/assets/runtime/author-project.mjs record-finding-decision --project-root <project-root> --input <finding-decision.json>
+node <setup-skill>/assets/runtime/author-project.mjs record-approval --project-root <project-root> --input <approval.json>
+node <setup-skill>/assets/runtime/author-project.mjs record-backup --project-root <project-root> --input <backup.json>
+node <setup-skill>/assets/runtime/author-project.mjs record-restore --project-root <project-root> --input <restoration.json>
+node <setup-skill>/assets/runtime/validate.mjs --backup-index <project-root>/<paths.backups>/index.json
+node <setup-skill>/assets/runtime/author-project.mjs timestamp
+```
+
+`init` 部署匹配的共享引用并创建中性 manifest, 空 tracker 和备份索引以及操作目录, 不导入发现项, 批准, 评估或当前草稿修订收敛声明. 重入时只校验已有项目, 不重置状态. 自定义操作路径使用 `--input <initialization.json>`, 自定义正文位置使用 `--manuscript-root <path>`. `timestamp` 响应从同一次 UTC 时钟读取返回 `result.json` 和 `result.filename`, 分别用于 JSON 时间字段, 以及基于时间的 ID 和唯一文件名. 当前产物校验拒绝超过当前 UTC 时间 60 秒以上的时间戳并给出具体字段诊断, 不从文件名推断证据时间.
+
+`set-pending` 记录操作范围内的待处理工作和产物引用, 保留当前范围及活跃周期协调标识, 不创建任何批准. `record-scope` 接受有序路径或路径/hash 项, 在共享锁内重新计算当前正文 hash 和排除项, 支持 proposed 与 confirmed 范围. 确认必须提供明确的阅读顺序证据. 已确认结果包含确定性的范围和清单指纹, 不可变快照引用, 全稿校验结果和具体阻断项. 两个命令都会复核可选的 manifest hash 与周期 revision, 并通过经过校验的原子写入发布. 输入字段和中断恢复见 author-project 操作参考.
+
+`record-finding` 将精确的 finding v2 对象绑定到当前操作报告并记录为 `open`. `record-finding-decision` 要求与状态对应的当前执行记录或无修改跳过证据以及已批准的作者决定; `stale` 使用等价的完整复核和明确的发现项决定. `record-approval` 绑定操作, 范围, 完整有序路径, 动作, 输入与输出版本, 状态和原因, 包括规范的修订批准指纹. 三个命令都拒绝重复 ID, 在共享周期锁内复核可选的 tracker hash, 通过共享时钟生成 UTC 时间, 并在写入中断后保留实际恢复状态. 外部 tracker 编辑只接收校验诊断, 不自动合并, 重编号, 删除或修复. 未决定的 `open` 发现项阻断 satisfied 评估; 当前 deferred 和 dismissed 决定保留既有资格.
+
+`record-backup` 先校验精确批准, 操作, 当前已确认范围, 有序动作, 输入 hash 和 create 缺失状态, 再保存原始字节并发布封闭的备份清单与备份索引. 每个备份和恢复动作都必须指向注册正文根目录下且位于操作目录之外的合法正文路径; 现有输入必须匹配适用的已确认范围, 恢复输入还必须匹配来源备份的范围. 修订准备消费同一索引, 清单和字节证据, 不跳过当前输入或输出检查. `record-restore` 要求独立的精确恢复批准和当前安全备份, 通过经过校验的写入处理 create, modify, delete 和 reorder 的逆向恢复, 追加恢复记录而不改写来源备份或已提交日志. 恢复会报告范围与证据失效, 不会静默确认新范围. 项目校验和 `--backup-index` 会拒绝悬空清单, 被篡改的字节和不一致的恢复记录.
+
+所有公共项目命令以及 validator 校验和状态与门禁查询都返回统一 JSON 响应信封: `response_contract_version: "1.0"`, `command`, 布尔值 `valid`, 命令对应的 `result` 和结构化 `errors`. 原项目操作结果位于 `result` 内. 普通 validator 结果包含 `mode`, `checks` 和逐项 `results`; 状态与门禁查询直接在 `result` 中返回状态对象, 因此读取 `result.outcome` 和 `result.current`. 错误以 stdout 上的 JSON 返回, 不再提供并行文本错误契约. 成功命令和有效的只读状态查询退出码为 0, 包括 `not_satisfied` 和 `indeterminate` 生命周期状态. 项目, 操作, 证据, 产物或门禁校验失败退出码为 1. 参数, 输入文件或输入结构用法错误退出码为 2. 无参数帮助仍输出普通用法文本.
+
+默认 `read` 和 `status` 返回精简项目状态, 包含项目与引用校验, 范围标识与文件数, 待处理操作, 活跃周期与恢复位置, 评估结果与阻断项, 决定计数和准确的下一操作. 完整 manifest, 有序路径哈希, 评估标识, 证据图和历史只在显式 `--full` 或专用 cycle 和产物查询中返回.
+
 更新需要手动执行:
 
 ```bash
@@ -84,7 +123,7 @@ npx skills update
    setup 将随技能提供的共享契约部署到 `.author-toolkit/references/`; 匹配文件保持不变,
    版本冲突会阻止共享工作流, 经作者批准的替换会先把原文件保存到登记的备份路径下.
    新项目根目录没有 `AGENTS.md` 时, setup 会安装项目级 agent 指令模板; 已有指令文件保持不变.
-   不指定工作流或操作参数. 工具包更新后, 已有 v3 项目可能需要再次运行 setup 部署新的共享引用.
+   不指定工作流或操作参数. 工具包更新后, 已有 4.0.0 项目可能需要再次运行 setup 部署新的共享引用.
    初始 `author-project` 读取, 校验和状态调用会逐个检查随技能提供的文件; 缺失或哈希不匹配时重新引导至 setup,
    不会仅凭有效 manifest 认定共享引用已部署.
 3. setup 验证共享 manifest 后, 根据目标选择 `write-fiction`, `revise-fiction`,
@@ -171,7 +210,8 @@ AI, 作者和混合创作使用相同门禁. 每本书只保留一个活动创�
 
 1. 确认前一范围, 目标范围, 变化集合和工作集合.
 2. 更新全部目标范围的草稿基线, 对工作集合执行诊断, 人物检查, `prose` 和 `ai-cleanup`.
-   只有操作, 来源报告, 路径和 hash, 子检查及依赖全部匹配的未变完整局部覆盖单元才能复用.
+   只有操作, 来源报告, 路径和 hash, 子检查及依赖全部匹配的未变完整局部覆盖单元才能复用;
+   经语义证明且不改变含义的基线或计划文字编辑可以通过依赖例外复用.
    缺少可复用覆盖单元的旧章节会加入工作集合.
 3. 在备份后只执行获批的工作集合修改, 再组合目标范围的新操作覆盖度和全目标范围综合报告.
 4. 运行全目标范围的当前范围复核, 以三个独立视角复核目标范围的全部路径. 新读者顺序阅读
@@ -197,14 +237,13 @@ AI, 作者和混合创作使用相同门禁. 每本书只保留一个活动创�
    处理复核发现项和返工, 分别报告请求完成以及全稿目标范围是否重新达到当前草稿修订收敛;
    请求批次完成本身不等于当前草稿修订收敛.
 
-叙事非虚构请直接调用 `narrative-nonfiction`. 多书籍项目和其他宿主不在 3.2 支持范围内.
+叙事非虚构请直接调用 `narrative-nonfiction`. 多书籍项目和其他宿主不在 4.0 支持范围内.
 
 ## 共享项目产物与证据
 
-五个策略共用中性的 `.author-toolkit/project.json` 和同一组登记路径. 新项目使用
-schema 3.2.0; v3.0 和 v3.1 manifest 仍可读取. `scripts/migrate-v32.mjs` 将 v2, v3.0 和
-v3.1 项目直接迁移到 v3.2. 现有 `scripts/migrate-v3.mjs` 命令和 `migrateProjectToV3`
-函数是具有相同目标的兼容包装.
+五个策略共用中性的 `.author-toolkit/project.json` 和同一组登记路径. 所有项目只使用
+schema 4.0.0. 旧 manifest 和旧共享产物会在 setup 写入前收到 `greenfield-initialization-required`.
+必须保留旧项目, 并从仅含正文稿件的输入初始化独立新项目; 不提供迁移或旧共享状态导入.
 
 - `project.json`: 项目登记, 产物路径, 以及可选的 `current_scope` 和 `pending_action`.
   不包含 `workflow.name`, `current_stage` 或 `stages`.
@@ -219,15 +258,13 @@ v3.1 项目直接迁移到 v3.2. 现有 `scripts/migrate-v3.mjs` 命令和 `migr
 - `handoffs/`: 当前证据和下一操作的交接指针.
 - `paths.creation`: 创作产物路径, 默认 `.author-toolkit/creation/`, 包含
   `state/current.md`, `state/chapters/`, `state/volumes/`, `batches/` 和 `staging/`.
-- v3.2 的收敛状态根目录默认为 `.author-toolkit/convergence/`. 确认范围后在此保存不可变
+- 4.0.0 的收敛状态根目录默认为 `.author-toolkit/convergence/`. 确认范围后在此保存不可变
   范围快照和正文清单快照. 范围指纹覆盖有序路径/哈希对和排序后的排除项, 不覆盖记录元数据和时间戳.
 
-项目迁移保留正文稿件, 报告, 发现项, 批准, 范围, session, 暂存稿, 备份, 创作批次,
-提交日志和待处理操作. 只有精确的旧范围确认才能支持已确认范围快照; 其他旧已确认范围转为
-待重新确认的 proposed 范围. 旧报告和待处理操作不会生成 satisfied 评估或已激活的当前草稿收敛周期.
-依赖周期的工作必须先协调中断的提交日志和写入. 旧暂存稿只能明确拒绝, 或在当前 satisfied
-起始评估存在后进入新周期并精确重新批准. 无法重新验证的旧修订基准通过当前全稿 `revise-draft`
-恢复, 覆盖证据仅按正常复用规则处理. 迁移矩阵和恢复规程见 [3.2 迁移指南](docs/MIGRATION-3.2.md).
+在 4.0.0 项目内, 报告, 发现项, 批准, 范围, session, 暂存稿, 备份, 创作批次,
+提交日志, 评估和待处理操作继续遵守现有安全与不可变历史规则. 当前项目仍支持周期协调恢复和
+`creation-import`. 不迁移只是本次 greenfield 的一次性例外; 未来不兼容版本默认必须提供迁移.
+架构决定见 [greenfield 4.0 ADR](docs/adr/0002-greenfield-4-0.md).
 
 章节和卷故事状态从已验收正文和有版本的来源派生, 用于续写; 它不能替代故事圣经的意图或正文事实.
 被拒绝的暂存稿不会进入故事状态或正文范围.
@@ -239,7 +276,7 @@ v3.1 项目直接迁移到 v3.2. 现有 `scripts/migrate-v3.mjs` 命令和 `migr
 
 ### 当前草稿收敛周期
 
-v3.2 在 `<convergence-state-root>/active-cycle.json` 中至多保存一个已激活的当前草稿收敛周期,
+4.0.0 在 `<convergence-state-root>/active-cycle.json` 中至多保存一个已激活的当前草稿收敛周期,
 已完成记录不可变地保存在 `<convergence-state-root>/cycles/`. 版本化契约记录发起与当前策略,
 首次创作引导, 起始与目标范围引用, 请求修订轮次, 恢复位置, 关联产物, 变化集合, 工作集合,
 收敛评估引用和完成决定. 请求修订的基准范围与增量修订的前一范围映射到同一个 `starting_scope` 角色.
@@ -259,18 +296,18 @@ v3.2 在 `<convergence-state-root>/active-cycle.json` 中至多保存一个已�
 通过可执行 `author-project` 门面运行周期操作:
 
 ```bash
-node scripts/author-project.mjs start-cycle --project-root <project-root> --input <request.json>
-node scripts/author-project.mjs transition-cycle --project-root <project-root> --input <transition.json>
-node scripts/author-project.mjs reconcile-cycle --project-root <project-root> [--input <direction.json>]
-node scripts/author-project.mjs prepare-draft-revision-execution --project-root <project-root> --input <independent-preparation.json>
-node scripts/author-project.mjs verify-draft-revision-execution --project-root <project-root> --input <independent-verification.json>
-node scripts/author-project.mjs prepare-revision-execution --project-root <project-root> --input <preparation.json>
-node scripts/author-project.mjs verify-revision-execution --project-root <project-root> --input <verification.json>
-node scripts/author-project.mjs evaluate-cycle --project-root <project-root> --input <evaluation-request.json>
-node scripts/author-project.mjs evaluate-draft --project-root <project-root> --input <independent-evaluation.json>
-node scripts/author-project.mjs complete-cycle --project-root <project-root> --input <completion.json>
-node scripts/author-project.mjs cycle-status --project-root <project-root>
-node scripts/author-project.mjs cycle-gate --project-root <project-root>
+node <setup-skill>/assets/runtime/author-project.mjs start-cycle --project-root <project-root> --input <request.json>
+node <setup-skill>/assets/runtime/author-project.mjs transition-cycle --project-root <project-root> --input <transition.json>
+node <setup-skill>/assets/runtime/author-project.mjs reconcile-cycle --project-root <project-root> [--input <direction.json>]
+node <setup-skill>/assets/runtime/author-project.mjs prepare-draft-revision-execution --project-root <project-root> --input <independent-preparation.json>
+node <setup-skill>/assets/runtime/author-project.mjs verify-draft-revision-execution --project-root <project-root> --input <independent-verification.json>
+node <setup-skill>/assets/runtime/author-project.mjs prepare-revision-execution --project-root <project-root> --input <preparation.json>
+node <setup-skill>/assets/runtime/author-project.mjs verify-revision-execution --project-root <project-root> --input <verification.json>
+node <setup-skill>/assets/runtime/author-project.mjs evaluate-cycle --project-root <project-root> --input <evaluation-request.json>
+node <setup-skill>/assets/runtime/author-project.mjs evaluate-draft --project-root <project-root> --input <independent-evaluation.json>
+node <setup-skill>/assets/runtime/author-project.mjs complete-cycle --project-root <project-root> --input <completion.json>
+node <setup-skill>/assets/runtime/author-project.mjs cycle-status --project-root <project-root>
+node <setup-skill>/assets/runtime/author-project.mjs cycle-gate --project-root <project-root>
 ```
 
 第二个正文变更周期返回 `active-cycle-exists`, 并给出当前周期要求的策略, 操作和命令.
@@ -310,8 +347,8 @@ revision, 操作, 范围或产物错配阻断依赖工作, 只读状态查询仍
 独立收敛状态和收敛门禁查询均为只读:
 
 ```bash
-node scripts/validate.mjs --convergence-status <manifest-path>
-node scripts/validate.mjs --convergence-gate <manifest-path>
+node <setup-skill>/assets/runtime/validate.mjs --convergence-status <manifest-path>
+node <setup-skill>/assets/runtime/validate.mjs --convergence-gate <manifest-path>
 ```
 
 有效状态查询对 `satisfied`, `not_satisfied` 或 `indeterminate` 都正常退出. 门禁只有当前证据为
@@ -323,6 +360,11 @@ node scripts/validate.mjs --convergence-gate <manifest-path>
 证据是否可以复用, 由 `operation`, `scope_id`, 输入版本, 覆盖度, 子检查和依赖共同判断.
 新范围需要作者确认. 输入或依赖变化时, 受影响证据标为 `stale`; 旧报告符合 schema 并不代表
 它是当前证据. 创作批次验收不等于当前草稿修订收敛; 增量修订完成后仍按当前草稿操作门禁重新判断.
+
+依赖例外只允许 `draft-baseline` 或 `revision-plan` 依赖经过不改变含义的文字编辑后复用一个完整局部覆盖单元.
+例外必须绑定单元, 请求修订轮次, 依赖路径, 新旧 SHA-256, 操作, 原因和宿主语义证明, 并发布新的单元版本及更新持续更新的覆盖索引.
+正文和其他证据身份不能适用; 再次变化或链式例外会阻断复用, 历史评估及其证据图保持不变.
+详细规则见[依赖例外](skills/revise-fiction/references/state-and-findings.md#dependency-exceptions).
 
 创作批次还记录计划, 所选上下文和目标输入的依赖指纹. 返回暂存稿时重新计算依赖指纹.
 纳入的依赖变化需要重新复核或规划; 无关正文增长只要求刷新发布范围, 不会单独使暂存内容失效.
@@ -377,15 +419,11 @@ Finding v2 和 report v2 的版本保持不变, 创作操作不加入封闭的�
 创作批次, 提交日志, 故事状态, 覆盖单元和覆盖索引, 复核任务和读者状态使用独立产物契约.
 外部变化使用封闭的 `references/manuscript-reconciliation-schema.json` 产物契约,
 manifest 的可选 `manuscript_reconciliation` 字段指向最新不可变正文协调记录.
-项目登记的源契约为 `references/project-schema-v3.2.json`, setup 将其与其他共享契约一起部署到写作项目;
-v3.0 和 v3.1 schema 保留用于读取和升级旧项目.
+项目登记的唯一源契约为 `references/project-schema-v4.json`, setup 将其与其他共享契约一起部署到写作项目;
+不提供旧项目 schema 或迁移命令.
 
-迁移说明见 [docs/MIGRATION-3.2.md](docs/MIGRATION-3.2.md). 历史说明保留在
-[docs/MIGRATION-3.1.md](docs/MIGRATION-3.1.md), [docs/MIGRATION-3.0.md](docs/MIGRATION-3.0.md) 和
-[docs/MIGRATION-2.0.md](docs/MIGRATION-2.0.md).
-
-随仓库提供的中英文 examples 有意保留 legacy v2 manifests 和 workflow fixtures 用于兼容性测试,
-不要为了显得最新而原地迁移它们.
+当前 4.0.0 报告发布后不可变, 旧共享产物不会被改写或导入新项目. 随仓库提供的中英文 examples
+使用空操作证据的 4.0.0 manifests; 其正文和手写报告仅作为语言与 Markdown fixtures, 不构成创作质量或宿主运行证据.
 
 ## 恢复, 切换与返工
 
@@ -440,28 +478,39 @@ AI 关联发现只描述文本模式, 不能证明文本由 AI 生成.
 
 ## 验证状态
 
-当前 3.2.0 的仓库检查已通过: 320 项协议测试和 19 项默认校验, 详见
-[docs/VALIDATION.md](docs/VALIDATION.md). 通用本地源安装已发现并复制全部 16 个技能, setup 共享载荷,
-项目内 schema 和独立技能本地契约均已验证. Kimi Code 2.4.1 已在一次性项目验证 setup, 首次创作基线,
-写作计划, staging, 章节复核, 首次发布与中断提交恢复, 普通创作基线, 发布后阻断, 增量与当前草稿 intake, 请求修订 intake 和迁移路由;
-四个长时间调用在有效产物写入后超时. 完整宿主评估与周期完成, 请求和增量端到端恢复, Claude Code,
-原生插件安装及百万字稿件的创作质量仍未验证. 3.1, 3.0 和 2.0 的历史结果单独保留,
-不能作为 3.2 已通过宿主或质量验证的证据.
+4.0.0 的仓库检查已通过: 422 项测试和 11 项仓库校验, 0 失败; 实际命令与范围见
+[docs/VALIDATION.md](docs/VALIDATION.md).
+通用本地源安装, 自包含运行时, disposable 项目公共命令和 Kimi Code 2.4.1 对项目 `.agents/skills/` 的自动发现及最小 setup/read/status smoke 均通过.
+这些结果不证明完整宿主创作流程或创作质量; native plugin, Desktop 和完整宿主评估仍未验证.
 
 ## 开发与产物校验
 
-开发包需要 Node.js >= 22, 通用技能安装器需要 Node.js >= 22.20. 安装依赖后在仓库根目录运行:
+开发包需要 Node.js >= 22, 通用技能安装器需要 Node.js >= 22.20. 安装依赖后, 在源码变更时重新生成已纳入版本控制的运行时, 检查生成结果是否最新, 运行真实安装器 smoke, 再执行完整协议测试和仓库校验:
 
 ```bash
+npm run build:runtime
+npm run check:runtime
+npm run smoke:installed
 npm test
 npm run validate
 ```
 
-可用对应 CLI 参数直接校验 manifest, report 和新产物. 新参数包括范围快照, 正文清单快照,
-创作批次, 提交日志, 故事状态, 覆盖产物和复核任务; 准确参数名以当前安装的 `--help` 为准:
+如需在每次工具包提交前运行快速检查, 在工具包仓库根目录手动执行一次 opt-in:
+
+```bash
+git config --local core.hooksPath .githooks
+```
+
+已纳入版本控制的 `.githooks/pre-commit` 会运行仓库校验, 生成运行时一致性检查以及聚焦的公共 CLI 和证据契约测试. 这个手动 opt-in 只修改工具包仓库的本地 Git 配置. 安装和写作项目 setup 都不会启用 hook 或修改 Git 配置. 直接运行 `.githooks/pre-commit` 可以在不修改任何 Git 配置的情况下执行同一组检查.
+
+`npm test` 已包含生成运行时一致性检查和隔离真实安装器 smoke. smoke 在一次性目录中运行通用安装器, 删除临时源副本后不依赖仓库依赖执行安装后的 CLI; 它不证明宿主技能发现或创作质量.
+
+仓库校验必须显式使用 `--repository`, 项目校验必须显式使用 `--project-root`. 无参数调用只显示帮助, 不检查隐式状态; 两种模式不能互相组合, 也不能与单项检查组合. 可用对应 CLI 参数直接校验 manifest, report 和新产物. 新参数包括范围快照, 正文清单快照, 创作批次, 提交日志, 故事状态, 覆盖产物和复核任务; 准确参数名以 `--help` 为准:
 
 ```bash
 node scripts/validate.mjs --help
+node scripts/validate.mjs --repository
+node scripts/validate.mjs --project-root /path/to/writing-project
 node scripts/validate.mjs --manifest /path/to/.author-toolkit/project.json
 node scripts/validate.mjs --scope-snapshot /path/to/scope.json
 node scripts/validate.mjs --inventory-snapshot /path/to/inventory.json

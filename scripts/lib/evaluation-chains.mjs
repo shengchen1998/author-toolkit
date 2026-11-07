@@ -84,12 +84,12 @@ function buildScopeEventChain(cycle, roots, reconciliations, executionChain, cre
   return visit(startingIdentity, false);
 }
 
-async function validateImportDecision(project, reconciliation, previousScope, targetScope, inventory) {
+async function validateImportDecision(project, reconciliation, previousScope, targetScope, inventory, options = {}) {
   const trackerText = await readFile(
     path.resolve(project.root, project.manifest.paths.audit_tracker),
     "utf8",
   );
-  const tracker = await parseTrackerState(trackerText, project.root);
+  const tracker = await parseTrackerState(trackerText, project.root, options);
   const decisions = tracker.approvals.filter(
     (approval) => approval.id === reconciliation.author_decision_id,
   );
@@ -289,6 +289,7 @@ export async function validateScopeEventChain(
         previousScope,
         targetScope,
         inventory,
+        computation.options,
       );
       if (!approved) approvalsValid = false;
     } catch {

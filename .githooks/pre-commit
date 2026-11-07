@@ -1,0 +1,15 @@
+#!/bin/sh
+set -eu
+
+repository_root=$(git rev-parse --show-toplevel)
+cd "$repository_root"
+
+npm run validate
+npm run check:runtime
+node --test \
+  tests/project-cli-responses.test.mjs \
+  tests/tracker-commands.test.mjs \
+  tests/backup-commands.test.mjs \
+  tests/evidence-time.test.mjs \
+  tests/dependency-exceptions.test.mjs \
+  tests/packaged-runtime.test.mjs

@@ -1,9 +1,15 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import test from "node:test";
 
+import { recordScope } from "../scripts/lib/index.mjs";
+import {
+  createConvergenceProject,
+  createNoEditEvidence,
+} from "./convergence-helpers.mjs";
 import { root } from "./helpers.mjs";
 
 const validator = path.join(root, "scripts", "validate.mjs");
@@ -72,18 +78,27 @@ function artifacts() {
       schema_version: "1.0.0",
       unit_id: "unit-001",
       source_report: "reports/diagnostics/chapter-001.md",
+      source_report_sha256: hash,
       scope_id: "scope-1",
       operation: "diagnostics",
       kind: "local",
       paths: [source],
       subchecks: ["scene-causality"],
       dependencies: [],
+      dependency_exception: null,
       coverage: "full",
       created_at: timestamp,
     },
     index: {
       schema_version: "1.0.0",
       scope_id: "scope-1",
+      scope_fingerprint: hash,
+      requested_pass: {
+        pass_id: "pass-001",
+        pass_fingerprint: hash,
+        path: ".author-toolkit/convergence/passes/pass-001.json",
+        sha256: hash,
+      },
       entries: [],
       updated_at: timestamp,
     },
@@ -176,6 +191,30 @@ test("the public CLI accepts repeated options for every new artifact", async (t)
     `# Reader state\n\n\`\`\`json\n${JSON.stringify(values.reader, null, 2)}\n\`\`\`\n`,
     "utf8",
   );
+  const manuscript = "The ferry leaves at dawn.\n";
+  const { projectRoot } = await createConvergenceProject(t, {
+    manuscripts: [{ name: "chapter-001.md", contents: manuscript }],
+  });
+  await recordScope(projectRoot, {
+    scope_id: "scope-cli-artifacts",
+    description: "The complete manuscript for repeated artifact checks.",
+    status: "confirmed",
+    files: [{
+      path: "manuscript/chapter-001.md",
+      sha256: createHash("sha256").update(manuscript).digest("hex"),
+    }],
+    excluded_files: [],
+    created_at: "2026-11-05T00:00:00Z",
+  }, {
+    authorConfirmation: {
+      decision_id: "SCOPE-001",
+      confirmed_at: "2026-11-05T00:00:00Z",
+      reading_order_confirmed: true,
+    },
+    now: new Date("2026-11-05T00:00:00Z"),
+  });
+  const evidence = await createNoEditEvidence(projectRoot);
+  files.index = path.join(projectRoot, evidence.coverageIndexReference.path);
 
   const result = runValidator([
     "--creation-batch",
@@ -196,7 +235,10 @@ test("the public CLI accepts repeated options for every new artifact", async (t)
     files.story,
   ]);
   assert.equal(result.status, 0, result.stderr);
-  assert.match(result.stdout, /8 checks, 0 failures/);
+  const response = JSON.parse(result.stdout);
+  assert.equal(response.valid, true);
+  assert.equal(response.result.checks, 8);
+  assert.deepEqual(response.errors, []);
 });
 
 test("artifact validation failures exit 1 and argument errors exit 2", async (t) => {
@@ -209,7 +251,7 @@ test("artifact validation failures exit 1 and argument errors exit 2", async (t)
 
   const invalid = runValidator(["--creation-commit", file]);
   assert.equal(invalid.status, 1);
-  assert.match(invalid.stderr, /every file to be verified/);
+  assert.match(invalid.stdout, /every file to be verified/);
   assert.equal(runValidator(["--coverage-unit"]).status, 2);
   assert.equal(runValidator(["--unknown", file]).status, 2);
 });

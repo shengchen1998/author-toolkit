@@ -135,6 +135,7 @@ async function lockProjectCycle(project, options, operation) {
     {
       timeoutMs: options.lockTimeoutMs ?? 10000,
       retryMs: options.lockRetryMs ?? 20,
+      now: options.now,
     },
   );
   if (!lock.acquired) {
@@ -178,11 +179,11 @@ async function lockProjectCycle(project, options, operation) {
 
 export async function evaluateCycle(projectRoot, request, options = {}) {
   validateEvaluationRequest(request);
-  const project = await readProject(projectRoot);
-  const initial = await readActiveCycle(project);
+  const project = await readProject(projectRoot, options);
+  const initial = await readActiveCycle(project, options);
   if (!initial) return publicFailure("active-cycle-required", "An active cycle is required for evaluation.");
   const locked = await lockProjectCycle(project, options, async () => {
-    const active = await readActiveCycle(project);
+    const active = await readActiveCycle(project, options);
     if (!active) return publicFailure("active-cycle-required", "An active cycle is required for evaluation.");
     const cycle = active.value;
     if (cycle.cycle_id !== request.cycle_id) {
@@ -222,6 +223,7 @@ export async function evaluateCycle(projectRoot, request, options = {}) {
       roots,
       request.evaluation_id,
       operationTime(options),
+      options,
     );
     const relative = path.posix.join(
       project.manifest.paths.convergence,
@@ -268,8 +270,8 @@ export async function evaluateCycle(projectRoot, request, options = {}) {
 
 export async function evaluateDraft(projectRoot, request, options = {}) {
   validateEvaluationRequest(request, { independent: true });
-  const project = await readProject(projectRoot);
-  const initial = await readActiveCycle(project);
+  const project = await readProject(projectRoot, options);
+  const initial = await readActiveCycle(project, options);
   if (initial) {
     return publicFailure(
       "active-cycle-exists",
@@ -278,7 +280,7 @@ export async function evaluateDraft(projectRoot, request, options = {}) {
     );
   }
   const locked = await lockProjectCycle(project, options, async () => {
-    const active = await readActiveCycle(project);
+    const active = await readActiveCycle(project, options);
     if (active) {
       return publicFailure(
         "active-cycle-exists",
@@ -303,6 +305,7 @@ export async function evaluateDraft(projectRoot, request, options = {}) {
       roots,
       request.evaluation_id,
       operationTime(options),
+      options,
     );
     const relative = path.posix.join(
       project.manifest.paths.convergence,
@@ -350,11 +353,11 @@ function validateCompletionRequest(request) {
 
 export async function completeCycle(projectRoot, request, options = {}) {
   validateCompletionRequest(request);
-  const project = await readProject(projectRoot);
-  const initial = await readActiveCycle(project);
+  const project = await readProject(projectRoot, options);
+  const initial = await readActiveCycle(project, options);
   if (!initial) return publicFailure("active-cycle-required", "An active cycle is required for completion.");
   const locked = await lockProjectCycle(project, options, async () => {
-    const active = await readActiveCycle(project);
+    const active = await readActiveCycle(project, options);
     if (!active) return publicFailure("active-cycle-required", "An active cycle is required for completion.");
     const cycle = active.value;
     if (cycle.cycle_id !== request.cycle_id) {
@@ -376,7 +379,7 @@ export async function completeCycle(projectRoot, request, options = {}) {
     if (coordination) return coordination;
     let current;
     try {
-      current = await recomputeStoredEvaluation(project, cycle, cycle.target_evaluation);
+      current = await recomputeStoredEvaluation(project, cycle, cycle.target_evaluation, options);
     } catch (error) {
       return publicFailure("completion-evaluation-not-satisfied", `Target evaluation cannot be trusted: ${error.message}`, cycle);
     }
@@ -392,7 +395,7 @@ export async function completeCycle(projectRoot, request, options = {}) {
     }
     const trackerPath = path.resolve(project.root, project.manifest.paths.audit_tracker);
     const trackerBefore = await readFile(trackerPath, "utf8");
-    const trackerState = await parseTrackerState(trackerBefore, project.root);
+    const trackerState = await parseTrackerState(trackerBefore, project.root, options);
     const existingDecision = trackerState.completion_decisions.find(
       (decision) => decision.id === request.decision_id,
     );
@@ -452,7 +455,7 @@ export async function completeCycle(projectRoot, request, options = {}) {
         path: relative,
         sha256: sha256Bytes(text),
       };
-      const recovered = await recomputeCycleEvaluationForRecovery(project, cycle, reference);
+      const recovered = await recomputeCycleEvaluationForRecovery(project, cycle, reference, options);
       evaluation = recovered.stored;
       reference = evaluationReference(evaluation, relative, text);
     } else {
@@ -471,6 +474,7 @@ export async function completeCycle(projectRoot, request, options = {}) {
         },
         request.evaluation_id,
         completedAt,
+        options,
       );
       text = `${JSON.stringify(evaluation, null, 2)}\n`;
       await publishImmutable(absolute, text);

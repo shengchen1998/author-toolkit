@@ -1,228 +1,198 @@
 # Validation Status
 
-- **Release:** 3.2.0
-- **Working tree status:** Repository checks and limited Kimi Code host validation passed with four noted process timeouts after valid writes; Claude Code, native host installation, full evaluation/completion, and creative-quality validation not exercised
-- **Date:** 2026-11-06
+- **Release:** 4.0.0
+- **Date:** 2026-11-07
+- **Integration base:** `b2418f818a6bd0a6b8662ca3d5451449c001f4f6`
+- **Scope:** Repository contracts, the tracked developer hook, real generic installation, disposable writing-project behavior through installed public CLIs, and a minimal Kimi Code installed-skill smoke
 
-The repository-level checks below cover schemas, validators, migration,
-shared-state and creation contracts, review jobs, scale fixtures, and
-command-line behavior. They do not verify a complete creative run in a host or
-the quality of generated fiction.
+Repository tests, installation checks, disposable-project commands, and the
+minimal host smoke passed. They do not prove a complete creative run, editorial
+judgment, or creative quality. Fixture reports and semantic attestations are
+structural evidence only.
 
-## 3.2.0 release validation
-
-| Check | Status | Evidence |
-| --- | --- | --- |
-| Protocol tests | **Pass** | `npm test`: 328 tests passed, 0 failed. This includes one release metadata and neutral-template contract test, 26 cross-file recovery tests, 26 first-time bootstrap lifecycle tests and one static bootstrap routing contract test, 13 no-edit full-manuscript tests, 12 current-draft convergence cycle tests, 12 request-driven execution tests, 16 ordinary creation/increment tests, eight draft/whole-book boundary tests, and two independent draft execution tests over real disposable-project disk state, plus two static draft/whole-book skill-contract tests and all prior contract regressions. Coverage includes staged-to-committed batch-reference replacement, actual satisfied evaluation and completion, independent revise-draft recovery with resolved findings, verified independent execution, duplicate publication rejection, changed-input and output-tamper failures, narrowed baseline preservation, protected-entry blocking, verified revise-fiction execution, baseline inheritance, eligible local-unit reuse, all three outcomes, evidence invalidation, same-ID scope reconfirmation with unchanged line counts, snapshot path/hash identity mismatches, deferred and dismissed decisions, fresh reader-chain completeness, closed artifact contracts, unsafe-path rejection, independent-process transition, preparation, evaluation and completion serialization, multi-chapter creation, blocked continuation, increment recovery, review rework, rejected staging, exact approval types and batch bindings, and pure insertion before and between retained chapters. |
-| Final code-review corrections | **Pass (repository contracts and disposable projects)** | Public author-project and validator tests proved that a newer narrowed, `not_satisfied`, or `indeterminate` independent evaluation blocks cycle starts without reopening an older satisfied record, while a later current satisfied independent or completed-cycle evaluation restores entry. Replacing a satisfied requested pass now invalidates the old target evaluation for status, gate, and completion. Revision preparation rejects stale approvals after batch, action, output, scope-fingerprint, or plan-operation changes; final verification preserves prepared operations and subchecks while permitting target manuscript additions and deletions. Pure insertion and deletion no longer create retained-path reorder records, while a real retained swap still requires exact actions. Manuscript-changing revise-fiction fails with current-scope-only evidence and succeeds with bound Story Bible, structure, and final-review reports, decisions, jobs, and attestations. Request→fiction and draft→fiction verified executions receive the same evaluation, completion, and gate checks; after a linked revision execution, switching away from revise-fiction is rejected until whole-book evidence and explicit completion, including after satisfied evaluation but before completion. `evaluation-contracts.mjs`, `evaluation-artifacts.mjs`, `evaluation-chains.mjs`, `evaluation-evaluator.mjs`, `evaluation-recompute.mjs`, `evaluation-operations.mjs`, and `evaluation-status.mjs` separate contract validation, artifact reading, event chains, evidence computation, recomputation, writes, and read-only queries behind the existing public facade. Shared test helpers own CLI input and tracker fixture writes. These are contract tests over real disposable-project disk state, not new host-run or creative-quality evidence. |
-| Cross-file cycle crash recovery | **Pass (disposable projects and real disk fault injection)** | `node --test tests/cycle-recovery.test.mjs`: 26 tests passed, 0 failed. Public author-project operations wrote real manifests, active cycles, immutable artifacts, execution records, backups, and journals; checkpoint exceptions then interrupted them before or after manifest and cycle updates, publication, evaluation, execution, external reconciliation, completed history, final manifest, and active removal. Separate tests restored real pre-completion bytes to reproduce completed-history and post-manifest windows. Recovery covered `revise-request`, active and independent `revise-draft`, manuscript-changing `revise-fiction`, ordinary creation, bootstrap, and external imports. Tests verified read-only diagnosis, explicit directions, same-operation identity, concrete pending/scope/artifact path/hash blockers, completed-pointer path and hash mismatches without rehashing altered history, idempotent independent evaluation, and preserved evaluation, approval, journal, backup, and verified-execution bytes. Unsafe discard attempts returned `valid: false` with concrete blockers and `available_directions`, preserved the operation handle and immutable bytes, and then resumed the verified execution through satisfied evaluation and explicit completion; a separate scope-snapshot mismatch received the same protection, while manifest-only interruption remained safely discardable. An actual exited child PID plus on-disk owner token verified abandoned-lock diagnosis and recovery; running or mismatched owners are not stolen. Eighty existing lifecycle, execution, creation, bootstrap, external-reconciliation, and draft boundary regressions also passed. These are repository contract checks, not host power-loss, creative-quality, or complete host-run evidence. |
-| Default validation | **Pass** | `npm run validate`: 19 checks passed, 0 failures, including every shipped schema, both legacy v2 examples, their reports and on-disk state, and workflow fixtures. |
-| Executable lifecycle operations | **Pass (disposable projects)** | Real `scripts/author-project.mjs` calls exercised bootstrap and ordinary satisfied starts, content-checked transitions, external manuscript reconciliation, revision execution preparation and verification, evaluation, completion, and read-only status and gate queries. Eight independent processes concurrently transitioned one `expected_revision`: exactly one succeeded and seven returned `cycle-revision-conflict`. Independent preparation, evaluation, and completion races also produced exactly one winner each. A preexisting lock directory produced `cycle-transition-lock-timeout` without changing active state. No strategy was invoked automatically. |
-| Full evaluator and ordinary satisfied starts | **Pass (disposable projects)** | Actual report, coverage, no-edit, three-perspective review, reader-state, tracker, and semantic-attestation artifacts produced `satisfied` through the public evaluator, followed by explicit author completion. Completion changed the tracker hash, generated a new satisfied evaluation, preserved the old evaluation, and completed the cycle. Open findings and degraded coverage produced `not_satisfied`; missing attestations, changed artifact hashes, and target references whose scope ID, fingerprint, snapshot path, or snapshot hash differed from manifest `current_scope` produced `indeterminate`. The same-ID reconfirmation regression kept line counts unchanged and correctly blocked status currency, gate, fresh evaluation, and completion. Non-satisfied completion was rejected without recording a decision. These are contract fixtures, not evidence of actual host reading or creative quality. |
-| Request-driven execution and current-draft revision convergence | **Pass (disposable projects)** | Public CLI operations verified edited requests from a satisfied full-manuscript base through prepared and verified execution, new full-target coverage and review, satisfied evaluation, and explicit completion. Tests covered approved-but-unexecuted batches, closed execution contracts, output tampering, historical base and execution preservation, cumulative change sets, accepted review-finding rework, undecided deferred and dismissed findings after verified execution, lawful deferred and dismissed no-edit decisions, eligible local evidence reuse, a two-chapter narrow request set with full-target requirements, no-change requests with added checks, independent `request_completion`, post-evaluation target invalidation, and preparation races. Backup manifests and bytes, decisions, approvals, input hashes, and output hashes were checked on disk. These fixtures do not prove host reading, editorial judgment, or creative quality. |
-| Ordinary creation and increment recovery | **Pass (disposable projects)** | Public project operations and real creation artifacts established a satisfied starting scope, linked one explicitly approved two-chapter batch and commit journal, blocked another writing plan and second commit, resumed the same cycle through `revise-increment`, preserved the starting snapshot, and completed the full expanded target. Unchanged full local coverage units were reused while added paths received new units, full-target syntheses, and three-perspective review. Accepted continuity rework passed prepared and verified revision execution before satisfied completion. Rejected staging remained unpublished and completed as no-change after revalidation. Ordinary creation commit scope_before correctly connected the satisfied starting scope to scope_after and later external reconciliation, which reached satisfied evaluation through `revise-increment`; removing that commit event prevented the chain from closing. Missing, duplicate, or mistyped approvals and mismatched batch bindings were rejected. Pure insertion before and between retained paths passed without reorder records, while omitted true retained reorder transitions and missing commit evidence remained blockers. These are contract fixtures, not host-run or creative-quality evidence. |
-| First-time bootstrap through revise-draft | **Pass (disposable projects and static contracts)** | A genuinely empty project started one explicit bootstrap cycle with a null starting scope. Real staging, exact manuscript and scope approvals, a committed batch and journal with null `scope_before_id`, and validated story state established the first nonempty publication. Public transitions returned `revise-draft` as the required action, blocked `revise-increment`, a second commit, another writing plan, and independent `evaluate-draft`, then linked the initial requested pass, three-perspective review, satisfied evaluation, and explicit completion decision in immutable history. Empty manuscript state before publication and after deleting all text could not satisfy or complete; evaluation without the linked first publication failed with `creation-commit-evidence-missing`. An approved initial edit passed preparation and actual-output verification, reached satisfied evaluation with its creation commit and revision execution in the evidence graph, and kept the cumulative change set derived from the null starting scope. `revise-increment` was blocked both before and after first publication. After completion, a repeated bootstrap was rejected and ordinary creation started from the satisfied target with no commit. A rejected empty bootstrap could not complete or alter its active revision; its first approved external import then reconciled with a null previous scope, supplied initial publication evidence without a creation commit, and completed initial full-manuscript `revise-draft` evaluation and explicit completion in the same cycle. A second approved external import then reached current-draft revision convergence while preserving a null cumulative origin and previous-target links. A real prepare/backup/write/confirm/verify execution after the first import also reached current-draft revision convergence by matching the reconciliation target to execution input and the final execution target to current scope. Evaluation rechecks every import approval and target snapshot. Reconciliation previous scopes and execution input scopes form one ordered event chain, with every previous or input identity following the preceding target or output identity and every event verified once before reaching current scope. A verified edit followed by another external import reached current-draft revision convergence, as did empty reconciliation followed by approved nonempty recovery. A longer import→edit→import→edit→empty→restore sequence also reached current-draft revision convergence without assuming reconciliations precede executions or trusting an order field. Empty state itself still could not complete. A missing first chain link, a removed required execution event, a skipped empty predecessor, a reconciliation target forged to the final scope, a forged execution target, and a wrong final reconciliation target all remained blockers. Real creation commit events connected the null origin to scope_after and later external import, including creation commit→verified edit→external import, by reusing the existing batch, journal, approval, and verified-transition checks. Cycle-external empty recovery accepted an explicit null `previous_scope` only with a verified empty predecessor; omitting the field failed as a usage error before any reconciliation or manifest write. Both retained probes passed, while evaluation without any first publication or approved import still failed with `creation-commit-evidence-missing`. Static contracts check exact Claude Code and Kimi Code `revise-draft` commands while preserving the ordinary `revise-increment` route. These fixtures do not prove host reading, editorial judgment, or creative quality. |
-| Draft and whole-book current-draft revision convergence boundaries | **Pass (disposable projects and static contracts)** | Public `check-operation` blocked `write-fiction`, `revise-request`, `revise-increment`, and manuscript-changing `revise-fiction` without a current satisfied evaluation while preserving independent `revise-draft` and read-only whole-book work. Independent full-manuscript `evaluate-draft` produced satisfied evidence with `cycle_id: null` and no active-cycle file; a later narrowed evaluation produced `not_satisfied`, blocked dependent entries, and did not reduce the previous satisfied subcheck baseline. A real independent accepted edit produced a `prepared` execution, remained blocked with `verified-execution-required` and `starting-evaluation-indeterminate`, then passed actual-output verification, `evaluate-draft`, and a later `revise-draft` cycle start. Prepared evidence, duplicate preparation, repeated verification, changed current inputs, and output tampering all failed without replacement publication. Active recovery rejected independent prepare and verify with `active-cycle-exists`. A real `revise-fiction` cycle prepared and verified an approved manuscript edit, restored full-target satisfied evidence, and completed explicitly. Static contracts check independent/active routing, whole-book gates, read-only analysis and final review, and exact-command-only cross-entry routing. These fixtures do not prove host reading, editorial judgment, or creative quality. |
-| External manuscript reconciliation | **Pass (disposable projects and validator CLI)** | Seventeen tests drove real `author-project` operations against disposable manuscripts before and during cycles. Coverage includes additions, modifications, partial and complete deletion, retained-path reorder before and during cycles, custom confirmed reading order, exact tracker `creation-import` decisions, rejection of caller-only confirmation and unsafe `..` artifact paths, current story-state graph checks including deleted chapters, preserved starting snapshot bytes, same-cycle cumulative change and work sets, out-of-cycle later starts without a parallel cycle, increment only with provable satisfied previous evidence, `indeterminate` recovery for damaged starting or coverage evidence, empty-manuscript `not_satisfied` and completion blocking, and approved nonempty import followed by full-manuscript `revise-draft` through satisfied completion. Transition, start, and revision preparation preflights reject unreconciled input without writing state; evaluation preserves concrete external and execution diagnostics. Reconciliation, inventory, and latest story-state hashes enter evaluation evidence graphs, and later story-state tampering invalidates status and gate. `validate.mjs --manuscript-reconciliation` validates the new immutable artifact. These are contract fixtures, not host reading, restore execution, or creative-quality evidence. |
-| Legacy project migration and recovery | **Pass (real migration CLI and disposable projects)** | `node --test tests/migration.test.mjs tests/v31.test.mjs tests/migration-v32.test.mjs`: 39 tests passed, 0 failed. Both `migrate-v32.mjs` and the compatibility `migrate-v3.mjs` command converted v2, v3.0, and v3.1 copies directly to v3.2 with source-specific migration snapshots and no intermediate v3.1 state. Tests preserved manuscripts, reports, findings, approvals, sessions, handoffs, staging, backups, story state, batches, journals, and pending actions; checked exact legacy scope confirmation and proposed reconfirmation without fabricating approvals; and verified byte-for-byte idempotent v3.2 reruns with `snapshot: null` and no new scope, inventory, or migration snapshot. Legacy reports and pending actions produced no satisfied evaluation or active cycle. Public `reconcile-cycle` diagnosed interrupted journals, in-progress revision writes, and unresolved legacy staging without writes; explicit terminal recovery then permitted a dependent cycle. Empty and nonempty batches marked `rejected` without an exact decision, or with the wrong approval type, batch, scope, dependency fingerprint, or paths, remained blocked for bootstrap and ordinary cycle starts even with satisfied starting evidence. Exact tracker and batch rejection bindings were required; a valid empty rejection permitted bootstrap, while a valid nonempty rejection still required the satisfied starting evaluation. Diagnosis did not rewrite batches or trackers. Other nonempty legacy staging remained unpublished until real full-manuscript `revise-draft` evidence produced a satisfied independent evaluation and permitted a new `write-fiction` reapproval cycle. Unproven legacy revision bases remained `indeterminate`, failed the convergence gate, and routed through current full-manuscript `revise-draft` with normal coverage-reuse rules. The shipped v2 examples were not modified. These are repository contract checks, not host migration, editorial judgment, or creative-quality evidence. |
-| Kimi Code setup and first creation | **Pass (limited, through first publication and commit recovery)** | Kimi Code 2.4.1 with `--skills-dir` completed setup in an empty disposable project, deployed 29 matching shared references, and passed manifest validation. Actual `/skill:write-fiction` commands created `cycle-bootstrap-001`, confirmed the baseline, advanced through an approved writing plan, and wrote one 277-word English chapter to staging without touching `manuscript/`. The baseline invocation reached its 600-second timeout after writing valid baseline and cycle artifacts but before its final response; independent final checks passed 5 checks with 0 failures. Writing-plan and chapter-creation invocations completed with 6 final checks each and 0 failures, plus the post-response `runtime.not_found` checkpoint warning. The chapter-review invocation reached its 900-second timeout after writing and checking the complete exact manuscript diff, two valid story-state proposals, and the ordered publication scope; its diff reconstruction matched staging byte-for-byte, six final checks passed with 0 failures, and no acceptance, manuscript write, or commit occurred. The first commit invocation reached its 900-second timeout after verified manuscript, story-state, and scope writes but before final cycle linking. An explicit continuation command then froze the same accepted batch and journal as committed, used the corrected same-batch reference transition, advanced the same cycle to revision 6 with `revise-draft` recovery at `intake`, and blocked another writing plan with `cycle-operation-mismatch`. Independent final validation passed 11 checks with 0 failures covering manifest, tracker, full-manuscript scope, both snapshots, active cycle, batch, journal, and both story-state files. No initial full-manuscript evaluation, cycle completion, or creative-quality claim is included. |
-| Kimi Code ordinary creation baseline | **Pass (limited)** | An actual `/skill:write-fiction` command started `cycle-ordinary-creation-001` from a prearranged, publicly verified satisfied full-manuscript evaluation, confirmed the creation baseline, and stopped at `writing-plan`. Seven final checks passed with 0 failures; the original manuscript hash was unchanged. The satisfied starting evidence was fixture preparation, not a claim that the host created or reviewed that evidence. |
-| Kimi Code blocked continuation | **Pass (real user commands and prearranged post-publication states)** | Actual `/skill:write-fiction` attempts to plan another batch returned `cycle-operation-mismatch`. Ordinary `cycle-ordinary-publication` revision 2 routed to `/skill:revise-increment`; bootstrap `cycle-bootstrap-publication` revision 2 routed to `/skill:revise-draft`, not increment. Both attempts stopped without changing plans, manuscript, manifest, or cycle state. Public operations had prepared the published states before the host commands; those operations are not presented as host publication evidence. |
-| Kimi Code post-publication increment | **Pass (intake only)** | Actual `/skill:revise-increment` resumed `cycle-ordinary-publication` from revision 2 to 3, preserved the starting scope and starting evaluation, reused the existing two-chapter target, linked `commit-002`, recorded only chapter 2 as created and as its initial work set, and verified four eligible unchanged local coverage units. Six final checks passed with 0 failures. The next operation is `draft-baseline`; full-target evaluation and cycle completion were not exercised. |
-| Kimi Code bootstrap cycle resumption | **Pass (intake only)** | Actual `/skill:revise-draft` resumed `cycle-bootstrap-publication` at revision 2, preserved its null starting scope and linked first publication, confirmed the complete one-chapter manuscript scope and reading order, and recorded intake and `SCOPE-002` without an independent evaluation or parallel cycle. Five final checks passed with 0 failures and the manuscript hash was unchanged. The next operation is `draft-baseline`; initial full-manuscript evaluation and completion were not exercised. |
-| Kimi Code request revision | **Partial (intake verified; final response timed out)** | Actual `/skill:revise-request` verified the prearranged satisfied base, started `cycle-request-revision-001`, advanced to revision 3, preserved `scope-request-base` as `starting_scope`, recorded the author's exact request and `REQUEST-INTAKE-001`, and stopped before `diagnostics`. The 900-second process timeout occurred after these writes and before the final response. Independent validation passed 6 checks with 0 failures, and the manuscript retained SHA-256 `5849366a3c176be0c8ff693f7ac194b1d7ec02f2377f24617cf10f7f50d6bbd8`. No request edit, verified execution, request completion, target evaluation, or cycle completion is claimed. |
-| Kimi Code migration routing | **Pass (actual user commands and disposable v3.1 project)** | `/skill:write-fiction` recognized schema 3.1.0, displayed `/skill:setup-author-toolkit`, and stopped without writes. `/skill:setup-author-toolkit` then ran `migrate-v32.mjs` directly to 3.2.0, preserved the original manuscript and historical-file hashes, created `.author-toolkit/migrations/20261106T045547104Z-v3_1-v3_2/` and one inventory snapshot, and created no scope snapshot, active cycle, or evaluation. Manifest validation passed 3 checks and inventory validation passed 1 check, all with 0 failures; read-only cycle diagnosis had no blockers and `state_written: false`. |
-| Generic installation and 16-skill deployment | **Pass (local source and disposable deployment copies)** | `npx skills@latest add <local-worktree> -a claude-code -a kimi-code-cli --copy -y` found and installed all 16 skills into disposable `.agents/skills/` and `.claude/skills/` directories. The installed setup payload contained 29 shared references; all 25 JSON Schemas compiled and the neutral template validated as 3.2.0. A scan checked 55 relative Markdown links with 0 failures, both installed skill trees compared equal, and the final `.agents/skills/` tree matched the worktree's `skills/` directory byte-for-byte. No global skill installation or host-driven creative run is implied. |
-| Claude Code and native host installation | **Not exercised** | No `claude` executable is available in this environment. Claude Code commands, Claude marketplace installation, Kimi native plugin installation, and Kimi Desktop entry were not exercised. The Kimi results above are actual CLI user-command runs with `--skills-dir`, not native plugin evidence. |
-| Host evaluation, completion, and creative quality | **Not exercised** | No host run completed a full-manuscript evaluation, explicit cycle completion, full request execution, or full increment recovery. No human quality review or general creative-quality certification is claimed for the generated chapter, fixture reports, semantic attestations, or scale fixtures; operation-gate reviews remain bounded evidence rather than proof of good fiction. |
-
-### Exact 3.2.0 host and deployment commands
-
-All host projects were disposable directories beneath `.test-output/host-validation-320/`. Every Kimi command used Kimi Code 2.4.1 and the worktree's skills through `--skills-dir`; the `disable-model-invocation` entries were supplied as explicit user slash commands, not invoked through the Skill tool. Public project operations used to arrange or independently verify fixtures are repository evidence and are not included in this host-command list.
-
-#### First creation
-
-```bash
-# cwd: /Users/sc/workspace/author-toolkit-worktrees/ticket-12/.test-output/host-validation-320/first-creation
-kimi --skills-dir /Users/sc/workspace/author-toolkit-worktrees/ticket-12/skills --output-format text -p '/skill:setup-author-toolkit 在当前目录初始化一个英文单书小说项目。当前目录是空的一次性验证项目。使用默认路径，语言 en。只完成 setup、共享引用部署和校验，不创作正文，不调用其他用户入口。报告 manifest、引用校验和下一命令。'
-
-# cwd: /Users/sc/workspace/author-toolkit-worktrees/ticket-12/.test-output/host-validation-320/first-creation
-kimi --skills-dir /Users/sc/workspace/author-toolkit-worktrees/ticket-12/skills --output-format text -p '/skill:write-fiction 这是空项目的首次创作。只执行 creation-baseline 并停止，不要规划或创作正文。目标读者：喜欢紧凑科幻悬疑的成年读者。核心前提：一名记忆修复师发现客户的一段被删除记忆属于她自己。主角：记忆修复师 Mara Venn。中心冲突：Mara 必须找出谁篡改了记忆，同时避免再次暴露真相。约束：英文、第三人称、短篇、无需预设完整大纲或结局。我作为作者明确确认这些最低创作基础及其初始创作状态差异，可以记录。请运行必要的 v3.2 bootstrap start-cycle 和校验，报告周期与下一准确命令，不要调用其他用户入口。'
-
-# cwd: /Users/sc/workspace/author-toolkit-worktrees/ticket-12/.test-output/host-validation-320/first-creation
-kimi --skills-dir /Users/sc/workspace/author-toolkit-worktrees/ticket-12/skills --output-format text -p '/skill:write-fiction 续接 cycle-bootstrap-001 revision 2，只执行 writing-plan，不写 staging 或正文。为首次单章批次 batch-001 制定最小计划：英文、第三人称限知 Mara；本章目标是 Mara 为客户恢复一段被删除的记忆；冲突是修复过程显示那段记忆属于她自己；进入状态是她信任记忆索引，离开状态是她必须怀疑自己的身份记录；只释放这一发现，不解决篡改者或结局。目标文件只有 manuscript/chapter-001.md，action=create，input SHA-256=absent，source_mode=ai，无其他正文路径或连续性补丁。上下文使用当前 story-bible.md 与 creation/state/current.md 的实际版本。无相关开放发现项或已接受风险。我作为作者明确批准这个计划和上述准确写入批次及其输入版本。请记录计划、批准和周期恢复位置并校验，下一操作应为 chapter-creation；不要调用其他用户入口。'
-
-# cwd: /Users/sc/workspace/author-toolkit-worktrees/ticket-12/.test-output/host-validation-320/first-creation
-kimi --skills-dir /Users/sc/workspace/author-toolkit-worktrees/ticket-12/skills --output-format text -p '/skill:write-fiction 续接 cycle-bootstrap-001 revision 3，只执行 chapter-creation。严格按 sessions/plan-001.md、batch-001 和 PLAN-001 的准确批准，用英文第三人称限知写一章约 200-300 词：Mara 为客户恢复被删除记忆，修复过程显示记忆属于她自己；只释放这个发现，不解决篡改者或结局。只写 .author-toolkit/creation/staging/batch-001/chapter-001.md，不得写 manuscript/，不得改变批准的目标路径、动作或输入，不做 chapter-review、不验收、不提交。更新批次 staged 状态和必要的会话记录，校验输出 SHA-256 后停止并报告下一准确命令，不要调用其他用户入口。'
-
-# cwd: /Users/sc/workspace/author-toolkit-worktrees/ticket-12/.test-output/host-validation-320/first-creation
-kimi --skills-dir /Users/sc/workspace/author-toolkit-worktrees/ticket-12/skills --output-format text -p '/skill:write-fiction 续接 cycle-bootstrap-001 revision 4，只执行 chapter-review 的检查与提案，不验收、不提交、不修改暂存稿。检查 batch-001 是否执行 sessions/plan-001.md、章节衔接、Mara 的知识状态、时间线、世界规则和未授权基础变化；重算依赖指纹与暂存输出 SHA-256。请给出完整批次的精确正文差异、拟议故事状态差异和有序发布范围，保留 staging，不写 manuscript，不创建 commit journal。记录 chapter-review 为 awaiting_author 并校验，等待我下一命令明确 creation-manuscript 与 creation-scope 验收。不要调用其他用户入口。'
-
-# cwd: /Users/sc/workspace/author-toolkit-worktrees/ticket-12/.test-output/host-validation-320/first-creation
-kimi --skills-dir /Users/sc/workspace/author-toolkit-worktrees/ticket-12/skills --output-format text -p '/skill:write-fiction 续接 cycle-bootstrap-001 revision 4。我已逐字审阅 sessions/2026-11-06_chapter-review-001.md 的完整提案，现在明确给出两项分别记录的 creation acceptance。第一，creation-manuscript：验收 batch-001 的唯一 staged 文件 manuscript/chapter-001.md，action=create、input_sha256=null、output_sha256=658fff05305ba831ec0d5e2eb7e0d4465b7f3087e2090769d0dea9cae5b52c13，以及该会话中的两份故事状态提案；chapter state SHA-256=50a4b37d73452343795ecfc56c6ea16965cf81b0a7cfdca6feb3f7a3c304de3f，current state SHA-256=db387d7f78f1c5a5dbe3c3dd1742bd6bc05e820dcb7c5265d97bd8458ebf7732。第二，creation-scope：验收 scope-chapter-001，完整有序范围只有 manuscript/chapter-001.md 和上述输出哈希，excluded_files=[]，阅读顺序确认，scope_fingerprint=4337a346024f06a6bab4d5d5e55c8c381983b13f82e32ae451a1371c9ed894a3。两项决定均绑定 batch_id=batch-001、dependency_fingerprint=861d1f8d8d5c45d80ba0b64c91a1c88179df0f035625a6296ec8f9ed716d0c86 和同一 scope_fingerprint。不得修改任何暂存字节、提案内容或时间戳。请记录 MANUSCRIPT-001 与 SCOPE-001，随后按规程无需额外作者门禁执行 commit-001 的 creation-commit：先写 journal，核对目标 absence 与输入，原子发布并逐文件验证，写入两份故事状态，确认 full-manuscript scope 和不可变快照，链接同一周期并转为 revise-draft。完成后阻断另一 writing-plan，校验实际正文、journal、批次、故事状态、scope 和 cycle，报告首次发布证据与准确下一宿主命令，但不要调用 revise-draft 或其他用户入口。'
-
-# cwd: /Users/sc/workspace/author-toolkit-worktrees/ticket-12/.test-output/host-validation-320/first-creation
-kimi --skills-dir /Users/sc/workspace/author-toolkit-worktrees/ticket-12/skills --output-format text -p '/skill:write-fiction 上一次 creation-commit 调用超时。我作为作者明确决定继续 commit-001，不恢复、不改写任何正文、暂存或故事状态字节。当前 manuscript/chapter-001.md 与 staged 输出一致，journal commit-001 为 in_progress 且唯一文件项 verified，batch-001 为 accepted，两个故事状态文件和 scope-chapter-001 已按原提案写入并确认，active cycle 仍是 revision 5 creation-commit。请先只读运行 reconcile-cycle 和必要校验，再按 creation-state 的继续规程将同一 journal 标为 committed、冻结同一批次为 committed，保留所有哈希和历史；随后用 commit-001 作为 operation ID，通过公共 transition-cycle 将同一批次和 journal 链接到 cycle-bootstrap-001，目标为当前 scope-chapter-001，策略转为 revise-draft/intake。更新 pending、tracker 和会话记录，检查另一 writing-plan 被阻断，并复核实际正文、journal、批次、故事状态、scope snapshot、inventory snapshot 和 cycle。报告最终恢复结果与准确下一宿主命令，不要调用 revise-draft 或其他用户入口。'
-```
-
-#### Ordinary creation baseline
-
-```bash
-# cwd: /Users/sc/workspace/author-toolkit-worktrees/ticket-12/.test-output/host-validation-320/ordinary-creation
-kimi --skills-dir /Users/sc/workspace/author-toolkit-worktrees/ticket-12/skills --output-format text -p '/skill:write-fiction 当前一次性项目带有公共操作预置并验证的 satisfied 全稿基线 evaluation-request-base。开始普通创作，只执行 creation-baseline，不规划或写正文。目标读者：喜欢紧凑科幻悬疑的成年读者。核心前提：记忆修复师 Mara Venn 发现客户的被删除记忆属于她自己。主角：Mara Venn。中心冲突：她必须找出篡改者并避免真相再次曝光。约束：英文、第三人称、短篇，完整大纲和结局仍可未知。已有第一章描述 Mara 在恢复的记忆中听见自己的声音。我作为作者明确确认这些最低创作基础、从现有正文提取的初始故事状态和相应状态差异，可以记录；模型提取之外不要发明新事实。请从 satisfied starting_scope 启动一个普通 write-fiction 周期并校验，报告周期和下一准确命令，不要调用其他用户入口。'
-```
-
-#### Request revision intake
-
-```bash
-# cwd: /Users/sc/workspace/author-toolkit-worktrees/ticket-12/.test-output/host-validation-320/request-revision
-kimi --skills-dir /Users/sc/workspace/author-toolkit-worktrees/ticket-12/skills --output-format text -p '/skill:revise-request 当前一次性项目带有已通过公共操作预置并验证的 satisfied 全稿基线 evaluation-request-base。只执行 intake，不修改正文。作者请求：把 chapter-001.md 中“her own voice”改为“a voice from her childhood”，保留其他文本；请求集合只有 manuscript/chapter-001.md 和这一措辞，初始工作集合也只有该路径，目标范围始终是完整当前正文（与 scope-request-base 相同），需要 diagnostics、revision-plan、chapter-revision、受影响覆盖和全目标 current-scope-review，不新增其他子检查。复用资格仍须按实际身份判断。我作为作者明确确认这个请求解释、全稿目标范围、请求集合、工作集合和操作路线；这不是正文编辑批准。请验证基线并启动 revise-request 周期，记录 intake 和确认，报告 starting_scope、恢复位置及下一操作，不要调用其他用户入口。'
-```
-
-#### Migration routing
-
-```bash
-# cwd: /Users/sc/workspace/author-toolkit-worktrees/ticket-12/.test-output/host-validation-320/migration-legacy
-kimi --skills-dir /Users/sc/workspace/author-toolkit-worktrees/ticket-12/skills --output-format text -p '/skill:write-fiction 当前是一次性 v3.1 项目。请尝试开始普通创作，但不要手动迁移、修改 manifest 或创作正文。若版本不符合当前入口，报告准确的下一宿主命令并停止。'
-
-# cwd: /Users/sc/workspace/author-toolkit-worktrees/ticket-12/.test-output/host-validation-320/migration-legacy
-kimi --skills-dir /Users/sc/workspace/author-toolkit-worktrees/ticket-12/skills --output-format text -p '/skill:setup-author-toolkit 继续当前一次性 v3.1 项目：使用现有路径和 en，部署当前共享引用并执行直接 v3.2 迁移与校验。保留原正文和所有历史文件；不要创作、不要推断 satisfied 评估或活动周期、不要调用其他用户入口。报告迁移快照、最终 schema_version 和下一命令。'
-```
-
-#### Ordinary post-publication blocking and increment resumption
-
-```bash
-# cwd: /Users/sc/workspace/author-toolkit-worktrees/ticket-12/.test-output/host-validation-320/increment-routing
-kimi --skills-dir /Users/sc/workspace/author-toolkit-worktrees/ticket-12/skills --output-format text -p '/skill:write-fiction 当前一次性项目已有普通创作提交 commit-002，active cycle 为 cycle-ordinary-publication revision 2，恢复要求是 revise-increment intake。作者现在尝试再做一个 writing-plan。只运行入口检查和 check-operation；不要写计划、正文、manifest 或周期。若被阻断，报告具体 blocker、当前周期与准确下一宿主命令并停止。'
-
-# cwd: /Users/sc/workspace/author-toolkit-worktrees/ticket-12/.test-output/host-validation-320/increment-routing
-kimi --skills-dir /Users/sc/workspace/author-toolkit-worktrees/ticket-12/skills --output-format text -p '/skill:revise-increment 续接当前一次性项目的 cycle-ordinary-publication revision 2，只执行 intake，不做正文修改。普通创作提交 commit-002 已发布第二章，starting_scope 必须保留为历史证据，目标范围是当前完整两章。变化集合是创建 manuscript/chapter-002.md；初始工作集合为第二章及证据或依赖受影响的旧路径，旧章证据只在操作、来源报告、路径哈希、子检查和依赖均匹配时复用。当前确认的 target scope 已存在，不要制造替代范围。我作为作者确认这个目标范围、变化集合、工作集合和复用判断方法；这不是正文编辑批准。请验证并续接同一周期，记录 intake，报告周期 ID/revision、starting/target scope、变化集合和下一操作，不要调用其他用户入口。'
-```
-
-#### Bootstrap post-publication blocking and draft resumption
-
-```bash
-# cwd: /Users/sc/workspace/author-toolkit-worktrees/ticket-12/.test-output/host-validation-320/bootstrap-publication
-kimi --skills-dir /Users/sc/workspace/author-toolkit-worktrees/ticket-12/skills --output-format text -p '/skill:write-fiction 当前一次性项目已完成首次非空发布 commit-first-001，active cycle 为 cycle-bootstrap-publication revision 2，恢复要求是 revise-draft intake。作者尝试再做 writing-plan。只执行入口检查和 check-operation，不写计划、正文、manifest 或周期。若被阻断，报告 blocker 和准确下一宿主命令；明确首次发布应走 revise-draft 还是 revise-increment，然后停止。'
-
-# cwd: /Users/sc/workspace/author-toolkit-worktrees/ticket-12/.test-output/host-validation-320/bootstrap-publication
-kimi --skills-dir /Users/sc/workspace/author-toolkit-worktrees/ticket-12/skills --output-format text -p '/skill:revise-draft 续接一次性项目的首次发布周期 cycle-bootstrap-publication revision 2，只执行 intake，不修改正文，不做独立 evaluate-draft。首次提交 commit-first-001 和批次已链接，starting_scope=null，目标是当前完整一章，初始全稿评估必须通过同一 active cycle 的 evaluate-cycle 以后建立。请读取并确认完整正文清单、语言 en、排除项和当前 confirmed scope，记录 intake；不要创建平行周期，不要路由 revise-increment，不要改稿。我作为作者确认当前完整范围和阅读顺序，这不是正文编辑批准。报告链接的首次发布证据、周期 ID/revision、恢复位置和下一操作，不要调用其他用户入口。'
-```
-
-#### Disposable deployment installation
-
-```bash
-# cwd: /Users/sc/workspace/author-toolkit-worktrees/ticket-12/.test-output/host-validation-320/deployment
-npx --yes skills@latest add /Users/sc/workspace/author-toolkit-worktrees/ticket-12 -a claude-code -a kimi-code-cli --copy -y
-```
-
-## 3.1 working-tree validation
+## Repository and developer checks
 
 | Check | Status | Evidence |
 | --- | --- | --- |
-| Protocol tests | **Pass** | `npm test`: 137 tests passed, 0 failed. Coverage includes v2 compatibility, v3.0/v3.1 manifests and upgrades, creation batches and interrupted commits, story state, coverage reuse, layered review jobs, fresh-reader ordering, artifact CLI exit statuses, incremental-revision and request-driven current-draft revision convergence contracts, controlled terminology, setup and standalone deployment contracts, existing-project shared-reference checks, Chinese language-support contracts, and all 16 skill contracts. |
-| Default validation | **Pass** | `npm run validate`: 19 checks passed, 0 failures, including every shipped schema, both legacy v2 examples, their reports and on-disk state, and workflow fixtures. |
-| Real migration CLI | **Pass** | Copied projects exercised direct v2-to-v3.1 migration and additive v3.0-to-v3.1 upgrade through the real CLI, including preserved snapshots, unchanged manuscript/tracker/evidence content, and idempotent v3.1 reruns with `snapshot: null`. |
-| Million-character structural scale check | **Pass** | `tests/scale.test.mjs` inventoried 250 synthetic Chinese chapters containing one million repeated Han characters plus headings, verified creation-state exclusion, and detected a newly added manuscript file. This is not generated-text quality evidence. |
-| Chinese language-support contracts | **Pass (static)** | Seventeen tests cover all 19 Chinese prose procedures, the 12-category local Chinese AI-writing catalog, mixed-language execution and provenance limits, Chinese fiction line editing, Chinese standards review, and Chinese length configuration. English report headings, tracker columns, and Markdown status values remain unchanged. These tests validate instruction and routing contracts, not model-run detection accuracy or creative quality. |
-| Kimi Code actual run | **Pass (limited scope)** | Kimi Code 2.4.1 with `--skills-dir` completed setup, creation baseline and planning, staged drafting, an atomically published first chapter and commit finalization, `revise-draft` intake, and a return `writing-plan` for batch-002. Final host checks passed for the committed artifacts, intake, and return plan. Several 600-second processes timed out after writing valid artifacts and required subsequent invocations; completed invocations also emitted a post-run `runtime.not_found` checkpoint warning. No full nine-operation revision, `revise-fiction` run, or layered model review is claimed. |
-| `revise-increment` actual run | **Pass (routing only)** | Kimi Code 2.4.0 with `--skills-dir` received `/skill:revise-increment` in an empty disposable project, read the new `SKILL.md`, stopped at the missing manifest, and displayed the exact setup command. This does not verify registered skill discovery, creative quality, or a complete five-chapter-plus-one pass reaching current-draft revision convergence. Static contracts separately cover change-set selection, unchanged-unit reuse, full-target current-scope review, and revision after review findings. |
-| `revise-request` actual run | **Not exercised** | No host run or complete request-driven pass reaching current-draft revision convergence is claimed. Static contracts cover the full-manuscript base-scope precondition, request set and work set, resume after request-induced stale evidence, unchanged-unit reuse, full-target current-scope review, and separate request-completion and current-draft revision convergence states. |
-| Claude Code actual run | **Not exercised** | The 3.1 working tree has not been exercised through Claude Code host runs. |
-| Generic installation and 16-skill discovery | **Pass (local source and deployment copy)** | `npx skills@latest add <local-repository> -a claude-code -a kimi-code-cli --copy -y` installed all 16 skills into a disposable project. The installed setup payload contained all 18 shared reference files, including 14 JSON Schemas. After the documented setup copy into `.author-toolkit/references/`, all 14 schemas compiled and the project template validated as a manifest; all five standalone finding schemas also compiled. A scan of installed skills checked 43 relative Markdown links with 0 failures. This verifies installation and reference deployment, not a host-driven setup or creative run. |
-| Million-character creative quality | **Not exercised** | No real million-character creation, chunked final review, or human quality evaluation is claimed. |
+| Complete repository tests | **Pass** | `npm test`: 558 tests passed, 0 failed. Coverage includes the single 4.0.0 manifest, greenfield rejection, generated and isolated installed runtimes, pending and scope commands, typed tracker writes and external-decision bindings, manuscript-only backups/restores, deployed-reference guards, current-index evidence, UTC evidence time, dependency roles and exceptions, creation and import lifecycles, independent execution, convergence evaluation and completion, cross-file recovery, deployment mirrors, Chinese procedures, the real generic-installer smoke, the tracked pre-commit behavior, and the million-character inventory regression. |
+| Repository validation | **Pass** | `npm run validate`: 11 checks passed, 0 failures. Explicit `--repository` mode compiled the current schemas and validated both current example manifests, their registered state, trackers, backup indexes, and English and Chinese report fixtures through the versioned JSON response envelope. |
+| Generated runtime consistency | **Pass** | `npm run check:runtime`: both checked-in self-contained ESM bundles matched a fresh build from source. |
+| Existing real-installer smoke | **Pass** | `npm run smoke:installed`: the real generic installer deployed the setup skill into an isolated directory. With the temporary source removed and no development dependency resolution, both help paths, manuscript-only `init`, pending and proposed/confirmed scope writes, compact and full reads, status, project validation, usage errors, and missing/mismatched-reference diagnostics passed. |
+| Tracked pre-commit checks | **Pass** | `.githooks/pre-commit` ran from a non-root working directory and completed repository validation, generated-runtime consistency, and 71 focused public CLI/evidence-contract tests with 0 failures, or 148 tests including subtests. Direct hook execution wrote no persistent Git configuration. |
+| One-time hook opt-in | **Pass (documentation and tracked mode)** | Both READMEs document `git config --local core.hooksPath .githooks` as a manual, one-time toolkit-developer opt-in and `.githooks/pre-commit` as the configuration-free alternative. The hook is tracked as mode `100755`. Installer and setup payloads contain no hook enablement or Git-configuration write. Local and global `core.hooksPath` remained unset during acceptance. |
 
-Historical 3.0 and 2.0 evidence does not verify `write-fiction`, v3.1 creation
-artifacts, coverage reuse, review jobs, the new migration paths, or 3.1 host
-entry points.
+The current rows cover the integrated issue-14 review fixes and final
+integration base `b2418f818a6bd0a6b8662ca3d5451449c001f4f6`. The
+disposable-project section retains the earlier ticket-24 public-CLI record and
+was not rerun against the final contract changes. The Kimi Code section below
+is a fresh final-HEAD generic-installation and host smoke. Neither record
+claims a host-driven creative workflow.
 
-## Historical 3.0 working-tree validation
+The full suite and the hook are separate checks. The hook is a fast commit-time
+subset; it does not replace `npm test`, `npm run smoke:installed`, or the other
+release gates.
 
-- **Historical release:** 3.0.0
-- **Historical test date:** 2026-11-03
+## Real generic installation
 
-| Check | Status | Evidence |
-| --- | --- | --- |
-| Protocol tests | **Pass** | `npm test`: 74 tests passed, 0 failed. Coverage includes v2 compatibility, v3 scopes and pending actions, approvals, evidence reports, legacy ID collisions, single-file and project-root manuscript layouts, operational-file exclusion, special-character approval paths, changed and added manuscript detection, and both revision-skill contracts. |
-| Default validation | **Pass** | `npm run validate`: 19 checks passed, 0 failures, including both legacy v2 examples and workflow fixtures. |
-| Real migration CLI | **Pass** | A copied Chinese v2 project migrated to v3 with a preserved snapshot. Explicit manifest validation passed 4 checks with 0 failures, including `#scope`; a second migration was idempotent with `snapshot: null`. |
-| Kimi Code actual run | **Not exercised** | The 3.0 working tree has not been exercised through Kimi Code host runs. |
-| Claude Code actual run | **Not exercised** | The 3.0 working tree has not been exercised through Claude Code host runs. |
-| Generic installation and 13-skill discovery | **Not exercised** | No 3.0 installation or discovery result is claimed. |
+The final-HEAD installation/host acceptance used Node.js 22.23.4, npm 10.9.9,
+`skills` installer 1.7.6, and source commit
+`b2418f818a6bd0a6b8662ca3d5451449c001f4f6`. The installer received a
+temporary source containing only that commit's `skills/` tree. Its `HOME` and
+npm cache were isolated; no `-g`, native plugin installation, or global
+configuration change was used.
 
-Historical 2.0 evidence does not verify the 3.0 shared evidence model,
-`revise-draft`, v2-to-v3 migration, or 3.0 host entry points.
+```bash
+cd /tmp/author-toolkit-final-host.dQL1ii/installation
+HOME=/tmp/author-toolkit-final-host.dQL1ii/home \
+npm_config_cache=/tmp/author-toolkit-final-host.dQL1ii/npm-cache \
+npm_config_update_notifier=false DISABLE_TELEMETRY=1 DO_NOT_TRACK=1 \
+npx --yes skills@latest add /tmp/author-toolkit-final-host.dQL1ii/source \
+  -a kimi-code-cli --copy --yes --json
+```
 
-## Historical 2.0 validation
+The installer reported all 16 skills as installed under project
+`.agents/skills/`. `diff -r` found the installed tree identical to the final
+worktree's `skills/` tree. The temporary source was then removed. Direct
+installed-CLI checks used the absolute Node executable with `env -i`, an
+isolated runtime `HOME`, `PATH=""`, and `NODE_PATH=""`; they did not resolve the
+repository, its `node_modules`, or its development dependencies.
 
-The remainder of this page is preserved historical evidence for the 2.0 working
-tree. It is not a 3.0 test report.
+Both no-argument help paths exited 0. For the final host project, installed
+`init` created a 4.0.0 project and compact `read` and `status` returned valid
+project and reference results. The validator returned the current versioned
+JSON envelope with `response_contract_version: "1.0"`, `command: "validate"`,
+`valid: true`, `result.mode: "project-root"`, and `result.checks: 5`; all five
+results were valid and `errors` was empty.
 
-- **Historical release:** 2.0.0
-- **Historical overall status:** Partial
-- **Tested revision:** `b5e15ef` plus the uncommitted 2.0 working tree
-- **Historical test date:** 2026-11-03
+## Disposable manuscript-project behavior
 
-This historical record separates repository checks from actual host runs. A
-pass covers only the commands and modes listed below. Pending means the check
-has not finished; blocked means the standard runtime path could not start.
+This is the earlier ticket-24 disposable record. It was not rerun against the
+final validator JSON, dependency role/source, and stale-binding changes and is
+not presented as fresh final-HEAD behavior evidence.
 
-### Historical release checks
+One fixed-manuscript project used the generic installed runtime for every
+public operation below. A temporary driver used the existing repository test
+helper only to author report, review, coverage, no-edit, tracker-decision, and
+attestation fixtures. It did not call source project operations or installed
+internal functions. The public CLI calls ran with the isolation described
+above.
 
-| Check | Status | Evidence |
-| --- | --- | --- |
-| Protocol tests | **Pass** | Node.js 22.23.4: 55 tests passed, 0 failed; default validation passed 19 checks with 0 failures; project template validation passed 3 checks with 0 failures. |
-| Kimi Code actual run | **Pass (limited scope)** | Kimi Code 2.4.1 completed all six independent skill invocations, valid English and Chinese structure reruns, and the English nine-stage revision workflow with explicit limited audit and revision scope. Desktop user-entry and native plugin installation remain unverified. |
-| Claude Code actual run | **Blocked** | Claude Code 2.1.316 starts, but invocation returns `Not logged in`. No Claude manuscript run or native marketplace installation was completed. `plugin validate .` passed with the pre-existing missing-icon warning. |
-| Six independent skill regression | **Pass** | One real Kimi invocation per independent skill passed its requested scope and stopping point. This does not cover every persona, audit, or mode. |
-| Generic skills installation | **Pass** | `skills` 1.7.5 discovered 12 skills and installed all 12 into isolated `.claude/skills/` and `.agents/skills/` project directories. Project `list` reported all 12 as tracked. |
+| Operation or scenario | Result |
+| --- | --- |
+| Initialization and scope | `init` succeeded. Public `record-scope` proposed and confirmed `scope-001`, then proposed and confirmed post-edit `scope-002` with a different fingerprint and immutable snapshots. |
+| Baseline evaluation | Public `evaluate-draft` wrote satisfied `evaluation-001` for the fixed evidence set. |
+| Future timestamps | Installed artifact validation accepted an attestation exactly 60 seconds in the future relative to the injected UTC clock. The same artifact at 61 seconds exited 1 with a concrete `created_at` and 60-second diagnostic. |
+| Dependency exception | Reusing the source diagnostics unit after a draft-baseline punctuation copyedit without an exception exited 1; `evaluation-002-no-exception` was `not_satisfied` with `coverage-unit-not-current`. A new unit version with exact old/new dependency hashes and a bound host attestation produced satisfied `evaluation-003`. The deterministic checks validated linkage, not the truth of the editorial claim. |
+| Typed finding and duplicate | Public `record-finding` recorded open `DIAG-204`. Repeating the same typed write exited 1 with `duplicate-finding-id` and `state_written: false`; tracker bytes were unchanged. |
+| Typed approvals and backup | Public `record-approval` recorded the exact `PLAN-204` and `EDIT-204` revision bindings. Public `record-backup` preserved the original manuscript and published `backup-acceptance-001`, its manifest, and its index entry. |
+| Revision preparation and verification | Public `prepare-draft-revision-execution` prepared `execution-acceptance-001` with `cycle_id: null`. After the approved one-line manuscript change and target-scope confirmation, public `verify-draft-revision-execution` verified the actual output bytes and target identity. |
+| Typed finding decision and final evaluation | Public `record-finding-decision` resolved `DIAG-204` against the verified execution. Public `evaluate-draft` wrote satisfied `evaluation-004`, also with `cycle_id: null`. Compact `read` and `status` then reported current satisfied evidence. |
 
-### Historical host and tool versions
+The driver recorded 24 public calls: 21 successful calls and the three expected
+failures described above (61-second timestamp, missing dependency exception,
+and duplicate finding). Final installed project validation passed 6 checks with
+0 failures.
 
-| Host or tool | Tested version | Status |
-| --- | --- | --- |
-| Claude Code | 2.1.316 | **Static validation passed; runtime blocked by authentication** |
-| Kimi Code | 2.4.1 | **Actual CLI calls and limited nine-stage workflow passed; Desktop entry and native plugin installation remain unverified** |
-| Node.js | 22.23.4 | **Pass** |
-| `skills` installer | 1.7.5 | **Local discovery and project installation passed** |
+Historical-preservation assertions compared actual bytes before and after the
+later operations. The base and rejected evaluations, the rejected pass's host
+attestation, the source coverage unit, the starting-scope snapshot, and the
+backup manifest and original manuscript bytes remained unchanged. The
+exception-bearing unit used a new path and hash. Preparing and then verifying
+an execution was treated as the documented lifecycle transition, not as an
+immutable prepared artifact.
 
-### Historical independent skill regression
+These are disposable, fixture-driven state and evidence checks. They are not a
+host-driven revision and do not certify the literary quality of the fixed
+manuscript or the handwritten attestations.
 
-All rows used Kimi Code 2.4.1 with the repository loaded through `--skills-dir`.
+## Actual Kimi Code installed-skill smoke
 
-| Skill | Status | Exercised scope |
-| --- | --- | --- |
-| `fiction-workshop` | **Pass** | Developmental Editor on Chapter 2, followed by an explicit v1 JSON output recheck. Other personas were not exercised. |
-| `character-archetypes` | **Pass** | Analyzer for Ning Lin with Hero + Ruler recommendation and Want/Need/Wound/Lie comparison. Audit, Conformance, and Ensemble were not exercised. |
-| `story-structure` | **Pass** | Standalone Midpoint placement and content audit with finding v1 JSON. The separate workflow rerun covered the full three-chapter structure audit. |
-| `narrative-nonfiction` | **Pass** | Content Editor on a supplied teaching excerpt, including source-verification limits. Other modes were not exercised. |
-| `prose-mechanics` | **Pass** | Standalone Echoes audit on Chapter 1 with finding v1 JSON and no manuscript changes. The other 18 audits were not exercised. |
-| `avoid-ai-writing` | **Pass** | Detect-only audit of a short English sample. Rewrite mode was not exercised. |
+Kimi Code 2.4.1 ran against the final-HEAD generic installation described
+above. The disposable installation/writing-project root contained a `.git`
+directory, so Kimi Code used its normal project-root `.agents/skills/`
+discovery. The command did not use `--skills-dir`, `--add-dir`, a native
+plugin, or a user-level installation. The explicit author entry was
+`/skill:setup-author-toolkit`.
 
-### Historical workflow evidence
+```bash
+cd /tmp/author-toolkit-final-host.dQL1ii/installation
+KIMI_CODE_NO_AUTO_UPDATE=1 KIMI_DISABLE_TELEMETRY=1 \
+kimi --output-format stream-json -p '/skill:setup-author-toolkit 在当前目录执行最终集成提交的最小 4.0.0 setup。当前目录是专用的一次性验收项目，manuscript/chapter-001.md 是既有固定验收正文，不得修改。使用 en 和默认路径。只能使用当前项目 .agents/skills/setup-author-toolkit 的安装副本及其 assets/runtime，不得使用仓库 scripts 或用户级同名旧副本。只完成初始化、共享引用部署、validate、read 和 compact status；不要填写 Story Bible 创作内容，不要记录 scope、finding、approval 或 pending action，不要启动 cycle，不要调用 write-fiction、revise-fiction、revise-draft、revise-increment、revise-request 或其他创作/修订入口。报告实际解析的 setup-skill 绝对路径、schema_version、validate/read/status 结果和下一步。'
+```
 
-- The English structure rerun created `reports/structure/2026-11-02T184141Z_structure-v2.md` in the isolated run. It reused `STRUCT-001` through `STRUCT-004`, added `STRUCT-005` through `STRUCT-008`, preserved the fixture report, and left all three manuscript hashes unchanged.
-- The Chinese structure rerun created `reports/structure/2026-11-02T191829Z_structure.md`, reused four IDs, added three, and passed manifest, file, tracker, and report validation with unchanged manuscript hashes.
-- Three English character reports passed six combined checks. The limited revision plan passed three manifest checks and contains one approved-for-planning batch limited to Chapter 2.
-- Backup `20261102T193844Z-chapter-revision-b01` preserved the exact original Chapter 2 hash before the two approved replacements. The resulting diff contains only those replacements, and the revision report plus manifest passed four combined checks.
-- The post-edit structure rerun verified `STRUCT-003` as resolved and passed report, manifest, and tracker validation.
-- The limited prose run covered only `invented-term-consistency` on Chapter 1 with an explicit author override. Its report and manifest passed four combined checks.
-- AI cleanup ran detect-only on Chapter 3 with the complete English catalog. `AI-001` and `AI-002` remained open for author review, and the report plus manifest passed four combined checks.
-- Three independent final-review reports produced 22 findings: 10 intent and consistency, 5 writing standards, and 7 fresh reader. All three reports and the manifest passed six combined checks. Their input exclusions were recorded explicitly.
-- Affected character and continuity checks were rerun after B01. The final manifest reached `current_stage: complete` only after all nine stages met their limited-scope gates. The two new reports plus the final manifest passed five combined checks.
-- The final pointer-only handoff at `.author-toolkit/handoffs/2026-11-02T204648Z_complete.md` had 45 validated path references with 0 missing. A separate Chinese handoff used the registered custom `handoffs/` directory, and a fresh session restored the correct stage and next action.
-- Generic project installation used `--copy`; no global skill installation was performed.
-- Local-source `check` and `update` reported no project skills to update. Remote GitHub update behavior remains untested.
+The process exited 0 after 273.837 seconds; no process timeout or
+`runtime.not_found` warning occurred. Stream-json contained the following
+actual tool calls rather than only a natural-language claim:
 
-### Historical unverified limitations
+| Evidence | Stream-json tool call |
+| --- | --- |
+| Read the discovered project skill | `tool_A4j9i3P41CCfsabDhfcNnLq1`: `Read /private/tmp/author-toolkit-final-host.dQL1ii/installation/.agents/skills/setup-author-toolkit/SKILL.md` |
+| Run installed initialization | `tool_6SkTsc9AHujbQl7RNNryl4CP`: installed `assets/runtime/author-project.mjs init` |
+| Run installed project validation | `tool_uNzCmW5p3bYOSAzLdQX6WUTW`: installed `assets/runtime/validate.mjs --project-root` |
+| Run installed compact read | `tool_a3FRVYH82f59RYwtpzYAuRPM`: installed `assets/runtime/author-project.mjs read` |
+| Run installed compact status | `tool_6fvyFd3HTnRe5Ya84o2jajrd`: installed `assets/runtime/author-project.mjs status` |
 
-- Claude authentication, native marketplace installation, skill invocation, report generation, and resume remain unverified.
-- Kimi native plugin installation through `/plugins install` and the Desktop `/skill:revise-fiction` user entry remain unverified. The Desktop attempt stopped without bypassing the editor guard.
-- The completed English workflow used explicit limited audit and revision scope. It did not run every prose audit on every file, approve every finding as resolved, exercise AI rewrite, or restore a backup.
-- Chinese structure and handoff behavior passed, but the remaining Chinese stages and `partial` / `skipped` language-rule behavior were not exercised.
-- Native plugin update behavior and remote GitHub `skills check` / `skills update` remain unverified.
-- Multi-book projects and other hosts are outside the supported 2.0 workflow. They are support boundaries, not pending test cases.
+Every runtime path was beneath the final disposable project's
+`.agents/skills/setup-author-toolkit/` installation. The host initialized a
+4.0.0 manifest and deployed 33 matching shared references. Its validation used
+the final JSON contract and returned `command: "validate"`, `valid: true`,
+`result.mode: "project-root"`, and five valid results with no errors. Compact
+read and status reported valid project and references, null scope, pending
+action, and cycle, zero findings and approvals, and an ordinary `indeterminate`
+new-project evaluation with `current-evaluation-unavailable`. No active-cycle
+file existed.
 
-Temporary validation projects live under `.test-output/` and are not release
-artifacts. The example manuscripts and prewritten reports under `examples/` are
-fixtures, not evidence of a model run.
+One auxiliary reference-enumeration command,
+`tool_zD4ipk4ugk1298HWVk128Yqi`, failed with
+`shopt: globstar: invalid shell option name`. The host then ran the compatible
+loop `tool_lBBjc0RudxDU6bDflb9dyb7y`, which reported 33 matched references with
+zero missing, conflicting, or extra files. An independent recursive `diff`
+also passed. This auxiliary failure did not prevent the subsequent installed
+`validate`, `read`, or `status` calls and is not omitted from this record.
+
+Independent installed-CLI validation, read, and status returned the same final
+JSON and compact-state results with development dependency resolution disabled.
+The fixed manuscript SHA-256 remained
+`f22545118eda70c6bb60d603cb882bcb4e355757c3a42510227d128ff5c5ae6d`.
+The host did not write creative Story Bible content, confirm a scope, record a
+finding or approval, start a cycle, or invoke a creation/revision entry.
+
+This verifies final-HEAD generic project installation, Kimi Code project
+auto-discovery, the explicit setup entry, and minimal host-driven
+setup/read/status. It does not verify the native plugin command or a complete
+creative workflow.
+
+## Unexercised paths and quality limits
+
+- Claude Code has no executable in this environment. Claude plugin installation
+  and host invocation remain unverified.
+- Kimi native `/plugins install`, the namespaced plugin skill command, Kimi
+  Desktop entry, and plugin update behavior remain unverified. The successful
+  bare-skill project discovery result is not native-plugin evidence.
+- The one-shot `--skills-dir` fallback was not needed and was not exercised;
+  the recorded host pass is the stronger default project auto-discovery path.
+- The host smoke did not run scope confirmation, typed tracker writes, backup,
+  revision execution, evaluation, cycle completion, or any creation/revision
+  strategy. Those behaviors above are direct installed-CLI disposable-project
+  results, not host-run claims.
+- The integrated acceptance did not exercise restore, creation publication,
+  external manuscript reconciliation, remote GitHub installation, or global
+  installation. Repository contract tests cover their applicable current
+  behavior but do not make them host-run evidence.
+- No human editorial review, complete host creative run, or creative-quality
+  evaluation was performed. Scale fixtures, report fixtures, and semantic
+  attestations are not creative-quality evidence.
+
+## Cleanup and isolation
+
+After the final results above were recorded, the temporary acceptance root
+`/tmp/author-toolkit-final-host.dQL1ii` was removed, including the generic
+installation, source copy, writing project, host stream-json logs, and the
+verification script. Test-created temporary projects used registered cleanup.
+No acceptance fixtures were added to the release tree.
+
+The main and integration worktrees were not modified. The Kimi run reused the
+existing login and therefore wrote ordinary session/log data under the default
+Kimi Code home; no credentials or host configuration were copied, edited, or
+deleted, and no global Git configuration was changed. No parent or legacy issue
+was closed or retriaged, and no pull request or push was created.

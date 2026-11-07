@@ -13,8 +13,10 @@ import {
   createFirstPublicationArtifacts,
   createNoEditEvidence,
   currentScopeReference,
+  projectClock,
   runInput,
   timestamp,
+  writeBackupEvidence,
   writeJson,
 } from "./convergence-helpers.mjs";
 
@@ -60,7 +62,7 @@ async function confirmScope(projectRoot, scopeId, files, decisionId) {
       confirmed_at: timestamp,
       reading_order_confirmed: true,
     },
-    now: new Date(timestamp),
+    now: await projectClock(projectRoot),
   });
   return currentScopeReference(projectRoot);
 }
@@ -750,13 +752,18 @@ test("accepted increment review findings reenter verified execution before conve
   const originalChapter = publication.chapters[0].contents;
   const reworkedChapter = "The next ferry arrives at noon.\nMara finds the missing letter beside her ticket.";
   const backupRelative = ".author-toolkit/backups/backup-102/manuscript/chapter-002.md";
-  await mkdir(path.dirname(path.join(fixture.projectRoot, backupRelative)), { recursive: true });
-  await writeFile(path.join(fixture.projectRoot, backupRelative), originalChapter, "utf8");
   const backupManifestRelative = ".author-toolkit/backups/backup-102/manifest.json";
-  await writeJson(path.join(fixture.projectRoot, backupManifestRelative), {
-    backup_id: "backup-102",
-    approval_id: "EDIT-102",
-    scope_id: publication.targetScope.scope_id,
+  await writeBackupEvidence(fixture.projectRoot, {
+    backupId: "backup-102",
+    approvalId: "EDIT-102",
+    scope: publication.targetScope,
+    files: [{
+      path: "manuscript/chapter-002.md",
+      action: "modify",
+      input_sha256: sha256(originalChapter),
+      output_sha256: sha256(reworkedChapter),
+      contents: originalChapter,
+    }],
   });
   const reworkPlanned = await runInput(fixture.projectRoot, "transition-cycle", {
     cycle_id: cycle.cycle_id,
@@ -831,8 +838,8 @@ test("accepted increment review findings reenter verified execution before conve
     findings: [finding],
     findingStatuses: {
       [finding.id]: {
-        status: "resolved",
-        reason: "The accepted continuity fix is preserved in verified execution-102.",
+        status: "open",
+        reason: "The accepted continuity fix awaits verified execution-102.",
       },
     },
   });
@@ -844,7 +851,17 @@ test("accepted increment review findings reenter verified execution before conve
     target_scope: reworkedTarget,
   });
   assert.equal(verified.status, 0, `${verified.stdout}\n${verified.stderr}`);
-  const verifiedCycle = JSON.parse(verified.stdout).cycle;
+  const verifiedResult = JSON.parse(verified.stdout);
+  const decided = await runInput(fixture.projectRoot, "record-finding-decision", {
+    finding_id: finding.id,
+    status: "resolved",
+    report: `reports/diagnostics/${finalEvidence.pass.pass_id}-local.md`,
+    reason: "The accepted continuity fix is preserved in verified execution-102.",
+    author_decision_id: "RESOLVE-102",
+    revision_execution: verifiedResult.execution_reference,
+  });
+  assert.equal(decided.status, 0, `${decided.stdout}\n${decided.stderr}`);
+  const verifiedCycle = verifiedResult.cycle;
   assert.equal(verifiedCycle.starting_scope.scope_fingerprint, fixture.startingScope.scope_fingerprint);
   assert.deepEqual(verifiedCycle.change_set.created, [{
     path: "manuscript/chapter-002.md",

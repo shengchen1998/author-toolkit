@@ -10,6 +10,7 @@ import {
   createConvergenceProject,
   createNoEditEvidence,
   currentScopeReference,
+  projectClock,
   runAuthorProject,
   runInput,
   runValidator,
@@ -46,7 +47,7 @@ async function establishSatisfiedProject(t, manuscripts = [{
       confirmed_at: timestamp,
       reading_order_confirmed: true,
     },
-    now: new Date(timestamp),
+    now: await projectClock(projectRoot),
   });
   const evidence = await createNoEditEvidence(projectRoot);
   const evaluated = await runInput(projectRoot, "evaluate-draft", {
@@ -202,7 +203,7 @@ async function confirmImportedScope(projectRoot, decisionId, scopeId = "scope-00
       confirmed_at: timestamp,
       reading_order_confirmed: true,
     },
-    now: new Date(timestamp),
+    now: await projectClock(projectRoot),
   });
   return currentScopeReference(projectRoot);
 }
@@ -411,7 +412,7 @@ async function confirmImportedFiles(projectRoot, decisionId, files, scopeId) {
       confirmed_at: timestamp,
       reading_order_confirmed: true,
     },
-    now: new Date(timestamp),
+    now: await projectClock(projectRoot),
   });
   return currentScopeReference(projectRoot);
 }
@@ -943,7 +944,10 @@ test("reconciliation and story-state hashes join the evaluation evidence graph",
     path.join(projectRoot, reconciliationReference.path),
   ]);
   assert.equal(artifactValidation.status, 0, `${artifactValidation.stdout}\n${artifactValidation.stderr}`);
-  assert.match(artifactValidation.stdout, /1 checks, 0 failures/);
+  const response = JSON.parse(artifactValidation.stdout);
+  assert.equal(response.valid, true);
+  assert.equal(response.result.checks, 1);
+  assert.deepEqual(response.errors, []);
 
   await writeFile(
     path.join(projectRoot, storyState[0].path),
@@ -1355,7 +1359,7 @@ test("reconciliation rejects unsafe artifact paths before reading them", async (
     story_state: [{ path: "../outside.md", sha256: "0".repeat(64) }],
   });
   assert.equal(reconciled.status, 2);
-  assert.match(reconciled.stderr, /safe project-relative artifact paths/);
+  assert.match(reconciled.response.errors[0].message, /safe project-relative artifact paths/);
   await assert.rejects(
     readFile(path.join(
       projectRoot,

@@ -52,6 +52,21 @@ test("setup carries a byte-identical copy of every shared reference", async () =
   }
 });
 
+test("setup carries byte-identical initialization templates", async () => {
+  for (const file of [
+    "project-template.json",
+    "audit-tracker-template.md",
+    "story-bible-template.md",
+    "backup-index-template.json",
+  ]) {
+    const [canonical, deployed] = await Promise.all([
+      readFile(path.join(root, "skills", "author-project", "assets", file), "utf8"),
+      readFile(path.join(root, "skills", "setup-author-toolkit", "assets", file), "utf8"),
+    ]);
+    assert.equal(deployed, canonical, `${file} matches the author-project template`);
+  }
+});
+
 test("standalone skills carry byte-identical copies of their local contracts", async () => {
   for (const skill of independentSkills) {
     const [canonical, deployed] = await Promise.all([
@@ -114,7 +129,7 @@ test("setup deploys references without silently overwriting project state", asyn
   assert.match(instructions, /`<project-root>\/\.author-toolkit\/references\/terminology\.md`/);
 });
 
-test("existing v3 projects route missing or changed shared references through setup", async () => {
+test("current 4.0.0 projects route missing or changed shared references through setup", async () => {
   const callers = [
     "ask-author",
     "author-handoff",
@@ -132,7 +147,7 @@ test("existing v3 projects route missing or changed shared references through se
 
   assert.match(operations, /Before a shared workflow `read`, `validate`, or `status`/);
   assert.match(operations, /compare every packaged file/);
-  assert.match(operations, /valid v3 manifest alone does not prove/);
+  assert.match(operations, /valid 4.0.0 manifest alone does not prove/);
   assert.match(operations, /missing project-relative paths/);
   assert.match(operations, /reference-version-conflict/);
   assert.match(operations, /Do not continue shared work or write project state/);

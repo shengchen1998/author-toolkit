@@ -21,6 +21,7 @@ import {
   validateReviewJob,
 } from "./review.mjs";
 import {
+  validateCoverageUnitSchema,
   validateManuscriptReconciliationSchema,
   validateReaderStateSchema,
   validateReviewGroupSchema,
@@ -52,7 +53,7 @@ import {
   validateSemanticAttestation,
 } from "./evaluation-contracts.mjs";
 
-function newComputation(project, cycle, roots, evaluationId, createdAt) {
+function newComputation(project, cycle, roots, evaluationId, createdAt, options = {}) {
   const artifacts = new Map();
   const blockers = [];
   const blockerKeys = new Set();
@@ -144,7 +145,7 @@ function newComputation(project, cycle, roots, evaluationId, createdAt) {
       return null;
     }
     if (validate) {
-      const validation = validate(value);
+      const validation = validate(value, options);
       if (!validation.valid) {
         block(
           "artifact-contract-invalid",
@@ -158,7 +159,7 @@ function newComputation(project, cycle, roots, evaluationId, createdAt) {
     return value;
   }
 
-  return { project, cycle, roots, evaluationId, createdAt, artifacts, blockers, block, record, bytes, json };
+  return { project, cycle, roots, evaluationId, createdAt, options, artifacts, blockers, block, record, bytes, json };
 }
 
 function targetFiles(scope, paths = null) {
@@ -185,7 +186,7 @@ async function loadReport(computation, reference, { currentPass = true, inputFil
   const contents = await computation.bytes(reference, "report", referenceId ?? reference.path);
   if (!contents) return null;
   const markdown = contents.toString("utf8");
-  const validation = validateEvidenceReport(markdown);
+  const validation = validateEvidenceReport(markdown, computation.options);
   if (!validation.valid || !validation.envelope) {
     block(
       "report-contract-invalid",
@@ -263,8 +264,17 @@ async function loadReport(computation, reference, { currentPass = true, inputFil
   return { report, reference: { ...reference, report_id: report.report_id }, markdown };
 }
 
-export async function computeEvaluation(project, cycle, roots, evaluationId, createdAt) {
-  const computation = newComputation(project, cycle, roots, evaluationId, createdAt);
+async function loadDependencySource(computation, reference) {
+  if (!reference?.report_id || !reference?.path || !reference?.sha256) return null;
+  const contents = await computation.bytes(reference, "dependency-source", reference.report_id);
+  if (!contents) return null;
+  const validation = validateEvidenceReport(contents.toString("utf8"), computation.options);
+  if (!validation.valid || validation.envelope?.report_id !== reference.report_id) return null;
+  return validation.envelope;
+}
+
+export async function computeEvaluation(project, cycle, roots, evaluationId, createdAt, options = {}) {
+  const computation = newComputation(project, cycle, roots, evaluationId, createdAt, options);
   const { block, record } = computation;
   const relatedArtifacts = cycle?.related_artifacts ?? {
     revision_executions: roots.revision_executions ?? [],
@@ -297,7 +307,7 @@ export async function computeEvaluation(project, cycle, roots, evaluationId, cre
       `The previous manuscript inventory cannot be compared with current disk state: ${error.message}`,
     );
   }
-  const fullScope = await validateFullManuscriptScope(project.manifest, project.manifestPath);
+  const fullScope = await validateFullManuscriptScope(project.manifest, project.manifestPath, options);
   const inventory = await collectManuscriptInventory(
     project.root,
     project.manifest.manuscript_root,
@@ -459,7 +469,7 @@ export async function computeEvaluation(project, cycle, roots, evaluationId, cre
       for (const storyReference of reconciliation.story_state) {
         const contents = await computation.bytes(storyReference, "story-state", storyReference.path);
         if (!contents) continue;
-        const storyValidation = validateStoryStateMarkdown(contents.toString("utf8"));
+        const storyValidation = validateStoryStateMarkdown(contents.toString("utf8"), options);
         if (!storyValidation.valid) {
           block(
             "story-state-contract-invalid",
@@ -652,7 +662,7 @@ export async function computeEvaluation(project, cycle, roots, evaluationId, cre
     for (const dependency of pass.dependencies) {
       await computation.bytes(dependency, "dependency", dependency.path);
     }
-    const baseline = await latestSatisfiedPass(project, roots.cycle_id, evaluationId);
+    const baseline = await latestSatisfiedPass(project, roots.cycle_id, evaluationId, options);
     if (baseline && !pass.baseline_pass) {
       block(
         "requested-pass-baseline-missing",
@@ -727,7 +737,7 @@ export async function computeEvaluation(project, cycle, roots, evaluationId, cre
   const trackerText = await computation.bytes(trackerReference, "tracker", "audit-tracker");
   let tracker = { findings: [], approvals: [], completion_decisions: [], valid: false, errors: [] };
   if (trackerText) {
-    tracker = await parseTrackerState(trackerText.toString("utf8"), project.root);
+    tracker = await parseTrackerState(trackerText.toString("utf8"), project.root, options);
     if (!tracker.valid) {
       block("tracker-invalid", `Tracker is invalid: ${formatErrors(tracker.errors)}`);
     }
@@ -831,6 +841,7 @@ export async function computeEvaluation(project, cycle, roots, evaluationId, cre
     validateCoverageIndex,
   );
   const coverageClaimPaths = new Set([roots.coverage_index.path, ...wholeBookReportPaths]);
+  const dependencyExceptions = [];
   if (coverageIndex && pass && scope) {
     if (
       coverageIndex.scope_id !== roots.target_scope.scope_id ||
@@ -897,12 +908,19 @@ export async function computeEvaluation(project, cycle, roots, evaluationId, cre
           block("coverage-source-hash-missing", `Coverage unit ${unit.unit_id} has no source report hash.`);
           continue;
         }
-        const reuse = canReuseCoverageUnit(unit, {
+        const requestedWork = {
           source_report: unit.source_report,
           operation,
           paths: unit.paths,
           subchecks: requirement.subchecks,
+        };
+        const reuse = canReuseCoverageUnit(unit, {
+          ...requestedWork,
           dependencies: pass.dependencies,
+        });
+        const exceptionCandidate = unit.dependency_exception && canReuseCoverageUnit(unit, {
+          ...requestedWork,
+          dependencies: unit.dependencies,
         });
         const requiredByPath = new Map(requiredFiles.map((file) => [file.path, file.sha256]));
         const pathsMatch = unit.paths.every((file, index) =>
@@ -910,13 +928,16 @@ export async function computeEvaluation(project, cycle, roots, evaluationId, cre
           requirement.paths.indexOf(file.path) >= 0 &&
           (index === 0 || requirement.paths.indexOf(unit.paths[index - 1].path) < requirement.paths.indexOf(file.path))
         );
-        if (!reuse || !pathsMatch) {
+        if ((!reuse && !exceptionCandidate) || !pathsMatch) {
           block(
             "coverage-unit-not-current",
             `Coverage unit ${unit.unit_id} does not match requested paths, subchecks, dependencies, or full local coverage.`,
             unit.coverage === "full" ? "indeterminate" : "not_satisfied",
           );
           continue;
+        }
+        if (unit.dependency_exception) {
+          dependencyExceptions.push({ unit, unitReference });
         }
         for (const file of unit.paths) covered.add(file.path);
         const sourceReference = {
@@ -985,6 +1006,7 @@ export async function computeEvaluation(project, cycle, roots, evaluationId, cre
       requireOutputs: currentExecution && execution.status === "verified",
       requireCurrentTarget: currentExecution && execution.status === "verified",
       requireCurrentDecisions: currentExecution,
+      now: options.now,
     });
     for (const error of disk.errors) {
       block(error.code, error.message, "indeterminate", {
@@ -1155,7 +1177,7 @@ export async function computeEvaluation(project, cycle, roots, evaluationId, cre
       const job = await computation.json(jobInput.job, "review-job", jobInput.job.job_id, validateReviewJobSchema);
       reviewClaimPaths.add(jobInput.job.path);
       if (!job) continue;
-      const jobValidation = validateReviewJob(job);
+      const jobValidation = validateReviewJob(job, options);
       if (!jobValidation.valid) {
         block(
           "review-job-invalid",
@@ -1207,7 +1229,7 @@ export async function computeEvaluation(project, cycle, roots, evaluationId, cre
       if (/\.(?:md|markdown)$/i.test(jobInput.reader_state.path)) {
         const contents = await computation.bytes(jobInput.reader_state, "reader-state", jobInput.reader_state.state_id);
         if (contents) {
-          const parsed = validateReaderStateMarkdown(contents.toString("utf8"));
+          const parsed = validateReaderStateMarkdown(contents.toString("utf8"), options);
           if (!parsed.valid || !parsed.envelope) {
             block("reader-state-invalid", `Reader state ${jobInput.reader_state.path} is invalid: ${formatErrors(parsed.errors)}`);
           } else {
@@ -1227,7 +1249,7 @@ export async function computeEvaluation(project, cycle, roots, evaluationId, cre
         if (state.state_id !== jobInput.reader_state.state_id) {
           block("reader-state-identity-mismatch", `Reader state identity differs from ${jobInput.reader_state.path}.`);
         }
-        const stateValidation = validateReaderStateForJob(state, job);
+        const stateValidation = validateReaderStateForJob(state, job, options);
         if (!stateValidation.valid) {
           block("reader-state-chain-invalid", `Reader state ${state.state_id} does not match its job: ${formatErrors(stateValidation.errors)}`);
         }
@@ -1308,6 +1330,174 @@ export async function computeEvaluation(project, cycle, roots, evaluationId, cre
     ) {
       block("semantic-attestation-identity-mismatch", `Semantic attestation ${reference.attestation_id} is not bound to this pass and target.`);
     }
+  }
+
+  for (const { unit, unitReference } of dependencyExceptions) {
+    const exception = unit.dependency_exception;
+    const exceptionBlock = (code, message) => block(code, message, "indeterminate", {
+      path: unitReference.path,
+      artifact_id: unit.unit_id,
+    });
+    const dependencyPath = exception.dependency_path;
+    const within = (root) => dependencyPath === root || dependencyPath.startsWith(`${root}/`);
+    const operationalRoots = [
+      project.manifest.manuscript_root,
+      project.manifest.paths.backups,
+      project.manifest.paths.handoffs,
+      project.manifest.paths.creation,
+      project.manifest.paths.convergence,
+    ];
+    const otherEvidenceRoles = [...computation.artifacts.values()].filter((artifact) =>
+      artifact.path === dependencyPath && !["dependency", "dependency-source", "attested-artifact"].includes(artifact.role)
+    );
+    const ineligibleReport = within(project.manifest.paths.reports) &&
+      !within(`${project.manifest.paths.reports}/${exception.operation}`);
+    if (
+      dependencyPath === project.manifest.paths.story_bible ||
+      dependencyPath === project.manifest.paths.audit_tracker ||
+      operationalRoots.some(within) || otherEvidenceRoles.length > 0 || ineligibleReport
+    ) {
+      exceptionBlock(
+        "dependency-exception-ineligible",
+        `Dependency exception ${unit.unit_id} cannot apply to ${dependencyPath}; only a draft-baseline or revision-plan dependency is eligible.`,
+      );
+    }
+    if (
+      unit.unit_id !== unitReference.unit_id ||
+      exception.unit_id !== unit.unit_id ||
+      !samePassReference(exception.requested_pass, roots.requested_pass)
+    ) {
+      exceptionBlock(
+        "dependency-exception-identity-mismatch",
+        `Dependency exception ${unit.unit_id} is not bound to this unit version and requested pass.`,
+      );
+    }
+    const oldDependency = unit.dependencies.find(
+      (dependency) => dependency.path === exception.dependency_path,
+    );
+    const newDependency = pass.dependencies.find(
+      (dependency) => dependency.path === exception.dependency_path,
+    );
+    const unitDependencyPaths = unit.dependencies.map((dependency) => dependency.path).sort();
+    const passDependencyPaths = pass.dependencies.map((dependency) => dependency.path).sort();
+    const changedDependencies = unitDependencyPaths.filter((dependencyPath, index) =>
+      dependencyPath === passDependencyPaths[index] &&
+      unit.dependencies.find((dependency) => dependency.path === dependencyPath)?.sha256 !==
+        pass.dependencies.find((dependency) => dependency.path === dependencyPath)?.sha256
+    );
+    if (
+      !oldDependency || !newDependency ||
+      oldDependency.sha256 !== exception.old_sha256 ||
+      newDependency.sha256 !== exception.new_sha256 ||
+      exception.old_sha256 === exception.new_sha256 ||
+      JSON.stringify(unitDependencyPaths) !== JSON.stringify(passDependencyPaths) ||
+      changedDependencies.length !== 1
+    ) {
+      exceptionBlock(
+        "dependency-exception-hash-mismatch",
+        `Dependency exception ${unit.unit_id} must bind exactly one old and new dependency hash.`,
+      );
+    }
+    const sourceReport = newDependency?.role === exception.operation
+      ? await loadDependencySource(computation, newDependency.source)
+      : null;
+    const sourceIsDependency = sameReference(newDependency?.source, newDependency);
+    const sourceBindsDependency = sourceIsDependency || sourceReport?.inputs.some((input) =>
+      input.path === dependencyPath && input.version === newDependency?.sha256 && input.version_type === "sha256"
+    );
+    if (
+      !sourceReport ||
+      sourceReport.stage !== exception.operation ||
+      !sourceBindsDependency
+    ) {
+      exceptionBlock(
+        "dependency-exception-ineligible",
+        `Dependency exception ${unit.unit_id} requires a verifiable ${exception.operation} report source for ${dependencyPath}.`,
+      );
+      continue;
+    }
+
+    const matchingAttestations = attestationRecords.filter(({ attestation, reference }) =>
+      attestation.attestation_id === exception.semantic_attestation.attestation_id &&
+      reference.attestation_id === exception.semantic_attestation.attestation_id &&
+      sameReference(reference, exception.semantic_attestation)
+    );
+    if (matchingAttestations.length !== 1) {
+      exceptionBlock(
+        "dependency-exception-attestation-missing",
+        `Dependency exception ${unit.unit_id} has no exact semantic-attestation input.`,
+      );
+      continue;
+    }
+    const [{ attestation }] = matchingAttestations;
+    const claims = attestation.claims.filter((claim) =>
+      claim.claim_type === "dependency-copyedit" && claim.subject === unit.unit_id
+    );
+    if (
+      attestation.attester.role !== "host" || claims.length !== 1 ||
+      claims[0].verdict !== "confirmed"
+    ) {
+      exceptionBlock(
+        "dependency-exception-attestation-mismatch",
+        `Dependency exception ${unit.unit_id} requires one confirmed host dependency-copyedit claim.`,
+      );
+      continue;
+    }
+    const claimArtifacts = claims[0].artifacts;
+    const passArtifacts = claimArtifacts.filter((artifact) => sameReference(artifact, roots.requested_pass));
+    const dependencyArtifacts = claimArtifacts.filter((artifact) => sameReference(artifact, newDependency));
+    const sourceReferences = claimArtifacts.filter((artifact) =>
+      !sameReference(artifact, roots.requested_pass) && !sameReference(artifact, newDependency)
+    );
+    if (
+      claimArtifacts.length !== 3 ||
+      passArtifacts.length !== 1 ||
+      dependencyArtifacts.length !== 1 ||
+      sourceReferences.length !== 1
+    ) {
+      exceptionBlock(
+        "dependency-exception-attestation-mismatch",
+        `Dependency exception ${unit.unit_id} must attest one source unit, the requested pass, and the current dependency.`,
+      );
+      continue;
+    }
+    const sourceUnit = await computation.json(
+      sourceReferences[0],
+      "dependency-exception-source-unit",
+      unit.unit_id,
+      validateCoverageUnitSchema,
+    );
+    if (!sourceUnit) continue;
+    if (sourceUnit.dependency_exception !== null) {
+      exceptionBlock(
+        "dependency-exception-chain",
+        `Dependency exception ${unit.unit_id} cannot use another exception-bearing unit as its source.`,
+      );
+    }
+    const sourceDependency = sourceUnit.dependencies?.find(
+      (dependency) => dependency.path === exception.dependency_path,
+    );
+    if (
+      sourceUnit.unit_id !== unit.unit_id ||
+      sourceUnit.source_report !== unit.source_report ||
+      sourceUnit.source_report_sha256 !== unit.source_report_sha256 ||
+      sourceUnit.scope_id !== unit.scope_id ||
+      sourceUnit.operation !== unit.operation ||
+      sourceUnit.kind !== unit.kind ||
+      sourceUnit.coverage !== unit.coverage ||
+      !sameVersionedFiles(sourceUnit.paths, unit.paths) ||
+      !sameVersionedFiles(sourceUnit.dependencies, unit.dependencies, false) ||
+      JSON.stringify([...sourceUnit.subchecks].sort()) !== JSON.stringify([...unit.subchecks].sort()) ||
+      sourceDependency?.sha256 !== exception.old_sha256
+    ) {
+      exceptionBlock(
+        "dependency-exception-source-mismatch",
+        `Dependency exception ${unit.unit_id} does not preserve its source unit evidence and old dependency hash.`,
+      );
+    }
+  }
+
+  for (const { attestation } of attestationRecords) {
     for (const claim of attestation.claims) {
       for (const artifact of claim.artifacts) {
         const current = await computation.bytes(artifact, "attested-artifact", artifact.path);
@@ -1423,7 +1613,7 @@ export async function computeEvaluation(project, cycle, roots, evaluationId, cre
     },
     created_at: createdAt,
   };
-  const validation = validateConvergenceEvaluation(evaluation);
+  const validation = validateConvergenceEvaluation(evaluation, options);
   if (!validation.valid) throw new Error(`Generated evaluation is invalid: ${formatErrors(validation.errors)}`);
   return evaluation;
 }

@@ -175,7 +175,7 @@ test("a public transition resumes the same cycle with versioned refs and preserv
     initiating_strategy: "write-fiction",
     bootstrap: true,
     starting_scope: null,
-  });
+  }, { now: new Date(timestamp) });
   const manuscript = "First chapter\n";
   await writeFile(path.join(projectRoot, "manuscript", "chapter-001.md"), manuscript, "utf8");
   const manuscriptHash = createHash("sha256").update(manuscript).digest("hex");
@@ -510,13 +510,16 @@ test("executable project operations and validator queries share the public cycle
 
   const artifact = runValidator(["--convergence-cycle", activePath]);
   assert.equal(artifact.status, 0, artifact.stderr);
-  assert.match(artifact.stdout, /1 checks, 0 failures/);
+  const response = JSON.parse(artifact.stdout);
+  assert.equal(response.valid, true);
+  assert.equal(response.result.checks, 1);
+  assert.deepEqual(response.errors, []);
   const query = runValidator(["--convergence-status", manifestPath]);
   assert.equal(query.status, 0, query.stderr);
-  assert.equal(JSON.parse(query.stdout).outcome, "indeterminate");
+  assert.equal(JSON.parse(query.stdout).result.outcome, "indeterminate");
   const validatorGate = runValidator(["--convergence-gate", manifestPath]);
   assert.equal(validatorGate.status, 1);
-  assert.equal(JSON.parse(validatorGate.stdout).outcome, "indeterminate");
+  assert.equal(JSON.parse(validatorGate.stdout).result.outcome, "indeterminate");
 
   const invalid = JSON.parse(await readFile(activePath, "utf8"));
   invalid.unexpected = true;

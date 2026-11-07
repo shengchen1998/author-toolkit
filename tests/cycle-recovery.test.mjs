@@ -6,15 +6,15 @@ import path from "node:path";
 import test from "node:test";
 
 import {
-  completeCycle,
-  evaluateCycle,
-  evaluateDraft,
-  prepareRevisionExecution,
-  reconcileManuscript,
-  recordScope,
-  startCycle,
-  transitionCycle,
-  verifyRevisionExecution,
+  completeCycle as completeCycleOperation,
+  evaluateCycle as evaluateCycleOperation,
+  evaluateDraft as evaluateDraftOperation,
+  prepareRevisionExecution as prepareRevisionExecutionOperation,
+  reconcileManuscript as reconcileManuscriptOperation,
+  recordScope as recordScopeOperation,
+  startCycle as startCycleOperation,
+  transitionCycle as transitionCycleOperation,
+  verifyRevisionExecution as verifyRevisionExecutionOperation,
 } from "../scripts/lib/index.mjs";
 import {
   appendRevisionExecutionApprovals,
@@ -24,10 +24,52 @@ import {
   createFirstPublicationArtifacts,
   createNoEditEvidence,
   currentScopeReference,
+  projectClock,
   runAuthorProject,
   timestamp,
+  writeBackupEvidence,
   writeJson,
 } from "./convergence-helpers.mjs";
+
+async function operationOptions(projectRoot, options = {}) {
+  return { ...options, now: await projectClock(projectRoot) };
+}
+
+async function completeCycle(projectRoot, request, options) {
+  return completeCycleOperation(projectRoot, request, await operationOptions(projectRoot, options));
+}
+
+async function evaluateCycle(projectRoot, request, options) {
+  return evaluateCycleOperation(projectRoot, request, await operationOptions(projectRoot, options));
+}
+
+async function evaluateDraft(projectRoot, request, options) {
+  return evaluateDraftOperation(projectRoot, request, await operationOptions(projectRoot, options));
+}
+
+async function prepareRevisionExecution(projectRoot, request, options) {
+  return prepareRevisionExecutionOperation(projectRoot, request, await operationOptions(projectRoot, options));
+}
+
+async function reconcileManuscript(projectRoot, request, options) {
+  return reconcileManuscriptOperation(projectRoot, request, await operationOptions(projectRoot, options));
+}
+
+async function recordScope(projectRoot, request, options) {
+  return recordScopeOperation(projectRoot, request, await operationOptions(projectRoot, options));
+}
+
+async function startCycle(projectRoot, request, options) {
+  return startCycleOperation(projectRoot, request, await operationOptions(projectRoot, options));
+}
+
+async function transitionCycle(projectRoot, request, options) {
+  return transitionCycleOperation(projectRoot, request, await operationOptions(projectRoot, options));
+}
+
+async function verifyRevisionExecution(projectRoot, request, options) {
+  return verifyRevisionExecutionOperation(projectRoot, request, await operationOptions(projectRoot, options));
+}
 
 async function exitedProcess() {
   const child = spawn(process.execPath, ["-e", ""]);
@@ -539,13 +581,18 @@ async function establishChapterRevision(t, { strategy = null } = {}) {
     action: "Change dawn to dusk.",
   });
   const backupRelative = ".author-toolkit/backups/backup-001/manuscript/chapter-001.md";
-  await mkdir(path.dirname(path.join(fixture.projectRoot, backupRelative)), { recursive: true });
-  await writeFile(path.join(fixture.projectRoot, backupRelative), original, "utf8");
   const backupManifestRelative = ".author-toolkit/backups/backup-001/manifest.json";
-  await writeJson(path.join(fixture.projectRoot, backupManifestRelative), {
-    backup_id: "backup-001",
-    approval_id: "EDIT-001",
-    scope_id: scope.scope_id,
+  await writeBackupEvidence(fixture.projectRoot, {
+    backupId: "backup-001",
+    approvalId: "EDIT-001",
+    scope,
+    files: [{
+      path: "manuscript/chapter-001.md",
+      action: "modify",
+      input_sha256: createHash("sha256").update(original).digest("hex"),
+      output_sha256: createHash("sha256").update(output).digest("hex"),
+      contents: original,
+    }],
   });
   const execution = {
     cycle_id: cycleId,

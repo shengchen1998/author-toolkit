@@ -2,27 +2,40 @@
 
 Use the controlled workflow terminology in `<project-root>/.author-toolkit/references/terminology.md` for shared names, contract values, and their boundaries.
 
+## Directory
+
+| Need | Quick route |
+| --- | --- |
+| Report format and immutability | [Report envelope](#report-envelope) |
+| Finding identity and statuses | [Finding identity across reruns](#finding-identity-across-reruns); [Living tracker](#living-tracker) |
+| Author decisions and approvals | [Author decision loop](#author-decision-loop); [Author approvals](#author-approvals) |
+| Scope currency and stale evidence | [Scope and input currency](#scope-and-input-currency); [Stale propagation](#stale-propagation) |
+| Evidence reuse and coverage | [Evidence reuse across skills](#evidence-reuse-across-skills); [Coverage units and synthesis](#coverage-units-and-synthesis) |
+| Exact dependency matching and dependency exception eligibility, attestation, and publication | [Dependency exceptions](#dependency-exceptions) |
+| Current-draft revision convergence | [Definition, evaluation, and completion](#current-draft-revision-convergence) |
+| Pending and standalone work | [Pending actions and session writes](#pending-actions-and-session-writes); [Standalone work](#standalone-work) |
+
 ## Report envelope
 
-Use `<project-root>/.author-toolkit/references/report-schema-v2.json` as the authoritative envelope contract and resolve its reference to `finding-schema-v2.json`. Read both schemas before writing. Do not infer v2 from the legacy `finding-schema.json`.
+Use `<project-root>/.author-toolkit/references/report-schema-v2.json` as the authoritative envelope contract and resolve its reference to `finding-schema-v2.json`. Read both schemas before writing. Standalone skills use their skill-local finding v1 `finding-schema.json`; do not substitute it for shared finding v2.
 
-Write each report beneath the registered shared `reports/` path using an operation directory and a unique UTC-stamped filename. Include human-readable context, a `Language coverage` heading, and exactly one fenced `json` block containing one report v2 object.
+Write each report beneath the registered shared `reports/` path using an operation directory and a unique UTC-stamped filename. Before assigning the report ID, filename, and `created_at`, run `node <setup-skill>/assets/runtime/author-project.mjs timestamp` once as documented in [Timestamp](../../author-project/references/operations.md#timestamp). Use `result.filename` for the ID and filename and `result.json` for `created_at`, so all three describe one UTC instant and the ID satisfies the report v2 pattern. Include human-readable context, a `Language coverage` heading, and exactly one fenced `json` block containing one report v2 object.
 
 Populate the actual v2 fields:
 
 - `skill.name` and `skill.version` identify the executing skill; use its declared version or `unversioned`.
 - `stage` identifies the operation, not the orchestration skill that invoked it. Valid project operations are `intake`, `story-bible`, `draft-baseline`, `structure`, `characters`, `diagnostics`, `revision-plan`, `chapter-revision`, `prose`, `ai-cleanup`, `current-scope-review`, and `final-review`.
 - `language` is the BCP 47 tag of the evaluated text. Split reports when one tag cannot describe mixed coverage truthfully.
-- `inputs` lists every manuscript, baseline, plan, or prior-report input with its available content hash or other truthful version. Current v3 manuscript scopes require SHA-256 hashes.
+- `inputs` lists every manuscript, baseline, plan, or prior-report input with its available content hash or other truthful version. Current 4.0.0 manuscript scopes require SHA-256 hashes.
 - `engine.name` is exactly `conversational` or `scriptorium`. Record the actual version or `unknown`, a truthful `degraded` boolean, and detailed notes containing the execution path, fallback, context profile, mode, and degradation.
 - `engine.notes` also contains `scope_id=<id>` and `operation_coverage=full|partial|skipped`. For `characters`, `diagnostics`, and `current-scope-review`, add `subchecks=` followed by the actual checks covered. Operation coverage is distinct from language coverage.
-- On v3.2, reports used for convergence evaluation also set top-level `scope_id`, `scope_fingerprint`, and `requested_pass` with the pass ID, fingerprint, path, and SHA-256. These additive optional fields keep legacy reports schema-valid; the evaluator requires them for current full-target and review reports and preserves an earlier pass on reusable local source reports.
+- Every current report sets top-level `scope_id`, `scope_fingerprint`, and `requested_pass` with the pass ID, fingerprint, path, and SHA-256. These fields are required by the current report v2 contract. Reusable local source reports retain their original pass identity; the evaluator checks current full-target and review identities without rewriting historical reports.
 - Under `Language coverage`, mark each requested rule or category `full`, `partial`, or `skipped` with a reason. Repeat the concise language summary in `engine.notes`.
 - Every finding has an uppercase audit-specific ID prefix and at least three digits, a nonempty `recommendation`, and the narrowest truthful `location.scope`. Do not invent a line or quotation for a broad issue.
 
 Use `confidence: "judgment"` for editorial interpretation and `deterministic` only for direct code-detected evidence. Finding status is tracker state and is not a finding v2 property.
 
-Run `node <toolkit-root>/scripts/validate.mjs --report <report-path>` when available and retain the result in the session note. Use `validateEvidenceReport` for v3 evidence-semantic checks. If the payload does not conform, record the operation as `blocked`; never emit a legacy payload as a substitute.
+Resolve `<setup-skill>` as the installed `setup-author-toolkit` skill directory, run `node <setup-skill>/assets/runtime/validate.mjs --report <report-path>`, and retain the result in the session note. Use `validateEvidenceReport` for current evidence-semantic checks. If the payload does not conform, record the operation as `blocked`; never emit an invalid payload as a substitute.
 
 Historical reports are immutable. Author decisions, stale marks, later locations, and rerun results go into the living tracker and new reports.
 
@@ -46,6 +59,8 @@ Use only these finding statuses:
 
 For each status change, update the tracker row with UTC time, current report path, and reason. Keep historical report paths in the audit-run table. Unknown future plot, an unwritten ending, and other open creative choices belong in baseline open questions; they become findings only when they cause a concrete problem in existing text.
 
+Use the public `record-finding` and `record-finding-decision` commands in `author-project` for these living rows instead of editing them by hand. The commands supply the shared UTC time. Finding creation requires an exact finding v2 object in its current operation report and writes `open`. A later decision writes matching `author_decision_id=` and `finding_status=` tokens. Resolved requires a current verified `execute` execution. Deferred and dismissed require their current execution disposition or authorized no-edit skip, including the approved author decision and consequence or reason. Stale requires an equivalent complete rerun, current report inputs, and an explicit approved finding decision. These commands use the shared cycle lock and verified tracker writes; external edits receive diagnostics without automatic repair. See [Typed tracker writes](../../author-project/references/operations.md#typed-tracker-writes) for the closed inputs and evidence bindings.
+
 ## Author decision loop
 
 Use this loop at every author gate, including scope, baseline, creative choices, finding dispositions, plan approvals, manuscript edits, restores, and overrides.
@@ -62,13 +77,13 @@ The author may select a different active item, explicitly request batch handling
 
 ## Author approvals
 
-Use the shared `## Approvals` table for edit, restore, baseline, scope, prose-override, and prose-risk decisions. Record `Approval ID`, `Type`, `Operation`, `Scope ID`, `Paths`, `Status`, `Reason`, and `Updated`. Approval IDs use an uppercase prefix and at least three digits. Status is `approved`, `deferred`, `cancelled`, or `superseded`.
+Use the shared `## Approvals` table for edit, restore, baseline, scope, prose-override, and prose-risk decisions. Record them through the public `record-approval` command with `Approval ID`, `Type`, `Operation`, `Scope ID`, complete ordered `Paths` and file actions and versions, `Status`, `Reason`, and `Updated`. Approval IDs use an uppercase prefix and at least three digits. Status is `approved`, `deferred`, `cancelled`, or `superseded`. The command adds the `approval_files=` binding and, for revision plan and edit decisions, the exact revision approval tokens.
 
-An approval applies only to its named operation, paths, scope, and input versions. A revision plan decision and each edit approval also bind the exact plan and batch IDs and hashes, input scope fingerprint, complete ordered batch paths, actions, input hashes, and approved output hashes through the [revision approval tokens](../../author-project/references/operations.md#revision-execution-and-request-completion). Reusing a scope ID never makes an older revision approval current for changed content. Link manuscript backup records to the approval ID. A structural or input change supersedes an affected override; record the supersession rather than deleting history. Legacy v2 overrides remain `deferred` until the author confirms them on resume.
+An approval applies only to its named operation, paths, scope, and input versions. A revision plan decision and each edit approval also bind the exact plan and batch IDs and hashes, input scope fingerprint, complete ordered batch paths, actions, input hashes, and approved output hashes through the [revision approval tokens](../../author-project/references/operations.md#revision-execution-and-request-completion). Reusing a scope ID never makes an older revision approval current for changed content. Link manuscript backup records to the approval ID through the public `record-backup` command and its validated backup index. Use `record-restore` only with a separate exact restore approval and current safety backup. A structural or input change supersedes an affected override; record the supersession rather than deleting history.
 
 ## Scope and input currency
 
-A scope records its ID, description, `proposed` or `confirmed` status, ordered file paths and SHA-256 hashes, exclusions, and creation time. Reports, findings, plan batches, approvals, and reviews reference the applicable `scope_id`. On v3.2, the current scope also records its scope fingerprint and confirmed snapshot identity; preserve the linked scope snapshot and inventory snapshot as historical evidence.
+A scope records its ID, description, `proposed` or `confirmed` status, ordered file paths and SHA-256 hashes, exclusions, and creation time. Reports, findings, plan batches, approvals, and reviews reference the applicable `scope_id`. In 4.0.0, the current scope also records its scope fingerprint and confirmed snapshot identity; preserve the linked scope snapshot and inventory snapshot as historical evidence.
 
 Only the author can confirm a new scope or expand an existing one. New chapters do not silently extend old reports. Reuse unchanged evidence by its actual operation and input versions, and create new coverage for added or affected text. Before every manuscript write, recompute the hashes; if they differ, stop and reconcile the scope and stale evidence instead of overwriting newer work.
 
@@ -79,7 +94,7 @@ Apply stale state to the smallest affected dependency set. Keep old reports read
 | Change | Evidence to mark stale |
 |---|---|
 | Sentence wording, punctuation, or formatting with no fact or structural change | Prose and AI-cleanup results for the affected text, plus reviews covering that text |
-| Copy edits to a baseline or plan with no meaning change | Reviews that used the edited artifact; earlier craft audits remain current |
+| Copy edits to a baseline or plan with no meaning change | Reviews that used the edited artifact; earlier craft audits remain reusable only through an exact dependency exception |
 | Plot event, beat order, chapter order, ending, POV strategy, or other structural fact | Structure and diagnostics, revision plan, affected chapter revision and downstream prose/AI results, reviews, and affected character evidence |
 | Character want, need, wound, lie, arc, relationship, voice rule, knowledge state, timeline fact, or world rule | Characters, revision plan, affected chapter revision and downstream prose/AI results, reviews, and structural evidence when a beat changes |
 | Manuscript files added, removed, replaced, or reordered | Intake and every audit whose scope or reading order changed, plus affected reviews |
@@ -100,7 +115,17 @@ Record each stale reason with the changed path and decision or edit batch. Old e
 
 ## Coverage units and synthesis
 
-Store reusable coverage units and the living coverage index beneath the registered `paths.reports` directory, using the installed artifact contracts. A coverage unit records its source report, operation, original scope, exact paths and hashes, subchecks, dependencies, and actual coverage. Evaluation evidence also requires `source_report_sha256`, hashed unit references in the index, `synthesis_report_sha256`, and the index's `scope_fingerprint` and `requested_pass` reference; these fields are optional for legacy schema-only validation. Reuse only a full local coverage unit whose source-report identity, operation, paths and hashes, requested subchecks, and dependencies all match. Its original scope remains unchanged for provenance; a composed coverage index and new synthesis use the target scope. Partial, skipped, or stale coverage units and synthesis units are not reusable.
+Store reusable coverage units and the living coverage index beneath the registered `paths.reports` directory, using the installed artifact contracts. A coverage unit records its source report, operation, original scope, exact paths and hashes, subchecks, dependencies, actual coverage, and `dependency_exception`, which is explicitly `null` or one complete closed object. Current contracts require `source_report_sha256`, hashed unit references in the index, and the index's `scope_fingerprint` and `requested_pass` reference. A non-null synthesis report also requires `synthesis_report_sha256`; a null synthesis report remains valid without that hash. Ordinary reuse requires a full local coverage unit whose source-report identity, operation, paths and hashes, requested subchecks, and dependencies all match with `dependency_exception: null`. Its original scope remains unchanged for provenance; a composed coverage index and new synthesis use the target scope. Partial, skipped, or stale coverage units and synthesis units are not reusable.
+
+### Dependency exceptions
+
+A dependency exception applies only when copy editing changes one `draft-baseline` or `revision-plan` dependency's SHA-256 without changing its meaning. Manuscript, Story Bible, scope, inventory, approval, review, execution, tracker, and other evidence identities are ineligible. The manuscript root and the registered backup, handoff, creation, and convergence state root directories cannot supply an eligible dependency. A dependency beneath `paths.reports` must be beneath the operation's own directory, and a path already carrying another deterministic evidence role is ineligible.
+
+The exception binds `unit_id`, the complete `requested_pass` reference, `dependency_path`, `old_sha256`, `new_sha256`, `operation`, `reason`, and `semantic_attestation` with its ID, path, and SHA-256. The new unit preserves the source unit's ID, source report, scope, operation, kind, paths and hashes, subchecks, `coverage`, and old dependency hashes. Exactly one dependency hash differs between the new unit and requested pass: the source unit and new unit contain the old hash, while the requested pass and current dependency bytes contain the new hash. All other dependency paths and hashes match exactly.
+
+Require one confirmed host `dependency-copyedit` claim whose subject is the unit ID. Its artifacts are the source unit with `dependency_exception: null`, the current requested pass, and the current dependency. The exception's attestation reference must exactly match an evaluation attestation input, and the attestation must bind the same pass and target. An exception-bearing source, altered attestation, wrong identity or hash, changed coverage paths or subchecks, partial or synthesis coverage, and any further dependency change block reuse. Exceptions never chain or update hashes automatically. Deterministic checks verify this linkage; the host attestation supplies the editorial no-meaning-change judgment.
+
+Publish the exception as a new coverage-unit artifact at a new path, then update the living index to reference its ID, path, and SHA-256 and update the current coverage attestation. Preserve the source unit, earlier evaluations, and their evidence-graph bytes and hashes. The attestation references the source unit rather than the new unit, avoiding a self-hash cycle. Current-index evaluation checks only the selected index, its referenced current units, dependency exceptions, reports, and syntheses; unrelated historical units need not match current dependencies. Requested-pass `baseline_pass` inheritance and no-edit skips retain their separate meanings.
 
 A changed input invalidates only affected local units and their dependents; unrelated unchanged units can remain current. Reevaluate every applicable volume, phase, current-scope, or whole-book synthesis whenever its text, membership, reading order, dependencies, or child coverage changes. Record a new synthesis report for the current inputs. Never extend an old whole-book synthesis to a new scope because its local units still match.
 

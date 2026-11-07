@@ -41,25 +41,7 @@ function missingEvaluationStatus(cycle, pendingAction = null, requestCompletion 
   };
 }
 
-export async function getConvergenceStatus(projectRoot) {
-  let project;
-  let active;
-  try {
-    project = await readProject(projectRoot);
-    active = await readActiveCycle(project);
-  } catch (error) {
-    return {
-      query_valid: false,
-      outcome: "indeterminate",
-      current: false,
-      evaluation: null,
-      cycle: null,
-      pending_action: null,
-      request_completion: null,
-      required_action: null,
-      blockers: [{ code: "cycle-state-invalid", message: error.message, required_action: null }],
-    };
-  }
+async function computeConvergenceStatus(project, active, options) {
   const coordination = coordinationBlockers(project, active);
   if (coordination.length > 0) {
     return {
@@ -127,11 +109,11 @@ export async function getConvergenceStatus(projectRoot) {
   let cycle = active?.value ?? null;
   let reference = cycle?.target_evaluation ?? null;
   if (!reference && !cycle) {
-    const source = (await evaluationSources(project)).at(-1) ?? null;
+    const source = (await evaluationSources(project, options)).at(-1) ?? null;
     cycle = source?.cycle ?? null;
     reference = source?.evaluationReference ?? null;
   }
-  const requestCompletion = await getRequestCompletion(project.root, cycle);
+  const requestCompletion = await getRequestCompletion(project.root, cycle, options);
   const observedInventory = await collectManuscriptInventory(
     project.root,
     project.manifest.manuscript_root,
@@ -230,7 +212,7 @@ export async function getConvergenceStatus(projectRoot) {
   }
 
   try {
-    const result = await recomputeStoredEvaluation(project, cycle, reference);
+    const result = await recomputeStoredEvaluation(project, cycle, reference, options);
     const requiredAction = active?.value?.recovery_position ? {
       strategy: active.value.recovery_position.required_strategy,
       operation: active.value.recovery_position.operation,
@@ -271,14 +253,43 @@ export async function getConvergenceStatus(projectRoot) {
   }
 }
 
-export async function findSatisfiedStartingEvaluation(project, scopeReference) {
-  const source = (await evaluationSources(project)).at(-1);
+export async function getConvergenceStatus(projectRoot, options = {}) {
+  let project;
+  let active;
+  try {
+    project = await readProject(projectRoot, options);
+    active = await readActiveCycle(project, options);
+    return await computeConvergenceStatus(project, active, options);
+  } catch (error) {
+    return {
+      query_valid: false,
+      outcome: "indeterminate",
+      current: false,
+      evaluation: null,
+      evaluation_reference: null,
+      cycle: active?.value ?? null,
+      pending_action: project?.manifest.pending_action ?? null,
+      request_completion: null,
+      required_action: null,
+      blockers: [{
+        code: error.projectCode ?? (project ? "artifact-validation-failed" : "cycle-state-invalid"),
+        message: error.message,
+        required_action: null,
+        ...(error.projectDetails ?? {}),
+      }],
+    };
+  }
+}
+
+export async function findSatisfiedStartingEvaluation(project, scopeReference, options = {}) {
+  const source = (await evaluationSources(project, options)).at(-1);
   if (!source) return null;
   try {
     const result = await recomputeStoredEvaluation(
       project,
       source.cycle,
       source.evaluationReference,
+      options,
     );
     if (
       sameScopeReference(result.stored.target_scope, scopeReference) &&
@@ -300,8 +311,8 @@ export async function findSatisfiedStartingEvaluation(project, scopeReference) {
 }
 
 
-export async function findHistoricalSatisfiedEvaluation(project, scopeReference, preferredReference = null) {
-  for (const source of (await evaluationSources(project)).reverse()) {
+export async function findHistoricalSatisfiedEvaluation(project, scopeReference, preferredReference = null, options = {}) {
+  for (const source of (await evaluationSources(project, options)).reverse()) {
     if (
       preferredReference &&
       (source.evaluationReference.evaluation_id !== preferredReference.evaluation_id ||
@@ -309,7 +320,7 @@ export async function findHistoricalSatisfiedEvaluation(project, scopeReference,
         source.evaluationReference.sha256 !== preferredReference.sha256)
     ) continue;
     try {
-      const { value: evaluation } = await readEvaluationReference(project, source.evaluationReference);
+      const { value: evaluation } = await readEvaluationReference(project, source.evaluationReference, options);
       if (evaluation.outcome !== "satisfied" || !sameScopeReference(evaluation.target_scope, scopeReference)) {
         continue;
       }
@@ -321,11 +332,11 @@ export async function findHistoricalSatisfiedEvaluation(project, scopeReference,
       const scopeText = await readFile(path.resolve(project.root, scopeReference.snapshot_path), "utf8");
       if (sha256Bytes(scopeText) !== scopeReference.snapshot_sha256) continue;
       const scope = JSON.parse(scopeText);
-      if (!validateScopeSnapshot(scope).valid) continue;
+      if (!validateScopeSnapshot(scope, options).valid) continue;
       const inventoryText = await readFile(path.resolve(project.root, scope.inventory.path), "utf8");
       if (sha256Bytes(inventoryText) !== scope.inventory.sha256) continue;
       const inventory = JSON.parse(inventoryText);
-      if (!validateInventorySnapshot(inventory).valid) continue;
+      if (!validateInventorySnapshot(inventory, options).valid) continue;
       const scopeFiles = scope.files.map((file) => `${file.path}\0${file.sha256}`).sort();
       const inventoryFiles = inventory.files.map((file) => `${file.path}\0${file.sha256}`).sort();
       if (JSON.stringify(scopeFiles) !== JSON.stringify(inventoryFiles)) continue;

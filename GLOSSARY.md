@@ -4,6 +4,12 @@ Author Toolkit coordinates fiction creation and revision over shared evidence fo
 
 ## Language
 
+**Project response envelope**:
+The versioned JSON response used by every public project operation, containing `response_contract_version`, `command`, `valid`, `result`, and structured `errors`. No-argument help is not an operation response.
+
+**Compact project status**:
+The default `read` and `status` view containing project and reference validation, scope identity and file count, pending action, active cycle and recovery position, evaluation outcome and blockers, decision counts, and exact next action. Full identities and evidence require an explicit full or dedicated query.
+
 **Current-draft revision convergence**:
 The derived state in which all shared evidence, decision, coverage, execution, and review conditions hold for a confirmed target scope after the latest manuscript change.
 _Avoid_: Publication, request completion, a stored convergence flag
@@ -47,6 +53,10 @@ The explicitly requested operations, paths, language, subchecks, dependencies, a
 **Requested-pass fingerprint**:
 The deterministic content identity of a requested pass, independent of its record ID, decisions, and timestamps.
 
+**Dependency exception**:
+A recorded allowance to reuse one full local coverage unit when a draft-baseline or revision-plan dependency's content hash changed through copy editing without a meaning change, bound to one requested pass, exact old and new dependency versions, and host semantic attestation. It never applies to manuscript or other evidence identity changes.
+_Avoid_: Carry-forward, baseline pass, no-edit skip
+
 **Change set**:
 The observed created, modified, deleted, reordered, evidence-affected, and dependency-affected paths between two manuscript states.
 _Avoid_: Author intent, required work
@@ -78,6 +88,18 @@ The recorded author decision that revision planning and chapter revision require
 The verified record linking revision intent and approvals to actual input and output manuscript versions. Cycle-bound records carry their cycle ID; independent revise-draft records use `cycle_id: null`.
 _Avoid_: Approval without execution
 
+**Backup manifest**:
+The immutable identity of an approved backup operation, scope, ordered actions, expected absence, and preserved original-byte versions.
+
+**Backup index**:
+The living recovery-data index whose backup manifests, original bytes, and restoration records validate together beneath registered `paths.backups`.
+
+**Safety backup**:
+The current input bytes and explicit absence preserved before any approved restoration mutates manuscript.
+
+**Restoration record**:
+The append-only identity linking a source backup or creation commit, independent restore approval, safety backup, and exact inverse actions. It does not confirm a resulting scope or current evidence.
+
 **Review group**:
 The binding of intent, standards, and fresh-reader review evidence to one requested pass and target fingerprint, including the fresh reader's continuity evidence.
 
@@ -98,14 +120,6 @@ The read-only description of evaluation outcome, currency, active lifecycle, pen
 **Convergence gate**:
 The read-only check that permits dependent work only when a current evaluation is satisfied.
 
-**Project migration**:
-The direct, preserved conversion of a v2, v3.0, or v3.1 project to v3.2, including historical evidence and pending work. Migration creates no satisfied evaluation, active cycle, or author decision.
-_Avoid_: Historical convergence inference, intermediate v3.1 migration state
-
-**Legacy recovery**:
-The explicit diagnosis and author-directed reconciliation of interrupted or awaiting work retained by project migration, without inferring cycle ownership, approval, publication, or convergence.
-_Avoid_: Pending-action approval, automatic staging publication
-
-**Legacy scope confirmation**:
-An existing approved tracker row with type `scope-confirmation`, operation `intake`, exact scope ID and ordered paths, and matching scope-fingerprint and reading-order tokens. Migration may reference it but never creates it.
-_Avoid_: Placeholder approval, inferred reading-order confirmation
+**Manuscript-only initialization**:
+The creation of a fresh 4.0.0 project from manuscript files and selected project metadata with empty operational evidence. Old manifests and shared artifacts remain in their original project and are never migrated or imported.
+_Avoid_: Project migration, old shared-state import, reference deployment before old-state rejection

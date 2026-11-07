@@ -8,7 +8,7 @@ import {
   validateFindingV2,
   validateManifest,
   validateMarkdownReport,
-  validateProjectSchema,
+  validateProjectV4Schema,
   validateReportEnvelope,
   validateSchemaDefinitions,
 } from "../scripts/lib/index.mjs";
@@ -35,8 +35,8 @@ test("all schema definitions compile as draft 2020-12", () => {
   assert.equal(validateSchemaDefinitions().valid, true);
 });
 
-test("the unchanged v1 contract still accepts a legacy finding", () => {
-  const legacy = {
+test("standalone skills retain finding v1 while shared findings use v2", () => {
+  const standalone = {
     audit: "developmental-editing",
     technique: "Scene goal-conflict-outcome",
     severity: "suggestion",
@@ -49,8 +49,8 @@ test("the unchanged v1 contract still accepts a legacy finding", () => {
     confidence: "judgment",
   };
 
-  assert.equal(validateFindingV1(legacy).valid, true);
-  assert.equal(validateFindingV2(legacy).valid, false);
+  assert.equal(validateFindingV1(standalone).valid, true);
+  assert.equal(validateFindingV2(standalone).valid, false);
 });
 
 test("v2 accepts chapter and passage locations without fabricated line numbers", () => {
@@ -91,7 +91,7 @@ test("v2 rejects a synthetic line attached to chapter scope and malformed IDs", 
   assert.ok(result.errors.some((error) => error.instancePath === "/location/line"));
 });
 
-test("both example manifests satisfy the project schema and workflow invariants", async () => {
+test("both example manifests satisfy the single current project contract", async () => {
   for (const language of ["en", "zh"]) {
     const result = validateManifest(await readManifest(language));
     assert.deepEqual(result.errors, []);
@@ -112,34 +112,11 @@ test("project paths reject absolute, parent, and home expansion forms", async (t
     await t.test(name, async () => {
       const manifest = await readManifest();
       manifest.paths.reports = value;
-      const result = validateProjectSchema(manifest);
+      const result = validateProjectV4Schema(manifest);
       assert.equal(result.valid, false);
       assert.ok(result.errors.some((error) => error.instancePath === "/paths/reports"));
     });
   }
-});
-
-test("project validation rejects reordered and unknown stages", async () => {
-  const reordered = await readManifest();
-  [reordered.workflow.stages[2], reordered.workflow.stages[3]] = [
-    reordered.workflow.stages[3],
-    reordered.workflow.stages[2],
-  ];
-  assert.equal(validateProjectSchema(reordered).valid, false);
-  assert.equal(validateManifest(reordered).valid, false);
-
-  const unknown = await readManifest();
-  unknown.workflow.stages[2].name = "copyediting";
-  assert.equal(validateProjectSchema(unknown).valid, false);
-});
-
-test("a stale project stage requires a human-readable reason", async () => {
-  const manifest = await readManifest();
-  delete manifest.workflow.stages[3].reason;
-  const result = validateManifest(manifest);
-
-  assert.equal(result.valid, false);
-  assert.ok(result.errors.some((error) => error.instancePath.endsWith("/reason")));
 });
 
 test("both localized reports validate and cover the two engine names", async () => {
@@ -177,10 +154,10 @@ test("report envelopes reject additional fields and nested legacy findings", asy
   assert.equal(validateReportEnvelope(legacyFinding).valid, false);
 });
 
-test("revise-fiction requires six operational paths and a fiction-only manifest", async () => {
+test("the current manifest requires eight operational paths and fiction", async () => {
   const empty = await readManifest();
   empty.paths = {};
-  const emptyResult = validateProjectSchema(empty);
+  const emptyResult = validateProjectV4Schema(empty);
   assert.equal(emptyResult.valid, false);
   assert.deepEqual(
     new Set(
@@ -188,12 +165,21 @@ test("revise-fiction requires six operational paths and a fiction-only manifest"
         .filter((error) => error.keyword === "required")
         .map((error) => error.params.missingProperty),
     ),
-    new Set(["story_bible", "audit_tracker", "reports", "sessions", "backups", "handoffs"]),
+    new Set([
+      "story_bible",
+      "audit_tracker",
+      "reports",
+      "sessions",
+      "backups",
+      "handoffs",
+      "creation",
+      "convergence",
+    ]),
   );
 
   const missingBackups = await readManifest();
   delete missingBackups.paths.backups;
-  const backupsResult = validateProjectSchema(missingBackups);
+  const backupsResult = validateProjectV4Schema(missingBackups);
   assert.equal(backupsResult.valid, false);
   assert.ok(
     backupsResult.errors.some(
@@ -203,11 +189,11 @@ test("revise-fiction requires six operational paths and a fiction-only manifest"
 
   const nonfiction = await readManifest();
   nonfiction.project_type = "narrative-nonfiction";
-  assert.equal(validateProjectSchema(nonfiction).valid, false);
+  assert.equal(validateProjectV4Schema(nonfiction).valid, false);
 
   const blueprint = await readManifest();
   blueprint.paths.book_blueprint = "book-blueprint.md";
-  assert.equal(validateProjectSchema(blueprint).valid, false);
+  assert.equal(validateProjectV4Schema(blueprint).valid, false);
 });
 
 test("finding IDs accept the thousandth finding but still require at least three digits", () => {

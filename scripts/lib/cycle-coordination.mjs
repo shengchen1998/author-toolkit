@@ -3,6 +3,7 @@ import path from "node:path";
 
 import { validateManifest } from "./manifest.mjs";
 import { sha256Bytes, writeAtomicVerified } from "./state-io.mjs";
+import { utcTimestamp } from "./time.mjs";
 
 function action() {
   return {
@@ -144,9 +145,7 @@ export async function runCheckpoint(options, point) {
 }
 
 function timestamp(options) {
-  const now = options.now instanceof Date ? options.now : new Date();
-  if (Number.isNaN(now.getTime())) throw new Error("Invalid cycle coordination time");
-  return now.toISOString();
+  return utcTimestamp(options);
 }
 
 async function writeManifest(project, manifest) {

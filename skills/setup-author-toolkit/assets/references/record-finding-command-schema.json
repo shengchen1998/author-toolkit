@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "record-finding-command-schema.json",
+  "title": "author-toolkit record-finding command v1",
+  "type": "object",
+  "required": ["finding", "operation", "report", "status", "reason"],
+  "additionalProperties": false,
+  "properties": {
+    "finding": { "$ref": "finding-schema-v2.json" },
+    "operation": { "$ref": "report-schema-v2.json#/properties/stage" },
+    "report": { "$ref": "relative-path-schema.json" },
+    "status": { "const": "open" },
+    "reason": { "type": "string", "minLength": 1 },
+    "expected_tracker_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    }
+  }
+}

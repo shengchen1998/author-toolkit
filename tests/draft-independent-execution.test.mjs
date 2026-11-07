@@ -14,6 +14,7 @@ import {
   runInput,
   runValidator,
   timestamp,
+  writeBackupEvidence,
   writeJson,
 } from "./convergence-helpers.mjs";
 
@@ -65,13 +66,18 @@ async function executionRequest(projectRoot, evidence, input, plannedOutput) {
     action: "Change dawn to dusk in chapter 1.",
   });
   const backupRelative = ".author-toolkit/backups/backup-independent-001/manuscript/chapter-001.md";
-  await mkdir(path.dirname(path.join(projectRoot, backupRelative)), { recursive: true });
-  await writeFile(path.join(projectRoot, backupRelative), input, "utf8");
   const backupManifestRelative = ".author-toolkit/backups/backup-independent-001/manifest.json";
-  await writeJson(path.join(projectRoot, backupManifestRelative), {
-    backup_id: "backup-independent-001",
-    approval_id: "EDIT-002",
-    scope_id: "scope-001",
+  await writeBackupEvidence(projectRoot, {
+    backupId: "backup-independent-001",
+    approvalId: "EDIT-002",
+    scope: evidence.scopeReference,
+    files: [{
+      path: manuscriptPath,
+      action: "modify",
+      input_sha256: createHash("sha256").update(input).digest("hex"),
+      output_sha256: createHash("sha256").update(plannedOutput).digest("hex"),
+      contents: input,
+    }],
   });
   return {
     execution_id: "execution-independent-001",
@@ -158,8 +164,8 @@ test("an independent resolved finding recovers only through verified output and 
     }],
     findingStatuses: {
       "DIAG-001": {
-        status: "resolved",
-        reason: "Author accepted the independent edit after reviewing the new text.",
+        status: "open",
+        reason: "Author will accept the independent edit after verified output.",
       },
     },
   });
@@ -167,7 +173,7 @@ test("an independent resolved finding recovers only through verified output and 
   const unverified = await evaluateDraft(projectRoot, target, "evaluation-independent-unverified");
   assert.equal(unverified.status, 1, `${unverified.stdout}\n${unverified.stderr}`);
   assert.ok(JSON.parse(unverified.stdout).blockers.some((blocker) =>
-    blocker.code === "verified-execution-required"
+    blocker.code === "open-findings"
   ));
   const preparedEvidence = await evaluateDraft(
     projectRoot,
@@ -222,6 +228,15 @@ test("an independent resolved finding recovers only through verified output and 
   assert.equal(JSON.parse(repeatedVerify.stdout).blockers[0].code, "revision-execution-identity-mismatch");
   assert.equal(await readFile(verifiedResult.execution_path, "utf8"), verifiedBytes);
 
+  const decided = await runInput(projectRoot, "record-finding-decision", {
+    finding_id: "DIAG-001",
+    status: "resolved",
+    report: "reports/diagnostics/pass-002-local.md",
+    reason: "Author accepted the independent edit after reviewing the verified new text.",
+    author_decision_id: "PLAN-002",
+    revision_execution: verifiedResult.execution_reference,
+  });
+  assert.equal(decided.status, 0, `${decided.stdout}\n${decided.stderr}`);
   const evaluated = await evaluateDraft(
     projectRoot,
     target,

@@ -275,7 +275,6 @@ test("project operations register creation state and resumable publication", asy
   ]);
   const template = JSON.parse(templateText);
 
-  assert.match(project, /upgrade-v31/);
   assert.match(project, /write-fiction/);
   for (const operation of [
     "creation-baseline",
@@ -288,17 +287,15 @@ test("project operations register creation state and resumable publication", asy
   ]) {
     assert.match(operations, new RegExp(`\`${operation}\``));
   }
-  assert.match(operations, /3\.0\.0/);
-  assert.match(operations, /3\.1\.0/);
-  assert.match(operations, /3\.2\.0/);
+  assert.match(operations, /4\.0\.0/);
   assert.match(operations, /paths\.creation/);
   assert.match(operations, /expected absent/i);
   assert.match(operations, /<paths\.creation>\/batches\/<commit-id>\.json/);
-  assert.match(operations, /legacy `STAGES` remains revision-only/);
+  assert.match(operations, /report v2 `stage`/);
   assert.match(operations, /move created files into the safety backup/i);
   assert.match(operations, /scope_fingerprint/);
   assert.match(operations, /validateFullManuscriptScope/);
-  assert.equal(template.schema_version, "3.2.0");
+  assert.equal(template.schema_version, "4.0.0");
   assert.equal(template.paths.creation, ".author-toolkit/creation/");
   assert.equal(template.paths.convergence, ".author-toolkit/convergence/");
 });

@@ -12,8 +12,10 @@ import {
   createFirstPublicationArtifacts,
   createNoEditEvidence,
   currentScopeReference,
+  projectClock,
   runInput,
   timestamp,
+  writeBackupEvidence,
   writeJson,
 } from "./convergence-helpers.mjs";
 
@@ -35,7 +37,7 @@ async function confirmScope(projectRoot, decisionId, scopeId, files, description
       confirmed_at: timestamp,
       reading_order_confirmed: true,
     },
-    now: new Date(timestamp),
+    now: await projectClock(projectRoot),
   });
   return currentScopeReference(projectRoot);
 }
@@ -271,13 +273,18 @@ async function prepareVerifiedPostImportEdit(t) {
   await writeJson(path.join(projectRoot, planRelative), { plan_id: "post-import-plan" });
   await writeJson(path.join(projectRoot, batchRelative), { batch_id: "post-import-batch" });
   const backupRelative = ".author-toolkit/backups/backup-806/manuscript/chapter-001.md";
-  await mkdir(path.dirname(path.join(projectRoot, backupRelative)), { recursive: true });
-  await writeFile(path.join(projectRoot, backupRelative), original, "utf8");
   const backupManifestRelative = ".author-toolkit/backups/backup-806/manifest.json";
-  await writeJson(path.join(projectRoot, backupManifestRelative), {
-    backup_id: "backup-806",
-    approval_id: "EDIT-806",
-    scope_id: imported.targetScope.scope_id,
+  await writeBackupEvidence(projectRoot, {
+    backupId: "backup-806",
+    approvalId: "EDIT-806",
+    scope: imported.targetScope,
+    files: [{
+      path: "manuscript/chapter-001.md",
+      action: "modify",
+      input_sha256: sha256(original),
+      output_sha256: sha256(output),
+      contents: original,
+    }],
   });
   const artifact = async (relative) => ({
     path: relative,
@@ -548,7 +555,7 @@ test("cycle-external reconciliation still requires previous_scope and creates no
   };
   const missing = await runInput(projectRoot, "reconcile-manuscript", input);
   assert.equal(missing.status, 2);
-  assert.match(missing.stderr, /explicit previous_scope/);
+  assert.match(missing.response.errors[0].message, /explicit previous_scope/);
 
   const reconciled = await runInput(projectRoot, "reconcile-manuscript", {
     ...input,
@@ -637,13 +644,18 @@ async function verifyBootstrapEdit(projectRoot, cycleId, expectedRevision, input
   await writeJson(path.join(projectRoot, planRelative), { plan_id: `execution-chain-plan-${id}` });
   await writeJson(path.join(projectRoot, batchRelative), { batch_id: `execution-chain-batch-${id}` });
   const backupRelative = `.author-toolkit/backups/backup-${id}/manuscript/chapter-001.md`;
-  await mkdir(path.dirname(path.join(projectRoot, backupRelative)), { recursive: true });
-  await writeFile(path.join(projectRoot, backupRelative), original, "utf8");
   const backupManifestRelative = `.author-toolkit/backups/backup-${id}/manifest.json`;
-  await writeJson(path.join(projectRoot, backupManifestRelative), {
-    backup_id: `backup-${id}`,
-    approval_id: `EDIT-${id}`,
-    scope_id: inputScope.scope_id,
+  await writeBackupEvidence(projectRoot, {
+    backupId: `backup-${id}`,
+    approvalId: `EDIT-${id}`,
+    scope: inputScope,
+    files: [{
+      path: "manuscript/chapter-001.md",
+      action: "modify",
+      input_sha256: sha256(original),
+      output_sha256: sha256(output),
+      contents: original,
+    }],
   });
   const artifact = async (relative) => ({
     path: relative,
@@ -1156,7 +1168,7 @@ test("cycle-external empty recovery accepts explicit null previous_scope but rej
   const manifestBeforeOmission = await readFile(manifestPath, "utf8");
   const omitted = await runInput(projectRoot, "reconcile-manuscript", input);
   assert.equal(omitted.status, 2, `${omitted.stdout}\n${omitted.stderr}`);
-  assert.match(omitted.stderr, /previous_scope/);
+  assert.match(omitted.response.errors[0].message, /previous_scope/);
   assert.equal(await readFile(manifestPath, "utf8"), manifestBeforeOmission);
   await assert.rejects(readFile(
     path.join(projectRoot, ".author-toolkit", "convergence", "reconciliations", `${input.reconciliation_id}.json`),

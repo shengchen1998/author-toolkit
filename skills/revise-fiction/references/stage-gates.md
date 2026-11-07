@@ -4,7 +4,7 @@ Load the section for the current operation. A gate describes the evidence needed
 
 For every report, follow `state-and-findings.md` and the controlled workflow terminology in `<project-root>/.author-toolkit/references/terminology.md`. A clean report contains zero findings and still records engine, `scope_id`, input versions, operation coverage, subchecks when applicable, and language coverage.
 
-At a stable operation gate, apply the [current-draft convergence cycle rules](../../author-project/references/operations.md#current-draft-convergence-cycle). An active cycle permits its exact recovery work and read-only inspection, and blocks a parallel manuscript-changing cycle. With no active cycle, the author may switch to `write-fiction`, `revise-draft`, `revise-increment`, or `revise-request` through its exact command; no entry starts automatically. Reuse a local coverage unit only when every path, hash, subcheck, and dependency matches. Reevaluate every applicable whole-book synthesis after relevant changes instead of carrying it forward with unchanged local units. Creation evidence does not satisfy `chapter-revision`.
+At a stable operation gate, apply the [current-draft convergence cycle rules](../../author-project/references/operations.md#current-draft-convergence-cycle). An active cycle permits its exact recovery work and read-only inspection, and blocks a parallel manuscript-changing cycle. With no active cycle, the author may switch to `write-fiction`, `revise-draft`, `revise-increment`, or `revise-request` through its exact command; no entry starts automatically. Reuse a local coverage unit only when every path, hash, subcheck, and dependency matches, or when a [dependency exception](state-and-findings.md#dependency-exceptions) covers an attested baseline or plan copyedit. Reevaluate every applicable whole-book synthesis after relevant changes instead of carrying it forward with unchanged local units. Creation evidence does not satisfy `chapter-revision`.
 
 Read-only analysis and review do not open a cycle. Manuscript-changing or required-evidence-invalidating work first requires a satisfied full-manuscript starting evaluation and a linked `revise-fiction` cycle. These current-draft revision convergence requirements add to every whole-book gate below; they do not replace Story Bible, structure, character, revision, or final-review evidence.
 
@@ -12,7 +12,7 @@ For the cycle's current requested pass and target fingerprint, apply the [whole-
 
 ## 1. Intake
 
-**Inputs:** A v3 project root and accessible manuscript text.
+**Inputs:** A 4.0.0 project root and accessible manuscript text.
 
 **Work:** Inventory every registered manuscript file in reading order, including missing or duplicate chapter identifiers, language, and excluded non-manuscript files. Compute a SHA-256 version for every in-scope file. Record a new `scope_id` through `author-project`; scope changes require author confirmation. Record target reader, book metadata, current author goal, and requested entry operation when known. Use the author decision loop only for missing choices required by the current gate; keep optional unknowns open without requesting a batch of metadata.
 

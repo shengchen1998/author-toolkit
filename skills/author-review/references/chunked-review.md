@@ -23,7 +23,7 @@ For final fresh book synthesis, the same reviewer must have read all actual manu
 
 ## Reports and findings
 
-Write immutable chunk reports and a synthesis report for each applicable volume/phase and book level. Use the selected mode's report v2 `stage`, actual source versions, one perspective in `subchecks`, and human-readable `Language coverage` and `Review coverage` sections. Record unit identity, parent or child report paths, execution path, and degraded context in `engine.notes`. Reports used for convergence evaluation also set the additive `scope_id`, `scope_fingerprint`, and `requested_pass` fields; do not invent other envelope fields. Validate each report when the installed validator is available.
+Write immutable chunk reports and a synthesis report for each applicable volume/phase and book level. Use the selected mode's report v2 `stage`, actual source versions, one perspective in `subchecks`, and human-readable `Language coverage` and `Review coverage` sections. Record unit identity, parent or child report paths, execution path, and degraded context in `engine.notes`. Every current report sets the required `scope_id`, `scope_fingerprint`, and `requested_pass` fields; do not invent other envelope fields. Validate each report when the installed validator is available.
 
 A unit can have full coverage while its report remains partial for the requested whole operation. A synthesis is full only when all its required children and applicable checklist coverage are complete. Otherwise mark it `partial` or `skipped`, identify every missing unit or check, and leave the corresponding review job incomplete.
 

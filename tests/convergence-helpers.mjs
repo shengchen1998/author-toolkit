@@ -1,6 +1,6 @@
 import { spawn, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import { root } from "./helpers.mjs";
@@ -8,9 +8,9 @@ import { root } from "./helpers.mjs";
 export const timestamp = "2026-11-05T00:00:00Z";
 export const authorProjectCli = path.join(root, "scripts", "author-project.mjs");
 
-export function manifestV32() {
+export function currentManifest() {
   return {
-    schema_version: "3.2.0",
+    schema_version: "4.0.0",
     project_type: "fiction",
     language: "en",
     manuscript_root: "manuscript",
@@ -64,15 +64,41 @@ export async function createConvergenceProject(t, { manuscripts = [] } = {}) {
     await writeFile(target, file.contents, "utf8");
   }
   const manifestPath = path.join(projectRoot, ".author-toolkit", "project.json");
-  await writeJson(manifestPath, manifestV32());
+  await cp(
+    path.join(root, "skills", "setup-author-toolkit", "assets", "references"),
+    path.join(projectRoot, ".author-toolkit", "references"),
+    { recursive: true },
+  );
+  await writeJson(manifestPath, currentManifest());
+  await writeJson(path.join(projectRoot, ".author-toolkit", "backups", "index.json"), {
+    schema_version: "1.0.0",
+    backups: [],
+    restorations: [],
+  });
   return { projectRoot, manifestPath };
 }
 
+export function unwrapProjectResponse(processResult) {
+  let response;
+  try {
+    response = JSON.parse(processResult.stdout);
+  } catch {
+    return processResult;
+  }
+  if (response?.response_contract_version !== "1.0") return processResult;
+  return {
+    ...processResult,
+    response,
+    rawStdout: processResult.stdout,
+    stdout: JSON.stringify(response.result),
+  };
+}
+
 export function runAuthorProject(args) {
-  return spawnSync(process.execPath, [authorProjectCli, ...args], {
+  return unwrapProjectResponse(spawnSync(process.execPath, [authorProjectCli, ...args], {
     cwd: root,
     encoding: "utf8",
-  });
+  }));
 }
 
 export async function runInput(projectRoot, command, input) {
@@ -112,7 +138,7 @@ export async function runAuthorProjectAsync(args) {
     });
     child.once("error", reject);
     child.once("close", (status, signal) => {
-      resolve({ status, signal, stdout, stderr });
+      resolve(unwrapProjectResponse({ status, signal, stdout, stderr }));
     });
   });
 }
@@ -137,6 +163,23 @@ export async function currentScopeReference(projectRoot) {
     snapshot_path: scope.snapshot_path,
     snapshot_sha256: scope.snapshot_sha256,
   };
+}
+
+export async function projectClock(projectRoot) {
+  const manifest = JSON.parse(
+    await readFile(path.join(projectRoot, ".author-toolkit", "project.json"), "utf8"),
+  );
+  let latest = Date.parse(manifest.updated_at);
+  try {
+    const active = JSON.parse(await readFile(
+      path.join(projectRoot, ".author-toolkit", "convergence", "active-cycle.json"),
+      "utf8",
+    ));
+    latest = Math.max(latest, Date.parse(active.updated_at));
+  } catch (error) {
+    if (error.code !== "ENOENT") throw error;
+  }
+  return new Date(latest);
 }
 
 function requestedPassFingerprint(pass) {
@@ -236,6 +279,64 @@ export async function appendRevisionExecutionApprovals(projectRoot, execution, o
   }
 }
 
+export async function writeBackupEvidence(projectRoot, options) {
+  const backupId = options.backupId;
+  const approvalId = options.approvalId;
+  const operation = options.operation ?? "chapter-revision";
+  const createdAt = options.createdAt ?? timestamp;
+  const manifestFiles = [];
+  for (const file of options.files) {
+    const { contents, ...action } = file;
+    const backupPath = action.action === "create"
+      ? null
+      : `.author-toolkit/backups/${backupId}/${action.path}`;
+    if (backupPath !== null) {
+      const original = contents ?? await readFile(path.join(projectRoot, action.path));
+      const absolute = path.join(projectRoot, backupPath);
+      await mkdir(path.dirname(absolute), { recursive: true });
+      await writeFile(absolute, original);
+    }
+    manifestFiles.push({ ...action, backup_path: backupPath });
+  }
+  const manifestRelative = `.author-toolkit/backups/${backupId}/manifest.json`;
+  const manifest = {
+    schema_version: "1.0.0",
+    backup_id: backupId,
+    operation,
+    approval_id: approvalId,
+    scope_id: options.scope.scope_id,
+    scope_fingerprint: options.scope.scope_fingerprint,
+    files: manifestFiles,
+    created_at: createdAt,
+  };
+  await writeJson(path.join(projectRoot, manifestRelative), manifest);
+  const indexPath = path.join(projectRoot, ".author-toolkit", "backups", "index.json");
+  const index = JSON.parse(await readFile(indexPath, "utf8"));
+  if (index.backups.some((entry) => entry.backup_id === backupId)) {
+    throw new Error(`Duplicate fixture backup ID: ${backupId}`);
+  }
+  index.backups.push({
+    backup_id: backupId,
+    operation,
+    approval_id: approvalId,
+    scope_id: options.scope.scope_id,
+    scope_fingerprint: options.scope.scope_fingerprint,
+    manifest: await artifactAt(projectRoot, manifestRelative),
+    created_at: createdAt,
+  });
+  await writeJson(indexPath, index);
+  return {
+    backup_id: backupId,
+    approval_id: approvalId,
+    manifest: await artifactAt(projectRoot, manifestRelative),
+    files: manifestFiles.filter((file) => file.action !== "create").map((file) => ({
+      path: file.path,
+      backup_path: file.backup_path,
+      sha256: file.input_sha256,
+    })),
+  };
+}
+
 export async function createRevisionExecutionFixture(projectRoot, options = {}) {
   const original = options.original ?? "The ferry leaves at dawn.\nMara watches it go.";
   const output = options.output ?? "The ferry leaves at dusk.\nMara watches it go.";
@@ -250,14 +351,17 @@ export async function createRevisionExecutionFixture(projectRoot, options = {}) 
     batch_id: batchId,
     action: options.action ?? "Change dawn to dusk.",
   });
-  const backupRelative = `.author-toolkit/backups/${backupId}/${manuscriptPath}`;
-  await mkdir(path.dirname(path.join(projectRoot, backupRelative)), { recursive: true });
-  await writeFile(path.join(projectRoot, backupRelative), original, "utf8");
-  const backupManifestRelative = `.author-toolkit/backups/${backupId}/manifest.json`;
-  await writeJson(path.join(projectRoot, backupManifestRelative), {
-    backup_id: backupId,
-    approval_id: options.editApprovalId ?? "EDIT-001",
-    scope_id: options.inputScope.scope_id,
+  const files = [{
+    path: manuscriptPath,
+    action: "modify",
+    input_sha256: createHash("sha256").update(original).digest("hex"),
+    output_sha256: createHash("sha256").update(output).digest("hex"),
+  }];
+  const backup = await writeBackupEvidence(projectRoot, {
+    backupId,
+    approvalId: options.editApprovalId ?? "EDIT-001",
+    scope: options.inputScope,
+    files: files.map((file) => ({ ...file, contents: original })),
   });
   const execution = {
     ...(options.cycleId === undefined ? {} : { cycle_id: options.cycleId }),
@@ -270,22 +374,8 @@ export async function createRevisionExecutionFixture(projectRoot, options = {}) 
     finding_dispositions: [],
     author_decision_ids: [options.planDecisionId ?? "PLAN-001"],
     approval_ids: [options.editApprovalId ?? "EDIT-001"],
-    backups: [{
-      backup_id: backupId,
-      approval_id: options.editApprovalId ?? "EDIT-001",
-      manifest: await artifactAt(projectRoot, backupManifestRelative),
-      files: [{
-        path: manuscriptPath,
-        backup_path: backupRelative,
-        sha256: createHash("sha256").update(original).digest("hex"),
-      }],
-    }],
-    files: [{
-      path: manuscriptPath,
-      action: "modify",
-      input_sha256: createHash("sha256").update(original).digest("hex"),
-      output_sha256: createHash("sha256").update(output).digest("hex"),
-    }],
+    backups: [backup],
+    files,
   };
   await appendRevisionExecutionApprovals(projectRoot, execution, {
     planDecisionId: options.planDecisionId,
@@ -311,7 +401,24 @@ export async function createNoEditEvidence(projectRoot, options = {}) {
     path: filePath,
     sha256,
   }));
-  const dependency = await artifactAt(projectRoot, "story-bible.md");
+  const dependencyPath = options.dependencyPath ?? "story-bible.md";
+  const dependency = await artifactAt(projectRoot, dependencyPath);
+  const dependencyRole = options.dependencyRole ?? (dependencyPath === "story-bible.md"
+    ? "story-bible"
+    : dependencyPath.includes("draft-baseline")
+      ? "draft-baseline"
+      : dependencyPath.includes("revision-plan")
+        ? "revision-plan"
+        : "other");
+  dependency.role = dependencyRole;
+  dependency.source = ["draft-baseline", "revision-plan"].includes(dependencyRole)
+    ? options.dependencySource ?? {
+        report_id: options.dependencyReportId ?? `${dependencyRole}-source`,
+        path: dependency.path,
+        sha256: dependency.sha256,
+      }
+    : null;
+  const versionedDependency = { path: dependency.path, sha256: dependency.sha256 };
   const requestedSubchecks = options.requestedSubchecks ?? [];
   let baselinePass = null;
   let baselinePassRecord = null;
@@ -421,13 +528,20 @@ export async function createNoEditEvidence(projectRoot, options = {}) {
   };
 
   const noEditDecisionId = options.noEditDecisionId ?? `NOEDIT-${numericSuffix}`;
+  const noEditDecisionBindings = (options.findings ?? []).map((finding) => {
+    const status = options.noEditDecisionStatuses?.[finding.id] ??
+      (["deferred", "dismissed"].includes(options.findingStatuses?.[finding.id]?.status)
+        ? options.findingStatuses[finding.id].status
+        : "deferred");
+    return `finding_id=${finding.id} finding_status=${status}`;
+  }).join(" ");
   await appendTrackerApproval(projectRoot, {
     id: noEditDecisionId,
     type: "no-edit-skip",
     operation: "revision-plan",
     scopeId: scopeReference.scope_id,
     paths,
-    reason: "Author confirmed that no accepted finding requires a manuscript edit.",
+    reason: `Author confirmed that no accepted finding requires a manuscript edit.${noEditDecisionBindings ? ` ${noEditDecisionBindings}` : ""}`,
   });
   if (options.wholeBook) {
     await appendTrackerApproval(projectRoot, {
@@ -454,7 +568,7 @@ export async function createNoEditEvidence(projectRoot, options = {}) {
       stage,
       created_at: timestamp,
       language: manifest.language,
-      skill: { name: options.wholeBook ? "revise-fiction" : "revise-draft", version: "3.2.0" },
+      skill: { name: options.wholeBook ? "revise-fiction" : "revise-draft", version: "4.0.0" },
       inputs: reportFiles.map((file) => ({
         path: file.path,
         version: file.sha256,
@@ -497,7 +611,7 @@ export async function createNoEditEvidence(projectRoot, options = {}) {
       "story-bible",
       `reports/story-bible/${passId}.md`,
       ["whole-book-foundation"],
-      [...versionedPaths, dependency],
+      [...versionedPaths, versionedDependency],
     ));
     wholeBookReports.push(await writeReport(
       `${passId}-structure`,
@@ -545,7 +659,8 @@ export async function createNoEditEvidence(projectRoot, options = {}) {
         kind: "local",
         paths: localPaths,
         subchecks: requirement.subchecks,
-        dependencies: [dependency],
+        dependencies: [versionedDependency],
+        dependency_exception: null,
         coverage: "full",
         created_at: timestamp,
       };
@@ -799,12 +914,17 @@ export async function createNoEditEvidence(projectRoot, options = {}) {
     const trackerPath = path.join(projectRoot, "audit-tracker.md");
     let tracker = await readFile(trackerPath, "utf8");
     const separator = "|---|---|---|---|---|---|---|---|\n";
+    const findingReportPath = `reports/diagnostics/${passId}-local.md`;
+    const findingReportSha256 = (await artifactAt(projectRoot, findingReportPath)).sha256;
     for (const finding of options.findings) {
       const decision = options.findingStatuses?.[finding.id] ?? {
         status: "deferred",
         reason: "Author deferred the finding with its consequence recorded.",
       };
-      const row = `| ${finding.id} | diagnostics | narrative | manuscript/chapter-001.md | ${decision.status} | reports/diagnostics/${passId}-local.md | ${timestamp} | ${decision.reason} |\n`;
+      const decisionReason = ["deferred", "dismissed"].includes(decision.status)
+        ? `${decision.reason} author_decision_id=${noEditDecisionId} finding_status=${decision.status} previous_report=${encodeURIComponent(findingReportPath)} previous_report_sha256=${findingReportSha256} report_sha256=${findingReportSha256} evidence_type=no-edit-skip evidence_id=${noEditSkip.skip_id} evidence_path=${encodeURIComponent(noEditReference.path)} evidence_sha256=${noEditReference.sha256}`
+        : decision.reason;
+      const row = `| ${finding.id} | diagnostics | ${finding.audit} | ${finding.location.file} | ${decision.status} | ${findingReportPath} | ${timestamp} | ${decisionReason} |\n`;
       const existing = new RegExp(`^\\| ${finding.id} \\|.*\\|$`, "m");
       if (existing.test(tracker)) {
         tracker = tracker.replace(existing, row.trimEnd());

@@ -4,9 +4,9 @@ Load the section for the current operation. Preserve the shared [Author decision
 
 ## 1. Creation baseline
 
-**Inputs:** A v3 project, any Story Bible or draft baseline, and accessible current text.
+**Inputs:** A 4.0.0 project, any Story Bible or draft baseline, and accessible current text.
 
-**Work:** For v3.0 or v3.1, stop for the direct v3.2 setup migration before creation writes. Establish target reader, core premise, protagonist, central conflict, and narrative constraints. Mark unwritten future turns, total length, character outcomes, and ending as unknown unless the author supplies them. Create missing `state/`, `batches/`, and `staging/` skeletons beneath the registered creation root. For a project with no accepted manuscript, initialize `state/current.md` from `../assets/current-state-template.md` with `scope_id: null` and the versioned Story Bible as its source. Build initial chapter records from existing text when present; label model extraction proposed until the author confirms it.
+**Work:** Require a current 4.0.0 project before creation writes. Establish target reader, core premise, protagonist, central conflict, and narrative constraints. Mark unwritten future turns, total length, character outcomes, and ending as unknown unless the author supplies them. Create missing `state/`, `batches/`, and `staging/` skeletons beneath the registered creation root. For a project with no accepted manuscript, initialize `state/current.md` from `../assets/current-state-template.md` with `scope_id: null` and the versioned Story Bible as its source. Build initial chapter records from existing text when present; label model extraction proposed until the author confirms it.
 
 **Gate:** The minimum foundation and initial state differences are author-confirmed. No current scope is required before the first accepted manuscript file. Do not require a complete outline or ending.
 

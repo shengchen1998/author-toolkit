@@ -15,7 +15,6 @@ import {
   runCheckpoint,
 } from "./cycle-coordination.mjs";
 import { collectManuscriptInventory } from "./manuscript.mjs";
-import { inspectLegacyRecovery } from "./legacy-recovery.mjs";
 import { validateManifest } from "./manifest.mjs";
 import {
   validateConvergenceCycleSchema,
@@ -35,6 +34,7 @@ import {
   writeAtomicVerified,
 } from "./state-io.mjs";
 import { parseTrackerState } from "./tracker.mjs";
+import { utcTimestamp } from "./time.mjs";
 
 const STRATEGIES = new Set([
   "write-fiction",
@@ -56,8 +56,8 @@ function cycleError(instancePath, message, keyword = "cycle-identity") {
   return { instancePath, keyword, message, params: {} };
 }
 
-export function validateConvergenceCycle(value) {
-  const schema = validateConvergenceCycleSchema(value);
+export function validateConvergenceCycle(value, options = {}) {
+  const schema = validateConvergenceCycleSchema(value, options);
   const errors = [...schema.errors];
   if (
     value?.completion &&
@@ -95,23 +95,16 @@ function validationError(result) {
   );
 }
 
-async function readProject(projectRoot) {
-  const root = path.resolve(projectRoot);
-  const manifestPath = path.join(root, ".author-toolkit", "project.json");
-  const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
-  const validation = validateManifest(manifest);
-  if (!validation.valid) throw validationError(validation);
-  if (manifest.schema_version !== "3.2.0") {
-    throw new Error("Convergence cycles require a v3.2 project");
-  }
-  return { root, manifestPath, manifest };
+async function readProject(projectRoot, options = {}) {
+  const { readProject: readProjectWithReferences } = await import("./evaluation-artifacts.mjs");
+  return readProjectWithReferences(projectRoot, options);
 }
 
 function activeCyclePath(root, manifest) {
   return path.resolve(root, manifest.paths.convergence, "active-cycle.json");
 }
 
-async function readActiveCycle(root, manifest) {
+async function readActiveCycle(root, manifest, options = {}) {
   const file = activeCyclePath(root, manifest);
   let value;
   try {
@@ -120,7 +113,7 @@ async function readActiveCycle(root, manifest) {
     if (error.code === "ENOENT") return null;
     throw error;
   }
-  const validation = validateConvergenceCycle(value);
+  const validation = validateConvergenceCycle(value, options);
   if (!validation.valid) throw validationError(validation);
   if (value.status !== "active") {
     throw new Error(`The living cycle record must be active: ${file}`);
@@ -236,9 +229,7 @@ function emptyChangeSet() {
 }
 
 function operationTime(options) {
-  const now = options.now instanceof Date ? options.now : new Date();
-  if (Number.isNaN(now.getTime())) throw new Error("Invalid cycle operation time");
-  return now.toISOString();
+  return utcTimestamp(options);
 }
 
 function validateStartRequest(request) {
@@ -260,7 +251,7 @@ function validateStartRequest(request) {
   }
 }
 
-async function completedBootstrapExists(root, manifest) {
+async function completedBootstrapExists(root, manifest, options = {}) {
   const directory = path.resolve(root, manifest.paths.convergence, "cycles");
   let entries;
   try {
@@ -272,7 +263,7 @@ async function completedBootstrapExists(root, manifest) {
   for (const entry of entries) {
     if (!entry.isFile() || !entry.name.endsWith(".json")) continue;
     const value = JSON.parse(await readFile(path.join(directory, entry.name), "utf8"));
-    const validation = validateConvergenceCycle(value);
+    const validation = validateConvergenceCycle(value, options);
     if (!validation.valid) throw validationError(validation);
     if (value.status === "completed" && value.bootstrap) return true;
   }
@@ -281,9 +272,9 @@ async function completedBootstrapExists(root, manifest) {
 
 export async function startCycle(projectRoot, request, options = {}) {
   validateStartRequest(request);
-  const project = await readProject(projectRoot);
+  const project = await readProject(projectRoot, options);
   const { root, manifest } = project;
-  const active = await readActiveCycle(root, manifest);
+  const active = await readActiveCycle(root, manifest, options);
   if (active) {
     return blocked(
       "active-cycle-exists",
@@ -295,21 +286,6 @@ export async function startCycle(projectRoot, request, options = {}) {
   if (completedProblem) return completedProblem;
   const coordination = coordinationFailure(project, active);
   if (coordination) return coordination;
-  const legacyRecovery = await inspectLegacyRecovery(root, manifest);
-  const legacyBlockers = legacyRecovery.blockers.filter((blocker) =>
-    blocker.code !== "legacy-staging-decision-required" ||
-    request.bootstrap ||
-    blocker.rejection_required
-  );
-  if (legacyBlockers.length > 0) {
-    return {
-      valid: false,
-      cycle: null,
-      required_action: legacyBlockers[0].required_action,
-      blockers: legacyBlockers,
-      state_written: false,
-    };
-  }
   const currentScope = manifest.current_scope;
   const external = await externalReconciliationBlock(
     project,
@@ -357,9 +333,10 @@ export async function startCycle(projectRoot, request, options = {}) {
       if (!request.starting_scope) throw new Error("A starting scope snapshot is required");
       await verifyScopeReference(project, request.starting_scope, {
         requireCurrent: !reconciledStart,
+        ...options,
       });
       if (reconciledStart) {
-        await verifyScopeReference(project, reconciledStart.target_scope);
+        await verifyScopeReference(project, reconciledStart.target_scope, options);
       }
     } catch (error) {
       return blocked(
@@ -382,8 +359,9 @@ export async function startCycle(projectRoot, request, options = {}) {
           project,
           request.starting_scope,
           reconciledStart.previous_evaluation,
+          options,
         )
-      : await findSatisfiedStartingEvaluation(project, request.starting_scope);
+      : await findSatisfiedStartingEvaluation(project, request.starting_scope, options);
     if (!starting) {
       return blocked(
         "starting-evaluation-indeterminate",
@@ -417,7 +395,7 @@ export async function startCycle(projectRoot, request, options = {}) {
       manifest.manuscript_root,
       manifest.paths,
     );
-    if (inventory.files.length > 0 || (await completedBootstrapExists(root, manifest))) {
+    if (inventory.files.length > 0 || (await completedBootstrapExists(root, manifest, options))) {
       return blocked(
         "bootstrap-requires-empty-project",
         "Bootstrap is available only for the first empty manuscript; use the full-manuscript recovery path instead.",
@@ -464,14 +442,14 @@ export async function startCycle(projectRoot, request, options = {}) {
     created_at: timestamp,
     updated_at: timestamp,
   };
-  const validation = validateConvergenceCycle(cycle);
+  const validation = validateConvergenceCycle(cycle, options);
   if (!validation.valid) throw validationError(validation);
   const file = activeCyclePath(root, manifest);
   try {
     await createNoClobberVerified(file, `${JSON.stringify(cycle, null, 2)}\n`);
   } catch (error) {
     if (error.code !== "EEXIST") throw error;
-    const concurrent = await readActiveCycle(root, manifest);
+    const concurrent = await readActiveCycle(root, manifest, options);
     return blocked(
       "active-cycle-exists",
       `Cycle ${concurrent.value.cycle_id} is active; finish its required recovery action before starting another manuscript-changing cycle.`,
@@ -498,20 +476,20 @@ function recoveryActionOrDefault(cycle) {
   );
 }
 
-export async function getCycleStatus(projectRoot) {
+export async function getCycleStatus(projectRoot, options = {}) {
   const { getConvergenceStatus } = await import("./convergence.mjs");
-  return getConvergenceStatus(projectRoot);
+  return getConvergenceStatus(projectRoot, options);
 }
 
-export async function checkConvergenceGate(projectRoot) {
-  const status = await getCycleStatus(projectRoot);
+export async function checkConvergenceGate(projectRoot, options = {}) {
+  const status = await getCycleStatus(projectRoot, options);
   return {
     valid: status.query_valid && status.outcome === "satisfied" && status.current,
     ...status,
   };
 }
 
-export async function assertCycleAllowsOperation(projectRoot, request) {
+export async function assertCycleAllowsOperation(projectRoot, request, options = {}) {
   if (!STRATEGIES.has(request.strategy)) throw new Error("A valid strategy is required");
   if (typeof request.operation !== "string" || request.operation.length === 0) {
     throw new Error("An operation is required");
@@ -519,9 +497,9 @@ export async function assertCycleAllowsOperation(projectRoot, request) {
   if (typeof request.manuscript_change !== "boolean") {
     throw new Error("manuscript_change must be explicit");
   }
-  const project = await readProject(projectRoot);
+  const project = await readProject(projectRoot, options);
   const { root, manifest } = project;
-  const active = await readActiveCycle(root, manifest);
+  const active = await readActiveCycle(root, manifest, options);
   if (!request.manuscript_change) {
     return {
       valid: true,
@@ -535,22 +513,6 @@ export async function assertCycleAllowsOperation(projectRoot, request) {
   if (completedProblem) return { ...completedProblem, read_only: false };
   const coordination = coordinationFailure(project, active);
   if (coordination) return { ...coordination, read_only: false };
-  if (!active) {
-    const legacyRecovery = await inspectLegacyRecovery(root, manifest);
-    const legacyBlockers = legacyRecovery.blockers.filter(
-      (blocker) => blocker.code !== "legacy-staging-decision-required",
-    );
-    if (legacyBlockers.length > 0) {
-      return {
-        valid: false,
-        read_only: false,
-        cycle: null,
-        required_action: legacyBlockers[0].required_action,
-        blockers: legacyBlockers,
-        state_written: false,
-      };
-    }
-  }
   const currentScope = manifest.current_scope;
   const trackedReference = active?.value.target_scope ?? active?.value.starting_scope ??
     (currentScope ? {
@@ -697,14 +659,14 @@ async function verifyArtifactReference(root, reference) {
   }
 }
 
-async function verifyScopeReference(project, reference, { requireCurrent = true } = {}) {
+async function verifyScopeReference(project, reference, { requireCurrent = true, ...options } = {}) {
   const { root, manifestPath, manifest } = project;
   await verifyArtifactReference(root, {
     path: reference.snapshot_path,
     sha256: reference.snapshot_sha256,
   });
   const snapshot = JSON.parse(await readFile(path.resolve(root, reference.snapshot_path), "utf8"));
-  const validation = validateScopeSnapshot(snapshot);
+  const validation = validateScopeSnapshot(snapshot, options);
   if (!validation.valid) throw validationError(validation);
   const expectedPath = path.posix.join(
     manifest.paths.convergence,
@@ -754,7 +716,7 @@ function creationFileIdentity(file) {
   };
 }
 
-export async function deriveCreationChangeSet(project, cycle, candidate, request) {
+export async function deriveCreationChangeSet(project, cycle, candidate, request, options = {}) {
   if (!request.related_artifacts?.creation_commits) return null;
   const batchReferences = candidate.related_artifacts.creation_batches;
   const commitReferences = candidate.related_artifacts.creation_commits;
@@ -771,8 +733,8 @@ export async function deriveCreationChangeSet(project, cycle, candidate, request
   const [commitReference] = commitReferences;
   const batch = await readReferencedJson(project.root, batchReference);
   const commit = await readReferencedJson(project.root, commitReference);
-  const batchValidation = validateCreationBatch(batch);
-  const commitValidation = validateCreationCommit(commit);
+  const batchValidation = validateCreationBatch(batch, options);
+  const commitValidation = validateCreationCommit(commit, options);
   if (!batchValidation.valid || !commitValidation.valid) {
     throw new Error(
       `Creation artifacts are invalid: ${[...batchValidation.errors, ...commitValidation.errors]
@@ -819,7 +781,7 @@ export async function deriveCreationChangeSet(project, cycle, candidate, request
     path.resolve(project.root, project.manifest.paths.audit_tracker),
     "utf8",
   );
-  const tracker = await parseTrackerState(trackerText, project.root);
+  const tracker = await parseTrackerState(trackerText, project.root, options);
   const acceptances = batch.approvals.map((approvalId) =>
     tracker.approvals.find((approval) => approval.id === approvalId)
   );
@@ -937,7 +899,7 @@ export async function deriveCreationChangeSet(project, cycle, candidate, request
   };
 }
 
-async function deriveRejectedCreationChangeSet(project, cycle, candidate, request) {
+async function deriveRejectedCreationChangeSet(project, cycle, candidate, request, options = {}) {
   if (
     !request.related_artifacts?.creation_batches ||
     candidate.related_artifacts.creation_commits.length > 0
@@ -945,7 +907,7 @@ async function deriveRejectedCreationChangeSet(project, cycle, candidate, reques
   const references = candidate.related_artifacts.creation_batches;
   if (references.length !== 1) return null;
   const batch = await readReferencedJson(project.root, references[0]);
-  const validation = validateCreationBatch(batch);
+  const validation = validateCreationBatch(batch, options);
   if (!validation.valid) throw validationError(validation);
   if (batch.status !== "rejected") return null;
   if (cycle.initiating_strategy !== "write-fiction" || !cycle.starting_scope) {
@@ -963,7 +925,7 @@ async function deriveRejectedCreationChangeSet(project, cycle, candidate, reques
     path.resolve(project.root, project.manifest.paths.audit_tracker),
     "utf8",
   );
-  const tracker = await parseTrackerState(trackerText, project.root);
+  const tracker = await parseTrackerState(trackerText, project.root, options);
   const rejectionApprovals = batch.approvals
     .map((approvalId) => tracker.approvals.find((approval) => approval.id === approvalId))
     .filter((approval) => approval?.type === "creation-rejection");
@@ -994,7 +956,7 @@ async function deriveRejectedCreationChangeSet(project, cycle, candidate, reques
 }
 
 async function transitionCycleLocked(project, request, options) {
-  const active = await readActiveCycle(project.root, project.manifest);
+  const active = await readActiveCycle(project.root, project.manifest, options);
   if (!active) {
     return {
       stateWritten: false,
@@ -1111,20 +1073,21 @@ async function transitionCycleLocked(project, request, options) {
     work_set: request.work_set ?? cycle.work_set,
     updated_at: operationTime(options),
   };
-  const validation = validateConvergenceCycle(candidate);
+  const validation = validateConvergenceCycle(candidate, options);
   if (!validation.valid) throw validationError(validation);
 
   try {
     if (candidate.target_scope) {
       await verifyScopeReference(project, candidate.target_scope, {
         requireCurrent: Object.hasOwn(request, "target_scope"),
+        ...options,
       });
     }
     if (candidate.change_set.from_scope) {
-      await verifyScopeReference(project, candidate.change_set.from_scope, { requireCurrent: false });
+      await verifyScopeReference(project, candidate.change_set.from_scope, { requireCurrent: false, ...options });
     }
     if (candidate.change_set.to_scope) {
-      await verifyScopeReference(project, candidate.change_set.to_scope, { requireCurrent: false });
+      await verifyScopeReference(project, candidate.change_set.to_scope, { requireCurrent: false, ...options });
     }
     if (candidate.requested_pass) {
       await verifyArtifactReference(project.root, candidate.requested_pass);
@@ -1134,11 +1097,11 @@ async function transitionCycleLocked(project, request, options) {
         await verifyArtifactReference(project.root, reference);
       }
     }
-    const creationChangeSet = await deriveCreationChangeSet(project, cycle, candidate, request);
+    const creationChangeSet = await deriveCreationChangeSet(project, cycle, candidate, request, options);
     if (creationChangeSet) candidate.change_set = creationChangeSet;
-    const rejectedChangeSet = await deriveRejectedCreationChangeSet(project, cycle, candidate, request);
+    const rejectedChangeSet = await deriveRejectedCreationChangeSet(project, cycle, candidate, request, options);
     if (rejectedChangeSet) candidate.change_set = rejectedChangeSet;
-    const validated = validateConvergenceCycle(candidate);
+    const validated = validateConvergenceCycle(candidate, options);
     if (!validated.valid) throw validationError(validated);
   } catch (error) {
     return {
@@ -1168,8 +1131,8 @@ async function transitionCycleLocked(project, request, options) {
 
 export async function transitionCycle(projectRoot, request, options = {}) {
   validateTransitionRequest(request);
-  const project = await readProject(projectRoot);
-  const initial = await readActiveCycle(project.root, project.manifest);
+  const project = await readProject(projectRoot, options);
+  const initial = await readActiveCycle(project.root, project.manifest, options);
   if (!initial) {
     return {
       ...blocked(
@@ -1188,6 +1151,7 @@ export async function transitionCycle(projectRoot, request, options = {}) {
     {
       timeoutMs: options.lockTimeoutMs ?? 10000,
       retryMs: options.lockRetryMs ?? 20,
+      now: options.now,
     },
   );
   if (!lock.acquired) {

@@ -12,9 +12,11 @@ import {
   createNoEditEvidence,
   createRevisionExecutionFixture,
   currentScopeReference,
+  projectClock,
   runInput,
   runValidator,
   timestamp,
+  writeBackupEvidence,
   writeJson,
 } from "./convergence-helpers.mjs";
 
@@ -40,7 +42,7 @@ async function confirmCurrentScope(
       confirmed_at: timestamp,
       reading_order_confirmed: true,
     },
-    now: new Date(timestamp),
+    now: await projectClock(projectRoot),
   });
 }
 
@@ -133,9 +135,9 @@ test("an independent full-manuscript revise-draft evaluation restores the gate w
 
   const status = runValidator(["--convergence-status", manifestPath]);
   assert.equal(status.status, 0, `${status.stdout}\n${status.stderr}`);
-  assert.equal(JSON.parse(status.stdout).outcome, "satisfied");
-  assert.equal(JSON.parse(status.stdout).current, true);
-  assert.equal(JSON.parse(status.stdout).evaluation.cycle_id, null);
+  assert.equal(JSON.parse(status.stdout).result.outcome, "satisfied");
+  assert.equal(JSON.parse(status.stdout).result.current, true);
+  assert.equal(JSON.parse(status.stdout).result.evaluation.cycle_id, null);
   const gate = runValidator(["--convergence-gate", manifestPath]);
   assert.equal(gate.status, 0, `${gate.stdout}\n${gate.stderr}`);
 
@@ -222,7 +224,7 @@ test("a narrowed independent pass blocks dependent entries without reducing the 
   assert.ok(narrowedResult.blockers.some((blocker) => blocker.code === "narrowed-requested-pass"));
   const gate = runValidator(["--convergence-gate", manifestPath]);
   assert.equal(gate.status, 1, `${gate.stdout}\n${gate.stderr}`);
-  assert.equal(JSON.parse(gate.stdout).outcome, "not_satisfied");
+  assert.equal(JSON.parse(gate.stdout).result.outcome, "not_satisfied");
 
   const blocked = await runInput(projectRoot, "check-operation", {
     strategy: "revise-request",
@@ -396,13 +398,18 @@ test("manuscript-changing revise-fiction uses verified execution and restores fu
     action: "Change dawn to dusk in chapter 1.",
   });
   const backupRelative = ".author-toolkit/backups/backup-fiction-001/manuscript/chapter-001.md";
-  await mkdir(path.dirname(path.join(projectRoot, backupRelative)), { recursive: true });
-  await writeFile(path.join(projectRoot, backupRelative), original, "utf8");
   const backupManifestRelative = ".author-toolkit/backups/backup-fiction-001/manifest.json";
-  await writeJson(path.join(projectRoot, backupManifestRelative), {
-    backup_id: "backup-fiction-001",
-    approval_id: "EDIT-001",
-    scope_id: "scope-001",
+  await writeBackupEvidence(projectRoot, {
+    backupId: "backup-fiction-001",
+    approvalId: "EDIT-001",
+    scope: base.scopeReference,
+    files: [{
+      path: "manuscript/chapter-001.md",
+      action: "modify",
+      input_sha256: createHash("sha256").update(original).digest("hex"),
+      output_sha256: createHash("sha256").update(output).digest("hex"),
+      contents: original,
+    }],
   });
   const execution = {
     cycle_id: "cycle-fiction-001",

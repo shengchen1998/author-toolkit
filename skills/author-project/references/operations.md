@@ -4,19 +4,19 @@ Use the controlled workflow terminology in `<project-root>/.author-toolkit/refer
 
 ## Paths and manifest identity
 
-Resolve the project root before reading or writing. The canonical manifest is `.author-toolkit/project.json` beneath that root. Accept `schema_version: "3.0.0"`, `"3.1.0"`, and `"3.2.0"`; they store project metadata, `manuscript_root`, shared `paths`, and optional `current_scope` and `pending_action`, with no `workflow`, `current_stage`, or `stages` properties. A v3.1 manifest also registers `paths.creation`, defaulting to `.author-toolkit/creation/`. Keep v3.0 and v3.1 manifests readable for their supported legacy operations; recognize v2 only for setup migration. Migrate v2, v3.0, or v3.1 directly to v3.2 before using current-draft convergence cycle operations. The separate `upgrade-v31` operation remains only a legacy v3.1 compatibility path, not a substitute for v3.2 migration. A v3.2 manifest registers the convergence state root, defaulting to `.author-toolkit/convergence/`.
+Resolve the project root before reading or writing. The canonical manifest is `.author-toolkit/project.json` beneath that root. Accept only `schema_version: "4.0.0"`; it stores project metadata, `manuscript_root`, shared `paths`, and optional `current_scope` and `pending_action`, with no `workflow`, `current_stage`, or `stages` properties. It registers `paths.creation`, defaulting to `.author-toolkit/creation/`, and the convergence state root, defaulting to `.author-toolkit/convergence/`. An old manifest receives `greenfield-initialization-required` before any project write. Preserve the old project and initialize a separate project from manuscript-only input; no migration or old shared-state import is available.
 
 Keep stored paths relative to the project root and use forward slashes. Resolve them against the root when reading. Reject absolute paths, backslashes, URI schemes, home paths, and `..` segments. Resolve `paths.creation` and the convergence state root by the same rules and exclude them from manuscript inventory. Setup deploys shared runtime contracts to the fixed `.author-toolkit/references/` directory beneath the project root. This directory has no manifest field and is excluded by the `.author-toolkit` operational root. One manifest represents one book. A separate book needs its own project root and manifest.
 
 `write-fiction`, `revise-fiction`, `revise-draft`, `revise-increment`, and `revise-request` are author-invoked strategies over the same manifest, tracker, reports, sessions, backups, and handoffs. No strategy owns the shared project state. Do not create a strategy-specific subdirectory or a second tracker. At a stable operation gate, an active current-draft convergence cycle permits its exact recovery work and read-only inspection; it blocks a parallel manuscript-changing cycle. With no active cycle, switching preserves current scope, evidence, decisions, staged drafts, and pending action. Every switch waits for the author's exact command and never resumes writing automatically.
 
-Valid pending-action operation names are `intake`, `story-bible`, `draft-baseline`, `structure`, `characters`, `diagnostics`, `revision-plan`, `chapter-revision`, `prose`, `ai-cleanup`, `current-scope-review`, `final-review`, `creation-baseline`, `writing-plan`, `chapter-creation`, `chapter-review`, `creation-commit`, `creation-import`, and `milestone-review`. The legacy `STAGES` remains revision-only; do not add creation operations to it or to report v2 `stage`.
+Valid pending-action operation names are `intake`, `story-bible`, `draft-baseline`, `structure`, `characters`, `diagnostics`, `revision-plan`, `chapter-revision`, `prose`, `ai-cleanup`, `current-scope-review`, `final-review`, `creation-baseline`, `writing-plan`, `chapter-creation`, `chapter-review`, `creation-commit`, `creation-import`, and `milestone-review`. Creation operations use their own artifacts; do not add them to report v2 `stage`.
 
 ## Shared scope and evidence
 
 A scope record identifies `scope_id`, `description`, ordered manuscript `files` with a `sha256` hash for each, `excluded_files`, `proposed` or `confirmed` status, and `created_at`. Record a proposed scope first. Mark it `confirmed` only after the author explicitly confirms that scope ID, its ordered paths and hashes, its exclusions, and its reading order. A new book can have no current scope before its first accepted manuscript file.
 
-On v3.2, every current scope also has `scope_fingerprint`. Compute it as SHA-256 over UTF-8 `JSON.stringify` of this object, with keys in the shown order:
+In 4.0.0, every current scope also has `scope_fingerprint`. Compute it as SHA-256 over UTF-8 `JSON.stringify` of this object, with keys in the shown order:
 
 ```json
 {
@@ -31,7 +31,7 @@ Create a new `scope_id` whenever manuscript membership, reading order, or exclus
 
 Whole-report evidence is reusable only when its operation, `scope_id`, every input version, requested coverage and subchecks, and dependency state match the requested work. Otherwise, report the evidence as missing, stale, or blocked with its reason.
 
-A full local coverage unit can also compose into an expanded scope through the living coverage index. Its original scope ID remains bound to the source report; reuse requires matching operation, exact paths and hashes, requested subchecks, and dependencies, while the new synthesis receives the new scope ID. Synthesis units never reuse this way.
+A full local coverage unit can also compose into an expanded scope through the living coverage index. Its original scope ID remains bound to the source report; ordinary reuse requires matching operation, exact paths and hashes, requested subchecks, and dependencies, while the new synthesis receives the new scope ID. A [dependency exception](#dependency-exceptions) permits only the bounded copyedit case. Synthesis units never reuse this way. Project-aware `--coverage-index` validation checks the selected index beneath the registered reports path against the current scope and requested pass, then reads the referenced units, source reports, syntheses, and dependency-exception attestations with exact identities and hashes. It does not scan or require unrelated historical units to become current.
 
 This evidence is shared by all five strategies. Read the latest tracker and reports before reuse, and preserve historical artifacts. Follow [`../../revise-fiction/references/state-and-findings.md`](../../revise-fiction/references/state-and-findings.md) for report identity, finding status, coverage units, and dependency-specific stale propagation. Creation evidence does not become chapter-revision evidence.
 
@@ -48,52 +48,91 @@ Approval statuses are `approved`, `deferred`, `cancelled`, and `superseded`. Rec
 
 A diagnostic proposes changes but does not create an approval. Creation acceptance records manuscript and resulting-scope approvals separately. A restore always needs a separate approval ID. Backup, commit, and restoration records cite the applicable approval, scope, and input hashes.
 
+## Typed tracker writes
+
+Run the installed public commands instead of hand-editing the living tracker:
+
+```bash
+node <setup-skill>/assets/runtime/author-project.mjs record-finding --project-root <project-root> --input <finding.json>
+node <setup-skill>/assets/runtime/author-project.mjs record-finding-decision --project-root <project-root> --input <finding-decision.json>
+node <setup-skill>/assets/runtime/author-project.mjs record-approval --project-root <project-root> --input <approval.json>
+```
+
+The closed input schemas are `record-finding-command-schema.json`, `record-finding-decision-command-schema.json`, and `record-approval-command-schema.json` in the deployed shared references. Every command returns the versioned project response, generates its UTC `updated_at` through the shared clock, and accepts an optional `expected_tracker_sha256`. The command acquires the registered convergence state root's `active-cycle.lock`, rereads the manifest and tracker, rechecks that hash, rejects an invalid existing tracker or duplicate ID, validates the complete candidate Markdown, and publishes through a verified atomic replacement. A post-write interruption reports `state_written: true` and the actual tracker recovery hash; it does not roll back or rewrite the row.
+
+`record-finding` requires a complete finding v2 object, its report operation, a current report beneath the registered reports path, `status: "open"`, and a nonempty reason. The report must validate as report v2 evidence, have the same operation, and contain the exact finding, including its stable ID, audit, technique, location, issue, recommendation, and confidence. The report envelope's audit may name the wider report audit while the finding retains its own audit. Finding location paths must be portable project-relative paths. New findings enter as `open`; a pending placeholder or another initial status is rejected. Special-character report and location paths round-trip through real Markdown code spans and table escaping.
+
+`record-finding-decision` requires an existing finding, a current report, a nonempty reason, and `author_decision_id`. It writes matching `author_decision_id=` and `finding_status=` tokens into the finding reason. Validation rejects a missing or unapproved decision and any later external edit that changes the row status independently of its token. The applicable evidence is:
+
+| Status | Required current evidence and decision |
+| --- | --- |
+| `resolved` | A verified revision execution with `execute` disposition for this finding and the same author decision. Recheck approved inputs, actual output bytes, current target, pass, and scope. |
+| `deferred` | A verified execution with `defer` disposition, or a current no-edit skip covering this finding and the same approved author decision. Record the consequence in the reason. |
+| `dismissed` | A verified execution with `dismiss` disposition, or a current no-edit skip covering this finding and the same approved author decision. Record why the finding is inapplicable or intentional. |
+| `stale` | An equivalent complete current report that no longer observes the finding, current SHA-256 report inputs, and an approved `finding-decision` approval whose operation, scope, complete report-input paths, `finding_id=`, and `finding_status=stale` tokens match. |
+
+A no-edit skip must bind its requested pass, current target scope, complete pass paths, report, and approved decision. Execution evidence must be `verified`; a prepared record or an approval alone is insufficient. An open finding remains legal but blocks a satisfied evaluation. Deferred and dismissed findings retain eligibility only through the current evidence above, and stale findings remain historical rather than resolved.
+
+`record-approval` requires `approval_id`, `type`, `operation`, `scope_id`, complete ordered `paths`, ordered `files`, `status`, and `reason`. Each file records `path`, `action`, `input_sha256`, and `output_sha256`; paths must equal the ordered file paths exactly. The reason receives an `approval_files=` SHA-256 token over the operation, scope ID, and ordered file bindings. Revision file actions use `create`, `modify`, `delete`, or `reorder`, with the same nullability and changed-content rules as revision execution.
+
+For `type: "revision-plan"` and `type: "edit"`, also supply `revision` with hashed `plan`, `batch`, and `scope_fingerprint`. Their operations must be `revision-plan` and `chapter-revision` respectively. The command verifies the plan and batch bytes and appends `plan_id=`, `plan_sha256=`, `batch_id=`, `batch_sha256=`, `scope_fingerprint=`, and `revision_approval=` tokens. It computes `revision_approval` through the same canonical algorithm consumed by revision preparation and verification, including the operation, plan, batch, input scope, and complete ordered path/action/input/output bindings. Other approval types must not supply a revision binding.
+
+Duplicate finding, approval, and completion-decision IDs remain invalid external state. Typed writes stop without merging, renumbering, deleting, or repairing rows. Diagnostics identify the conflicting finding report or approval operation and scope where applicable. External-edit validation also reports invalid statuses, missing reports, malformed paths, and invalid typed decisions without changing tracker bytes.
+
+## Timestamp
+
+Resolve `<setup-skill>` as the installed `setup-author-toolkit` directory and run the shared public command before manually authoring reports or artifacts:
+
+```bash
+node <setup-skill>/assets/runtime/author-project.mjs timestamp
+```
+
+The versioned project response contains `result.json` and `result.filename`, derived from the same UTC clock reading. Use `result.json` only for `created_at`, `updated_at`, `confirmed_at`, `completed_at`, `verified_at`, and equivalent JSON timestamp fields. Use `result.filename` or a legal derivative for timestamp-based report or artifact IDs and for unique filenames and UTC-based directory names; it formats the same instant as `YYYYMMDDTHHMMSSmmmZ` without filename separators and satisfies the report ID pattern. Use one invocation for all fields that must share an instant, request a fresh value for a later update, and add a collision suffix when necessary. Runtime writes obtain the same values through the shared internal UTC source.
+
+Current contract validation checks timestamp values against current UTC time with a 60-second future allowance. Current-time and within-tolerance values pass; a later value fails with a concrete field diagnostic. Validation never infers evidence time from filename text. For deterministic tests, `timestamp --now <ISO-timestamp>` and validator `--now <ISO-timestamp>` inject the clock explicitly.
+
 ## Initialize
 
-1. For a new project, start with `../assets/project-template.json`. Replace sentinel timestamps with the current UTC timestamp and `und` with the detected or author-supplied BCP 47 language. Register supplied project metadata and paths, retaining template defaults for omitted paths, including `paths.creation` and the convergence state root. Do not add a workflow, entry operation, or strategy owner.
-2. For an existing v3.2 manifest, validate and return it without resetting current scope, pending action, paths, artifacts, decisions, snapshots, or external backup records. Do not infer a scope snapshot or author confirmation.
-3. For an existing v2, v3.0, or v3.1 manifest, preserve it and run `node <toolkit-root>/scripts/migrate-v32.mjs --project-root <project-root>`. The `migrate-v3.mjs` command and `migrateProjectToV3` function are compatibility wrappers with the same target. Migrate directly to v3.2 without writing v3.1 first. Retain the script's snapshot and migrate current scope, pending action, and legacy overrides as documented. Report the snapshot path, created scope and inventory snapshots, and legacy recovery diagnostics. Never silently replace or reset a legacy project.
-4. Resolve `paths.backups` and create `<paths.backups>/index.json` from `../assets/backup-index-template.json` when absent. Keep backup records in this index rather than adding undeclared manifest properties.
+Run the installed public command for a manuscript-only project:
 
-The caller creates directories and empty creative templates. Initialization does not populate manuscript or Story Bible creative content, establish an entry operation, or invoke a strategy.
+```bash
+node <setup-skill>/assets/runtime/author-project.mjs init --project-root <project-root> --language <bcp47-tag>
+node <setup-skill>/assets/runtime/author-project.mjs init --project-root <project-root> --input <initialization.json>
+```
 
-## Upgrade v3.1
+Use the direct `--manuscript-root <path>` option or input `manuscript_root` for an existing manuscript location. The input may also supply `paths` overrides and `project_title`; omitted paths retain the neutral template defaults, including `paths.creation` and the convergence state root. Do not combine `--input` with the direct language or manuscript-root options.
 
-Use `upgrade-v31` only after the author confirms the additive upgrade for a valid v3.0 project that intentionally remains on the legacy v3.1 path. Add `paths.creation`, using the supplied safe project-relative path or `.author-toolkit/creation/`, change only `schema_version` to `"3.1.0"`, and update `updated_at`. Write the manifest atomically and validate it as v3.1. Preserve manuscripts, reports, findings, approvals, scopes, pending work, backups, and every other registered path. Existing creation artifacts remain untouched.
+For a new project, `init` deploys missing matching shared references, creates a neutral 4.0.0 manifest with fresh timestamps, creates only missing neutral Story Bible, tracker, backup-index, and project-instruction skeletons, and creates the registered operational directories. It leaves current scope and pending action unset and creates no scope or inventory snapshot, active cycle, completed-cycle pointer, evaluation, finding, approval, or current-draft revision convergence claim. Existing manuscript bytes remain unchanged. It does not import operational evidence from another project or populate creative content.
 
-For a valid v3.1 or v3.2 manifest, validate and return it without another write or a version change. For v2, v3.0, or v3.1 work that uses a current-draft convergence cycle, return to direct setup migration instead of composing upgrades. Do not create manuscript files or mark creation evidence current during this upgrade.
+For an existing 4.0.0 manifest, `init` validates the manifest, deployed references, registered files, tracker, and current scope without resetting current scope, pending action, paths, artifacts, decisions, snapshots, active or completed cycles, or backup records. Missing matching references are deployed; a mismatched reference returns `reference-version-conflict` without replacement. Existing operational files are never replaced to manufacture a fresh project.
 
-## Legacy migration and recovery
+For an existing v2, v3.0, v3.1, or v3.2 manifest, `init` returns `greenfield-initialization-required` before deploying references or changing any file. Preserve the old project and initialize a separate project from manuscript-only input. Do not copy its manifest, references, findings, approvals, evaluations, or other shared state. No migration or old shared-state import is available.
 
-Migration creates the skeleton for the convergence state root and current inventory evidence. It preserves an author-confirmed scope snapshot only when one existing approved tracker row has type `scope-confirmation`, operation `intake`, the exact scope ID and ordered paths, and matching whitespace-separated `scope_fingerprint=<fingerprint>` and `reading_order_confirmed=true` tokens. Reuse that row's existing approval ID and timestamp; never create a placeholder approval. Without exactly one matching row, preserve the original confirmed record in the migration snapshot and make the migrated current scope proposed for reconfirmation. Legacy reports, findings, approvals, pending actions, sessions, staging, backups, batches, and journals do not create a satisfied evaluation or active cycle.
-
-Preserve every v3.0 or v3.1 pending action exactly. Run `author-project reconcile-cycle` without a direction to diagnose nonterminal legacy journals and `in_progress` pending work before dependent cycle operations or manuscript writes. `legacy-commit-recovery-required` and `legacy-pending-recovery-required` are recovery blockers, not inferred cycle ownership. Follow the explicit creation recovery procedure and its independent author decisions before starting a cycle. A diagnostic direction never publishes, restores, or rewrites these legacy artifacts.
-
-A staged draft from a legacy project requires either an exact `creation-rejection` decision or a current satisfied full-manuscript starting evaluation followed by exact reapproval in one new `write-fiction` cycle. Reapproval rechecks the staged bytes, dependency fingerprint, story-state differences, complete publication scope, and new manuscript and scope approvals. `legacy-staging-decision-required` blocks bootstrap until rejection and does not block independent full-manuscript `revise-draft` recovery. Migration never publishes staging or infers acceptance. When a legacy revision base cannot be revalidated, use current full-manuscript `revise-draft` recovery and apply only the normal coverage-reuse rules.
-
-For a legacy batch marked `rejected`, require a schema-valid batch with `commit: null` and exactly one rejection approval ID, resolved through a valid tracker to one approved chapter-review `creation-rejection`. Match ordered batch paths, batch ID, recomputed dependency fingerprint over the plan, actions and input versions, and current scope fingerprint. Nonempty scope IDs must match the batch, approval, and current scope; an empty project requires a null batch scope ID and empty scope fingerprint. Missing or wrong decisions block both bootstrap and ordinary cycle starts even with satisfied starting evidence. Valid empty rejection permits bootstrap, while valid nonempty rejection still requires the satisfied evaluation before ordinary work. Other unresolved staging keeps the reapproval route after that evaluation. A status value or confirmation boolean never substitutes for the decision, and reconciliation never rewrites the legacy batch or tracker.
+Initialization does not establish an entry operation or invoke a strategy.
 
 ## Read and validate
 
-Before a shared workflow `read`, `validate`, or `status`, resolve the installed `setup-author-toolkit` skill's `assets/references/` payload and compare every packaged file with its corresponding file beneath `<project-root>/.author-toolkit/references/`. A valid v3 manifest alone does not prove that these shared runtime contracts are deployed.
+Before a shared workflow `read`, `validate`, or `status`, resolve `<setup-skill>` as the installed `setup-author-toolkit` skill directory and use its public project or validator CLI. These commands parse and validate the manifest first so an old contract receives its greenfield diagnostic even when references are missing or damaged. For a current manifest, they compare every packaged file in `assets/references/` with its corresponding file beneath `<project-root>/.author-toolkit/references/` before using project state. A valid 4.0.0 manifest alone does not prove that these shared runtime contracts are deployed.
 
-- If a packaged file is missing from the project, stop and return the missing project-relative paths. Instruct the caller to display the exact user-invoked `setup-author-toolkit` command and wait for the author. Do not continue shared work or write project state.
-- If an existing file's SHA-256 hash differs from the packaged file, stop and report `reference-version-conflict` with both hashes. Instruct the caller to display the setup command and wait. Only setup may replace the file through its separate exact-file approval and backup procedure.
+- If a packaged file is missing from the project, the command exits with validation failure and returns the missing project-relative paths. Instruct the caller to display the exact user-invoked `setup-author-toolkit` command and wait for the author. Do not continue shared work or write project state.
+- If an existing file's SHA-256 hash differs from the packaged file, the command exits with validation failure and reports `reference-version-conflict` with both hashes. Instruct the caller to display the setup command and wait. Only setup may replace the file through its separate exact-file approval and backup procedure.
 
-Return shared state as ready only after every packaged reference exists with a matching hash. Setup deploys the payload before initialization or migration, so its later validation continues through these same checks without another deployment.
+Return shared state as ready only after every packaged reference exists with a matching hash. Setup deploys the payload during initialization, and later validation continues through these same checks without another deployment.
 
-For every read, parse JSON and check `schema_version`. Apply the installed schema and operation rules for the declared v3.0, v3.1, or v3.2 version, including required fields, additional-property restrictions, current scope, pending action, timestamps, safe relative paths, and registered operational roots. Use `<project-root>/.author-toolkit/references/project-schema.json` only to recognize legacy v2 state before migration. Return v2 as requiring migration through setup; do not reinterpret it as v3.
+For every read, parse JSON and check `schema_version`. Apply only the installed 4.0.0 schema and current operation rules, including required fields, additional-property restrictions, current scope, pending action, timestamps, safe relative paths, and registered operational roots. Use `<project-root>/.author-toolkit/references/project-schema-v4.json`. Any older manifest or old shared artifact receives `greenfield-initialization-required`; do not reinterpret it as current state.
 
-When the installed toolkit contains `scripts/validate.mjs`, run:
+Project-root mode runs the real Ajv JSON Schema validators, then checks the manifest, registered files, and tracker. Validate individual artifacts with the same installed CLI:
 
 ```bash
-node <toolkit-root>/scripts/validate.mjs --manifest <manifest-path>
-node <toolkit-root>/scripts/validate.mjs --scope-snapshot <snapshot-path> --inventory-snapshot <inventory-path>
+node <setup-skill>/assets/runtime/validate.mjs --manifest <manifest-path>
+node <setup-skill>/assets/runtime/validate.mjs --scope-snapshot <snapshot-path> --inventory-snapshot <inventory-path>
 ```
 
-Use the documented Node environment. Report the command, exit status, and diagnostics. For v3.0 and v3.1 with a current scope, manifest validation recomputes manuscript hashes under `#scope`. For v3.2, `#scope` additionally returns `scope_id`, `scope_fingerprint`, and `full_manuscript=true|false` after the checks below. Treat a `scope-currency` or failed full-manuscript diagnostic as changed or incomplete input: mark dependent evidence stale and reconcile the scope with the author before relying on it or writing. Do not refresh hashes silently. Script validation is authoritative. Without the script, perform the schema and hash checks above and label the result `manual-checks-only`; do not claim full JSON Schema validation. On read or status, report validation failures, changed inputs, and missing registered paths without repairing them implicitly. A read returns the full parsed manifest plus the shared state view below; status returns that compact view.
+Use the documented Node environment; the installed runtime includes its dependencies and requires no npm installation. Report the command, exit status, and diagnostics. Success exits 0, validation failure exits 1, and argument or usage errors exit 2. Running with no arguments prints help without inspecting state. Repository mode is explicit with `--repository` and belongs to source development; project mode is explicit with `--project-root`. Do not combine either mode with the other or with individual checks. For 4.0.0 with a current scope, manifest validation recomputes manuscript hashes under `#scope` and returns `scope_id`, `scope_fingerprint`, and `full_manuscript=true|false` after the checks below. Treat a `scope-currency` or failed full-manuscript diagnostic as changed or incomplete input: mark dependent evidence stale and reconcile the scope with the author before relying on it or writing. Do not refresh hashes silently. Script validation is authoritative; do not substitute `manual-checks-only` or claim JSON Schema validation without running the installed CLI. On read or status, report validation failures, changed inputs, and missing registered paths without repairing them implicitly.
 
-A v3.2 full-manuscript result is true only when all of these conditions hold:
+Every public project operation and validator validation or status/gate query returns `response_contract_version: "1.0"`, `command`, boolean `valid`, command-specific `result`, and structured `errors`. Read the existing cycle, reconciliation, execution, evaluation, or completion payload from `result`; the previous operation-specific object is not duplicated at the top level. Ordinary validator results contain `mode`, `checks`, and per-check `results`; status/gate queries put their status directly under `result`, including `result.outcome` and `result.current`. Success and valid read-only status queries exit 0, project, operation, artifact, or gate validation failures exit 1, and argument, input-file, or input-shape usage errors exit 2. Errors are JSON on stdout, with no parallel human-text error contract. No-argument help prints usage without inspecting state. `read` and `status` return compact project status by default; only explicit `--full` returns the full parsed manifest and original convergence status. Dedicated cycle and artifact queries remain available for complete identities and evidence.
+
+A 4.0.0 full-manuscript result is true only when all of these conditions hold:
 
 - the current scope is confirmed and its declared scope fingerprint matches canonical content;
 - every manuscript path is unique and belongs to current manuscript inventory;
@@ -107,16 +146,18 @@ Operational-file additions do not by themselves change scope exclusions. A non-o
 
 ## Status
 
-Return a compact shared state view containing:
+Run `node <setup-skill>/assets/runtime/author-project.mjs status --project-root <project-root>` for compact project status, or `read` with the same selection for the identical default view. The compact `result` contains:
 
-- project root, manifest schema and creation timestamps, project type, language, and manuscript root;
-- current scope ID, scope fingerprint when available, confirmation status, ordered paths and hashes, exclusions, snapshot paths, and the v3.2 full-manuscript result;
-- the active current-draft convergence cycle, its revision, current strategy, recovery position, and related references, or its absence;
-- pending action, status, scope ID, reason, and artifacts, or its absence;
-- convergence status with `query_valid`, `outcome`, `current`, `evaluation`, `cycle`, `blockers`, and `required_action`;
-- every stale or blocked evidence item with its operation, scope, dependency reason, and source report or tracker row;
-- the active cycle's exact next action, or the next action recorded in the tracker or latest session note when no cycle is active;
-- validation errors, missing paths, and unresolved approval, backup, commit, or restore requirements.
+- project root, manifest path, schema and creation timestamps, project type, language, manuscript root, and project validation errors;
+- shared-reference validity and concrete missing or mismatched-reference errors;
+- current scope ID, scope fingerprint when available, confirmation status, file count, and the 4.0.0 full-manuscript result, without ordered file hashes, exclusions, or snapshot identities;
+- pending action, status, scope ID, reason, artifacts, and cycle coordination fields, or its absence;
+- active cycle ID, revision, current strategy, recovery position, and interrupted operation coordination, without starting or target references, related artifacts, evaluations, or completed history;
+- evaluation outcome, currency, compact blockers, and request-completion summary, without the stored evaluation or its evidence graph;
+- finding, approval, and cycle-completion decision counts by controlled status;
+- the exact next action from the active recovery position or current convergence status query.
+
+Use `read --full` or `status --full` only when the complete manifest, ordered path hashes, stored evaluation, evidence graph, and selected cycle history are required. Dedicated `cycle-status`, `convergence-status`, gate, reconciliation, and artifact queries retain their complete result objects within the same response envelope.
 
 Status does not infer operation completion, select a strategy, advance pending action, or claim current-draft revision convergence from a full-manuscript result alone. A valid convergence status query reports `satisfied`, `not_satisfied`, or `indeterminate` without changing state. With no active cycle, select the latest completed-cycle target evaluation or independent `revise-draft` evaluation; a newer narrowed or otherwise unsatisfied independent result therefore prevents an older satisfied evaluation from passing the gate. When no evaluation or trustworthy proof is available, report `indeterminate`, `current: false`, and the missing-proof blocker; report a known unmet condition as `not_satisfied` with its concrete blocker. The separate convergence gate succeeds only for `satisfied` with current evidence; both other outcomes and stale evidence fail with structured blockers. Neither query treats an ordinary unfinished lifecycle as a malformed file.
 
@@ -133,11 +174,11 @@ Every non-bootstrap start requires a full-manuscript starting scope whose immuta
 Use the public facade for starts and optimistic transitions:
 
 ```bash
-node <toolkit-root>/scripts/author-project.mjs start-cycle --project-root <project-root> --input <request.json>
-node <toolkit-root>/scripts/author-project.mjs transition-cycle --project-root <project-root> --input <transition.json>
-node <toolkit-root>/scripts/author-project.mjs cycle-status --project-root <project-root>
-node <toolkit-root>/scripts/author-project.mjs cycle-gate --project-root <project-root>
-node <toolkit-root>/scripts/author-project.mjs check-operation --project-root <project-root> --input <operation.json>
+node <setup-skill>/assets/runtime/author-project.mjs start-cycle --project-root <project-root> --input <request.json>
+node <setup-skill>/assets/runtime/author-project.mjs transition-cycle --project-root <project-root> --input <transition.json>
+node <setup-skill>/assets/runtime/author-project.mjs cycle-status --project-root <project-root>
+node <setup-skill>/assets/runtime/author-project.mjs cycle-gate --project-root <project-root>
+node <setup-skill>/assets/runtime/author-project.mjs check-operation --project-root <project-root> --input <operation.json>
 ```
 
 The transition input names `cycle_id` and `expected_revision`. It may change current strategy, recovery position, target scope, requested pass, related artifacts, change set, and work set. It cannot change cycle ID, initiating strategy, bootstrap, starting scope, status, evaluation references, or completion. A newly assigned target scope must be the current confirmed full-manuscript scope. An existing starting or target snapshot remains valid historical evidence after expected edits. Recompute every referenced artifact hash before the write. A stale revision, ID mismatch, unsafe reference, missing artifact, or changed hash stops the transition without replacing active state.
@@ -178,8 +219,8 @@ Completion instead writes `cycle_operation`, records the explicit completion dec
 Run the public operation without an input for diagnosis only:
 
 ```bash
-node <toolkit-root>/scripts/author-project.mjs reconcile-cycle --project-root <project-root>
-node <toolkit-root>/scripts/author-project.mjs reconcile-cycle --project-root <project-root> --input <direction.json>
+node <setup-skill>/assets/runtime/author-project.mjs reconcile-cycle --project-root <project-root>
+node <setup-skill>/assets/runtime/author-project.mjs reconcile-cycle --project-root <project-root> --input <direction.json>
 ```
 
 Without `direction`, the operation rechecks the manifest, active and completed cycles, linked pending references, referenced artifact identities and hashes, and lock owner without writing any file. It returns `diagnostic_only: true`, `state_written: false`, the interrupted operation when present, and concrete blockers. A direction is an explicit author choice of recovery metadata; it is not manuscript, publication, restore, or completion approval. Directions that change cycle or manifest state acquire the same active-cycle lock and reconfirm the diagnosed bytes before writing. Directions that resume a public operation reuse that operation's lock and full validation.
@@ -205,8 +246,8 @@ The completed-cycle pointer is checked before dependent starts, transitions, exe
 For independent read-only checks, use:
 
 ```bash
-node <toolkit-root>/scripts/validate.mjs --convergence-status <manifest-path>
-node <toolkit-root>/scripts/validate.mjs --convergence-gate <manifest-path>
+node <setup-skill>/assets/runtime/validate.mjs --convergence-status <manifest-path>
+node <setup-skill>/assets/runtime/validate.mjs --convergence-gate <manifest-path>
 ```
 
 Convergence status exits successfully when the query itself is valid, including an `indeterminate` outcome. Convergence gate exits nonzero for `not_satisfied`, `indeterminate`, stale evidence, or malformed state. Usage errors retain the validator's exit status 2. Both commands are read-only. Evaluation and completion require their dedicated evidence operations; `transition-cycle` never substitutes for them.
@@ -218,8 +259,8 @@ Before manuscript-changing `check-operation`, `start-cycle`, `transition-cycle`,
 Run the public operation after the author has approved the actual external text and proposed story-state differences:
 
 ```bash
-node <toolkit-root>/scripts/author-project.mjs reconcile-manuscript --project-root <project-root> --input <reconciliation.json>
-node <toolkit-root>/scripts/validate.mjs --manuscript-reconciliation <reconciliation.json>
+node <setup-skill>/assets/runtime/author-project.mjs reconcile-manuscript --project-root <project-root> --input <reconciliation.json>
+node <setup-skill>/assets/runtime/validate.mjs --manuscript-reconciliation <reconciliation.json>
 ```
 
 The closed input names `reconciliation_id`, `author_decision_id`, `target_scope`, and hashed `story_state` references. An active reconciliation also names its `cycle_id` and `expected_revision`; without an active cycle, it names `previous_scope` and creates no cycle. The field is mandatory for every cycle-external reconciliation, including recovery from empty. It may be explicitly null only when the latest verified reconciliation has a null target, in which case `recovery_from_empty` is required. Omitting the field is a usage error before any reconciliation or manifest write; an empty manifest pointer never makes omission valid. A nonempty target must be manifest `current_scope`, pass full-manuscript validation, and have a snapshot author-confirmation decision equal to the import decision. A null target requires actual empty inventory and creates an immutable empty inventory snapshot, not an empty scope. The manifest's optional `manuscript_reconciliation` points to the latest immutable record beneath `reconciliations/`.
@@ -244,19 +285,29 @@ Use the deployed `requested-pass-schema.json`, `no-edit-skip-schema.json`, `revi
 
 A requested pass records its target scope reference, required operations and paths, BCP 47 language, subchecks, versioned dependencies, inapplicability reasons, narrowing decision and gaps, baseline pass, newly requested subchecks, and creation time. Compute its fingerprint as SHA-256 over UTF-8 `JSON.stringify` of an object with keys in this order: `target_scope` containing only `scope_id` and `scope_fingerprint`, `required_operations`, `paths`, `language`, `dependencies`, `inapplicability`, `narrowing` containing only `reason` and `gaps` or null, `baseline_pass` containing only `pass_id` and `pass_fingerprint` or null, and `requested_subchecks` containing only `operation` and `subcheck`. Preserve the recorded array order. Pass ID, snapshot locations, decision IDs, and timestamps are excluded.
 
-The baseline is the latest satisfied, unrestricted full-manuscript pass preserved in completed history or independent `revise-draft` evaluations, excluding the cycle or independent evaluation being evaluated. Every inherited operation and subcheck remains required. Newly requested checks have explicit author decision IDs and extend that baseline; they cannot remove or relabel an inherited check. A later narrowed requested pass never supplies or reduces this baseline. Eligible local coverage units keep their original scope and pass provenance. Their source reports may belong to an earlier pass only when the source hash, operation, paths and hashes, requested subchecks, and dependencies all match; compose a new full-target index and synthesis for the requested pass.
+The baseline is the latest satisfied, unrestricted full-manuscript pass preserved in completed history or independent `revise-draft` evaluations, excluding the cycle or independent evaluation being evaluated. Every inherited operation and subcheck remains required. Newly requested checks have explicit author decision IDs and extend that baseline; they cannot remove or relabel an inherited check. A later narrowed requested pass never supplies or reduces this baseline. Eligible local coverage units keep their original scope and pass provenance. Their source reports may belong to an earlier pass only when the source hash, operation, paths and hashes, requested subchecks, and dependencies all match, or when a dependency exception satisfies the rules below; compose a new full-target index and synthesis for the requested pass.
+
+### Dependency exceptions
+
+Use the closed `dependency_exception` property in `coverage-unit-schema.json`. Every unit records either `null` for ordinary exact-hash reuse or one object with `unit_id`, `requested_pass`, `dependency_path`, `old_sha256`, `new_sha256`, `operation`, `reason`, and `semantic_attestation`. The pass reference contains its ID, fingerprint, path, and SHA-256; the attestation reference contains its ID, path, and SHA-256. `operation` is exactly `draft-baseline` or `revision-plan`. The closed schema requires every field and rejects additional properties.
+
+The evaluator accepts an exception only for a full local coverage unit with unchanged source-report, scope, operation, kind, ordered coverage paths and hashes, subchecks, and old dependency versions. It requires the old hash in both source and new unit dependencies, the new hash in the current requested pass and dependency bytes, and exactly one changed dependency. Manuscript, Story Bible, scope, inventory, approval, review, execution, tracker, and other evidence identities are ineligible. It also rejects registered operational roots, paths with another deterministic evidence role, and report paths outside the exception operation's directory.
+
+The referenced attestation is an exact evaluation input bound to the same pass and target. Require one confirmed host `dependency-copyedit` claim with the unit ID as subject and exactly these artifacts: the source unit with `dependency_exception: null`, the current requested pass, and the current dependency. The evaluator loads that source unit as `dependency-exception-source-unit` in the evidence graph and verifies its old dependency hash and unchanged coverage identity. Missing, altered, refuted, or mismatched attestations, source units with exceptions, repeated dependency changes, and attempted hash chaining produce blockers. This verifies identities and linkage, not the underlying editorial judgment.
+
+To publish an exception, preserve the source unit and write a new unit version at a new path with the complete exception. Update the living index reference and current coverage attestation to the new unit bytes, and include the dependency attestation in the evaluation request. Do not reference the new unit from the dependency attestation, because the new unit already references that attestation and would create a self-hash cycle. Historical evaluation records, their evidence graphs, and immutable source-unit artifacts retain their original bytes and hashes. The living index receives the new current reference, while the historical graph retains the earlier index reference and hash. Current-index evaluation selects only current units and their required dependency-exception sources; unrelated historical units do not need to satisfy the current requested pass.
 
 A no-edit skip binds `revision-plan` and `chapter-revision` to the pass and target fingerprint, covered finding IDs, explicit author decision, and reason. Verify the decision in the shared tracker. Deferred and dismissed findings remain valid when their decisions are current and covered; open findings are `not_satisfied`, and resolved findings need verified revision execution evidence rather than a no-edit claim. An empty manuscript or missing evidence never becomes satisfied.
 
 A review group binds intent, standards, and fresh jobs, their reader states, every chunk and applicable synthesis report, and the fresh logical-reviewer attestation to one pass and target fingerprint. Each job must validate complete full-target coverage against actual source hashes and line counts. A completed fresh job requires a completed reader state containing every job chunk in the declared order, not merely a continuous prefix. Final review can satisfy current-scope review only under the existing same-scope and same-checks equivalence rule.
 
-Semantic attestations identify the attester, pass and scope fingerprints, claim subject, verdict, statement, referenced artifact hashes, and creation time. Require host `coverage-semantics` and `review-semantics` claims plus the fresh logical reviewer's `fresh-reader-continuity` claim. `confirmed` supports a claim; `refuted` records a known failed condition. Missing, conflicting, or mismatched attestations are `indeterminate`. Attestations never replace tracker decisions, and deterministic validation cannot prove actual reading quality or editorial correctness.
+Semantic attestations identify the attester, pass and scope fingerprints, claim subject, verdict, statement, referenced artifact hashes, and creation time. Require host `coverage-semantics` and `review-semantics` claims plus the fresh logical reviewer's `fresh-reader-continuity` claim. Each dependency exception additionally requires its exact host `dependency-copyedit` claim as described above. `confirmed` supports a claim; `refuted` records a known failed condition. Missing, conflicting, or mismatched attestations are `indeterminate`. Attestations never replace tracker decisions, and deterministic validation cannot prove actual reading quality or editorial correctness.
 
 Run the public operations with exact cycle ID and expected revision:
 
 ```bash
-node <toolkit-root>/scripts/author-project.mjs evaluate-cycle --project-root <project-root> --input <evaluation-request.json>
-node <toolkit-root>/scripts/author-project.mjs complete-cycle --project-root <project-root> --input <completion.json>
+node <setup-skill>/assets/runtime/author-project.mjs evaluate-cycle --project-root <project-root> --input <evaluation-request.json>
+node <setup-skill>/assets/runtime/author-project.mjs complete-cycle --project-root <project-root> --input <completion.json>
 ```
 
 The evaluation request supplies `evaluation_id`, the coverage-index reference, intake and draft-baseline report references, review-group reference, and semantic-attestation references. Evaluation and completion acquire the same `active-cycle.lock/` used for transitions and recheck the expected revision inside the lock. Only one writer can win a revision race. The evaluation request does not accept an outcome: the evaluator derives `satisfied`, `not_satisfied`, or `indeterminate` from current evidence and returns concrete blockers.
@@ -264,7 +315,7 @@ The evaluation request supplies `evaluation_id`, the coverage-index reference, i
 For a full-manuscript independent `revise-draft` pass with no active cycle, run:
 
 ```bash
-node <toolkit-root>/scripts/author-project.mjs evaluate-draft --project-root <project-root> --input <independent-evaluation.json>
+node <setup-skill>/assets/runtime/author-project.mjs evaluate-draft --project-root <project-root> --input <independent-evaluation.json>
 ```
 
 The independent request supplies `evaluation_id`, requested-pass and target-scope references, the same evidence roots, and the no-edit-skip and verified revision-execution references that a cycle would otherwise link. It uses the same evaluator and immutable `evaluations/` storage without creating an active cycle. `cycle_id` is null for an independent `revise-draft` evaluation. The evaluator rereads every execution and rechecks its actual output bytes; a `prepared` record or caller-supplied `verified` claim alone is insufficient. An active cycle rejects this operation with `active-cycle-exists`; recovery must use `evaluate-cycle` and link that cycle instead. A narrowed independent pass records `not_satisfied` and does not supply or reduce the satisfied baseline. A current satisfied independent evaluation supports status, gate, and later starting-evaluation checks without a cycle completion decision; `complete-cycle` remains exclusive to an active cycle.
@@ -275,7 +326,7 @@ Status, gate, and completion also compare the active cycle's current requested-p
 
 Whenever a cycle's initiating or current strategy is `revise-fiction`, including request→fiction and draft→fiction manuscript work, the requested pass additionally requires full-target `story-bible`, `structure`, and `final-review` operations while all other applicable operation requirements remain in force. Story Bible and structure each require one current report with exact required subchecks, complete target inputs, and matching pass and scope fingerprints; their report hashes join the coverage-semantics attestation. Story Bible also requires exactly one current approved tracker decision with type and operation `story-bible`, the complete ordered target paths, and reason tokens `pass_fingerprint=<fingerprint>`, `scope_fingerprint=<fingerprint>`, and `story_bible_sha256=<current-dependency-hash>`. Final review requires `mode: "final"` jobs and `stage: "final-review"` reports in the same pass/scope-bound review group and review-semantics attestation. A `current-scope-review` job or report cannot satisfy the whole-book final-review gate, although a lawful final-review group may also supply same-scope and same-checks current-scope evidence.
 
-Every evaluation records its complete evidence graph: target and inventory snapshots, requested and baseline passes, manuscript and dependency versions, tracker, reports, coverage index and units, no-edit skips, review group, jobs, reader states, attestations, and baseline evaluation when applicable. Creation-originated cycles also include their preserved starting scope, inventory and starting evaluation when present, plus the linked creation batch and commit journal; bootstrap preserves the null starting scope instead of inventing a snapshot. Historical no-edit skips stay in this graph, but only skips matching the evaluated pass and target fingerprint participate in current no-edit decisions; accepted review rework instead requires its verified revision execution. Each entry records role, artifact identity, safe project-relative path, and SHA-256. The active cycle, manifest pending fields, and evaluation itself are excluded, preventing a self-hash cycle. Status and gate queries recompute current text, artifact hashes, coverage, decisions, review chains, and claims instead of trusting a stored outcome. A known failed condition is `not_satisfied`; missing, unreadable, changed, or inconsistent proof is `indeterminate`. Both fail the gate.
+Every evaluation records its complete evidence graph: target and inventory snapshots, requested and baseline passes, manuscript and dependency versions, tracker, reports, coverage index and units, dependency-exception source units, no-edit skips, review group, jobs, reader states, attestations, and baseline evaluation when applicable. Creation-originated cycles also include their preserved starting scope, inventory and starting evaluation when present, plus the linked creation batch and commit journal; bootstrap preserves the null starting scope instead of inventing a snapshot. Historical no-edit skips stay in this graph, but only skips matching the evaluated pass and target fingerprint participate in current no-edit decisions; accepted review rework instead requires its verified revision execution. Each entry records role, artifact identity, safe project-relative path, and SHA-256. The active cycle, manifest pending fields, and evaluation itself are excluded, preventing a self-hash cycle. Status and gate queries recompute current text, artifact hashes, coverage, decisions, review chains, and claims instead of trusting a stored outcome. A known failed condition is `not_satisfied`; missing, unreadable, changed, or inconsistent proof is `indeterminate`. Both fail the gate.
 
 The completion input supplies a new `evaluation_id`, `decision_id`, and `author_confirmed: true`. Completion uses this exact order:
 
@@ -289,11 +340,11 @@ These coordinated writes do not claim a multi-file filesystem transaction. A lef
 Validate the artifacts through the public CLI:
 
 ```bash
-node <toolkit-root>/scripts/validate.mjs --requested-pass <pass.json>
-node <toolkit-root>/scripts/validate.mjs --no-edit-skip <skip.json>
-node <toolkit-root>/scripts/validate.mjs --review-group <review-group.json>
-node <toolkit-root>/scripts/validate.mjs --semantic-attestation <attestation.json>
-node <toolkit-root>/scripts/validate.mjs --convergence-evaluation <evaluation.json>
+node <setup-skill>/assets/runtime/validate.mjs --requested-pass <pass.json>
+node <setup-skill>/assets/runtime/validate.mjs --no-edit-skip <skip.json>
+node <setup-skill>/assets/runtime/validate.mjs --review-group <review-group.json>
+node <setup-skill>/assets/runtime/validate.mjs --semantic-attestation <attestation.json>
+node <setup-skill>/assets/runtime/validate.mjs --convergence-evaluation <evaluation.json>
 ```
 
 ## Revision execution and request completion
@@ -307,9 +358,9 @@ Compute `revision_approval` as SHA-256 over UTF-8 `JSON.stringify` of an operati
 Run the public operations with exact cycle ID and expected revision:
 
 ```bash
-node <toolkit-root>/scripts/author-project.mjs prepare-revision-execution --project-root <project-root> --input <preparation.json>
-node <toolkit-root>/scripts/author-project.mjs verify-revision-execution --project-root <project-root> --input <verification.json>
-node <toolkit-root>/scripts/validate.mjs --revision-execution <execution.json>
+node <setup-skill>/assets/runtime/author-project.mjs prepare-revision-execution --project-root <project-root> --input <preparation.json>
+node <setup-skill>/assets/runtime/author-project.mjs verify-revision-execution --project-root <project-root> --input <verification.json>
+node <setup-skill>/assets/runtime/validate.mjs --revision-execution <execution.json>
 ```
 
 Preparation requires the active `chapter-revision` recovery position, the active requested pass and full-manuscript input scope, an existing exact author plan decision and chapter-revision approval, and every required backup. It validates tracker decisions and approval paths, backup manifest identity and raw backup hashes, referenced plan and batch hashes, and current input hashes. It writes only a `prepared` execution and its cycle reference. It does not create an author decision or approval, write manuscript, infer a backup, or mark execution complete.
@@ -321,8 +372,8 @@ Both operations acquire the same `active-cycle.lock/` used by transitions and ev
 For independent `revise-draft` edits with no active cycle, use:
 
 ```bash
-node <toolkit-root>/scripts/author-project.mjs prepare-draft-revision-execution --project-root <project-root> --input <independent-preparation.json>
-node <toolkit-root>/scripts/author-project.mjs verify-draft-revision-execution --project-root <project-root> --input <independent-verification.json>
+node <setup-skill>/assets/runtime/author-project.mjs prepare-draft-revision-execution --project-root <project-root> --input <independent-preparation.json>
+node <setup-skill>/assets/runtime/author-project.mjs verify-draft-revision-execution --project-root <project-root> --input <independent-verification.json>
 ```
 
 The independent preparation has the same plan, batch, pass, input scope, finding, decision, approval, backup, file action, and hash fields as cycle preparation, but accepts no cycle ID or expected revision. It acquires the same lock, rejects any active cycle with `active-cycle-exists`, rechecks current inputs, and publishes one `prepared` record with `cycle_id: null` through no-clobber creation. A duplicate ID returns `revision-execution-already-exists` without replacement. Independent verification accepts only the execution ID, final pass, and final target, requires the stored independent `prepared` record, and rereads actual output bytes against the approved output and full-manuscript target. Output mismatch returns `revision-output-mismatch` with `state_written: false` and preserves the prepared record; repeated verification returns `revision-execution-identity-mismatch`. Supply the resulting reference through `revision_executions` to `evaluate-draft`, which repeats the contract and disk checks instead of trusting a claimed status. An active cycle always uses the cycle-bound operations and never this independent path.
@@ -333,44 +384,96 @@ Every resolved finding maps to a current verified execution whose finding dispos
 
 ## Set pending
 
-Read the manifest immediately before each write. Write the requested `pending_action` values: `operation`, `status`, `scope_id`, `reason`, and `artifacts`. When the work is already linked to an active cycle, also record its `cycle_id`, `cycle_revision`, `operation_id`, and `scope_fingerprint` as coordination references. Status is `in_progress`, `awaiting_author`, or `blocked`; reason is always nonempty and identifies the decision, interruption, or dependency. Preserve `current_scope` and all historical records. Append unique artifact paths and set both `pending_action.updated_at` and top-level `updated_at` to the current UTC timestamp. These references never authorize a write or completion.
+Run the installed public command instead of editing the manifest:
 
-`pending_action` describes requested or interrupted work, not linear operation progress. Do not mark an operation complete, choose a following operation, or resume a write because another skill was invoked. The calling strategy supplies each explicit transition. If a write fails after the manifest was read, reread before retrying.
+```bash
+node <setup-skill>/assets/runtime/author-project.mjs set-pending --project-root <project-root> --input <pending-action.json>
+```
+
+The input contains `operation`, `status`, a nonempty `reason`, and optional `artifacts`. Status is `in_progress`, `awaiting_author`, or `blocked`. Artifact entries are existing safe project-relative paths; the command validates them and appends unique references rather than writing their creative content. Optional `scope_id` and `scope_fingerprint` values are expectations, not replacements for the current scope. `expected_manifest_sha256` optionally binds the write to the exact manifest bytes read by the caller.
+
+When an active cycle exists, the command records its `cycle_id`, `cycle_revision`, recovery `operation_id`, and applicable target or current-scope identity. Supplying `cycle_id` and `expected_revision` together adds an optimistic revision check; a mismatch returns `cycle-revision-conflict`. The requested operation must match the cycle recovery position. Existing interrupted coordination is diagnosed rather than overwritten.
+
+The command acquires the registered convergence state root's `active-cycle.lock`, rereads the manifest and active cycle inside that lock, validates the complete updated manifest and artifact paths, and publishes through a verified temporary sibling and atomic rename. It preserves `current_scope`, cycle state, the tracker, and all historical records. Both timestamps use the current UTC time. A failure response includes actual recovery state and the current manifest hash. Pending action remains operation-scoped and never supplies write, publication, restore, evaluation, or completion approval.
+
+`pending_action` does not describe linear operation progress. Do not mark an operation complete, choose a following operation, or resume a write because another skill was invoked. The calling strategy supplies each explicit transition.
 
 ## Record scope
 
-Read the manifest and hash every complete manuscript file immediately before writing. Record the scope ID, description, ordered paths, SHA-256 hashes, `excluded_files`, `proposed` or `confirmed` status, and creation timestamp. A confirmed write requires the author's explicit confirmation of that exact record and reading order. Preserve the prior scope in reports, immutable snapshots, and session history. V3.0 and v3.1 retain their existing scope record behavior.
+Run the installed public command for both proposed and confirmed records:
 
-On v3.2, use the public `recordScope` operation exported by `scripts/lib/index.mjs`. A proposed write records the scope fingerprint without creating a snapshot. A confirmed write additionally requires `authorConfirmation.decision_id`, `authorConfirmation.confirmed_at`, and `authorConfirmation.reading_order_confirmed: true`; the decision reference is evidence of confirmation, not manuscript-edit approval.
+```bash
+node <setup-skill>/assets/runtime/author-project.mjs record-scope --project-root <project-root> --input <scope.json>
+```
+
+A minimal proposed input names the exact reading order and lets the command compute current evidence:
+
+```json
+{
+  "scope_id": "scope-draft-001",
+  "description": "The complete manuscript in reading order, pending author confirmation.",
+  "status": "proposed",
+  "files": ["manuscript/chapter-001.md", "manuscript/chapter-002.md"]
+}
+```
+
+Each `files` entry may be a project-relative path or an object with `path` and optional `sha256`. The command recomputes every hash under the lock and rejects a supplied stale hash. Omitted `excluded_files` use the current manuscript inventory exclusions; supplied exclusions must match exactly. Omitted `created_at` uses the operation's UTC time. An optional `scope_fingerprint` is an expectation checked against the recomputed ordered content. Unsafe paths, paths outside the manuscript inventory, duplicates, and changed exclusions stop the write. `expected_manifest_sha256`, `cycle_id`, and `expected_revision` provide the same optimistic checks as `set-pending`.
+
+A proposed write records the scope fingerprint without creating a snapshot. Its successful command result contains `validation.full_manuscript: false` and concrete validation blockers; this is truthful proposed state, not a command failure. A narrowed confirmed scope can likewise be recorded without claiming full-manuscript coverage.
+
+For confirmation, reuse the proposed record's exact ordered path/hash entries, exclusions, and `created_at`, change `status` to `confirmed`, and add:
+
+```json
+{
+  "author_confirmation": {
+    "decision_id": "SCOPE-001",
+    "confirmed_at": "<author-decision-utc-timestamp>",
+    "reading_order_confirmed": true
+  }
+}
+```
+
+The confirmation applies to the exact normalized scope and reading order preserved in the snapshot. Missing or false reading-order confirmation stops the write. This decision reference is scope-confirmation evidence, not manuscript-edit, publication, restore, evaluation, or completion approval.
 
 The confirmed operation creates or reuses two immutable artifacts beneath the registered convergence state root:
 
 - `inventories/<inventory-fingerprint>.json` contains the complete observed manuscript inventory, current hashes, exclusions, manuscript root, and observation timestamp. Its fingerprint hashes canonical JSON containing the manuscript root, file path/hash pairs sorted by path, and exclusions sorted by code-unit order; the timestamp is excluded.
 - `scopes/<scope-id>-<scope-fingerprint>.json` contains the exact confirmed scope, its ordered files and hashes, sorted exclusions, an inventory reference with path, SHA-256 and inventory fingerprint, and the author-confirmation reference. Including both scope ID and scope fingerprint in the filename permits distinct confirmed scope IDs to share identical content.
 
-Write snapshot content through a verified temporary sibling and publish it without overwriting an existing path. Reuse an identical existing artifact. If the same artifact identity has different content, stop with an immutable-snapshot conflict rather than replacing history. Update the manifest with the scope fingerprint, snapshot project-relative path, and snapshot SHA-256 through a verified temporary sibling and atomic rename. Snapshot creation and manifest update are coordinated writes, not a claimed multi-file filesystem transaction.
+Scope and manifest writes use the same lock, in-lock reread, current-input checks, and verified atomic primitives as pending-action writes. Snapshots publish without overwriting an existing path; identical existing artifacts are reused and conflicting bytes stop the operation. The command writes inventory evidence, then scope evidence, then coordinated manifest state. It does not claim a multi-file filesystem transaction. Interruption diagnostics identify published snapshots and manifest state; retry the exact same confirmed input after a pre-manifest interruption, or reread the manifest before any later attempt.
 
-Use `validateFullManuscriptScope` from the same public module or the validator CLI to rederive the full-manuscript result. A proposed or narrowed scope can be recorded truthfully but does not return `full_manuscript=true`.
-
-Before a later manuscript write, repeat the read, presence, and hash comparison. Treat a mismatch as a stopped approval and backup gate, not as permission to refresh the scope silently.
+The result reports scope and inventory fingerprints, snapshot references and hashes, the manifest hash, and validation with scope identity, full-manuscript result, snapshot path, and concrete blockers. Use `validateFullManuscriptScope` from the same public source module, the public status command, or the validator CLI to rederive that result independently. Before a later manuscript write, repeat the read, presence, and hash comparison. A mismatch is a stopped approval and backup gate, not permission to refresh scope silently.
 
 ## Backup and creation commit
 
-Before a manuscript edit, resolve the backup root from `paths.backups`. The calling orchestrator supplies an approved file list and approval ID. Verify that the approval is current and matches the operation, scope ID, paths, and actions. For every existing modify, delete, or reorder target:
+Run the installed public command before manuscript work:
 
-1. Read the complete original text and compute its SHA-256 hash.
-2. Write it to `<paths.backups>/<backup-id>/<original-relative-path>`, preserving the relative directory path and exact text.
-3. Create `<paths.backups>/<backup-id>/manifest.json` containing the backup ID, UTC timestamp, operation, approval ID, scope ID, input hashes, approval summary, and source/backup path pairs.
-4. Append one record to `<paths.backups>/index.json` with the same identity fields, paths, and backup manifest path.
+```bash
+node <setup-skill>/assets/runtime/author-project.mjs record-backup --project-root <project-root> --input <backup.json>
+node <setup-skill>/assets/runtime/validate.mjs --backup-manifest <project-root>/<paths.backups>/<backup-id>/manifest.json
+node <setup-skill>/assets/runtime/validate.mjs --backup-index <project-root>/<paths.backups>/index.json
+```
 
-For each create target, record that the file is expected absent with a null input hash; do not invent an original backup or backup ID. Recheck absence immediately before publication. Use a unique backup ID based on UTC time, operation, and a short scope slug, adding a suffix on collision. Complete and verify every required backup and absence check before the first manuscript write. A partial, unexpected, or hash-mismatched result blocks the write.
+The closed inputs are `record-backup-command-schema.json`, `backup-manifest-schema.json`, and `backup-index-schema.json` in the deployed shared references. Input names `backup_id`, `operation`, `approval_id`, `scope_id`, `scope_fingerprint`, complete ordered `files`, and an optional `expected_index_sha256`. Every file binds `path`, `action`, `input_sha256`, and `output_sha256`, and must be an eligible `.md`, `.markdown`, or `.txt` manuscript path beneath `manuscript_root` and outside operational roots. Existing modify, delete, or reorder inputs must match the applicable input scope exactly. The command acquires the shared `active-cycle.lock`, rereads project state, the tracker, current inputs, and the index, and verifies the current confirmed full-manuscript input scope. For `chapter-revision`, it requires an approved `edit` approval for operation `chapter-revision`, including the input scope-fingerprint token. For `creation-commit`, it requires an approved `creation-manuscript` decision for operation `chapter-review`. Both approval kinds must match the exact ordered paths, actions, input and output versions, and their `approval_files` binding. A first-time creation exception permits `scope_id: null` and `scope_fingerprint: null` only when actual manuscript inventory is empty and every action is `create`; its creation approval still binds the target publication scope.
+
+For every existing modify, delete, or reorder target, the command writes exact original bytes to `<paths.backups>/<backup-id>/<original-relative-path>`. A create target is expected absent, has `input_sha256: null` and `backup_path: null`, and its current absence is checked before and during backup publication. The command writes and rereads every required original before publishing `<paths.backups>/<backup-id>/manifest.json`, then appends the matching index entry through a verified atomic replacement. Its result contains the exact `backup` object to supply to revision preparation. A missing, altered, partial, or mismatched manifest, original byte, action, approval, scope, or current input blocks dependent execution.
+
+Index entries carry the same backup ID, operation, approval, scope identity, timestamp, and hashed manifest reference. Project validation, `init` reentry, compact status, and `--backup-index` all validate the closed index, every indexed manifest and original byte, and every restoration identity. The registered backup root is resolved from `paths.backups`, including custom locations. Unindexed partial files cannot satisfy revision preparation.
 
 For `creation-commit`, follow [`../../write-fiction/references/creation-state.md`](../../write-fiction/references/creation-state.md). Write `<paths.creation>/batches/<commit-id>.json` before touching manuscript text, record every planned action and its pending state, and update the journal after every write and verification transition. An interrupted journal records exact completed and pending actions and stops publication pending an explicit author decision. Record backup IDs, approvals, scope IDs, commit ID, and paths in the session note. Backups and journals are text records; Git is not a substitute.
 
 ## Restore
 
-A restore needs separate explicit author approval naming the backup or creation commit and exact files. Verify the approval and current scope, then back up current versions under a new safety backup ID with their input hashes before restoring anything. For files created by the restored batch, move created files into the safety backup before removing them from the manuscript; preserve their exact bytes and record both paths. Restore approved original snapshots only after every safety backup succeeds. Reverse the accepted creation-state differences as directed by the creation recovery procedure.
+Run the installed public command with a separate exact restore approval:
 
-Append a `restorations` record to the backup index containing the restore timestamp, source backup or commit ID, restored and removed files and hashes, approval ID, scope ID, and safety backup ID. Keep both backup manifests, created-file safety copies, commit journals, and all records. Record the restore in the current session note and report restored paths.
+```bash
+node <setup-skill>/assets/runtime/author-project.mjs record-restore --project-root <project-root> --input <restoration.json>
+```
 
-After the restore, apply the shared state-and-findings dependency rules to stale every affected evidence item and identify the resulting next action. Establish a newly confirmed scope when membership, reading order, or exclusions change; otherwise retain the scope ID with reconciled hashes and a new scope fingerprint on v3.2. Validate the resulting shared state before returning.
+The closed `record-restore-command-schema.json` input names `restoration_id`, exactly one `source_backup_id` or `source_commit`, a distinct `safety_backup_id`, operation, approval, current scope identity, complete ordered inverse `files`, and an optional expected index hash. A commit source contains `commit_id`, `path`, and `sha256` for the committed journal beneath `<paths.creation>/batches/`. The restore approval has type `restore`, the source operation, exact scope and ordered inverse paths and versions, the matching `approval_files` token, and exactly one `restore_source=<backup-or-commit-id>` token. Edit or creation approval and pending action never authorize restoration.
+
+The command validates the source manifest or committed journal and every referenced original byte. A commit's per-file backup IDs must resolve to indexed manifests with the same actions and input/output hashes. Before the first manuscript mutation, it preserves every current input under the safety backup ID, including explicit null absence for original deletions. For a file created by the source batch, it verifies the current safety copy and must move created files into the safety backup before verifying their removal from manuscript. For an original deletion, it rechecks current absence and uses no-clobber publication to recreate the original. Modify and reorder inputs use verified atomic replacement and final readback. Source manifests, safety manifests, commit journals, and earlier index entries remain preserved.
+
+After every actual restored or removed output verifies, the command appends the safety backup entry and a restoration record containing the hashed source identity, independent approval, scope identity, safety backup ID, and exact inverse files. These coordinated records do not claim a multi-file filesystem transaction. An exact retry after interrupted backup publication reuses matching bytes and manifests. An exact restore retry after all outputs completed but before index publication reuses the matching safety manifest and actual outputs only to finish the index; partial or inconsistent recovery stops without overwriting newer work.
+
+The result reports `evidence_invalidated: true` and the actual full-manuscript validation blockers. Restoration never silently confirms a scope or refreshes evidence. Establish a newly confirmed scope when membership, reading order, or exclusions change; otherwise retain the scope ID with reconciled hashes and a new scope fingerprint. Revalidate affected evidence through the shared state-and-findings rules. Creation restoration additionally requires the creation recovery procedure to reconcile accepted story-state differences before relying on them.

@@ -7,12 +7,14 @@
     "schema_version",
     "unit_id",
     "source_report",
+    "source_report_sha256",
     "scope_id",
     "operation",
     "kind",
     "paths",
     "subchecks",
     "dependencies",
+    "dependency_exception",
     "coverage",
     "created_at"
   ],
@@ -44,6 +46,12 @@
       "uniqueItems": true,
       "items": { "$ref": "#/$defs/versionedPath" }
     },
+    "dependency_exception": {
+      "anyOf": [
+        { "type": "null" },
+        { "$ref": "#/$defs/dependencyException" }
+      ]
+    },
     "coverage": { "enum": ["full", "partial", "skipped"] },
     "created_at": { "type": "string", "format": "date-time" }
   },
@@ -59,6 +67,52 @@
       "properties": {
         "path": { "$ref": "relative-path-schema.json" },
         "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+      }
+    },
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "passReference": {
+      "type": "object",
+      "required": ["pass_id", "pass_fingerprint", "path", "sha256"],
+      "additionalProperties": false,
+      "properties": {
+        "pass_id": { "$ref": "#/$defs/id" },
+        "pass_fingerprint": { "$ref": "#/$defs/sha256" },
+        "path": { "$ref": "relative-path-schema.json" },
+        "sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "attestationReference": {
+      "type": "object",
+      "required": ["attestation_id", "path", "sha256"],
+      "additionalProperties": false,
+      "properties": {
+        "attestation_id": { "$ref": "#/$defs/id" },
+        "path": { "$ref": "relative-path-schema.json" },
+        "sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "dependencyException": {
+      "type": "object",
+      "required": [
+        "unit_id",
+        "requested_pass",
+        "dependency_path",
+        "old_sha256",
+        "new_sha256",
+        "operation",
+        "reason",
+        "semantic_attestation"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "unit_id": { "$ref": "#/$defs/id" },
+        "requested_pass": { "$ref": "#/$defs/passReference" },
+        "dependency_path": { "$ref": "relative-path-schema.json" },
+        "old_sha256": { "$ref": "#/$defs/sha256" },
+        "new_sha256": { "$ref": "#/$defs/sha256" },
+        "operation": { "enum": ["draft-baseline", "revision-plan"] },
+        "reason": { "type": "string", "minLength": 1 },
+        "semantic_attestation": { "$ref": "#/$defs/attestationReference" }
       }
     }
   }

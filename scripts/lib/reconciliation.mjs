@@ -31,6 +31,7 @@ import {
   writeAtomicVerified,
 } from "./state-io.mjs";
 import { parseTrackerState } from "./tracker.mjs";
+import { utcTimestamp } from "./time.mjs";
 
 const RECOVERY_OPERATIONS = [
   "intake",
@@ -61,21 +62,15 @@ function failure(code, message, cycle = null, details = {}) {
   };
 }
 
-async function readProject(projectRoot) {
-  const root = path.resolve(projectRoot);
-  const manifestPath = path.join(root, ".author-toolkit", "project.json");
-  const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
-  const validation = validateManifest(manifest);
-  if (!validation.valid || manifest.schema_version !== "3.2.0") {
-    throw new Error("External manuscript reconciliation requires a valid v3.2 project");
-  }
-  return { root, manifestPath, manifest };
+async function readProject(projectRoot, options = {}) {
+  const { readProject: readProjectWithReferences } = await import("./evaluation-artifacts.mjs");
+  return readProjectWithReferences(projectRoot, options);
 }
 
-async function readActiveCycle(project) {
+async function readActiveCycle(project, options = {}) {
   const file = path.resolve(project.root, project.manifest.paths.convergence, "active-cycle.json");
   const value = JSON.parse(await readFile(file, "utf8"));
-  const validation = validateConvergenceCycleSchema(value);
+  const validation = validateConvergenceCycleSchema(value, options);
   if (!validation.valid || value.status !== "active") {
     throw new Error(`Living cycle is invalid: ${file}`);
   }
@@ -109,13 +104,13 @@ async function readArtifact(project, reference) {
   return contents;
 }
 
-async function readScope(project, reference) {
+async function readScope(project, reference, options = {}) {
   const contents = await readArtifact(project, {
     path: reference.snapshot_path,
     sha256: reference.snapshot_sha256,
   });
   const snapshot = JSON.parse(contents.toString("utf8"));
-  const validation = validateScopeSnapshot(snapshot);
+  const validation = validateScopeSnapshot(snapshot, options);
   if (!validation.valid) throw new Error(`Scope snapshot is invalid: ${reference.snapshot_path}`);
   if (
     snapshot.scope_id !== reference.scope_id ||
@@ -164,11 +159,11 @@ function validateRequest(request) {
   }
 }
 
-async function validateStoryState(project, references, target) {
+async function validateStoryState(project, references, target, options = {}) {
   const states = [];
   for (const reference of references) {
     const contents = await readArtifact(project, reference);
-    const validation = validateStoryStateMarkdown(contents.toString("utf8"));
+    const validation = validateStoryStateMarkdown(contents.toString("utf8"), options);
     if (!validation.valid || !validation.envelope) {
       throw new Error(`Reconciled story state is invalid: ${reference.path}`);
     }
@@ -230,12 +225,12 @@ async function validateStoryState(project, references, target) {
   }
 }
 
-async function validateImportDecision(project, request, previous, target, inventory) {
+async function validateImportDecision(project, request, previous, target, inventory, options = {}) {
   const trackerText = await readFile(
     path.resolve(project.root, project.manifest.paths.audit_tracker),
     "utf8",
   );
-  const tracker = await parseTrackerState(trackerText, project.root);
+  const tracker = await parseTrackerState(trackerText, project.root, options);
   const decisions = tracker.approvals.filter((approval) => approval.id === request.author_decision_id);
   const decision = decisions.length === 1 ? decisions[0] : null;
   const tokens = new Set(decision?.reason.split(/\s+/) ?? []);
@@ -307,12 +302,13 @@ function workSetForChanges(target, changes) {
 
 export async function reconcileManuscript(projectRoot, request, options = {}) {
   validateRequest(request);
-  const project = await readProject(projectRoot);
+  const project = await readProject(projectRoot, options);
   const lock = await acquireDirectoryLock(
     path.resolve(project.root, project.manifest.paths.convergence, "active-cycle.lock"),
     {
       timeoutMs: options.lockTimeoutMs ?? 10000,
       retryMs: options.lockRetryMs ?? 20,
+      now: options.now,
     },
   );
   if (!lock.acquired) {
@@ -324,7 +320,7 @@ export async function reconcileManuscript(projectRoot, request, options = {}) {
   try {
     let active = null;
     try {
-      active = await readActiveCycle(project);
+      active = await readActiveCycle(project, options);
       cycle = active.value;
     } catch (error) {
       if (error.code !== "ENOENT") throw error;
@@ -372,7 +368,7 @@ export async function reconcileManuscript(projectRoot, request, options = {}) {
       let previous = { files: [], excluded_files: [] };
       if (previousReference) {
         try {
-          previous = await readScope(project, previousReference);
+          previous = await readScope(project, previousReference, options);
         } catch (error) {
           error.reconciliationCode = "starting-scope-indeterminate";
           error.reconciliationAction = action("revise-draft", "intake");
@@ -380,8 +376,8 @@ export async function reconcileManuscript(projectRoot, request, options = {}) {
         }
       }
       const targetReference = request.target_scope;
-      const target = targetReference ? await readScope(project, targetReference) : null;
-      let createdAt = options.now instanceof Date ? options.now.toISOString() : new Date().toISOString();
+      const target = targetReference ? await readScope(project, targetReference, options) : null;
+      let createdAt = utcTimestamp(options);
       let inventoryEvidence;
       let observedInventory = null;
       if (target) {
@@ -394,7 +390,7 @@ export async function reconcileManuscript(projectRoot, request, options = {}) {
         ) {
           throw new Error("The imported target must be manifest current_scope");
         }
-        const full = await validateFullManuscriptScope(project.manifest, project.manifestPath);
+        const full = await validateFullManuscriptScope(project.manifest, project.manifestPath, options);
         if (!full.valid) throw new Error("The imported target is not a current full-manuscript scope");
         inventoryEvidence = target.inventory;
       } else {
@@ -403,17 +399,17 @@ export async function reconcileManuscript(projectRoot, request, options = {}) {
           throw new Error("A null reconciliation target requires an actually empty manuscript inventory");
         }
         inventoryEvidence = (await recordInventorySnapshot(project.root, project.manifest, {
-          now: new Date(createdAt),
+          now: createdAt,
         })).reference;
       }
       try {
-        await validateStoryState(project, request.story_state, target);
+        await validateStoryState(project, request.story_state, target, options);
       } catch (error) {
         error.reconciliationCode = "story-state-reconciliation-required";
         error.reconciliationAction = action("write-fiction", "creation-import");
         throw error;
       }
-      await validateImportDecision(project, request, previous, target, inventoryEvidence);
+      await validateImportDecision(project, request, previous, target, inventoryEvidence, options);
 
       const bootstrapRecovery = Boolean(cycle?.bootstrap);
       const preferredEvaluation = cycle?.target_evaluation ?? cycle?.starting_evaluation ?? null;
@@ -441,7 +437,7 @@ export async function reconcileManuscript(projectRoot, request, options = {}) {
         : cycle?.starting_scope ?? previousReference;
       const cumulative = bootstrapRecovery
         ? { files: [], excluded_files: [] }
-        : cumulativeReference ? await readScope(project, cumulativeReference) : previous;
+        : cumulativeReference ? await readScope(project, cumulativeReference, options) : previous;
       const changes = diffManuscriptInventories(cumulative, target ?? observedInventory);
       const workSet = !target
         ? { entries: [] }

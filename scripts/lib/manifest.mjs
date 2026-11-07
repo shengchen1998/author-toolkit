@@ -1,44 +1,28 @@
-import {
-  validateProjectSchema,
-  validateProjectV3Schema,
-  validateProjectV31Schema,
-  validateProjectV32Schema,
-} from "./schemas.mjs";
-import { validateWorkflow } from "./workflow.mjs";
+import { validateProjectV4Schema } from "./schemas.mjs";
 
-export function validateManifest(value) {
-  if (value?.schema_version === "3.2.0") {
-    return validateProjectV32Schema(value);
-  }
+export const CURRENT_PROJECT_SCHEMA_VERSION = "4.0.0";
 
-  if (value?.schema_version === "3.1.0") {
-    return validateProjectV31Schema(value);
-  }
-
-  if (value?.schema_version === "3.0.0") {
-    return validateProjectV3Schema(value);
-  }
-
-  if (value?.schema_version !== "2.0.0") {
-    return {
-      valid: false,
-      errors: [
-        {
-          instancePath: "/schema_version",
-          keyword: "schema-version",
-          message: `unsupported project schema_version: ${value?.schema_version ?? "missing"}`,
-          params: { supported: ["2.0.0", "3.0.0", "3.1.0", "3.2.0"] },
-        },
-      ],
-    };
-  }
-
-  const schemaResult = validateProjectSchema(value);
-  if (!schemaResult.valid) return schemaResult;
-
-  const workflowResult = validateWorkflow(value);
+export function greenfieldInitializationError(value) {
+  const detected = value?.schema_version ?? "missing";
   return {
-    valid: workflowResult.valid,
-    errors: workflowResult.errors,
+    code: "greenfield-initialization-required",
+    instancePath: "/schema_version",
+    keyword: "schema-version",
+    message: `Unsupported project schema_version: ${detected}. Author Toolkit 4.0.0 supports only the 4.0.0 project contract. Create a new project from manuscript-only input and run setup-author-toolkit there; preserve the old project and do not copy its manifest, references, findings, approvals, evaluations, or other shared state. No migration or old shared-state import is available.`,
+    params: { supported: [CURRENT_PROJECT_SCHEMA_VERSION], detected },
+    required_action: {
+      strategy: "setup-author-toolkit",
+      operation: "initialize-manuscript-only-project",
+      command: "setup-author-toolkit",
+      manuscript_only: true,
+      preserve_existing_project: true,
+    },
   };
+}
+
+export function validateManifest(value, options = {}) {
+  if (value?.schema_version === CURRENT_PROJECT_SCHEMA_VERSION) {
+    return validateProjectV4Schema(value, options);
+  }
+  return { valid: false, errors: [greenfieldInitializationError(value)] };
 }

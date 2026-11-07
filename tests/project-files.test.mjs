@@ -42,36 +42,47 @@ test("example manifests resolve their project roots and validate all on-disk sta
   }
 });
 
-test("manifest file validation reports missing operational paths and stage artifacts", async (t) => {
+test("manifest file validation reports missing operational paths and pending artifacts", async (t) => {
   const missingDirectoryRoot = await copyExample(t);
   await rm(path.join(missingDirectoryRoot, "handoffs"), { recursive: true });
-  const missingDirectoryManifest = await readManifest();
+  const manifest = await readManifest();
   const missingDirectory = await validateProjectFiles(
-    missingDirectoryManifest,
+    manifest,
     path.join(missingDirectoryRoot, ".author-toolkit", "project.json"),
   );
   assert.equal(missingDirectory.valid, false);
   assert.ok(missingDirectory.errors.some((error) => error.instancePath === "/paths/handoffs"));
 
   const missingArtifactRoot = await copyExample(t);
+  manifest.pending_action = {
+    operation: "structure",
+    status: "blocked",
+    reason: "The report must be present before revision resumes.",
+    artifacts: ["reports/structure/2026-01-17_structure.md"],
+    updated_at: manifest.updated_at,
+  };
   await rm(
     path.join(missingArtifactRoot, "reports", "structure", "2026-01-17_structure.md"),
   );
   const missingArtifact = await validateProjectFiles(
-    missingDirectoryManifest,
+    manifest,
     path.join(missingArtifactRoot, ".author-toolkit", "project.json"),
   );
   assert.equal(missingArtifact.valid, false);
-  assert.ok(
-    missingArtifact.errors.some((error) =>
-      error.instancePath.startsWith("/workflow/stages/2/artifacts/"),
-    ),
-  );
+  assert.ok(missingArtifact.errors.some((error) => error.instancePath === "/pending_action/artifacts/0"));
 });
+
+function withFindings(tracker) {
+  const separator = "|---|---|---|---|---|---|---|---|\n";
+  const rows =
+    "| STRUCT-001 | structure | story-structure-audit | `manuscript/chapter-02.md`, chapter 2 | open | `reports/structure/2026-01-17_structure.md` | 2026-01-17T18:00:00Z | No author decision recorded. |\n" +
+    "| STRUCT-002 | structure | story-structure-audit | `manuscript/chapter-03.md`, chapter 3 | open | `reports/structure/2026-01-17_structure.md` | 2026-01-17T18:00:00Z | No author decision recorded. |\n";
+  return tracker.replace(separator, `${separator}${rows}`);
+}
 
 test("tracker parsing rejects missing sections, duplicate IDs, pending rows, and missing reports", async () => {
   const projectRoot = exampleRoot("en");
-  const tracker = await readTracker("en");
+  const tracker = withFindings(await readTracker("en"));
   assert.equal((await validateTrackerMarkdown(tracker, projectRoot)).valid, true);
 
   const noSection = await validateTrackerMarkdown(
@@ -110,11 +121,9 @@ test("tracker parsing rejects missing sections, duplicate IDs, pending rows, and
     projectRoot,
   );
   assert.equal(missingReport.valid, false);
-  assert.ok(
-    missingReport.errors.some(
-      (error) => error.instancePath.endsWith("/report") && error.message.includes("does not exist"),
-    ),
-  );
+  assert.ok(missingReport.errors.some((error) =>
+    error.instancePath.endsWith("/report") && error.message.includes("does not exist")
+  ));
 });
 
 test("only the uninitialized template skips on-disk project checks", async () => {

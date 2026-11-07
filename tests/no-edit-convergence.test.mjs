@@ -4,7 +4,7 @@ import { readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import test from "node:test";
 
-import { recordScope } from "../scripts/lib/index.mjs";
+import { recordScope, startCycle } from "../scripts/lib/index.mjs";
 import {
   createConvergenceProject,
   createFirstPublicationArtifacts,
@@ -20,13 +20,13 @@ import {
 
 async function establishNoEditEvaluation(t, { evidenceOptions = {}, complete = false } = {}) {
   const { projectRoot, manifestPath } = await createConvergenceProject(t);
-  const started = await runInput(projectRoot, "start-cycle", {
+  const started = await startCycle(projectRoot, {
     cycle_id: "cycle-bootstrap-001",
     initiating_strategy: "write-fiction",
     bootstrap: true,
     starting_scope: null,
-  });
-  assert.equal(started.status, 0, started.stderr);
+  }, { now: new Date(timestamp) });
+  assert.equal(started.valid, true, JSON.stringify(started.blockers));
   const manuscript = "The ferry leaves at dawn.\nMara watches it go.";
   await writeFile(path.join(projectRoot, "manuscript", "chapter-001.md"), manuscript, "utf8");
   await recordScope(projectRoot, {
@@ -99,13 +99,13 @@ async function establishNoEditEvaluation(t, { evidenceOptions = {}, complete = f
 
 test("a no-edit full-manuscript pass reaches satisfied and completes after a fresh author decision", async (t) => {
   const { projectRoot, manifestPath } = await createConvergenceProject(t);
-  const start = await runInput(projectRoot, "start-cycle", {
+  const start = await startCycle(projectRoot, {
     cycle_id: "cycle-bootstrap-001",
     initiating_strategy: "write-fiction",
     bootstrap: true,
     starting_scope: null,
-  });
-  assert.equal(start.status, 0, start.stderr);
+  }, { now: new Date(timestamp) });
+  assert.equal(start.valid, true, JSON.stringify(start.blockers));
 
   const manuscript = "The ferry leaves at dawn.\nMara watches it go.";
   await writeFile(path.join(projectRoot, "manuscript", "chapter-001.md"), manuscript, "utf8");
@@ -170,8 +170,8 @@ test("a no-edit full-manuscript pass reaches satisfied and completes after a fre
 
   const status = runValidator(["--convergence-status", manifestPath]);
   assert.equal(status.status, 0, status.stderr);
-  assert.equal(JSON.parse(status.stdout).outcome, "satisfied");
-  assert.equal(JSON.parse(status.stdout).current, true);
+  assert.equal(JSON.parse(status.stdout).result.outcome, "satisfied");
+  assert.equal(JSON.parse(status.stdout).result.current, true);
   const gate = runValidator(["--convergence-gate", manifestPath]);
   assert.equal(gate.status, 0, `${gate.stdout}\n${gate.stderr}`);
   assert.equal(JSON.parse(gate.stdout).valid, true);
@@ -185,7 +185,10 @@ test("a no-edit full-manuscript pass reaches satisfied and completes after a fre
   ]) {
     const result = runValidator([option, path.resolve(projectRoot, reference.path)]);
     assert.equal(result.status, 0, `${option}: ${result.stdout}\n${result.stderr}`);
-    assert.match(result.stdout, /1 checks, 0 failures/);
+    const response = JSON.parse(result.stdout);
+    assert.equal(response.valid, true);
+    assert.equal(response.result.checks, 1);
+    assert.deepEqual(response.errors, []);
   }
 
   const completed = await runInput(projectRoot, "complete-cycle", {
@@ -371,7 +374,7 @@ test("replacing a satisfied requested pass makes its old target evaluation stale
 
   const status = runValidator(["--convergence-status", first.manifestPath]);
   assert.equal(status.status, 0, `${status.stdout}\n${status.stderr}`);
-  const statusResult = JSON.parse(status.stdout);
+  const statusResult = JSON.parse(status.stdout).result;
   assert.equal(statusResult.current, false);
   assert.equal(statusResult.outcome, "indeterminate");
   assert.ok(statusResult.blockers.some(
@@ -379,7 +382,7 @@ test("replacing a satisfied requested pass makes its old target evaluation stale
   ));
   const gate = runValidator(["--convergence-gate", first.manifestPath]);
   assert.equal(gate.status, 1, `${gate.stdout}\n${gate.stderr}`);
-  assert.ok(JSON.parse(gate.stdout).blockers.some(
+  assert.ok(JSON.parse(gate.stdout).result.blockers.some(
     (blocker) => blocker.code === "requested-pass-evaluation-mismatch"
   ));
 
@@ -417,17 +420,17 @@ test("status and gate recompute text, artifact, attestation, review, and coverag
   function status() {
     const result = runValidator(["--convergence-status", manifestPath]);
     assert.equal(result.status, 0, result.stderr);
-    return JSON.parse(result.stdout);
+    return JSON.parse(result.stdout).result;
   }
   function gateFails() {
     const result = runValidator(["--convergence-gate", manifestPath]);
     assert.equal(result.status, 1, `${result.stdout}\n${result.stderr}`);
-    return JSON.parse(result.stdout);
+    return JSON.parse(result.stdout).result;
   }
   function gatePasses() {
     const result = runValidator(["--convergence-gate", manifestPath]);
     assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
-    assert.equal(JSON.parse(result.stdout).current, true);
+    assert.equal(JSON.parse(result.stdout).result.current, true);
   }
 
   const reportPath = path.join(projectRoot, evidence.reports[0].path);
@@ -567,7 +570,7 @@ test("an open finding is not_satisfied and author completion cannot override it"
   assert.equal(await readFile(trackerPath, "utf8"), trackerBefore);
   const gate = runValidator(["--convergence-gate", manifestPath]);
   assert.equal(gate.status, 1);
-  assert.equal(JSON.parse(gate.stdout).outcome, "not_satisfied");
+  assert.equal(JSON.parse(gate.stdout).result.outcome, "not_satisfied");
   await assert.rejects(
     readFile(path.join(
       projectRoot,
@@ -751,7 +754,7 @@ test("artifact contracts are closed and evaluation roots reject unsafe paths", a
   };
   const unsafe = await runInput(projectRoot, "evaluate-cycle", unsafeInput);
   assert.equal(unsafe.status, 2);
-  assert.match(unsafe.stderr, /safe paths/);
+  assert.match(unsafe.response.errors[0].message, /safe paths/);
   const active = JSON.parse(await readFile(
     path.join(projectRoot, ".author-toolkit", "convergence", "active-cycle.json"),
     "utf8",
@@ -775,6 +778,10 @@ test("current target evaluation rejects a same-ID scope with a new fingerprint a
     revisedManuscript,
     "utf8",
   );
+  const activeBeforeScope = JSON.parse(await readFile(
+    path.join(projectRoot, ".author-toolkit", "convergence", "active-cycle.json"),
+    "utf8",
+  ));
   await recordScope(projectRoot, {
     scope_id: evidence.scopeReference.scope_id,
     description: "The same scope ID reconfirmed after a same-line text edit.",
@@ -791,7 +798,7 @@ test("current target evaluation rejects a same-ID scope with a new fingerprint a
       confirmed_at: timestamp,
       reading_order_confirmed: true,
     },
-    now: new Date("2026-11-05T01:00:00Z"),
+    now: new Date(activeBeforeScope.updated_at),
   });
   const currentManifest = JSON.parse(await readFile(manifestPath, "utf8"));
   assert.equal(currentManifest.current_scope.scope_id, evidence.scopeReference.scope_id);
@@ -807,7 +814,7 @@ test("current target evaluation rejects a same-ID scope with a new fingerprint a
 
   const status = runValidator(["--convergence-status", manifestPath]);
   assert.equal(status.status, 0, status.stderr);
-  const current = JSON.parse(status.stdout);
+  const current = JSON.parse(status.stdout).result;
   assert.equal(current.outcome, "indeterminate");
   assert.equal(current.current, false);
   assert.ok(current.blockers.some(
@@ -815,7 +822,7 @@ test("current target evaluation rejects a same-ID scope with a new fingerprint a
   ), JSON.stringify(current.blockers, null, 2));
   const gate = runValidator(["--convergence-gate", manifestPath]);
   assert.equal(gate.status, 1, `${gate.stdout}\n${gate.stderr}`);
-  assert.ok(JSON.parse(gate.stdout).blockers.some(
+  assert.ok(JSON.parse(gate.stdout).result.blockers.some(
     (blocker) => blocker.code === "target-scope-identity-mismatch",
   ));
 
@@ -870,7 +877,7 @@ test("target identity diagnostics include snapshot path and hash mismatches", as
 
   const status = runValidator(["--convergence-status", manifestPath]);
   assert.equal(status.status, 0, status.stderr);
-  const current = JSON.parse(status.stdout);
+  const current = JSON.parse(status.stdout).result;
   assert.equal(current.outcome, "indeterminate");
   assert.equal(current.current, false);
   const identityBlocker = current.blockers.find(

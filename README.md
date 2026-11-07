@@ -5,15 +5,12 @@ project evidence model, plus six independent writing skills for Claude Code and
 Kimi Code.
 
 [Chinese quick start](README.zh-CN.md) | [Controlled terminology](references/terminology.md) |
-[3.2 migration](docs/MIGRATION-3.2.md) |
-[3.1 migration history](docs/MIGRATION-3.1.md) |
-[3.0 migration history](docs/MIGRATION-3.0.md) |
-[2.0 migration history](docs/MIGRATION-2.0.md) |
+[Greenfield 4.0 ADR](docs/adr/0002-greenfield-4-0.md) |
 [Validation status](docs/VALIDATION.md)
 
 ## What is included
 
-Version 3.2.0 contains 16 skills in three groups.
+Version 4.0.0 contains 16 skills in three groups and supports one current project contract.
 
 ### User entry points
 
@@ -65,7 +62,7 @@ or rewriting, invoke `prose-mechanics` with its AI-Isms audit; shared
 
 ## Scope and language support
 
-The shared 3.2 creation and revision workflows support single-book fiction
+The shared 4.0.0 creation and revision workflows support single-book fiction
 projects with Markdown or plain-text manuscripts. `write-fiction` can start
 without a complete outline or ending and can also continue an existing manuscript.
 `revise-fiction` addresses the whole book. `revise-draft` can work on an
@@ -79,7 +76,7 @@ revision to existing content, and restores that state for the full-manuscript
 target scope.
 
 Narrative nonfiction remains a direct `narrative-nonfiction` task. Multi-book
-projects and integrations with other hosts are outside the supported 3.2
+projects and integrations with other hosts are outside the supported 4.0.0
 workflows.
 
 English and Chinese are the core workflow languages. Chinese prose audits use
@@ -136,6 +133,45 @@ Add `-g` to install at user level instead:
 npx skills@latest add shengchen1998/author-toolkit -a claude-code -a kimi-code-cli -g
 ```
 
+The installed setup skill contains self-contained ESM validation and project-operation CLIs. They bundle Ajv and all runtime dependencies, load schemas from the setup skill's `assets/references/` payload and initialization templates from its assets payload, and require no repository checkout, project-local runtime copy, npm installation, or network access during use. Resolve `<setup-skill>` as the installed `setup-author-toolkit` directory, then run:
+
+```bash
+node <setup-skill>/assets/runtime/validate.mjs --project-root <project-root>
+node <setup-skill>/assets/runtime/author-project.mjs --help
+```
+
+Project-root validation verifies every deployed shared-reference hash before using the real JSON Schema validators on the selected project. Both CLIs print help when invoked without arguments. Validator success exits 0, validation failure exits 1, and usage errors exit 2.
+
+The project CLI also initializes manuscript-only projects and resumes state without handwritten manifests:
+
+```bash
+node <setup-skill>/assets/runtime/author-project.mjs init --project-root <project-root> --language en
+node <setup-skill>/assets/runtime/author-project.mjs read --project-root <project-root>
+node <setup-skill>/assets/runtime/author-project.mjs status --project-root <project-root>
+node <setup-skill>/assets/runtime/author-project.mjs status --project-root <project-root> --full
+node <setup-skill>/assets/runtime/author-project.mjs set-pending --project-root <project-root> --input <pending-action.json>
+node <setup-skill>/assets/runtime/author-project.mjs record-scope --project-root <project-root> --input <scope.json>
+node <setup-skill>/assets/runtime/author-project.mjs record-finding --project-root <project-root> --input <finding.json>
+node <setup-skill>/assets/runtime/author-project.mjs record-finding-decision --project-root <project-root> --input <finding-decision.json>
+node <setup-skill>/assets/runtime/author-project.mjs record-approval --project-root <project-root> --input <approval.json>
+node <setup-skill>/assets/runtime/author-project.mjs record-backup --project-root <project-root> --input <backup.json>
+node <setup-skill>/assets/runtime/author-project.mjs record-restore --project-root <project-root> --input <restoration.json>
+node <setup-skill>/assets/runtime/validate.mjs --backup-index <project-root>/<paths.backups>/index.json
+node <setup-skill>/assets/runtime/author-project.mjs timestamp
+```
+
+`init` deploys matching shared references and creates a neutral manifest, empty tracker and backup index, and operational directories without importing findings, approvals, evaluations, or current-draft revision convergence claims. Reentry validates an existing project without resetting its state. Use `--input <initialization.json>` for custom operational paths, or `--manuscript-root <path>` for a different manuscript location. The `timestamp` response returns `result.json` for JSON timestamp fields and `result.filename` for timestamp-based IDs and unique filenames, both from one UTC clock reading. Current artifact validation rejects timestamps more than 60 seconds in the future with concrete field diagnostics and never infers time from filenames.
+
+`set-pending` records operation-scoped work and artifact references while preserving current scope and active-cycle coordination; it never creates approval. `record-scope` accepts ordered paths or path/hash entries, recomputes current manuscript hashes and exclusions under the shared lock, and supports proposed and confirmed records. Confirmation requires explicit reading-order evidence. Confirmed results include deterministic scope and inventory fingerprints, immutable snapshot references, full-manuscript validation, and concrete blockers. Both commands recheck optional expected manifest hashes and cycle revisions and publish through verified atomic writes. See the author-project operation reference for input fields and interruption recovery.
+
+`record-finding` binds an exact finding v2 object to its current operation report and records `open`. `record-finding-decision` requires status-specific current execution or no-edit evidence and an approved author decision; stale uses an equivalent complete rerun and explicit finding decision. `record-approval` binds operation, scope, complete ordered paths, actions, input and output versions, status, and reason, including canonical revision approval fingerprints. All three reject duplicate IDs, recheck the optional expected tracker hash inside the shared cycle lock, generate UTC timestamps through the shared clock, and preserve actual recovery state after interrupted writes. External tracker edits are validated without automatic merging, renumbering, deletion, or repair. Open findings block satisfied evaluations; current deferred and dismissed decisions retain their existing eligibility.
+
+`record-backup` validates the exact approval, operation, current confirmed scope, ordered actions, input hashes, and create absence before preserving original bytes and publishing the closed backup manifest and backup index. Every backup and restore action must name an eligible manuscript path beneath the registered manuscript root and outside operational roots; existing inputs must match the applicable confirmed scope, and restore inputs must also match the source backup's scope. Revision preparation consumes that same index, manifest, and byte evidence without skipping current-input or output checks. `record-restore` requires a separate exact restore approval and current safety backups, handles create, modify, delete, and reorder inverses through verified writes, and appends restoration records without rewriting source backups or committed journals. Restoration reports scope and evidence invalidation rather than silently confirming a new scope. Project validation and `--backup-index` reject dangling manifests, altered bytes, and inconsistent restoration identities.
+
+Every public project command and validator validation or status/gate query returns one JSON envelope with `response_contract_version: "1.0"`, `command`, boolean `valid`, command-specific `result`, and structured `errors`. The previous project-operation result lives under `result`. Ordinary validator results contain `mode`, `checks`, and the individual check `results`; status/gate queries put the status object directly under `result`, with fields such as `result.outcome` and `result.current`. Errors are JSON on stdout rather than parallel human text. Successful commands and valid read-only status queries exit 0, including `not_satisfied` and `indeterminate` lifecycle states. Project, operation, evidence, artifact, or gate validation failures exit 1. Argument, input-file, and input-shape usage errors exit 2. No-argument help remains plain usage text.
+
+Default `read` and `status` responses are compact. They include project and reference validation, scope identity and file count, pending action, active cycle and recovery position, evaluation outcome and blockers, decision counts, and exact next action. Complete manifests, ordered path hashes, evaluation identities, evidence graphs, and history require explicit `--full` or dedicated cycle and artifact queries.
+
 Updates are manual. Check and apply them with:
 
 ```bash
@@ -172,7 +208,7 @@ A quick run looks like this:
    preserves the existing file beneath the registered backups path. For a new
    project, setup also installs the project-level `AGENTS.md` template when no
    such file exists, preserving any existing agent instructions. Do not pass a
-   workflow name or operation argument. After a toolkit update, an existing v3
+   workflow name or operation argument. After a toolkit update, an existing 4.0.0
    project may need setup again to deploy new shared references. Its initial
    `author-project` read, validation, and status calls check every packaged file
    and route missing files or hash mismatches back through setup instead of
@@ -300,7 +336,8 @@ state:
 2. Update the draft-baseline for the full target scope and run diagnostics,
    character checks, prose, and AI cleanup on the work set. Reuse unchanged full
    local coverage units only when their operation, source report, paths and
-   hashes, subchecks, and dependencies match. Missing reusable units add the
+   hashes, subchecks, and dependencies match, or when a dependency exception
+   covers an attested baseline or plan copyedit. Missing reusable units add the
    affected old paths to the work set.
 3. Plan and apply only approved work-set edits with backups, then compose new
    operation coverage and full-target syntheses for the target scope.
@@ -345,10 +382,10 @@ The skill definitions contain the full gates and audit rules.
 ## Shared project files and evidence
 
 All five strategies use the same neutral `.author-toolkit/project.json` and
-artifact paths. New projects use schema 3.2.0; v3.0 and v3.1 manifests remain
-readable. `scripts/migrate-v32.mjs` migrates v2, v3.0, and v3.1 projects directly
-to v3.2. The existing `scripts/migrate-v3.mjs` command and
-`migrateProjectToV3` function are compatibility wrappers with the same target.
+artifact paths. Every project uses schema 4.0.0. Old manifests and old shared
+artifacts are rejected with `greenfield-initialization-required` before setup
+writes anything. Initialize a separate project from manuscript-only input and
+preserve the old project; no migration or old shared-state import is available.
 
 - `project.json` records project registration, artifact locations, and optional
   `current_scope` and `pending_action`. It has no `workflow.name`,
@@ -374,22 +411,17 @@ to v3.2. The existing `scripts/migrate-v3.mjs` command and
 - `paths.creation` registers creation state and defaults to
   `.author-toolkit/creation/`. It contains `state/current.md`,
   `state/chapters/`, `state/volumes/`, `batches/`, and `staging/`.
-- The convergence state root defaults to `.author-toolkit/convergence/` on v3.2.
+- The convergence state root defaults to `.author-toolkit/convergence/` in 4.0.0.
   Confirming a scope preserves an immutable scope snapshot and inventory snapshot
   there. The scope fingerprint covers ordered path/hash pairs and sorted
   exclusions; record metadata and timestamps are excluded.
 
-Project migration preserves manuscripts, reports, findings, approvals, scopes,
-sessions, staging, backups, batches, journals, and pending work. Only an exact
-legacy scope confirmation supports a confirmed scope snapshot; other legacy
-confirmed scopes become proposed for reconfirmation. Legacy reports and pending
-actions create no satisfied evaluation or active cycle. Reconcile interrupted
-journals and writes before dependent cycle work. Explicitly reject legacy
-staging, or reapprove its exact content in a new cycle only after a current
-satisfied starting evaluation. An unproven legacy revision base uses current
-full-manuscript `revise-draft` recovery with the normal coverage-reuse rules.
-See [Migrating to 3.2](docs/MIGRATION-3.2.md) for the migration matrix and
-recovery procedure.
+Within a 4.0.0 project, reports, findings, approvals, scopes, sessions, staging,
+backups, batches, journals, evaluations, and pending work retain their existing
+safety and immutable-history rules. Cycle recovery and `creation-import` remain
+available for current work. The greenfield no-migration decision is a one-time
+exception; future incompatible releases must provide migration by default. See
+the [greenfield 4.0 ADR](docs/adr/0002-greenfield-4-0.md).
 
 Chapter and volume story state is derived from accepted manuscript text and
 versioned source artifacts. It supports continuation; it does not replace the
@@ -406,7 +438,7 @@ no switch automatically resumes a pending write.
 
 ### Current-draft convergence cycles
 
-V3.2 stores at most one active current-draft convergence cycle in
+4.0.0 stores at most one active current-draft convergence cycle in
 `<convergence-state-root>/active-cycle.json`. Completed records remain immutable under
 `<convergence-state-root>/cycles/`. The versioned contract records initiating and
 current strategies, bootstrap, starting and target scope references, requested
@@ -438,18 +470,18 @@ satisfied record. A later current satisfied evaluation restores the ordinary sta
 Use the executable `author-project` facade for lifecycle operations:
 
 ```bash
-node scripts/author-project.mjs start-cycle --project-root <project-root> --input <request.json>
-node scripts/author-project.mjs transition-cycle --project-root <project-root> --input <transition.json>
-node scripts/author-project.mjs reconcile-cycle --project-root <project-root> [--input <direction.json>]
-node scripts/author-project.mjs prepare-draft-revision-execution --project-root <project-root> --input <independent-preparation.json>
-node scripts/author-project.mjs verify-draft-revision-execution --project-root <project-root> --input <independent-verification.json>
-node scripts/author-project.mjs prepare-revision-execution --project-root <project-root> --input <preparation.json>
-node scripts/author-project.mjs verify-revision-execution --project-root <project-root> --input <verification.json>
-node scripts/author-project.mjs evaluate-cycle --project-root <project-root> --input <evaluation-request.json>
-node scripts/author-project.mjs evaluate-draft --project-root <project-root> --input <independent-evaluation.json>
-node scripts/author-project.mjs complete-cycle --project-root <project-root> --input <completion.json>
-node scripts/author-project.mjs cycle-status --project-root <project-root>
-node scripts/author-project.mjs cycle-gate --project-root <project-root>
+node <setup-skill>/assets/runtime/author-project.mjs start-cycle --project-root <project-root> --input <request.json>
+node <setup-skill>/assets/runtime/author-project.mjs transition-cycle --project-root <project-root> --input <transition.json>
+node <setup-skill>/assets/runtime/author-project.mjs reconcile-cycle --project-root <project-root> [--input <direction.json>]
+node <setup-skill>/assets/runtime/author-project.mjs prepare-draft-revision-execution --project-root <project-root> --input <independent-preparation.json>
+node <setup-skill>/assets/runtime/author-project.mjs verify-draft-revision-execution --project-root <project-root> --input <independent-verification.json>
+node <setup-skill>/assets/runtime/author-project.mjs prepare-revision-execution --project-root <project-root> --input <preparation.json>
+node <setup-skill>/assets/runtime/author-project.mjs verify-revision-execution --project-root <project-root> --input <verification.json>
+node <setup-skill>/assets/runtime/author-project.mjs evaluate-cycle --project-root <project-root> --input <evaluation-request.json>
+node <setup-skill>/assets/runtime/author-project.mjs evaluate-draft --project-root <project-root> --input <independent-evaluation.json>
+node <setup-skill>/assets/runtime/author-project.mjs complete-cycle --project-root <project-root> --input <completion.json>
+node <setup-skill>/assets/runtime/author-project.mjs cycle-status --project-root <project-root>
+node <setup-skill>/assets/runtime/author-project.mjs cycle-gate --project-root <project-root>
 ```
 
 A second manuscript-changing cycle returns `active-cycle-exists` with the active
@@ -518,8 +550,8 @@ can be complete while full-manuscript evidence is not yet satisfied.
 Independent convergence status and convergence gate queries are read-only:
 
 ```bash
-node scripts/validate.mjs --convergence-status <manifest-path>
-node scripts/validate.mjs --convergence-gate <manifest-path>
+node <setup-skill>/assets/runtime/validate.mjs --convergence-status <manifest-path>
+node <setup-skill>/assets/runtime/validate.mjs --convergence-gate <manifest-path>
 ```
 
 A valid status query exits successfully for `satisfied`, `not_satisfied`, or
@@ -595,13 +627,23 @@ to null, and omitting the field is a usage error before any write.
 
 ### Coverage units and chunked review
 
-A full local coverage unit can be reused only when its source-report identity,
-operation, exact paths and hashes, requested subchecks, and dependencies match.
+A full local coverage unit ordinarily reuses only when its source-report
+identity, operation, exact paths and hashes, requested subchecks, and
+dependencies match. A dependency exception also permits one attested copyedit
+without a meaning change to a draft-baseline or revision-plan dependency. It binds
+the unit, requested pass, dependency path, old and new SHA-256, operation,
+reason, and host semantic attestation, and publishes a new unit version plus a
+living-index update without rewriting historical evaluations. Manuscript and
+other evidence identities, further changes, and exception chaining remain
+blocked. See the shared [dependency exception
+rules](skills/revise-fiction/references/state-and-findings.md#dependency-exceptions).
+
 Its original scope remains bound to the source report; the composed index and new
 synthesis use the target scope. Partial, skipped, or stale coverage units and
 synthesis units cannot be reused. Unchanged local units can survive unrelated
 edits, but every affected volume, phase, current-scope, or whole-book synthesis
-must be reevaluated for current inputs.
+must be reevaluated for current inputs. Current-index evaluation does not require
+unrelated historical units to match current dependencies.
 
 For large manuscripts, `author-review` reads actual manuscript chunks, then
 synthesizes volume or story-phase results, and finally the book. Intent and
@@ -624,21 +666,16 @@ review jobs, and reader state use their own artifact contracts rather than
 masquerading as revision reports. External changes use the closed
 `references/manuscript-reconciliation-schema.json` artifact and the optional
 manifest `manuscript_reconciliation` reference to its latest immutable record.
-The canonical project registration schema is
-`references/project-schema-v3.2.json`; setup deploys it with the other shared
-contracts into the writing project. The v3.0 and v3.1 schemas remain available
-for reading and upgrading existing projects.
+The only canonical project registration schema is
+`references/project-schema-v4.json`; setup deploys it with the other shared
+contracts into the writing project. No older project schemas or migration
+commands are shipped.
 
-Existing reports are not automatically rewritten. See
-[Migrating to 3.2](docs/MIGRATION-3.2.md). The
-[3.1 migration guide](docs/MIGRATION-3.1.md),
-[3.0 migration guide](docs/MIGRATION-3.0.md), and
-[2.0 migration guide](docs/MIGRATION-2.0.md) remain available as historical
-documentation.
-
-The shipped English and Chinese examples intentionally retain legacy v2
-manifests and workflow fixtures for compatibility testing. Do not migrate them
-in place merely to make them look current.
+Current 4.0.0 reports remain immutable after publication. Old shared artifacts
+are not rewritten or imported into a new project. The shipped English and
+Chinese examples use 4.0.0 manifests with empty operational evidence; their
+manuscripts and handwritten reports remain language and Markdown fixtures, not
+creative-quality or host-run evidence.
 
 ## Invoke an independent skill directly
 
@@ -679,21 +716,49 @@ implicitly restore a backup.
 ## Development
 
 The development package requires Node.js >= 22. The generic skills installer
-requires Node.js >= 22.20. After installing dependencies, run the protocol tests
-and validation from the repository root:
+requires Node.js >= 22.20. After installing dependencies, regenerate the checked-in
+runtime after source changes, verify that it is current, run the real-installer
+smoke, and run the complete protocol tests and repository validation:
 
 ```bash
+npm run build:runtime
+npm run check:runtime
+npm run smoke:installed
 npm test
 npm run validate
 ```
 
-Validate a manifest or report directly with the corresponding CLI option. The
-validator also provides options for scope snapshots, inventory snapshots,
-creation batches, commit journals, story state, coverage artifacts, and review
-jobs; use the installed CLI as the source for their exact names:
+For faster checks before each toolkit commit, opt in once from the toolkit
+repository root:
+
+```bash
+git config --local core.hooksPath .githooks
+```
+
+The tracked `.githooks/pre-commit` hook runs repository validation, generated
+runtime consistency, and focused public CLI and evidence-contract tests. This
+manual opt-in changes only the toolkit repository's local Git configuration.
+Neither installation nor writing-project setup enables hooks or changes Git
+configuration. Run `.githooks/pre-commit` directly to use the same checks
+without changing any Git configuration.
+
+`npm test` includes the generated-runtime consistency and isolated real-installer
+smoke tests. The smoke uses the generic installer in a disposable directory,
+removes the temporary source copy, and runs the installed CLIs without repository
+dependencies. It does not prove host skill discovery or creative quality.
+
+Repository validation is explicit with `--repository`; project validation is
+explicit with `--project-root`. No-argument invocation prints help without
+inspecting implicit state, and the two modes cannot be combined with each other
+or individual checks. Validate a manifest or report directly with the
+corresponding CLI option. The validator also provides options for scope
+snapshots, inventory snapshots, creation batches, commit journals, story state,
+coverage artifacts, and review jobs; use the CLI as the source for exact names:
 
 ```bash
 node scripts/validate.mjs --help
+node scripts/validate.mjs --repository
+node scripts/validate.mjs --project-root /path/to/writing-project
 node scripts/validate.mjs --manifest /path/to/.author-toolkit/project.json
 node scripts/validate.mjs --scope-snapshot /path/to/scope.json
 node scripts/validate.mjs --inventory-snapshot /path/to/inventory.json

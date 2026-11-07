@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { readFile } from "node:fs/promises";
+import { mkdir, readFile } from "node:fs/promises";
 import path from "node:path";
 
 import { validateManifest } from "./manifest.mjs";
@@ -8,11 +8,19 @@ import {
   isOperationalManuscriptPath,
 } from "./manuscript.mjs";
 import { projectRootFromManifest } from "./project-files.mjs";
+import { runCheckpoint } from "./cycle-coordination.mjs";
+import { readActiveCycle, readProject } from "./evaluation-artifacts.mjs";
 import {
   validateInventorySnapshotSchema,
   validateScopeSnapshotSchema,
 } from "./schemas.mjs";
-import { createNoClobberVerified, writeAtomicVerified } from "./state-io.mjs";
+import {
+  acquireDirectoryLock,
+  createNoClobberVerified,
+  releaseDirectoryLock,
+  writeAtomicVerified,
+} from "./state-io.mjs";
+import { utcTimestamp } from "./time.mjs";
 
 function sha256(contents) {
   return createHash("sha256").update(contents).digest("hex");
@@ -96,9 +104,12 @@ async function currentInventory(projectRoot, manifest) {
   for (const entry of inventory.files) {
     files.push({ path: entry.path, sha256: sha256(await readFile(entry.absolute)) });
   }
+  const lockRoot = `${manifest.paths.convergence.replace(/\/$/, "")}/active-cycle.lock`;
   return {
     files,
-    excludedFiles: inventory.excludedFiles,
+    excludedFiles: inventory.excludedFiles.filter((filePath) =>
+      filePath !== lockRoot && !filePath.startsWith(`${lockRoot}/`)
+    ),
     absoluteByPath: new Map(inventory.files.map((entry) => [entry.path, entry.absolute])),
   };
 }
@@ -118,14 +129,12 @@ export async function collectVersionedInventory(projectRoot, manifest) {
 
 export async function recordInventorySnapshot(projectRoot, manifest, options = {}) {
   const observed = await collectVersionedInventory(projectRoot, manifest);
-  const now = options.now instanceof Date ? options.now : new Date();
-  if (Number.isNaN(now.getTime())) throw new Error("Invalid inventory recording time");
   const record = {
     schema_version: "1.0.0",
     ...observed,
-    created_at: now.toISOString(),
+    created_at: utcTimestamp(options),
   };
-  const validation = validateInventorySnapshot(record);
+  const validation = validateInventorySnapshot(record, options);
   if (!validation.valid) throw validationError(validation);
   const relative = path.posix.join(
     manifest.paths.convergence,
@@ -195,70 +204,148 @@ export function diffManuscriptInventories(previous, current) {
 
 function validationError(result) {
   return new Error(
-    `v3.2 scope validation failed:\n${result.errors
+    `4.0.0 scope validation failed:\n${result.errors
       .map((error) => `${error.instancePath || "/"} ${error.message}`)
       .join("\n")}`,
   );
 }
 
-export async function recordScope(projectRoot, scope, options = {}) {
-  const root = path.resolve(projectRoot);
-  const manifestPath = path.join(root, ".author-toolkit", "project.json");
-  const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
-  if (manifest.schema_version !== "3.2.0") {
-    throw new Error("recordScope immutable snapshots require a v3.2 project");
+function scopeStateError(code, message, details = {}) {
+  const error = new Error(message);
+  error.projectCode = code;
+  error.projectDetails = details;
+  return error;
+}
+
+async function recordScopeLocked(root, manifestPath, initialConvergence, scope, options, progress) {
+  await runCheckpoint(options, "lock-acquired");
+  const manifestText = await readFile(manifestPath, "utf8");
+  const actualManifestHash = sha256(manifestText);
+  if (
+    options.expectedManifestSha256 !== undefined &&
+    actualManifestHash !== options.expectedManifestSha256
+  ) {
+    throw scopeStateError(
+      "manifest-hash-conflict",
+      "The project manifest changed after the scope input was prepared; reread it before retrying.",
+      {
+        expected_sha256: options.expectedManifestSha256,
+        actual_sha256: actualManifestHash,
+      },
+    );
   }
-  const originalValidation = validateManifest(manifest);
+  const manifest = JSON.parse(manifestText);
+  const originalValidation = validateManifest(manifest, options);
   if (!originalValidation.valid) throw validationError(originalValidation);
-
-  const now = options.now instanceof Date ? options.now : new Date();
-  if (Number.isNaN(now.getTime())) throw new Error("Invalid scope recording time");
-  const updatedAt = now.toISOString();
-  const scopeFingerprint = computeScopeFingerprint(scope);
-  const currentScope = {
-    scope_id: scope.scope_id,
-    description: scope.description,
-    status: scope.status,
-    files: scope.files.map(({ path: filePath, sha256: hash }) => ({ path: filePath, sha256: hash })),
-    excluded_files: [...scope.excluded_files],
-    created_at: scope.created_at,
-    scope_fingerprint: scopeFingerprint,
-  };
-
-  if (scope.status === "proposed") {
-    const updated = { ...manifest, current_scope: currentScope, updated_at: updatedAt };
-    const validation = validateManifest(updated);
-    if (!validation.valid) throw validationError(validation);
-    await atomicWrite(manifestPath, `${JSON.stringify(updated, null, 2)}\n`);
-    return {
-      scope_id: scope.scope_id,
-      scope_fingerprint: scopeFingerprint,
-      inventory_fingerprint: null,
-      snapshot_path: null,
-      inventory_path: null,
-      current_scope: currentScope,
-    };
+  if (manifest.paths.convergence !== initialConvergence) {
+    throw scopeStateError(
+      "project-lock-path-conflict",
+      "The registered convergence path changed while scope recording waited for its lock.",
+    );
   }
+  const active = await readActiveCycle({ root, manifest }, options);
+  if (options.cycleId !== undefined && !active) {
+    throw scopeStateError("active-cycle-required", "The named active cycle is unavailable.");
+  }
+  if (active && options.cycleId !== undefined &&
+    (active.value.cycle_id !== options.cycleId || active.value.revision !== options.expectedRevision)) {
+    throw scopeStateError(
+      "cycle-revision-conflict",
+      `Expected cycle ${options.cycleId} revision ${options.expectedRevision}, but the active cycle is ${active.value.cycle_id} revision ${active.value.revision}.`,
+    );
+  }
+  progress.active = active;
 
-  if (scope.status !== "confirmed") throw new Error(`Unsupported scope status: ${scope.status}`);
+  const updatedAt = utcTimestamp(options);
+  if (!["proposed", "confirmed"].includes(scope.status)) {
+    throw new Error(`Unsupported scope status: ${scope.status}`);
+  }
   const confirmation = options.authorConfirmation;
-  if (!confirmation || confirmation.reading_order_confirmed !== true) {
-    throw new Error("A confirmed scope requires author confirmation of its reading order");
+  if (scope.status === "confirmed" &&
+    (!confirmation || confirmation.reading_order_confirmed !== true)) {
+    throw scopeStateError(
+      "scope-confirmation-required",
+      "A confirmed scope requires author confirmation of its exact reading order.",
+    );
   }
 
   const inventory = await currentInventory(root, manifest);
   const scopePaths = new Set();
-  for (const file of scope.files) {
-    if (scopePaths.has(file.path)) throw new Error(`Duplicate scope path: ${file.path}`);
-    scopePaths.add(file.path);
-    const absolute = inventory.absoluteByPath.get(file.path);
-    if (!absolute) throw new Error(`Scope path is not in manuscript inventory: ${file.path}`);
-    if (sha256(await readFile(absolute)) !== file.sha256) {
-      throw new Error(`Scope input hash is not current: ${file.path}`);
+  const files = [];
+  for (const entry of Array.isArray(scope.files) ? scope.files : []) {
+    const filePath = typeof entry === "string" ? entry : entry?.path;
+    const expectedHash = typeof entry === "object" && entry !== null ? entry.sha256 : undefined;
+    if (scopePaths.has(filePath)) throw new Error(`Duplicate scope path: ${filePath}`);
+    scopePaths.add(filePath);
+    const absolute = inventory.absoluteByPath.get(filePath);
+    if (!absolute) {
+      throw scopeStateError(
+        "scope-path-invalid",
+        `Scope path is not in the current manuscript inventory: ${filePath}`,
+        { path: filePath },
+      );
     }
+    const actualHash = inventory.files.find((file) => file.path === filePath).sha256;
+    if (expectedHash !== undefined && actualHash !== expectedHash) {
+      throw scopeStateError(
+        "scope-input-hash-conflict",
+        `Scope input hash is not current: ${filePath}`,
+        { path: filePath, expected_sha256: expectedHash, actual_sha256: actualHash },
+      );
+    }
+    files.push({ path: filePath, sha256: actualHash });
   }
-  if (JSON.stringify(sorted(scope.excluded_files)) !== JSON.stringify(sorted(inventory.excludedFiles))) {
-    throw new Error("Scope exclusions do not match the current manuscript inventory");
+  const excludedFiles = scope.excluded_files === undefined
+    ? sorted(inventory.excludedFiles)
+    : scope.excluded_files;
+  if (JSON.stringify(sorted(excludedFiles)) !== JSON.stringify(sorted(inventory.excludedFiles))) {
+    throw scopeStateError(
+      "scope-exclusions-conflict",
+      "Scope exclusions do not match the current manuscript inventory.",
+      { expected: excludedFiles, actual: sorted(inventory.excludedFiles) },
+    );
+  }
+  const normalizedScope = {
+    ...scope,
+    files,
+    excluded_files: sorted(excludedFiles),
+    created_at: scope.created_at ?? updatedAt,
+  };
+  const scopeFingerprint = computeScopeFingerprint(normalizedScope);
+  if (scope.scope_fingerprint !== undefined && scope.scope_fingerprint !== scopeFingerprint) {
+    throw scopeStateError(
+      "scope-fingerprint-conflict",
+      `Scope fingerprint ${scope.scope_fingerprint} does not match the current ordered manuscript content ${scopeFingerprint}.`,
+      { expected_sha256: scope.scope_fingerprint, actual_sha256: scopeFingerprint },
+    );
+  }
+  const currentScope = {
+    scope_id: normalizedScope.scope_id,
+    description: normalizedScope.description,
+    status: normalizedScope.status,
+    files: normalizedScope.files,
+    excluded_files: normalizedScope.excluded_files,
+    created_at: normalizedScope.created_at,
+    scope_fingerprint: scopeFingerprint,
+  };
+
+  if (normalizedScope.status === "proposed") {
+    const updated = { ...manifest, current_scope: currentScope, updated_at: updatedAt };
+    const validation = validateManifest(updated, options);
+    if (!validation.valid) throw validationError(validation);
+    await atomicWrite(manifestPath, `${JSON.stringify(updated, null, 2)}\n`);
+    progress.manifestWritten = true;
+    await runCheckpoint(options, "manifest-updated");
+    return {
+      scope_id: normalizedScope.scope_id,
+      scope_fingerprint: scopeFingerprint,
+      inventory_fingerprint: null,
+      snapshot_path: null,
+      inventory_path: null,
+      snapshot_reference: null,
+      inventory_reference: null,
+      current_scope: currentScope,
+    };
   }
 
   const inventoryRecord = {
@@ -282,18 +369,18 @@ export async function recordScope(projectRoot, scope, options = {}) {
   const snapshotRelative = path.posix.join(
     manifest.paths.convergence,
     "scopes",
-    `${scope.scope_id}-${scopeFingerprint}.json`,
+    `${normalizedScope.scope_id}-${scopeFingerprint}.json`,
   );
   const snapshotPath = path.resolve(root, snapshotRelative);
   const snapshot = {
     schema_version: "1.0.0",
-    scope_id: scope.scope_id,
+    scope_id: normalizedScope.scope_id,
     scope_fingerprint: scopeFingerprint,
-    description: scope.description,
+    description: normalizedScope.description,
     status: "confirmed",
     files: currentScope.files,
-    excluded_files: sorted(scope.excluded_files),
-    created_at: scope.created_at,
+    excluded_files: normalizedScope.excluded_files,
+    created_at: normalizedScope.created_at,
     inventory: {
       path: inventoryRelative,
       sha256: sha256(inventoryText),
@@ -305,28 +392,90 @@ export async function recordScope(projectRoot, scope, options = {}) {
       reading_order_confirmed: true,
     },
   };
-  const inventoryValidation = validateInventorySnapshot(inventoryRecord);
+  const inventoryValidation = validateInventorySnapshot(inventoryRecord, options);
   if (!inventoryValidation.valid) throw validationError(inventoryValidation);
-  const snapshotValidation = validateScopeSnapshot(snapshot);
+  const snapshotValidation = validateScopeSnapshot(snapshot, options);
   if (!snapshotValidation.valid) throw validationError(snapshotValidation);
   const snapshotText = `${JSON.stringify(snapshot, null, 2)}\n`;
   currentScope.snapshot_path = snapshotRelative;
   currentScope.snapshot_sha256 = sha256(snapshotText);
   const updated = { ...manifest, current_scope: currentScope, updated_at: updatedAt };
-  const validation = validateManifest(updated);
+  const validation = validateManifest(updated, options);
   if (!validation.valid) throw validationError(validation);
 
   await writeImmutable(inventoryPath, inventoryText);
+  progress.inventoryPublished = true;
+  progress.inventoryPath = inventoryPath;
+  await runCheckpoint(options, "inventory-published");
   await writeImmutable(snapshotPath, snapshotText);
+  progress.snapshotPublished = true;
+  progress.snapshotPath = snapshotPath;
+  await runCheckpoint(options, "snapshot-published");
   await atomicWrite(manifestPath, `${JSON.stringify(updated, null, 2)}\n`);
+  progress.manifestWritten = true;
+  await runCheckpoint(options, "manifest-updated");
   return {
-    scope_id: scope.scope_id,
+    scope_id: normalizedScope.scope_id,
     scope_fingerprint: scopeFingerprint,
     inventory_fingerprint: inventoryRecord.inventory_fingerprint,
     snapshot_path: snapshotPath,
     inventory_path: inventoryPath,
+    snapshot_reference: {
+      path: snapshotRelative,
+      sha256: currentScope.snapshot_sha256,
+    },
+    inventory_reference: {
+      path: inventoryRelative,
+      sha256: sha256(inventoryText),
+      inventory_fingerprint: inventoryRecord.inventory_fingerprint,
+    },
     current_scope: currentScope,
   };
+}
+
+export async function recordScope(projectRoot, scope, options = {}) {
+  const { root, manifestPath, manifest: initialManifest } = await readProject(projectRoot, options);
+  await mkdir(path.resolve(root, initialManifest.paths.convergence), { recursive: true });
+  const lock = await acquireDirectoryLock(
+    path.resolve(root, initialManifest.paths.convergence, "active-cycle.lock"),
+    {
+      timeoutMs: options.lockTimeoutMs ?? 10000,
+      retryMs: options.lockRetryMs ?? 20,
+      now: options.now,
+    },
+  );
+  if (!lock.acquired) {
+    throw scopeStateError(
+      lock.code === "timeout" ? "project-lock-timeout" : "project-lock-error",
+      `Cannot coordinate scope recording at ${lock.directory}: ${lock.error.message}`,
+      { lock_path: lock.directory },
+    );
+  }
+  const progress = options.progress ?? {};
+  let outcome;
+  let operationError;
+  try {
+    outcome = await recordScopeLocked(
+      root,
+      manifestPath,
+      initialManifest.paths.convergence,
+      scope,
+      options,
+      progress,
+    );
+  } catch (error) {
+    operationError = error;
+  }
+  const released = await releaseDirectoryLock(lock);
+  if (!released.released) {
+    throw scopeStateError(
+      "project-lock-release-error",
+      `Cannot release scope lock ${lock.directory}: ${released.error.message}${operationError ? `; operation also failed: ${operationError.message}` : ""}`,
+      { lock_path: lock.directory },
+    );
+  }
+  if (operationError) throw operationError;
+  return outcome;
 }
 
 function scopeFailure(instancePath, message, keyword = "full-manuscript-scope") {
@@ -345,7 +494,7 @@ function relevantExclusions(values, paths) {
   return values.filter((value) => !isOperationalManuscriptPath(value, paths));
 }
 
-export async function validateFullManuscriptScope(manifest, manifestPath) {
+export async function validateFullManuscriptScope(manifest, manifestPath, options = {}) {
   const projectRoot = projectRootFromManifest(manifestPath);
   const scope = manifest.current_scope;
   const result = {
@@ -403,7 +552,7 @@ export async function validateFullManuscriptScope(manifest, manifestPath) {
   try {
     snapshotText = await readFile(path.resolve(projectRoot, scope.snapshot_path), "utf8");
     snapshot = JSON.parse(snapshotText);
-    result.errors.push(...validateScopeSnapshot(snapshot).errors);
+    result.errors.push(...validateScopeSnapshot(snapshot, options).errors);
     result.inventory_fingerprint = snapshot.inventory?.inventory_fingerprint ?? null;
     if (sha256(snapshotText) !== scope.snapshot_sha256) {
       result.errors.push(
@@ -500,7 +649,7 @@ export async function validateFullManuscriptScope(manifest, manifestPath) {
         "utf8",
       );
       inventory = JSON.parse(inventoryText);
-      result.errors.push(...validateInventorySnapshot(inventory).errors);
+      result.errors.push(...validateInventorySnapshot(inventory, options).errors);
       if (inventory.manuscript_root !== manifest.manuscript_root) {
         result.errors.push(
           scopeFailure(
@@ -639,8 +788,8 @@ export async function validateFullManuscriptScope(manifest, manifestPath) {
   return result;
 }
 
-export function validateScopeSnapshot(value) {
-  const schema = validateScopeSnapshotSchema(value);
+export function validateScopeSnapshot(value, options = {}) {
+  const schema = validateScopeSnapshotSchema(value, options);
   const errors = [...schema.errors];
   if (Array.isArray(value?.files) && Array.isArray(value?.excluded_files)) {
     const expected = computeScopeFingerprint(value);
@@ -670,8 +819,8 @@ export function validateScopeSnapshot(value) {
   return { valid: errors.length === 0, errors };
 }
 
-export function validateInventorySnapshot(value) {
-  const schema = validateInventorySnapshotSchema(value);
+export function validateInventorySnapshot(value, options = {}) {
+  const schema = validateInventorySnapshotSchema(value, options);
   const errors = [...schema.errors];
   if (
     typeof value?.manuscript_root === "string" &&

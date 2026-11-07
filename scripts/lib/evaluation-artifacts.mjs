@@ -3,28 +3,39 @@ import path from "node:path";
 
 import { validateManifest } from "./manifest.mjs";
 import { validateConvergenceCycleSchema } from "./schemas.mjs";
+import { validateDeployedReferences } from "./shared-references.mjs";
 import { createNoClobberVerified, sha256Bytes } from "./state-io.mjs";
+import { utcTimestamp } from "./time.mjs";
 import {
   samePassReference,
   validateConvergenceEvaluation,
   validateRequestedPass,
 } from "./evaluation-contracts.mjs";
 
-export async function readProject(projectRoot) {
+export async function readProject(projectRoot, options = {}) {
   const root = path.resolve(projectRoot);
   const manifestPath = path.join(root, ".author-toolkit", "project.json");
   const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
-  const validation = validateManifest(manifest);
+  const validation = validateManifest(manifest, options);
   if (!validation.valid) {
-    throw new Error(`Project validation failed: ${validation.errors.map((error) => error.message).join("; ")}`);
+    const error = new Error(`Project validation failed: ${validation.errors.map((error) => error.message).join("; ")}`);
+    error.projectCode = validation.errors.find((candidate) =>
+      candidate.code === "greenfield-initialization-required"
+    )?.code ?? "project-state-invalid";
+    error.projectDetails = { validation_errors: validation.errors };
+    throw error;
   }
-  if (manifest.schema_version !== "3.2.0") {
-    throw new Error("Convergence evaluation requires a v3.2 project");
+  const references = await validateDeployedReferences(root);
+  if (!references.valid) {
+    const error = new Error("Shared references are missing or do not match the installed payload; run setup-author-toolkit.");
+    error.projectCode = "reference-version-conflict";
+    error.projectDetails = { reference_errors: references.errors };
+    throw error;
   }
-  return { root, manifestPath, manifest };
+  return { root, manifestPath, manifest, references };
 }
 
-export async function readActiveCycle(project) {
+export async function readActiveCycle(project, options = {}) {
   const file = path.resolve(project.root, project.manifest.paths.convergence, "active-cycle.json");
   let value;
   let text;
@@ -35,7 +46,7 @@ export async function readActiveCycle(project) {
     if (error.code === "ENOENT") return null;
     throw error;
   }
-  const validation = validateConvergenceCycleSchema(value);
+  const validation = validateConvergenceCycleSchema(value, options);
   if (!validation.valid || value.status !== "active") {
     throw new Error(`Living cycle is invalid: ${file}: ${formatErrors(validation.errors)}`);
   }
@@ -43,9 +54,7 @@ export async function readActiveCycle(project) {
 }
 
 export function operationTime(options = {}) {
-  const now = options.now instanceof Date ? options.now : new Date();
-  if (Number.isNaN(now.getTime())) throw new Error("Invalid convergence operation time");
-  return now.toISOString();
+  return utcTimestamp(options);
 }
 
 export function evaluationReference(evaluation, relativePath, text) {
@@ -70,7 +79,7 @@ export function formatErrors(errors) {
   return errors.map((error) => `${error.instancePath || "/"} ${error.message}`).join("; ");
 }
 
-export async function completedCycles(project) {
+export async function completedCycles(project, options = {}) {
   const directory = path.resolve(project.root, project.manifest.paths.convergence, "cycles");
   let entries;
   try {
@@ -83,7 +92,7 @@ export async function completedCycles(project) {
   for (const entry of entries) {
     if (!entry.isFile() || !entry.name.endsWith(".json")) continue;
     const value = JSON.parse(await readFile(path.join(directory, entry.name), "utf8"));
-    const validation = validateConvergenceCycleSchema(value);
+    const validation = validateConvergenceCycleSchema(value, options);
     if (!validation.valid) {
       throw new Error(`Completed cycle is invalid: ${entry.name}: ${formatErrors(validation.errors)}`);
     }
@@ -96,13 +105,13 @@ export async function completedCycles(project) {
   );
 }
 
-export async function readEvaluationReference(project, reference) {
+export async function readEvaluationReference(project, reference, options = {}) {
   const text = await readFile(path.resolve(project.root, reference.path), "utf8");
   if (sha256Bytes(text) !== reference.sha256) {
     throw new Error(`Evaluation content hash changed: ${reference.path}`);
   }
   const value = JSON.parse(text);
-  const validation = validateConvergenceEvaluation(value);
+  const validation = validateConvergenceEvaluation(value, options);
   if (!validation.valid) throw new Error(formatErrors(validation.errors));
   if (value.evaluation_id !== reference.evaluation_id) {
     throw new Error(`Evaluation identity changed: ${reference.path}`);
@@ -110,8 +119,8 @@ export async function readEvaluationReference(project, reference) {
   return { value, text };
 }
 
-export async function evaluationSources(project) {
-  const sources = (await completedCycles(project)).map((cycle) => ({
+export async function evaluationSources(project, options = {}) {
+  const sources = (await completedCycles(project, options)).map((cycle) => ({
     cycle,
     evaluationReference: cycle.target_evaluation,
     passReference: cycle.requested_pass,
@@ -138,7 +147,7 @@ export async function evaluationSources(project) {
       path: relative,
       sha256: sha256Bytes(text),
     };
-    const { value: evaluation } = await readEvaluationReference(project, evaluationReference);
+    const { value: evaluation } = await readEvaluationReference(project, evaluationReference, options);
     if (evaluation.cycle_id !== null) continue;
     sources.push({
       cycle: null,
@@ -153,20 +162,20 @@ export async function evaluationSources(project) {
   );
 }
 
-export async function latestSatisfiedPass(project, excludeCycleId = null, excludeEvaluationId = null) {
-  for (const source of (await evaluationSources(project)).reverse()) {
+export async function latestSatisfiedPass(project, excludeCycleId = null, excludeEvaluationId = null, options = {}) {
+  for (const source of (await evaluationSources(project, options)).reverse()) {
     if (
       source.cycle?.cycle_id === excludeCycleId ||
       source.evaluationReference.evaluation_id === excludeEvaluationId ||
       !source.passReference
     ) continue;
     try {
-      const { value: evaluation } = await readEvaluationReference(project, source.evaluationReference);
+      const { value: evaluation } = await readEvaluationReference(project, source.evaluationReference, options);
       if (evaluation.outcome !== "satisfied") continue;
       const passText = await readFile(path.resolve(project.root, source.passReference.path), "utf8");
       if (sha256Bytes(passText) !== source.passReference.sha256) continue;
       const pass = JSON.parse(passText);
-      if (!validateRequestedPass(pass).valid || pass.narrowing !== null) continue;
+      if (!validateRequestedPass(pass, options).valid || pass.narrowing !== null) continue;
       if (
         pass.pass_id !== source.passReference.pass_id ||
         pass.pass_fingerprint !== source.passReference.pass_fingerprint

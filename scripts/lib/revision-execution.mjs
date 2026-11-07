@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 
+import { validateBackupIndex } from "./backup.mjs";
 import { externalReconciliationBlock } from "./cycles.mjs";
 import {
   beginCycleOperation,
@@ -26,6 +27,7 @@ import {
   writeAtomicVerified,
 } from "./state-io.mjs";
 import { parseTrackerState } from "./tracker.mjs";
+import { utcTimestamp } from "./time.mjs";
 
 function executionError(instancePath, message, keyword = "revision-execution") {
   return { instancePath, keyword, message, params: {} };
@@ -61,8 +63,8 @@ function formatErrors(errors) {
   return errors.map((error) => `${error.instancePath || "/"} ${error.message}`).join("; ");
 }
 
-export function validateRevisionExecution(value) {
-  const schema = validateRevisionExecutionSchema(value);
+export function validateRevisionExecution(value, options = {}) {
+  const schema = validateRevisionExecutionSchema(value, options);
   const errors = [...schema.errors];
   const files = new Set();
   for (const [index, file] of (value?.files ?? []).entries()) {
@@ -115,22 +117,15 @@ export function validateRevisionExecution(value) {
   return { valid: errors.length === 0, errors };
 }
 
-async function readProject(projectRoot) {
-  const root = path.resolve(projectRoot);
-  const manifestPath = path.join(root, ".author-toolkit", "project.json");
-  const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
-  const validation = validateManifest(manifest);
-  if (!validation.valid) throw new Error(formatErrors(validation.errors));
-  if (manifest.schema_version !== "3.2.0") {
-    throw new Error("Revision execution requires a v3.2 project");
-  }
-  return { root, manifestPath, manifest };
+async function readProject(projectRoot, options = {}) {
+  const { readProject: readProjectWithReferences } = await import("./evaluation-artifacts.mjs");
+  return readProjectWithReferences(projectRoot, options);
 }
 
-async function readActiveCycle(project) {
+async function readActiveCycle(project, options = {}) {
   const file = path.resolve(project.root, project.manifest.paths.convergence, "active-cycle.json");
   const value = JSON.parse(await readFile(file, "utf8"));
-  const validation = validateConvergenceCycleSchema(value);
+  const validation = validateConvergenceCycleSchema(value, options);
   if (!validation.valid || value.status !== "active") {
     throw new Error(`Living cycle is invalid: ${formatErrors(validation.errors)}`);
   }
@@ -145,10 +140,10 @@ async function readVerifiedArtifact(project, reference) {
   return contents;
 }
 
-async function readCurrentScope(project, reference) {
+async function readCurrentScope(project, reference, options = {}) {
   const contents = await readVerifiedArtifact(project, scopeArtifact(reference));
   const snapshot = JSON.parse(contents.toString("utf8"));
-  const validation = validateScopeSnapshotSchema(snapshot);
+  const validation = validateScopeSnapshotSchema(snapshot, options);
   if (!validation.valid) throw new Error(formatErrors(validation.errors));
   if (
     snapshot.scope_id !== reference.scope_id ||
@@ -159,10 +154,10 @@ async function readCurrentScope(project, reference) {
   return snapshot;
 }
 
-async function readCurrentPass(project, reference) {
+async function readCurrentPass(project, reference, options = {}) {
   const contents = await readVerifiedArtifact(project, reference);
   const pass = JSON.parse(contents.toString("utf8"));
-  const validation = validateRequestedPassSchema(pass);
+  const validation = validateRequestedPassSchema(pass, options);
   if (!validation.valid) throw new Error(formatErrors(validation.errors));
   if (
     pass.pass_id !== reference.pass_id ||
@@ -182,7 +177,7 @@ function contextError(code, message, pathValue = null, artifactId = null) {
   };
 }
 
-function revisionApprovalFingerprint(execution, operation) {
+export function revisionApprovalFingerprint(execution, operation) {
   return sha256Bytes(JSON.stringify({
     operation,
     plan: {
@@ -226,16 +221,16 @@ function revisionApprovalBindingMatches(approval, execution, operation) {
 
 async function validateExecutionContext(project, execution, options = {}) {
   const errors = [];
-  const structural = validateRevisionExecution(execution);
+  const structural = validateRevisionExecution(execution, options);
   if (!structural.valid) return { valid: false, errors: structural.errors.map((error) =>
     contextError("revision-execution-contract-invalid", error.message)
   ) };
   try {
     await readVerifiedArtifact(project, execution.plan);
     await readVerifiedArtifact(project, execution.batch);
-    const pass = await readCurrentPass(project, execution.requested_pass);
-    const inputScope = await readCurrentScope(project, execution.input_scope);
-    const targetScope = await readCurrentScope(project, execution.target_scope);
+    const pass = await readCurrentPass(project, execution.requested_pass, options);
+    const inputScope = await readCurrentScope(project, execution.input_scope, options);
+    const targetScope = await readCurrentScope(project, execution.target_scope, options);
     if (!sameScopeReference(pass.target_scope, execution.target_scope)) {
       errors.push(contextError(
         "revision-pass-target-mismatch",
@@ -255,7 +250,7 @@ async function validateExecutionContext(project, execution, options = {}) {
           "The verified execution target is not manifest current_scope.",
         ));
       }
-      const full = await validateFullManuscriptScope(project.manifest, project.manifestPath);
+      const full = await validateFullManuscriptScope(project.manifest, project.manifestPath, options);
       if (!full.valid) {
         errors.push(contextError(
           "revision-target-not-current",
@@ -265,8 +260,11 @@ async function validateExecutionContext(project, execution, options = {}) {
     }
 
     if (options.requireCurrentDecisions !== false) {
-      const trackerText = await readFile(path.resolve(project.root, project.manifest.paths.audit_tracker), "utf8");
-      const tracker = await parseTrackerState(trackerText, project.root);
+      const tracker = options.trackerState ?? await parseTrackerState(
+        await readFile(path.resolve(project.root, project.manifest.paths.audit_tracker), "utf8"),
+        project.root,
+        options,
+      );
       if (!tracker.valid) {
         errors.push(contextError("revision-tracker-invalid", formatErrors(tracker.errors)));
       }
@@ -344,7 +342,10 @@ async function validateExecutionContext(project, execution, options = {}) {
           defer: "deferred",
           dismiss: "dismissed",
         }[finding.disposition];
-        if (tracked && finding.disposition !== "execute" && tracked.status !== expectedStatus) {
+        const pendingDecision = options.pendingFindingDecision?.findingId === finding.finding_id &&
+          options.pendingFindingDecision.status === expectedStatus &&
+          tracked?.status === "open";
+        if (tracked && finding.disposition !== "execute" && tracked.status !== expectedStatus && !pendingDecision) {
           errors.push(contextError(
             "revision-finding-disposition-mismatch",
             `Finding ${finding.finding_id} is ${tracked.status}, not ${expectedStatus}.`,
@@ -363,8 +364,40 @@ async function validateExecutionContext(project, execution, options = {}) {
       }
     }
 
+    const backupIndexPath = path.resolve(project.root, project.manifest.paths.backups, "index.json");
+    let backupIndex = null;
+    try {
+      backupIndex = JSON.parse(await readFile(backupIndexPath, "utf8"));
+      const indexValidation = await validateBackupIndex(project.root, backupIndex, options);
+      if (!indexValidation.valid) {
+        errors.push(contextError(
+          "revision-backup-invalid",
+          `Backup index is invalid: ${formatErrors(indexValidation.errors)}`,
+          backupIndexPath,
+        ));
+      }
+    } catch (error) {
+      errors.push(contextError("revision-backup-invalid", `Cannot read backup index: ${error.message}`, backupIndexPath));
+    }
+
     const backupsByPath = new Map();
     for (const backup of execution.backups) {
+      const indexedBackup = backupIndex?.backups.find((entry) => entry.backup_id === backup.backup_id);
+      if (
+        !indexedBackup ||
+        indexedBackup.approval_id !== backup.approval_id ||
+        indexedBackup.operation !== "chapter-revision" ||
+        indexedBackup.scope_id !== execution.input_scope.scope_id ||
+        indexedBackup.scope_fingerprint !== execution.input_scope.scope_fingerprint ||
+        !sameReference(indexedBackup.manifest, backup.manifest)
+      ) {
+        errors.push(contextError(
+          "revision-backup-invalid",
+          `Backup ${backup.backup_id} is not the same indexed backup evidence required by this execution.`,
+          backup.manifest.path,
+          backup.backup_id,
+        ));
+      }
       if (!execution.approval_ids.includes(backup.approval_id)) {
         errors.push(contextError(
           "revision-backup-approval-mismatch",
@@ -386,15 +419,48 @@ async function validateExecutionContext(project, execution, options = {}) {
         const manifest = JSON.parse(contents.toString("utf8"));
         if (
           manifest.backup_id !== backup.backup_id ||
+          manifest.operation !== "chapter-revision" ||
           manifest.approval_id !== backup.approval_id ||
-          manifest.scope_id !== execution.input_scope.scope_id
+          manifest.scope_id !== execution.input_scope.scope_id ||
+          manifest.scope_fingerprint !== execution.input_scope.scope_fingerprint
         ) {
           errors.push(contextError(
             "revision-backup-invalid",
-            `Backup manifest ${backup.manifest.path} does not bind the recorded backup, approval, and input scope.`,
+            `Backup manifest ${backup.manifest.path} does not bind the recorded backup, operation, approval, and input scope.`,
             backup.manifest.path,
             backup.backup_id,
           ));
+        }
+        const manifestBackupFiles = (manifest.files ?? [])
+          .filter((file) => file.action !== "create")
+          .map((file) => ({
+            path: file.path,
+            backup_path: file.backup_path,
+            sha256: file.input_sha256,
+          }));
+        if (JSON.stringify(manifestBackupFiles) !== JSON.stringify(backup.files)) {
+          errors.push(contextError(
+            "revision-backup-invalid",
+            `Execution backup files differ from the indexed manifest for ${backup.backup_id}.`,
+            backup.manifest.path,
+            backup.backup_id,
+          ));
+        }
+        for (const manifestFile of manifest.files ?? []) {
+          const executionFile = execution.files.find((file) => file.path === manifestFile.path);
+          if (
+            !executionFile ||
+            executionFile.action !== manifestFile.action ||
+            executionFile.input_sha256 !== manifestFile.input_sha256 ||
+            executionFile.output_sha256 !== manifestFile.output_sha256
+          ) {
+            errors.push(contextError(
+              "revision-backup-invalid",
+              `Indexed backup action ${manifestFile.path} is not part of the exact approved execution.`,
+              manifestFile.path,
+              backup.backup_id,
+            ));
+          }
         }
       } catch (error) {
         errors.push(contextError("revision-backup-invalid", error.message, backup.manifest.path, backup.backup_id));
@@ -512,7 +578,7 @@ async function validateExecutionContext(project, execution, options = {}) {
 }
 
 export async function validateRevisionExecutionAgainstDisk(projectRoot, execution, options = {}) {
-  const project = await readProject(projectRoot);
+  const project = await readProject(projectRoot, options);
   return validateExecutionContext(project, execution, {
     requireOutputs: execution.status === "verified",
     requireCurrentTarget: execution.status === "verified",
@@ -521,9 +587,7 @@ export async function validateRevisionExecutionAgainstDisk(projectRoot, executio
 }
 
 function operationTime(options) {
-  const now = options.now instanceof Date ? options.now : new Date();
-  if (Number.isNaN(now.getTime())) throw new Error("Invalid revision execution time");
-  return now.toISOString();
+  return utcTimestamp(options);
 }
 
 function executionReference(execution, relativePath, text) {
@@ -590,6 +654,7 @@ async function withCycleLock(project, options, operation) {
     {
       timeoutMs: options.lockTimeoutMs ?? 10000,
       retryMs: options.lockRetryMs ?? 20,
+      now: options.now,
     },
   );
   if (!lock.acquired) {
@@ -655,9 +720,9 @@ function validatePrepareRequest(request, { independent = false } = {}) {
   }
 }
 
-async function readOptionalActiveCycle(project) {
+async function readOptionalActiveCycle(project, options = {}) {
   try {
-    return await readActiveCycle(project);
+    return await readActiveCycle(project, options);
   } catch (error) {
     if (error.code === "ENOENT") return null;
     throw error;
@@ -676,9 +741,9 @@ function independentCycleFailure(active) {
 
 export async function prepareDraftRevisionExecution(projectRoot, request, options = {}) {
   validatePrepareRequest(request, { independent: true });
-  const project = await readProject(projectRoot);
+  const project = await readProject(projectRoot, options);
   return withCycleLock(project, options, async () => {
-    const initial = await readOptionalActiveCycle(project);
+    const initial = await readOptionalActiveCycle(project, options);
     const activeFailure = independentCycleFailure(initial);
     if (activeFailure) return activeFailure;
     const currentScope = project.manifest.current_scope;
@@ -720,7 +785,7 @@ export async function prepareDraftRevisionExecution(projectRoot, request, option
     if (!validation.valid) {
       return failure("revision-execution-preparation-invalid", "The approved independent batch, backups, decisions, or current inputs do not validate.", null, validation.errors);
     }
-    const concurrent = await readOptionalActiveCycle(project);
+    const concurrent = await readOptionalActiveCycle(project, options);
     const concurrentFailure = independentCycleFailure(concurrent);
     if (concurrentFailure) return concurrentFailure;
     const relative = path.posix.join(
@@ -751,9 +816,9 @@ export async function prepareDraftRevisionExecution(projectRoot, request, option
 
 export async function prepareRevisionExecution(projectRoot, request, options = {}) {
   validatePrepareRequest(request);
-  const project = await readProject(projectRoot);
+  const project = await readProject(projectRoot, options);
   return withCycleLock(project, options, async () => {
-    const active = await readActiveCycle(project);
+    const active = await readActiveCycle(project, options);
     const cycle = active.value;
     const cycleFailure = checkCycleRequest(cycle, request);
     if (cycleFailure) return cycleFailure;
@@ -939,9 +1004,9 @@ function buildChangeSet(inputScope, targetScope) {
 
 export async function verifyRevisionExecution(projectRoot, request, options = {}) {
   validateVerifyRequest(request);
-  const project = await readProject(projectRoot);
+  const project = await readProject(projectRoot, options);
   return withCycleLock(project, options, async () => {
-    const active = await readActiveCycle(project);
+    const active = await readActiveCycle(project, options);
     const cycle = active.value;
     const cycleFailure = checkCycleRequest(cycle, request);
     if (cycleFailure) return cycleFailure;
@@ -1057,9 +1122,9 @@ export async function verifyRevisionExecution(projectRoot, request, options = {}
 
 export async function verifyDraftRevisionExecution(projectRoot, request, options = {}) {
   validateVerifyRequest(request, { independent: true });
-  const project = await readProject(projectRoot);
+  const project = await readProject(projectRoot, options);
   return withCycleLock(project, options, async () => {
-    const initial = await readOptionalActiveCycle(project);
+    const initial = await readOptionalActiveCycle(project, options);
     const activeFailure = independentCycleFailure(initial);
     if (activeFailure) return activeFailure;
     const relative = path.posix.join(
@@ -1114,7 +1179,7 @@ export async function verifyDraftRevisionExecution(projectRoot, request, options
         : "revision-execution-verification-invalid";
       return failure(code, "The independent prepared batch cannot be verified against current manuscript and target evidence.", null, validation.errors);
     }
-    const concurrent = await readOptionalActiveCycle(project);
+    const concurrent = await readOptionalActiveCycle(project, options);
     const concurrentFailure = independentCycleFailure(concurrent);
     if (concurrentFailure) return concurrentFailure;
     const text = `${JSON.stringify(execution, null, 2)}\n`;
@@ -1133,9 +1198,9 @@ export async function verifyDraftRevisionExecution(projectRoot, request, options
 }
 
 
-export async function getRequestCompletion(projectRoot, cycle) {
+export async function getRequestCompletion(projectRoot, cycle, options = {}) {
   if (!cycle || cycle.initiating_strategy !== "revise-request") return null;
-  const project = await readProject(projectRoot);
+  const project = await readProject(projectRoot, options);
   const blockers = [];
   const action = requiredAction(cycle);
   function block(code, message) {
@@ -1150,7 +1215,7 @@ export async function getRequestCompletion(projectRoot, cycle) {
       path.resolve(project.root, project.manifest.paths.audit_tracker),
       "utf8",
     );
-    tracker = await parseTrackerState(trackerText, project.root);
+    tracker = await parseTrackerState(trackerText, project.root, options);
     if (!tracker.valid) block("request-tracker-invalid", formatErrors(tracker.errors));
   } catch (error) {
     block("request-tracker-invalid", error.message);
@@ -1164,7 +1229,7 @@ export async function getRequestCompletion(projectRoot, cycle) {
       if (
         execution.execution_id !== reference.execution_id ||
         execution.cycle_id !== cycle.cycle_id ||
-        !validateRevisionExecution(execution).valid
+        !validateRevisionExecution(execution, options).valid
       ) {
         block("revision-execution-identity-mismatch", `Revision execution ${reference.execution_id} is invalid or belongs to another cycle.`);
         continue;

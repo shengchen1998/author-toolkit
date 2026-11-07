@@ -1,4 +1,4 @@
-export { ACTIVE_STATUSES, STAGES } from "./constants.mjs";
+export { timestampResult, utcTimestamp } from "./time.mjs";
 export {
   canReuseCoverageUnit,
   validateCoverageIndex,
@@ -6,7 +6,12 @@ export {
   validateCreationCommit,
   validateStoryStateMarkdown,
 } from "./artifacts.mjs";
-export { validateManifest } from "./manifest.mjs";
+export { validateCoverageIndexFile } from "./coverage-index.mjs";
+export {
+  CURRENT_PROJECT_SCHEMA_VERSION,
+  greenfieldInitializationError,
+  validateManifest,
+} from "./manifest.mjs";
 export {
   checkReviewCoverage,
   validateReaderState,
@@ -35,6 +40,8 @@ export {
   validateMarkdownReport,
 } from "./markdown.mjs";
 export {
+  validateBackupIndexSchema,
+  validateBackupManifestSchema,
   validateCoverageIndexSchema,
   validateCoverageUnitSchema,
   validateCoverageUnitSchema as validateCoverageUnit,
@@ -42,20 +49,21 @@ export {
   validateCreationCommitSchema,
   validateFindingV1,
   validateFindingV2,
-  validateProjectSchema,
-  validateProjectV3Schema,
-  validateProjectV31Schema,
-  validateProjectV32Schema,
+  validateProjectV4Schema,
   validateInventorySnapshotSchema,
   validateScopeSnapshotSchema,
   validateReaderStateSchema,
+  validateRecordApprovalCommand,
+  validateRecordBackupCommand,
+  validateRecordRestoreCommand,
+  validateRecordFindingCommand,
+  validateRecordFindingDecisionCommand,
   validateRelativePath,
   validateReportEnvelope,
   validateReviewJobSchema,
   validateSchemaDefinitions,
   validateStoryState,
 } from "./schemas.mjs";
-export { validateWorkflow, validateWorkflowSequence } from "./workflow.mjs";
 export {
   computeInventoryFingerprint,
   computeScopeFingerprint,
@@ -119,5 +127,13 @@ export {
   recordInventorySnapshot,
 } from "./scope.mjs";
 export { reconcileManuscript } from "./reconciliation.mjs";
+export { recordProjectScope, setPendingAction } from "./project-commands.mjs";
+export { recordApproval, recordFinding, recordFindingDecision } from "./tracker-commands.mjs";
+export {
+  recordBackup,
+  recordRestore,
+  validateBackupIndex,
+  validateBackupIndexFile,
+  validateBackupManifest,
+} from "./backup.mjs";
 export { reconcileCycle } from "./cycle-recovery.mjs";
-export { migrateProjectToV3, migrateProjectToV32 } from "./migration.mjs";
