@@ -1,6 +1,6 @@
 # Current-draft operation gates
 
-Load only the current operation. Evidence comes from the shared project and is judged by operation, scope, input versions, subchecks, and dependencies. Finish each operation with `awaiting_author`; the author starts the next one explicitly. At every author gate, also follow the [Author decision loop](../../revise-fiction/references/state-and-findings.md#author-decision-loop) and use the controlled workflow terminology in `<project-root>/.author-toolkit/references/terminology.md`.
+Load only the current operation. Evidence comes from the shared project and is judged by operation, scope, input versions, subchecks, and dependencies. Finish each operation with `awaiting_author`; the author starts the next one explicitly. At every author gate, also follow the [Author decision loop](../../revise-fiction/references/state-and-findings.md#author-decision-loop) and use the controlled workflow terminology in `<setup-skill-root>/assets/references/terminology.md`.
 
 At a stable operation gate, the author may switch to `write-fiction`, `revise-fiction`, `revise-increment`, or `revise-request` through its exact command; no entry starts automatically. Reuse a local coverage unit only when every path, hash, subcheck, and dependency matches. Reevaluate every applicable whole-book synthesis after relevant changes instead of carrying it forward with unchanged local units. Creation evidence does not satisfy `chapter-revision`. Before claiming current-draft revision convergence for a requested pass, apply the shared [Current-draft revision convergence](../../revise-fiction/references/state-and-findings.md#current-draft-revision-convergence) definition.
 
@@ -64,7 +64,7 @@ At a stable operation gate, the author may switch to `write-fiction`, `revise-fi
 
 **Inputs:** Confirmed scope, language metadata, current manuscript, and tracker.
 
-**Work:** Follow `<project-root>/.author-toolkit/references/avoid-ai-writing-adapter.md`. Use the upstream skill for English spans and the local Chinese catalog for Chinese spans. Detection and approved rewrites use the shared approval and backup records. A second detection follows every rewrite. Persist full local coverage units for every fully covered path and requested check, including engine and dependency identity.
+**Work:** Follow `<setup-skill-root>/assets/references/avoid-ai-writing-adapter.md`. Use the upstream skill for English spans and the local Chinese catalog for Chinese spans. Detection and approved rewrites use the shared approval and backup records. A second detection follows every rewrite. Persist full local coverage units for every fully covered path and requested check, including engine and dependency identity.
 
 **Gate:** Every in-scope file has full, partial, or skipped language coverage with engine and degradation details. Every finding has a tracker decision. An upstream failure blocks the operation rather than producing a clean result. Partial or skipped requested applicable coverage prevents current-draft revision convergence; a narrowed requested pass names its actual limits. Documented inapplicable language checks remain explicitly `skipped` with their reasons.
 

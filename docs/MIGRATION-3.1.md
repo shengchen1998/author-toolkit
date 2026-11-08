@@ -88,13 +88,13 @@ a project. A manuscript restore still needs its own explicit approval and safety
 backup. Keep the snapshots, historical reports, findings, approvals, and backups
 after migration.
 
-## Shared reference deployment
+## Shared reference resolution
 
-Running `setup-author-toolkit` after installation or migration deploys the shared runtime contracts from the setup skill's bundled `assets/references/` into `.author-toolkit/references/` beneath the writing project. This fixed operational directory is separate from the seven registered manifest paths and requires no schema or manifest change. Shared workflows resolve terminology, reporting rules, schemas, and AI-writing integration from that project-local directory. Every shared workflow `read`, `validate`, and `status` through `author-project` first compares all packaged references with this directory. Missing files and hash mismatches route the author back through setup, so an existing v3 manifest cannot bypass reference deployment after a toolkit update.
+Shared runtime contracts remain in the installed setup skill's `assets/references/` payload. Setup and shared workflows read terminology, reporting rules, schemas, and AI-writing integration directly from that location instead of deploying them into the writing project. These contracts are separate from the seven registered manifest paths and require no schema or manifest change. Missing required installed files indicate an incomplete toolkit installation and stop shared work.
 
 The installed setup skill also carries self-contained `scripts/validate.mjs` and `scripts/migrate-v3.mjs` CLIs, including their runtime dependencies. Shared workflows resolve these scripts from the setup skill's installation directory. A source checkout and writing-project `npm install` are not required for validation or migration.
 
-Setup creates missing files and preserves files whose SHA-256 hashes match the packaged payload. A mismatch produces `reference-version-conflict` and blocks shared workflows. Replacing a mismatched file requires separate author approval for that exact file and preservation of the existing file beneath `<paths.backups>/reference-updates/<UTC-stamp>/`. Existing manuscripts, reports, findings, approvals, scopes, and pending work are not changed by reference deployment.
+Reference resolution does not change manuscripts, reports, findings, approvals, scopes, pending work, or backups. Toolkit updates change the installed contracts used by subsequent work without a project-side reference deployment step.
 
 The six independent skills do not require setup for standalone use. Their finding v1 schemas and standalone Chinese AI-writing adapter files are deployed within their own skill directories.
 

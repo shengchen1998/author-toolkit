@@ -1,6 +1,6 @@
 # Author Toolkit writing project
 
-These instructions govern an agent working in one writing project with Author Toolkit installed. Use them to route work and protect shared state. The active skill's `SKILL.md` and its references supply the full procedure. Use `<project-root>/.author-toolkit/references/terminology.md` for shared terms and exact contract values.
+These instructions govern an agent working in one writing project with Author Toolkit installed. Use them to route work and protect shared state. The active skill's `SKILL.md` and its references supply the full procedure. Resolve the installed `setup-author-toolkit` skill's root as `<setup-skill-root>` and use `<setup-skill-root>/assets/references/terminology.md` for shared terms and exact contract values.
 
 ## Resolve and route skills
 
@@ -10,8 +10,8 @@ Match the author's language. Resolve every skill in the host's current skill lis
 
 For shared fiction creation or revision, locate the project root and `.author-toolkit/project.json`:
 
-- If the manifest is missing or v2, show the `setup-author-toolkit` command and stop shared work. Setup registers existing paths, deploys shared contracts to `.author-toolkit/references/`, and migrates v2 without resetting project artifacts.
-- If `author-project` reports missing or mismatched shared references during `read`, `validate`, or `status`, show the `setup-author-toolkit` command and stop shared work. A valid v3 manifest alone does not prove reference deployment.
+- If the manifest is missing or v2, show the `setup-author-toolkit` command and stop shared work. Setup registers existing paths and migrates v2 without resetting project artifacts; shared contracts remain in the installed setup skill.
+- If `author-project` reports an incomplete toolkit installation during `read`, `validate`, or `status`, stop shared work and report the missing installed files. Repair or reinstall the toolkit rather than copying contracts into the writing project.
 - To create fiction from scratch or continue shared creation, show the `write-fiction` command.
 - For whole-book Story Bible, macro-structure, complete character-arc, or final-review work, show the `revise-fiction` command.
 - For diagnosis, revision, prose work, AI cleanup, or review of the available draft within a confirmed scope, show the `revise-draft` command. This path does not require an outline, ending, or whole-book structure audit.
@@ -35,7 +35,7 @@ Use the independent skills directly when their standalone scope matches the requ
 
 ## Run creation or revision from shared state
 
-Use one manifest per book. `author-project` owns manifest, path, validation, backup, commit, and restore operations; writing skills own creative content. Resolve the Story Bible, tracker, reports, sessions, backups, handoffs, and `paths.creation` through the manifest rather than assumed defaults. Resolve shared runtime contracts from `<project-root>/.author-toolkit/references/`; this fixed operational directory has no manifest field. All five strategies use this same state.
+Use one manifest per book. `author-project` owns manifest, path, validation, backup, commit, and restore operations; writing skills own creative content. Resolve the Story Bible, tracker, reports, sessions, backups, handoffs, and `paths.creation` through the manifest rather than assumed defaults. Resolve shared runtime contracts directly from `<setup-skill-root>/assets/references/`; they remain with the installed setup skill and have no manifest field. All five strategies use this same state.
 
 At the start or resumption of an invocation, follow the active entry skill's procedure, including separate `author-project` calls for `read`, `validate`, and `status`. Read the current scope, pending action, tracker, relevant sessions and plan, active creation batch, and evidence for the requested operation. Run one evidence-gated operation and stop at its author gate. At a stable operation gate, show the author's selected strategy command and wait. Switching preserves scope, evidence, decisions, staging, and backups; it never resumes a write or commit automatically.
 
@@ -62,7 +62,7 @@ Standalone skill runs leave shared project state unchanged. Incorporate their ou
 
 ## Preserve truthful evidence
 
-Before writing a shared report or changing finding or approval status, read the active strategy's pointers to `state-and-findings.md` and `<project-root>/.author-toolkit/references/workflow-reporting.md`. Shared diagnostic and review work uses finding v2 and immutable report v2 files; reruns create new reports. Creation operations and report v2 `stage` remain distinct. Standalone skills retain their own skill-local reporting contracts.
+Before writing a shared report or changing finding or approval status, read the active strategy's pointers to `state-and-findings.md` and `<setup-skill-root>/assets/references/workflow-reporting.md`. Shared diagnostic and review work uses finding v2 and immutable report v2 files; reruns create new reports. Creation operations and report v2 `stage` remain distinct. Standalone skills retain their own skill-local reporting contracts.
 
 Record actual operation, scope, input, language, and subcheck coverage. Label partial or skipped checks with their reasons. Keep the coverage index beneath registered `paths.reports`. In `revise-draft`, `revise-increment`, `revise-request`, and shared creation, unknown future plot and an unwritten ending remain baseline unknowns unless they cause a concrete problem in existing text.
 

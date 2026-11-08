@@ -2,7 +2,7 @@ flowchart TD
   subgraph COMMON["所有用户入口共用规则（贯穿每次调用）"]
     direction LR
     START([开始]) --> SETUP["必要时由用户运行<br/>setup-author-toolkit"]
-    SETUP --> REFS["部署共享 references<br/>.author-toolkit/references"]
+    SETUP --> REFS["从 setup skill 直接读取共享 references<br/>assets/references（不部署到项目）"]
     REFS --> READ["author-project<br/>read → validate → status"]
     READ --> STATE["读取共享 manifest / tracker / sessions<br/>范围 / reports / creation state"]
     STATE --> GATES["选择策略并记录待处理操作<br/>作者决定循环 · 批准与备份<br/>report v2 · finding v2 · 覆盖度 · 失效传播"]

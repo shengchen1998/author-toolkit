@@ -1,6 +1,6 @@
 # Creation operation gates
 
-Load the section for the current operation. Preserve the shared [Author decision loop](../../revise-fiction/references/state-and-findings.md#author-decision-loop) at every gate and use the controlled workflow terminology in `<project-root>/.author-toolkit/references/terminology.md`. Creation reports describe actual coverage; accepted creative text is not a diagnostic finding.
+Load the section for the current operation. Preserve the shared [Author decision loop](../../revise-fiction/references/state-and-findings.md#author-decision-loop) at every gate and use the controlled workflow terminology in `<setup-skill-root>/assets/references/terminology.md`. Creation reports describe actual coverage; accepted creative text is not a diagnostic finding.
 
 ## 1. Creation baseline
 

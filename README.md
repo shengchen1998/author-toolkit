@@ -170,17 +170,16 @@ A quick run looks like this:
    or plain-text manuscript, or it may be the destination for a new novel.
 2. Invoke `setup-author-toolkit` with that path. Answer the project registration
    and language questions. Registration records paths; it does not move the
-   manuscript into a new layout. Setup deploys the shared contracts bundled with
-   the skill into `.author-toolkit/references/`, preserving matching files and
-   stopping on version conflicts. An approved conflict replacement first
-   preserves the existing file beneath the registered backups path. For a new
+   manuscript into a new layout. Shared contracts remain in the setup skill's
+   installed `assets/references/` payload and are read directly from that
+   location; setup does not deploy them into the writing project. For a new
    project, setup also installs the project-level `AGENTS.md` template when no
    such file exists, preserving any existing agent instructions. Do not pass a
-   workflow name or operation argument. After a toolkit update, an existing v3
-   project may need setup again to deploy new shared references. Its initial
-   `author-project` read, validation, and status calls check every packaged file
-   and route missing files or hash mismatches back through setup instead of
-   treating a valid manifest as proof of reference deployment.
+   workflow name or operation argument. After a toolkit update, existing v3
+   projects use the updated installed contracts without another deployment.
+   Initial `author-project` read, validation, and status calls report missing
+   installed contracts or scripts as an incomplete toolkit installation rather
+   than relying on project-local reference copies.
 3. After setup validates the shared manifest, choose `write-fiction` to create
    or continue a novel, `revise-fiction` for whole-book revision, `revise-draft`
    for the available manuscript and current-scope review, `revise-increment` to
@@ -334,10 +333,9 @@ manifests remain readable and can receive the additive 3.1 upgrade.
 - `project.json` records project registration, artifact locations, and optional
   `current_scope` and `pending_action`. It has no `workflow.name`,
   `current_stage`, or `stages` state.
-- `.author-toolkit/references/` contains the shared runtime contracts deployed
-  by setup from the setup skill's bundled payload. This fixed operational
-  directory has no manifest field. Setup preserves matching files and requires
-  separate approval plus a backup before replacing a mismatched file.
+- Shared runtime contracts remain in the installed setup skill's
+  `assets/references/` payload and are read directly from that location. They
+  have no manifest field and are not copied into the writing project.
 - `story-bible.md` records author intent. Accepted manuscript text establishes
   observed story facts; neither source silently overwrites the other when they
   conflict.
@@ -428,14 +426,15 @@ covered.
 Finding schema v1 remains at `references/finding-schema.json` for repository
 consumers and is mirrored into each independent skill's `references/` directory
 for standalone use. Shared creation and revision diagnostics retain finding v2
-and report v2, resolved at runtime from `.author-toolkit/references/`. Creation
-operations are not added to the closed report v2 `stage` enumeration.
+and report v2, resolved at runtime from the installed setup skill's
+`assets/references/` payload. Creation operations are not added to the closed
+report v2 `stage` enumeration.
 
 Creation batches, commit journals, story state, coverage units and indexes,
 review jobs, and reader state use their own artifact contracts rather than
 masquerading as revision reports. The canonical project registration schema is
-`references/project-schema-v3.1.json`; setup deploys it with the other shared
-contracts into the writing project. The v3.0 schema remains available for
+`references/project-schema-v3.1.json`; it is mirrored with the other shared
+contracts in the installed setup skill. The v3.0 schema remains available for
 reading and upgrading existing projects.
 
 Existing reports are not automatically rewritten. See

@@ -1,12 +1,12 @@
 # Project operations
 
-Use the controlled workflow terminology in `<project-root>/.author-toolkit/references/terminology.md` for shared names, contract values, and their boundaries.
+For every operation, resolve the installed `setup-author-toolkit` skill's root as `<setup-skill-root>` and read shared runtime contracts directly from its `assets/references/` payload. Use the controlled workflow terminology in `<setup-skill-root>/assets/references/terminology.md` for shared names, contract values, and their boundaries. If the setup skill or a required installed contract or script is missing, report an incomplete toolkit installation and stop; do not copy contracts into the writing project.
 
 ## Paths and manifest identity
 
 Resolve the project root before reading or writing. The canonical manifest is `.author-toolkit/project.json` beneath that root. Accept `schema_version: "3.0.0"` and `"3.1.0"`; both store project metadata, `manuscript_root`, shared `paths`, and optional `current_scope` and `pending_action`, with no `workflow`, `current_stage`, or `stages` properties. A v3.1 manifest also registers `paths.creation`, defaulting to `.author-toolkit/creation/`. Preserve a v3.0 project until the author confirms `upgrade-v31`; recognize v2 only for setup migration.
 
-Keep stored paths relative to the project root and use forward slashes. Resolve them against the root when reading. Reject absolute paths, backslashes, URI schemes, home paths, and `..` segments. Resolve `paths.creation` by the same rules and exclude it from manuscript inventory. Setup deploys shared runtime contracts to the fixed `.author-toolkit/references/` directory beneath the project root. This directory has no manifest field and is excluded by the `.author-toolkit` operational root. One manifest represents one book. A separate book needs its own project root and manifest.
+Keep stored paths relative to the project root and use forward slashes. Resolve them against the root when reading. Reject absolute paths, backslashes, URI schemes, home paths, and `..` segments. Resolve `paths.creation` by the same rules and exclude it from manuscript inventory. Shared runtime contracts remain in the installed setup skill's `assets/references/` directory. They are not project artifacts and have no manifest field. One manifest represents one book. A separate book needs its own project root and manifest.
 
 `write-fiction`, `revise-fiction`, `revise-draft`, `revise-increment`, and `revise-request` are author-invoked strategies over the same manifest, tracker, reports, sessions, backups, and handoffs. No strategy owns the shared project state. Do not create a strategy-specific subdirectory or a second tracker. At any stable operation gate, switching preserves current scope, evidence, decisions, staged drafts, and pending action; it never resumes writing automatically.
 
@@ -54,14 +54,11 @@ For a valid v3.1 manifest, validate and return it without another write. For v2,
 
 ## Read and validate
 
-Before a shared workflow `read`, `validate`, or `status`, resolve the installed `setup-author-toolkit` skill's root as `<setup-skill-root>` and compare every packaged file in its `assets/references/` payload with the corresponding file beneath `<project-root>/.author-toolkit/references/`. A valid v3 manifest alone does not prove that these shared runtime contracts are deployed.
+Before a shared workflow `read`, `validate`, or `status`, confirm that the installed setup skill's shared reference payload and bundled validator are available. Read shared runtime contracts directly from `<setup-skill-root>/assets/references/`; do not compare them with or copy them into project files. If a required installed file is missing, report an incomplete toolkit installation and stop. Do not continue shared work or write project state.
 
-- If a packaged file is missing from the project, stop and return the missing project-relative paths. Instruct the caller to display the exact user-invoked `setup-author-toolkit` command and wait for the author. Do not continue shared work or write project state.
-- If an existing file's SHA-256 hash differs from the packaged file, stop and report `reference-version-conflict` with both hashes. Instruct the caller to display the setup command and wait. Only setup may replace the file through its separate exact-file approval and backup procedure.
+Shared state readiness requires a valid manifest and the installed setup payload, not a project-local reference copy.
 
-Return shared state as ready only after every packaged reference exists with a matching hash. Setup deploys the payload before initialization or migration, so its later validation continues through these same checks without another deployment.
-
-For every read, parse JSON and check `schema_version`. Apply the installed v3 schema and operation rules for the declared v3.0 or v3.1 version, including required fields, additional-property restrictions, current scope, pending action, timestamps, safe relative paths, and creation registration. Use `<project-root>/.author-toolkit/references/project-schema.json` only to recognize legacy v2 state before migration. Return v2 as requiring migration through setup; do not reinterpret it as v3.
+For every read, parse JSON and check `schema_version`. Apply the installed v3 schema and operation rules for the declared v3.0 or v3.1 version, including required fields, additional-property restrictions, current scope, pending action, timestamps, safe relative paths, and creation registration. Use `<setup-skill-root>/assets/references/project-schema.json` only to recognize legacy v2 state before migration. Return v2 as requiring migration through setup; do not reinterpret it as v3.
 
 Run the self-contained installed validator:
 

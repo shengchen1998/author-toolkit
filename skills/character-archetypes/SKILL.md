@@ -86,7 +86,7 @@ Each mode has a defined end. Stop at it. Do not auto-advance to the next mode, d
 
 Standalone Audit, Conformance, and Ensemble output conforms to `references/finding-schema.json`: `audit` = the mode name, `technique` = the specific archetype pattern, `severity`, `location`, `issue`, `confidence: "judgment"`, and optional `exemplar`. Analyzer mode is not diagnostic and remains outside the finding contract.
 
-When `revise-fiction`, `revise-draft`, `revise-increment`, or `revise-request` supplies workflow report context, load `<project-root>/.author-toolkit/references/workflow-reporting.md` and use finding v2. Return new or changed Archetype Profiles to the orchestrator, which writes approved profile changes to the applicable baseline.
+When `revise-fiction`, `revise-draft`, `revise-increment`, or `revise-request` supplies workflow report context and the resolved `<setup-skill-root>`, load `<setup-skill-root>/assets/references/workflow-reporting.md` and use finding v2. Return new or changed Archetype Profiles to the orchestrator, which writes approved profile changes to the applicable baseline.
 
 ## Common Mistakes
 

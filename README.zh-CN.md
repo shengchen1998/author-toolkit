@@ -84,12 +84,11 @@ npx skills update
 
 1. 确认写作项目目录. 其中可以有 Markdown 或纯文本稿件, 也可以是新小说的目标目录.
 2. 调用 `setup-author-toolkit`, 提供路径并回答项目登记和语言问题. 登记会保留原稿路径.
-   setup 将随技能提供的共享契约部署到 `.author-toolkit/references/`; 匹配文件保持不变,
-   版本冲突会阻止共享工作流, 经作者批准的替换会先把原文件保存到登记的备份路径下.
+   共享契约保留在 setup 技能安装目录的 `assets/references/` 中并由运行时直接读取, 不部署到写作项目.
    新项目根目录没有 `AGENTS.md` 时, setup 会安装项目级 agent 指令模板; 已有指令文件保持不变.
-   不指定工作流或操作参数. 工具包更新后, 已有 v3 项目可能需要再次运行 setup 部署新的共享引用.
-   初始 `author-project` 读取, 校验和状态调用会逐个检查随技能提供的文件; 缺失或哈希不匹配时重新引导至 setup,
-   不会仅凭有效 manifest 认定共享引用已部署.
+   不指定工作流或操作参数. 工具包更新后, 已有 v3 项目直接使用更新后的安装契约, 无需再次部署.
+   初始 `author-project` 读取, 校验和状态调用会将缺失的安装契约或脚本报告为工具包安装不完整,
+   不依赖项目内的共享引用副本.
 3. setup 验证共享 manifest 后, 根据目标选择 `write-fiction`, `revise-fiction`,
    `revise-draft`, `revise-increment` 或 `revise-request`. 增量修订用于复用未变章节的可复用证据,
    处理新增或受影响章节并恢复目标范围的当前草稿修订收敛. 请求修订用于从已达到当前草稿修订收敛的
@@ -197,8 +196,8 @@ schema 3.1.0; v3.0 manifest 仍可读取, 并可进行增量 3.1 升级.
 
 - `project.json`: 项目登记, 产物路径, 以及可选的 `current_scope` 和 `pending_action`.
   不包含 `workflow.name`, `current_stage` 或 `stages`.
-- `.author-toolkit/references/`: setup 从随技能载荷部署的共享运行时契约. 该固定运行目录没有
-  manifest 字段. 匹配文件保持不变; 替换冲突文件需要单独批准并先备份.
+- 共享运行时契约: 保留在已安装 setup 技能的 `assets/references/` 中并直接读取,
+  没有 manifest 字段, 也不复制到写作项目.
 - `story-bible.md`: 记录作者意图. 已验收正文建立观察事实; 两者冲突时不能静默覆盖任一来源.
 - `audit-tracker.md`: 稳定的发现项 ID, 状态, 作者决定, 共享批准记录和报告指针.
 - `reports/`: 诊断上下文和机器可读结果. 重新审计生成新报告, 不覆盖已交付报告. 可复用
@@ -250,9 +249,9 @@ hash 或故事状态.
 摘要和提取的故事状态不能替代正文阅读. 只有实际覆盖目标范围时才报告 `full`.
 
 Finding v2 和 report v2 的版本保持不变, 创作操作不加入封闭的报告 v2 `stage` 枚举.
-共享工作流从 `.author-toolkit/references/` 读取这些契约; 独立技能从各自技能目录读取 finding v1.
+共享工作流从已安装 setup 技能的 `assets/references/` 直接读取这些契约; 独立技能从各自技能目录读取 finding v1.
 创作批次, 提交日志, 故事状态, 覆盖单元和覆盖索引, 复核任务和读者状态使用独立产物契约.
-项目登记的源契约为 `references/project-schema-v3.1.json`, setup 将其与其他共享契约一起部署到写作项目;
+项目登记的源契约为 `references/project-schema-v3.1.json`, 它与其他共享契约一起镜像到已安装 setup 技能中;
 v3.0 schema 保留用于读取和升级旧项目.
 
 迁移说明见 [docs/MIGRATION-3.1.md](docs/MIGRATION-3.1.md). 历史说明保留在

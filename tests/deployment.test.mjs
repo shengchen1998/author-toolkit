@@ -188,7 +188,7 @@ test("deployable skills do not depend on repository-root references", async () =
   }
 });
 
-test("every project-local shared reference named by a skill exists in the setup payload", async () => {
+test("every installed shared reference named by a skill exists in the setup payload", async () => {
   const [files, payload] = await Promise.all([
     markdownFiles(path.join(root, "skills")),
     filesUnder(setupReferences),
@@ -197,31 +197,29 @@ test("every project-local shared reference named by a skill exists in the setup 
   const missing = new Set();
   for (const file of files) {
     const text = await readFile(path.join(root, "skills", file), "utf8");
-    for (const match of text.matchAll(/\.author-toolkit\/references\/([A-Za-z0-9._-]+)/g)) {
+    assert.doesNotMatch(text, /\.author-toolkit\/references\//, file);
+    for (const match of text.matchAll(/<setup-skill-root>\/assets\/references\/([A-Za-z0-9._-]+)/g)) {
       if (!available.has(match[1])) missing.add(`${file}: ${match[1]}`);
     }
   }
   assert.deepEqual([...missing].sort(), []);
 });
 
-test("setup deploys references without silently overwriting project state", async () => {
+test("setup reads shared references without deploying them into project state", async () => {
   const [setup, instructions] = await Promise.all([
     readFile(path.join(root, "skills", "setup-author-toolkit", "SKILL.md"), "utf8"),
     readFile(path.join(root, "skills", "setup-author-toolkit", "assets", "AGENTS.md"), "utf8"),
   ]);
-  assert.match(setup, /Deploy every file from `assets\/references\/`/);
-  assert.match(setup, /`<project-root>\/\.author-toolkit\/references\/`/);
-  assert.match(setup, /compare its SHA-256 hash with the packaged file/);
-  assert.match(setup, /reference-version-conflict/);
-  assert.match(setup, /Leave matching files unchanged/);
-  assert.match(setup, /leave the existing file untouched/);
-  assert.match(setup, /only after explicit author approval for that exact file/);
-  assert.match(setup, /`<paths\.backups>\/reference-updates\/<UTC-stamp>\/`/);
+  assert.match(setup, /Keep every shared runtime contract in this installed skill's `assets\/references\/` payload/);
+  assert.match(setup, /Do not copy shared contracts into the writing project/);
+  assert.match(setup, /incomplete toolkit installation/);
+  assert.doesNotMatch(setup, /Deploy every file|reference-version-conflict|reference-updates/);
   assert.match(setup, /independent skills do not require setup for standalone use/i);
-  assert.match(instructions, /`<project-root>\/\.author-toolkit\/references\/terminology\.md`/);
+  assert.match(instructions, /`<setup-skill-root>\/assets\/references\/terminology\.md`/);
+  assert.match(instructions, /rather than copying contracts into the writing project/);
 });
 
-test("existing v3 projects route missing or changed shared references through setup", async () => {
+test("shared workflows resolve installed setup references without project deployment", async () => {
   const callers = [
     "ask-author",
     "author-handoff",
@@ -237,26 +235,33 @@ test("existing v3 projects route missing or changed shared references through se
     ...callers.map((skill) => readFile(path.join(root, "skills", skill, "SKILL.md"), "utf8")),
   ]);
 
+  assert.match(operations, /read shared runtime contracts directly from its `assets\/references\/` payload/);
   assert.match(operations, /Before a shared workflow `read`, `validate`, or `status`/);
-  assert.match(operations, /compare every packaged file/);
-  assert.match(operations, /valid v3 manifest alone does not prove/);
-  assert.match(operations, /missing project-relative paths/);
-  assert.match(operations, /reference-version-conflict/);
-  assert.match(operations, /Do not continue shared work or write project state/);
+  assert.match(operations, /Read shared runtime contracts directly from `<setup-skill-root>\/assets\/references\/`/);
+  assert.match(operations, /incomplete toolkit installation/);
+  assert.doesNotMatch(operations, /compare every packaged file|missing project-relative paths|reference-version-conflict/);
 
   for (const [index, text] of entries.entries()) {
-    assert.match(text, /check the deployed shared references/, callers[index]);
-    assert.match(text, /missing or mismatched files/, callers[index]);
-    assert.match(text, /valid manifest does not prove reference deployment/, callers[index]);
-    assert.match(text, /setup-author-toolkit|setup command/, callers[index]);
+    assert.match(text, /resolve the installed `setup-author-toolkit` skill's root as `<setup-skill-root>`/i, callers[index]);
+    assert.match(text, /incomplete toolkit installation/, callers[index]);
+    assert.doesNotMatch(text, /check the deployed shared references|valid manifest does not prove reference deployment/, callers[index]);
   }
 
+  for (const skill of ["revise-fiction", "revise-draft", "revise-increment", "revise-request"]) {
+    const text = entries[callers.indexOf(skill)];
+    assert.match(text, /tracker path, and resolved `<setup-skill-root>`/, skill);
+  }
+  assert.match(
+    entries[callers.indexOf("write-fiction")],
+    /Include the resolved `<setup-skill-root>` in shared workflow context/,
+  );
+
   const review = entries[callers.indexOf("author-review")];
-  const referenceCheck = review.indexOf("check the deployed shared references");
+  const rootResolution = review.indexOf("Resolve the installed `setup-author-toolkit`");
   const contractRead = review.indexOf("Read the controlled workflow terminology");
   assert.ok(
-    contractRead > referenceCheck,
-    "author-review checks shared references before reading project-local contracts",
+    contractRead > rootResolution,
+    "author-review resolves the setup skill before reading its installed contracts",
   );
 });
 

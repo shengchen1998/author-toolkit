@@ -13,7 +13,7 @@ Independent skills keep their craft vocabularies. Register a craft term here bef
 5. Define a new shared term before use: approved English term, fixed Chinese equivalent, part of speech, category, distinguishing criterion, operational boundary, and excluded expressions. Register it here and update every affected use in the same change.
 6. Keep versioned identifiers and closed enum values unchanged. Chinese prose uses the fixed Chinese equivalents for natural language and preserves English report headings, tracker columns, field names, and status values.
 7. When an excluded expression has a different legitimate meaning outside shared workflow terminology, state that meaning explicitly instead of borrowing the workflow term.
-8. In shared workflows, resolve this file and other shared contracts from `<project-root>/.author-toolkit/references/`. Standalone skills use their skill-local contracts and do not require setup.
+8. In shared workflows, resolve the installed `setup-author-toolkit` skill's root as `<setup-skill-root>` and read this file and other shared contracts from `<setup-skill-root>/assets/references/`. Do not deploy them into the writing project. Standalone skills use their skill-local contracts and do not require setup.
 
 ## Core terms
 
@@ -140,4 +140,3 @@ Machine values remain English and case-sensitive. Qualify a value by its artifac
 | Finding `location.scope` | `file`: whole file; `chapter`: identified chapter; `line`: identified line; `passage`: quoted passage. Use the narrowest truthful location. |
 | Finding `confidence` | `deterministic`: direct code-detected evidence; `judgment`: editorial interpretation. |
 | Report `engine.name` | `conversational`: model-led execution; `scriptorium`: scriptorium execution path. Record the actual path and degradation. |
-| Shared reference deployment diagnostic | `reference-version-conflict`: an existing file beneath `.author-toolkit/references/` differs from the packaged setup payload. Block shared workflows until setup resolves the conflict through the exact-file approval and backup procedure. |

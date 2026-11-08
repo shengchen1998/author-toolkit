@@ -6,13 +6,13 @@ disable-model-invocation: true
 
 # Ask Author
 
-Route the author to an explicit next command. This is a router, not an orchestrator. Use the controlled workflow terminology in `<project-root>/.author-toolkit/references/terminology.md` for shared terms and exact contract values.
+Route the author to an explicit next command. This is a router, not an orchestrator. When using shared state, resolve the installed `setup-author-toolkit` skill's root as `<setup-skill-root>`. Use the controlled workflow terminology in `<setup-skill-root>/assets/references/terminology.md` for shared terms and exact contract values.
 
 ## Route
 
 1. Establish whether the author wants shared fiction creation from scratch, continuation of an existing creation project, revision of an existing manuscript, revision after incremental creation, a new request-driven revision from a full-manuscript base scope that has reached current-draft revision convergence, standalone fiction work, or narrative nonfiction. Select the project root when one exists. For revision, establish whether the goal is whole-book work, scoped revision of an unfinished draft, current-draft revision convergence after scope growth, or revision of existing content while preserving current-draft revision convergence for the full-manuscript target scope.
 2. Look for `<project-root>/.author-toolkit/project.json`. If it is missing or has `schema_version: "2.0.0"`, recommend setup first. Display the `setup-author-toolkit` host command and explain that setup registers existing paths without moving files and migrates v2 with a preserved snapshot. After setup, show the creation and revision commands that fit the author's goals. Do not route a missing or v2 manifest directly into shared creation or revision work.
-3. For a v3.0 or v3.1 manifest, resolve `author-project` in the current skill listing and invoke its exact registered name in separate calls with `read`, `validate`, and `status`. Bare and `author-toolkit:` qualified names are valid when listed. These calls check the deployed shared references. If they report missing or mismatched files, display the setup command from step 2 and stop; a valid manifest does not prove reference deployment. Display:
+3. For a v3.0 or v3.1 manifest, resolve `author-project` in the current skill listing and invoke its exact registered name in separate calls with `read`, `validate`, and `status`. Bare and `author-toolkit:` qualified names are valid when listed. These calls use the shared contracts and validator installed with setup. If they report an incomplete toolkit installation, stop and report the missing installed files; do not deploy contracts into the project. Display:
    - current scope ID and confirmation status;
    - pending action, status, scope ID, reason, and artifacts, or its absence;
    - every shared stale or blocked evidence item with its reason;

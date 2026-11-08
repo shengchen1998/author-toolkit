@@ -1,10 +1,10 @@
 # Shared evidence, findings, approvals, and state
 
-Use the controlled workflow terminology in `<project-root>/.author-toolkit/references/terminology.md` for shared names, contract values, and their boundaries.
+Use the controlled workflow terminology in `<setup-skill-root>/assets/references/terminology.md` for shared names, contract values, and their boundaries.
 
 ## Report envelope
 
-Use `<project-root>/.author-toolkit/references/report-schema-v2.json` as the authoritative envelope contract and resolve its reference to `finding-schema-v2.json`. Read both schemas before writing. Do not infer v2 from the legacy `finding-schema.json`.
+Use `<setup-skill-root>/assets/references/report-schema-v2.json` as the authoritative envelope contract and resolve its reference to `finding-schema-v2.json`. Read both schemas before writing. Do not infer v2 from the legacy `finding-schema.json`.
 
 Write each report beneath the registered shared `reports/` path using an operation directory and a unique UTC-stamped filename. Include human-readable context, a `Language coverage` heading, and exactly one fenced `json` block containing one report v2 object.
 

@@ -18,7 +18,7 @@
 ## 2. 统一 setup 与共享项目
 
 - [ ] 对 `write-fiction`, `revise-fiction`, `revise-draft`, `revise-increment` 和 `revise-request` 都先运行同一个 `setup-author-toolkit`; 确认 setup 不接受工作流或操作参数, 五个用户入口的登记和 `intake` 行为一致.
-- [ ] 确认 setup 将随技能部署的全部共享契约写入 `.author-toolkit/references/`; 已匹配文件保持不变. 制造一个 `reference-version-conflict`, 确认共享工作流停止且原文件未被覆盖; 单独批准替换后, 核对原文件已保存到 `<paths.backups>/reference-updates/<UTC-stamp>/`.
+- [ ] 确认共享契约直接从已安装 setup 技能的 `assets/references/` 读取, setup 不在写作项目中创建共享引用副本. 移除安装载荷中的必需文件后, 确认共享工作流报告工具包安装不完整并停止, 不尝试从项目内副本恢复.
 - [ ] 确认五个用户入口使用同一份中性 `.author-toolkit/project.json` (v3.1), 以及共享的 `audit-tracker.md`, `story-bible.md`, `reports/`, `sessions/`, `backups/` 和 `handoffs/`.
 - [ ] 检查 v3.1 manifest 只将 `current_scope` 与 `pending_action` 作为可选进度字段, 其余内容用于项目登记, 证据和路径; 不读取或手改 v2 阶段状态.
 - [ ] 确认 `paths.creation` 默认指向 `.author-toolkit/creation/`, 自定义路径也按 manifest 解析; `state/current.md`, `state/chapters/`, `state/volumes/`, `batches/` 和 `staging/` 位于该根目录下.

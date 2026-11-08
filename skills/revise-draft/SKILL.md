@@ -6,13 +6,13 @@ disable-model-invocation: true
 
 # Revise Draft
 
-Coordinate revision of existing manuscript from the same shared project evidence as `revise-fiction`. This skill mirrors its guided sequence while allowing an unfinished manuscript and undecided future plot. Use the controlled workflow terminology in `<project-root>/.author-toolkit/references/terminology.md` for shared terms and exact contract values.
+Coordinate revision of existing manuscript from the same shared project evidence as `revise-fiction`. This skill mirrors its guided sequence while allowing an unfinished manuscript and undecided future plot. Resolve the installed `setup-author-toolkit` skill's root as `<setup-skill-root>` and use the controlled workflow terminology in `<setup-skill-root>/assets/references/terminology.md` for shared terms and exact contract values.
 
 ## Start or resume
 
 1. Locate `.author-toolkit/project.json`. If it is absent or has `schema_version: "2.0.0"`, display the host command for user-invoked `setup-author-toolkit` and stop. Use the same setup command forms as `revise-fiction`. Setup is identical for all five workflow entries.
 2. Resolve callees only when needed and copy their actual registered names. Never invoke a user-invoked entry through the Skill tool.
-3. Invoke `author-project` in separate calls with `read`, `validate`, and `status`. These calls check the deployed shared references. If they report missing or mismatched files, display the setup command from step 1 and stop; a valid manifest does not prove reference deployment. Read the shared tracker, sessions, current plan, current scope, pending action, and relevant evidence. Switching from `revise-fiction` requires no migration and changes no scope or status.
+3. Invoke `author-project` in separate calls with `read`, `validate`, and `status`. These calls use the shared contracts and validator installed with setup. If they report an incomplete toolkit installation, stop and report the missing installed files; do not deploy contracts into the project. Read the shared tracker, sessions, current plan, current scope, pending action, and relevant evidence. Switching from `revise-fiction` requires no migration and changes no scope or status.
 4. On the first run for a new scope, complete the read-only `intake` inventory and a proposed `draft-baseline`, then stop at the first item in the author decision loop, normally confirmation of the proposed scope. Show the proposed baseline as context without requesting its confirmation in the same turn. On later runs, select the author-requested operation or the earliest missing, partial, or stale evidence in the sequence below. Read only the relevant section in [`references/stage-gates.md`](references/stage-gates.md).
 5. Record the operation through `author-project` with `set-pending`. Run one operation and stop at its gate with `awaiting_author` or `blocked`. When the author says to continue, advance to the next applicable operation whose evidence is not current. Do not require an outline, total chapter count, planned ending, or full-book structure audit at any gate.
 
@@ -24,7 +24,7 @@ At every author gate, follow the [Author decision loop](../revise-fiction/refere
 
 ## Operation routing
 
-For each diagnostic callee, supply the operation identifier, destination report path, named inputs and versions, `scope_id`, BCP 47 language, and tracker path. Require `<project-root>/.author-toolkit/references/workflow-reporting.md` and finding v2, and supply `../revise-fiction/references/state-and-findings.md` resolved from the callee's installed skill directory as the shared state reference. Record actual operation coverage and subchecks; unknown future story is not a finding by itself.
+For each diagnostic callee, supply the operation identifier, destination report path, named inputs and versions, `scope_id`, BCP 47 language, tracker path, and resolved `<setup-skill-root>`. Require `<setup-skill-root>/assets/references/workflow-reporting.md` and finding v2, and supply `../revise-fiction/references/state-and-findings.md` resolved from the callee's installed skill directory as the shared state reference. Record actual operation coverage and subchecks; unknown future story is not a finding by itself.
 
 | Operation | Delegation |
 |---|---|
@@ -35,7 +35,7 @@ For each diagnostic callee, supply the operation identifier, destination report 
 | `revision-plan` | Consolidate accepted findings using the shared plan template |
 | `chapter-revision` | `fiction-workshop`, scoped to the approved plan |
 | `prose` | `prose-mechanics`, audits 1-18 in upstream order |
-| `ai-cleanup` | Follow `<project-root>/.author-toolkit/references/avoid-ai-writing-adapter.md` |
+| `ai-cleanup` | Follow `<setup-skill-root>/assets/references/avoid-ai-writing-adapter.md` |
 | `current-scope-review` | `author-review` with `review_mode=current-scope` |
 
 `diagnostics` excludes full-book act-level landmark placement, percentage timing, ending completeness, and missing future beats. It may diagnose observable scene causality, chapter function, information release, local pacing, chapter transitions, and current climactic turns. Local split, merge, reorder, cut, or scene rewrite proposals are allowed after approval; describe their local purpose and uncertainty rather than claiming an optimal whole-book structure.

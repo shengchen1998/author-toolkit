@@ -68,7 +68,7 @@ Load only the reference file matching the currently invoked audit. Before a work
 
 Standalone audits retain finding v1 from `references/finding-schema.json`, grouped by severity with optional exemplars resolved against `references/exemplars/<ref>.md`.
 
-When `revise-fiction`, `revise-draft`, `revise-increment`, or `revise-request` supplies workflow report context, load `<project-root>/.author-toolkit/references/workflow-reporting.md` and use report and finding v2. Every finding includes a recommendation, and the tracker stores stable finding IDs and their review statuses.
+When `revise-fiction`, `revise-draft`, `revise-increment`, or `revise-request` supplies workflow report context and the resolved `<setup-skill-root>`, load `<setup-skill-root>/assets/references/workflow-reporting.md` and use report and finding v2. Every finding includes a recommendation, and the tracker stores stable finding IDs and their review statuses.
 
 ## Engine Hook
 
