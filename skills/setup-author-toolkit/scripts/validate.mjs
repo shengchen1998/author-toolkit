@@ -10,6 +10,7 @@ import {
   validateCreationBatch,
   validateCreationCommit,
   validateEvidenceReport,
+  validateExecutionReceipts,
   validateManifest,
   validateMarkdownReport,
   validateProjectFiles,
@@ -165,7 +166,11 @@ async function main() {
         if (manifest.current_scope) {
           check(`${path.relative(root, file)}#scope`, await validateScopeCurrency(manifest, file));
         }
-        check(`${path.relative(root, file)}#tracker`, await validateTracker(manifest, file));
+        const trackerResult = await validateTracker(manifest, file);
+        check(`${path.relative(root, file)}#tracker`, trackerResult);
+        if (trackerResult.valid) {
+          check(`${path.relative(root, file)}#executions`, await validateExecutionReceipts(manifest, file));
+        }
       } else if (manifest?.schema_version !== "3.1.0" || manifest?.project_type !== "fiction") {
         console.error(
           "  unsupported project detected; only v3.1 fiction manifests are supported",

@@ -51,7 +51,7 @@ Claim current-draft revision convergence only when every required operation is c
 
 ## Author interaction and manuscript safety
 
-At every author gate, follow the [Author decision loop](../revise-fiction/references/state-and-findings.md#author-decision-loop). Before manuscript changes, read `<setup-skill-root>/assets/references/context-fit.md` and complete its check before presenting an edit proposal. Show the exact operation, target scope, work-set paths, actions, input versions, exact candidates, and checked local context. Record explicit approval in the shared tracker, then invoke `author-project` with `record-backup` for every affected file and approval ID. Recompute hashes immediately before writing. Restore requires separate explicit approval and a safety backup.
+At every author gate, follow the [Author decision loop](../revise-fiction/references/state-and-findings.md#author-decision-loop). Before manuscript changes, read `<setup-skill-root>/assets/references/context-fit.md` and complete its check before presenting an edit proposal. Show the exact operation, target scope, work-set paths, actions, input versions, exact candidates, and checked local context. Record explicit approval in the shared tracker, then invoke `author-project` with `record-backup` for every affected file and approval ID. Recompute hashes immediately before writing. After the exact batch completes, verify its output hashes and invoke `author-project` with `record-execution`; an interrupted batch has no execution receipt and remains unverified. Restore requires separate explicit approval and a safety backup.
 
 ## Strategy switching and shared state
 

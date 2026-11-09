@@ -79,7 +79,7 @@ test("setup carries self-contained validation and state CLIs", async (t) => {
   );
 
   const nodeArgs = ["--no-warnings", "--experimental-loader", loader, "--require", preload];
-  for (const script of ["validate.mjs", "project-digest.mjs", "findings.mjs"]) {
+  for (const script of ["validate.mjs", "status.mjs", "project-digest.mjs", "findings.mjs"]) {
     const result = spawnSync(
       process.execPath,
       [...nodeArgs, path.join(installedSetup, "scripts", script), "--help"],
@@ -99,7 +99,7 @@ test("setup carries self-contained validation and state CLIs", async (t) => {
     { encoding: "utf8" },
   );
   assert.equal(result.status, 0, result.stderr);
-  assert.match(result.stdout, /4 checks, 0 failures/);
+  assert.match(result.stdout, /5 checks, 0 failures/);
 
   const project = path.join(temporaryRoot, "writing-project");
   await cp(path.join(root, "examples", "fiction-revision-zh"), project, { recursive: true });
@@ -138,6 +138,25 @@ test("setup carries self-contained validation and state CLIs", async (t) => {
   assert.match(cache, /Generated navigation cache/);
   assert.match(cache, /Latest session: `sessions\/2026-01-19_resume\.md`/);
   assert.doesNotMatch(cache, /backups\/index\.json/);
+
+  const status = spawnSync(
+    process.execPath,
+    [
+      ...nodeArgs,
+      path.join(installedSetup, "scripts", "status.mjs"),
+      "--manifest",
+      path.join(project, ".author-toolkit", "project.json"),
+      "--scope-id",
+      "scope-example-revision",
+      "--json",
+    ],
+    { encoding: "utf8" },
+  );
+  assert.equal(status.status, 0, status.stderr);
+  const execution = JSON.parse(status.stdout).execution;
+  assert.equal(execution.scope_id, "scope-example-revision");
+  assert.equal(execution.required, 0);
+  assert.equal(execution.unverified_count, 0);
 });
 
 test("workflow commands resolve the installed setup CLIs", async () => {

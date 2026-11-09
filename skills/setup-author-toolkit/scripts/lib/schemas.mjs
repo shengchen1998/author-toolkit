@@ -8089,6 +8089,7 @@ var reportSchema = readSchema("report-schema-v2.json");
 var storyStateSchema = readSchema("story-state-schema.json");
 var creationBatchSchema = readSchema("creation-batch-schema.json");
 var creationCommitSchema = readSchema("creation-commit-schema.json");
+var executionReceiptSchema = readSchema("execution-receipt-schema.json");
 var coverageUnitSchema = readSchema("coverage-unit-schema.json");
 var coverageIndexSchema = readSchema("coverage-index-schema.json");
 var reviewJobSchema = readSchema("review-job-schema.json");
@@ -8103,6 +8104,7 @@ ajv.addSchema(reportSchema);
 ajv.addSchema(storyStateSchema);
 ajv.addSchema(creationBatchSchema);
 ajv.addSchema(creationCommitSchema);
+ajv.addSchema(executionReceiptSchema);
 ajv.addSchema(coverageUnitSchema);
 ajv.addSchema(coverageIndexSchema);
 ajv.addSchema(reviewJobSchema);
@@ -8115,6 +8117,7 @@ var reportValidator = ajv.getSchema("report-schema-v2.json");
 var storyStateValidator = ajv.getSchema("story-state-schema.json");
 var creationBatchValidator = ajv.getSchema("creation-batch-schema.json");
 var creationCommitValidator = ajv.getSchema("creation-commit-schema.json");
+var executionReceiptValidator = ajv.getSchema("execution-receipt-schema.json");
 var coverageUnitValidator = ajv.getSchema("coverage-unit-schema.json");
 var coverageIndexValidator = ajv.getSchema("coverage-index-schema.json");
 var reviewJobValidator = ajv.getSchema("review-job-schema.json");
@@ -8150,6 +8153,9 @@ function validateCreationBatchSchema(value) {
 function validateCreationCommitSchema(value) {
   return evaluate(creationCommitValidator, value);
 }
+function validateExecutionReceiptSchema(value) {
+  return evaluate(executionReceiptValidator, value);
+}
 function validateCoverageUnitSchema(value) {
   return evaluate(coverageUnitValidator, value);
 }
@@ -8173,6 +8179,7 @@ function validateSchemaDefinitions() {
     ["story-state-schema.json", storyStateSchema],
     ["creation-batch-schema.json", creationBatchSchema],
     ["creation-commit-schema.json", creationCommitSchema],
+    ["execution-receipt-schema.json", executionReceiptSchema],
     ["coverage-unit-schema.json", coverageUnitSchema],
     ["coverage-index-schema.json", coverageIndexSchema],
     ["review-job-schema.json", reviewJobSchema],
@@ -8192,6 +8199,7 @@ export {
   validateCoverageUnitSchema,
   validateCreationBatchSchema,
   validateCreationCommitSchema,
+  validateExecutionReceiptSchema,
   validateFindingV1,
   validateFindingV2,
   validateProjectSchema,

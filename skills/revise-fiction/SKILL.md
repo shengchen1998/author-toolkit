@@ -42,7 +42,7 @@ Honor each callee's stopping point. A pause within an operation ends with the sa
 
 ## Approval and backup gate
 
-For manuscript changes, first obtain a diagnosis without editing. Read `<setup-skill-root>/assets/references/context-fit.md` and complete its check before presenting an edit proposal. Show the affected paths, exact intended change batch, and checked local context, then obtain explicit author approval. Record the approval in the shared tracker with its `approval_id`, operation, `scope_id`, paths, and reason. After approval and before the first write, invoke `author-project` with `record-backup` for every affected file and that `approval_id`. Apply only the approved batch after every backup succeeds.
+For manuscript changes, first obtain a diagnosis without editing. Read `<setup-skill-root>/assets/references/context-fit.md` and complete its check before presenting an edit proposal. Show the affected paths, exact intended change batch, and checked local context, then obtain explicit author approval. Record the approval in the shared tracker with its `approval_id`, operation, `scope_id`, paths, and reason. After approval and before the first write, invoke `author-project` with `record-backup` for every affected file and that `approval_id`. Apply only the approved batch after every backup succeeds. After the exact batch completes, verify its output hashes and invoke `author-project` with `record-execution`; an interrupted batch has no execution receipt and remains unverified.
 
 A restore requires separate explicit approval naming the backup ID and files. Invoke `author-project` with `record-restore`, which preserves the current text in a safety backup before restoring. Never treat an earlier edit approval as restore approval.
 

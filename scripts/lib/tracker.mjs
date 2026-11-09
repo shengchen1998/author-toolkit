@@ -322,8 +322,9 @@ function approvalsSection(markdown) {
   return { lines: lines.slice(start, end) };
 }
 
-export function validateApprovalsMarkdown(markdown) {
+export function parseApprovalsMarkdown(markdown) {
   const errors = [];
+  const approvals = [];
   const section = approvalsSection(markdown);
   if (section.error !== undefined) {
     return {
@@ -334,6 +335,7 @@ export function validateApprovalsMarkdown(markdown) {
           `expected exactly one ## Approvals heading; found ${section.error}`,
         ),
       ],
+      approvals,
     };
   }
 
@@ -352,6 +354,7 @@ export function validateApprovalsMarkdown(markdown) {
           `expected exactly one Approvals table; found ${tables.length}`,
         ),
       ],
+      approvals,
     };
   }
 
@@ -372,6 +375,7 @@ export function validateApprovalsMarkdown(markdown) {
           "Approvals table requires Approval ID, Type, Operation, Scope ID, Paths, Status, Reason, and Updated columns",
         ),
       ],
+      approvals,
     };
   }
 
@@ -428,9 +432,24 @@ export function validateApprovalsMarkdown(markdown) {
         ),
       );
     }
+    approvals.push({
+      id,
+      type: get("type"),
+      operation: get("operation"),
+      scopeId: get("scopeId"),
+      paths: parsedPaths.paths,
+      status,
+      reason: get("reason"),
+      updated: get("updated"),
+    });
   }
 
-  return { valid: errors.length === 0, errors };
+  return { valid: errors.length === 0, errors, approvals };
+}
+
+export function validateApprovalsMarkdown(markdown) {
+  const { valid, errors } = parseApprovalsMarkdown(markdown);
+  return { valid, errors };
 }
 
 export async function validateTrackerV3Markdown(markdown, projectRoot) {

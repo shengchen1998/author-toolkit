@@ -94,6 +94,8 @@ Use the shared `## Approvals` table for edit, restore, baseline, scope, prose-ov
 
 An approval applies only to its named operation, paths, scope, and input versions. Link manuscript backup records to the approval ID. A structural or input change supersedes an affected override; record the supersession rather than deleting history. Legacy v2 overrides remain `deferred` until the author confirms them on resume.
 
+After a completed edit batch, invoke `author-project` with `record-execution` to link the approval to verified output hashes. Keep the approval status `approved`; the execution receipt proves completion. A completed restoration record supplies the corresponding evidence for a restore approval. A backup or safety backup alone proves only pre-write preservation.
+
 ## Scope and input currency
 
 A scope records its ID, description, `proposed` or `confirmed` status, ordered file paths and SHA-256 hashes, exclusions, and creation time. Reports, findings, plan batches, approvals, and reviews reference the applicable `scope_id`.
@@ -144,6 +146,8 @@ For a confirmed target scope, the target scope has reached current-draft revisio
 - The full-target current-scope review completes intent, standards, and fresh-reader coverage over the same target scope after the latest edits, including every required unit and applicable synthesis. Its findings have entered the same decision and, when accepted, revision loop.
 
 Partial, skipped, or degraded requested applicable coverage prevents current-draft revision convergence unless the author explicitly narrows the requested pass; identify that narrowed requested pass and its gaps instead. Inapplicable whole-book or language-specific checks may remain explicitly `skipped` with their reasons; a skipped coverage unit cannot be reused as a full local coverage unit. A completed creation batch, chapter review, or diagnostic pass alone does not establish current-draft revision convergence. Recompute this state from current evidence at each resume rather than storing a standalone flag for this state.
+
+Use `author-project status` with the target scope ID for the mechanical execution check. Every approved edit or restore approval in that scope must have execution evidence; any `unverified` result prevents current-draft revision convergence, while an unrelated historical scope does not. A legacy approval without a reconciled receipt remains unverified rather than being inferred as executed from its backup.
 
 ## Pending actions and session writes
 

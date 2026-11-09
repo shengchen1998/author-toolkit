@@ -6,6 +6,10 @@ export {
 } from "./findings.mjs";
 export { allocateFindingIds, validateFindingIdentity } from "./finding-identity.mjs";
 export {
+  inspectExecutionReceipts,
+  validateExecutionReceipts,
+} from "./execution-receipts.mjs";
+export {
   canReuseCoverageUnit,
   validateCoverageIndex,
   validateCreationBatch,
@@ -29,6 +33,7 @@ export {
 export {
   APPROVAL_STATUSES,
   TRACKER_STATUSES,
+  parseApprovalsMarkdown,
   trackerFindingRows,
   trackerDecisions,
   validateApprovalsMarkdown,
@@ -50,6 +55,7 @@ export {
   validateCoverageUnitSchema as validateCoverageUnit,
   validateCreationBatchSchema,
   validateCreationCommitSchema,
+  validateExecutionReceiptSchema,
   validateFindingV1,
   validateFindingV2,
   validateProjectSchema,

@@ -19,7 +19,7 @@ function runValidator(args = []) {
 test("the default CLI validates every shipped schema and example", () => {
   const result = runValidator();
   assert.equal(result.status, 0, result.stderr);
-  assert.match(result.stdout, /11 checks, 0 failures/);
+  assert.match(result.stdout, /13 checks, 0 failures/);
   assert.match(result.stdout, /fiction-revision-en\/reports\/structure/);
   assert.match(result.stdout, /fiction-revision-zh\/reports\/structure/);
 });

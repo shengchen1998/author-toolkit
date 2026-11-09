@@ -39,6 +39,8 @@ Approval statuses are `approved`, `deferred`, `cancelled`, and `superseded`. Rec
 
 A diagnostic proposes changes but does not create an approval. Creation acceptance records manuscript and resulting-scope approvals separately. A restore always needs a separate approval ID. Backup, commit, and restoration records cite the applicable approval, scope, and input hashes.
 
+An edit approval remains `approved` after its batch runs. Its post-write execution receipt proves completion; do not invent an `executed` approval status or treat a backup as execution evidence. A completed restoration record is the execution receipt for a restore approval.
+
 Before assigning IDs to different issues, allocate one consecutive block for the complete planned report or review-unit batch:
 
 ```bash
@@ -63,7 +65,7 @@ For explicit report validation, `--report` may be repeated. `node <setup-skill-r
 
 1. For a new project, start with `../assets/project-template.json`. Replace sentinel timestamps with the current UTC timestamp and `und` with the detected or author-supplied BCP 47 language. Register supplied project metadata and paths, retaining template defaults for omitted paths, including `paths.creation`. Do not add a workflow, entry operation, or strategy owner.
 2. For an existing v3.1 manifest, validate and return it without resetting current scope, pending action, paths, artifacts, decisions, or external backup records. For any other schema version, report that it is unsupported and stop without changing it.
-3. Resolve `paths.backups` and create `<paths.backups>/index.json` from `../assets/backup-index-template.json` when absent. Keep backup records in this index rather than adding undeclared manifest properties.
+3. Resolve `paths.backups` and create `<paths.backups>/index.json` from `../assets/backup-index-template.json` when absent. Keep backup, restoration, and execution receipt records in this index rather than adding undeclared manifest properties. A legacy index without `executions` remains readable; its approved edits have no execution evidence until reconciled receipts are appended.
 
 The caller creates directories and empty creative templates. Initialization does not populate manuscript or Story Bible creative content, establish an entry operation, or invoke a strategy.
 
@@ -81,7 +83,7 @@ Run the self-contained installed validator:
 node <setup-skill-root>/scripts/validate.mjs --manifest <manifest-path>
 ```
 
-Use the documented Node environment. The bundled CLI includes its runtime dependencies and needs no repository checkout or project `npm install`. If the required installed script is missing, report an incomplete toolkit installation and stop. Report the command, exit status, and diagnostics. For a v3.1 project with a current scope, the command also recomputes manuscript hashes and reports them under `#scope`. Treat a `scope-currency` diagnostic as changed input: mark dependent evidence stale and reconcile the scope with the author before relying on it or writing. Do not refresh hashes silently. Script validation is authoritative. On read or status, report validation failures, changed inputs, and missing registered paths without repairing them implicitly. A read returns the full parsed manifest plus the shared state view below; status returns that compact view.
+Use the documented Node environment. The bundled CLI includes its runtime dependencies and needs no repository checkout or project `npm install`. If the required installed script is missing, report an incomplete toolkit installation and stop. Report the command, exit status, and diagnostics. For a v3.1 project with a current scope, the command also recomputes manuscript hashes and reports them under `#scope`. Treat a `scope-currency` diagnostic as changed input: mark dependent evidence stale and reconcile the scope with the author before relying on it or writing. Do not refresh hashes silently. The `#executions` check validates receipt structure, approval and backup references, and per-file hash rules; a missing receipt alone is valid intermediate state and is reported by `status`, not rejected as malformed state. Script validation is authoritative. On read or status, report validation failures, changed inputs, and missing registered paths without repairing them implicitly. A read returns the full parsed manifest plus the shared state view below; status returns that compact view.
 
 ## Status
 
@@ -93,6 +95,16 @@ Return a compact shared state view containing:
 - every stale or blocked evidence item with its operation, scope, dependency reason, and source report or tracker row;
 - the next action recorded in the tracker or latest session note;
 - validation errors, missing paths, and unresolved approval, backup, commit, or restore requirements.
+
+Run the installed status CLI for the mechanical approval and execution view:
+
+```bash
+node <setup-skill-root>/scripts/status.mjs --manifest <project-root>/.author-toolkit/project.json
+```
+
+The text output bounds the unverified-approval list; add `--json` for the complete machine-readable list. Add `--scope-id <target-scope-id>` when checking current-draft revision convergence or a previous or base scope so unrelated historical scopes do not block the result. The command joins approved `edit` approvals to post-write execution receipts and approved `restore` approvals to completed restoration records. Missing receipts appear as `unverified` and leave the CLI successful because they can be valid intermediate state. They still block current-draft revision convergence and any entry gate that requires a verified previous or base scope. Malformed receipts, duplicate approval receipts, unknown approvals or backups, and identity mismatches fail validation.
+
+The status CLI reads the manifest, tracker, and backup index without reading manuscript content or session notes. It does not compare historical output hashes with current manuscript files; later edits do not invalidate an earlier receipt. Supplement its execution view with the stale evidence and next action from the shared state above.
 
 Status does not infer operation completion, select a strategy, or advance pending action.
 
@@ -135,10 +147,25 @@ For each create target, record that the file is expected absent with a null inpu
 
 For `creation-commit`, follow [`../../write-fiction/references/creation-state.md`](../../write-fiction/references/creation-state.md). Write `<paths.creation>/batches/<commit-id>.json` before touching manuscript text, record every planned action and its pending state, and update the journal after every write and verification transition. An interrupted journal records exact completed and pending actions and stops publication pending an explicit author decision. Record backup IDs, approvals, scope IDs, commit ID, and paths in the session note. Backups and journals are text records; Git is not a substitute.
 
+## Record execution
+
+After every completed approved edit batch, record one execution receipt before claiming the batch executed. Read `<setup-skill-root>/assets/references/execution-receipt-schema.json` and append one receipt to `executions` in `<paths.backups>/index.json` with:
+
+- `schema_version: "1.0.0"`, the exact edit `approval_id`, operation, and scope ID;
+- every `backup_id` used by the batch; a create-only batch can have an empty list;
+- one entry for every approved path with its `create`, `modify`, `delete`, or `reorder` action and verified input and output SHA-256 hashes. A create has a null input hash, a delete has a null output hash, and every other action has both hashes;
+- `recorded_at`, the UTC time this receipt is recorded.
+
+Recompute output hashes immediately after writing and verifying the exact batch. Do not compare historical receipt outputs with the current manuscript after later edits. An incomplete or interrupted batch has no execution receipt; preserve its interrupted state for explicit reconciliation.
+
+Append only one receipt per approval, preserve all existing records, and update the index through a verified temporary sibling and atomic rename. Run the installed manifest validator and `status.mjs`; the approval remains `approved`, while the receipt supplies execution evidence.
+
+For a legacy project, backfill a receipt only after preserved post-write evidence establishes the exact completed batch and output hashes. A backup, an approval, or a session statement alone does not establish those hashes. Later manuscript text is not evidence of an earlier output after subsequent edits. Leave an unreconciled approval `unverified` rather than inventing execution evidence; `recorded_at` records the later reconciliation time.
+
 ## Restore
 
 A restore needs separate explicit author approval naming the backup or creation commit and exact files. Verify the approval and current scope, then back up current versions under a new safety backup ID with their input hashes before restoring anything. For files created by the restored batch, move created files into the safety backup before removing them from the manuscript; preserve their exact bytes and record both paths. Restore approved original snapshots only after every safety backup succeeds. Reverse the accepted creation-state differences as directed by the creation recovery procedure.
 
-Append a `restorations` record to the backup index containing the restore timestamp, source backup or commit ID, restored and removed files and hashes, approval ID, scope ID, and safety backup ID. Keep both backup manifests, created-file safety copies, commit journals, and all records. Record the restore in the current session note and report restored paths.
+After every restore action completes, append a `restorations` record to the backup index containing the restore timestamp, source backup or commit ID, restored and removed files and hashes, approval ID, scope ID, and safety backup ID. This completed record is the restore execution receipt; a safety backup alone is not execution evidence. Keep both backup manifests, created-file safety copies, commit journals, and all records. Record the restore in the current session note and report restored paths.
 
 After the restore, apply the shared state-and-findings dependency rules to stale every affected evidence item and identify the resulting next action. Establish a newly confirmed scope when membership, reading order, or exclusions change; otherwise retain the scope ID with reconciled hashes. Validate the resulting shared state before returning.

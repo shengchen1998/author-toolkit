@@ -377,7 +377,12 @@ rejected and are not converted automatically.
   `node <setup-skill-root>/scripts/validate.mjs --review-brief <path> --tracker <path>`.
 - `sessions/` records completed work, open decisions, backup paths, and the
   stopping point so a later session can resume or handle rework.
-- `backups/` preserves affected manuscript files before approved edits.
+- `backups/` preserves affected manuscript files before approved edits. Its index
+  also stores post-write execution receipts for edit approvals and completed
+  restoration records for restore approvals. `author-project status` reports
+  scoped unverified approvals without reading manuscript content or comparing
+  historical outputs with later text. A backup alone does not prove execution;
+  legacy receipts require reconciliation rather than automatic inference.
   Restoration also requires author approval.
 - `handoffs/` preserves pointers to the current evidence and next action.
 - `paths.creation` registers creation state and defaults to
@@ -535,6 +540,7 @@ for their exact names:
 node scripts/validate.mjs --help
 node scripts/validate.mjs --manifest /path/to/.author-toolkit/project.json
 node scripts/validate.mjs --report /path/to/report.md
+node scripts/status.mjs --manifest /path/to/.author-toolkit/project.json --scope-id scope-001
 ```
 
 These commands cover repository-level contracts, not host-specific runtime

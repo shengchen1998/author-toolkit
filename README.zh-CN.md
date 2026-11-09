@@ -222,7 +222,9 @@ AI, 作者和混合创作使用相同门禁. 每本书只保留一个活动创�
   resolved 和 dismissed 发现项派生的可丢弃摘要, 用于复用决定, 不作为 reviewer 输入或权威决定记录.
   使用 `node <setup-skill-root>/scripts/validate.mjs --review-brief <path> --tracker <path>` 对照 tracker 校验.
 - `sessions/`: 已完成工作, 待决事项, 备份路径和停止位置.
-- `backups/`: 获批修改前的稿件备份. 恢复也需要作者批准.
+- `backups/`: 获批修改前的稿件备份. 其索引还保存 edit 批准的写后执行回执和 restore 批准的完成恢复记录.
+  `author-project status` 按范围报告未核对批准, 不读取正文内容, 也不把历史输出与后续文本比较.
+  备份本身不能证明执行; 历史回执必须核对后补录, 不能自动推断. 恢复也需要作者批准.
 - `handoffs/`: 当前证据和下一操作的交接指针.
 - `paths.creation`: 创作产物路径, 默认 `.author-toolkit/creation/`, 包含
   `state/current.md`, `state/chapters/`, `state/volumes/`, `batches/` 和 `staging/`.
@@ -328,7 +330,7 @@ AI 关联发现只描述文本模式, 不能证明文本由 AI 生成.
 
 ## 验证状态
 
-3.1.0 工作树的仓库检查已通过: 144 项协议测试和 11 项默认校验, 详见
+3.1.0 工作树的仓库检查已通过: 151 项协议测试和 13 项默认校验, 详见
 [docs/VALIDATION.md](docs/VALIDATION.md). 通用本地源安装已发现全部 16 个技能, setup 共享载荷,
 自包含校验 CLI, 项目内 schema 和独立技能本地契约均已验证. Kimi Code 已完成有限范围的创作提交和双向切换验证;
 完整宿主流程, `revise-increment` 与 `revise-request` 端到端运行和百万字稿件的创作质量仍未验证.
@@ -357,6 +359,7 @@ npm run validate
 node scripts/validate.mjs --help
 node scripts/validate.mjs --manifest /path/to/.author-toolkit/project.json
 node scripts/validate.mjs --report /path/to/report.md
+node scripts/status.mjs --manifest /path/to/.author-toolkit/project.json --scope-id scope-001
 ```
 
 这些命令只覆盖仓库级契约, 不代表宿主运行验证或创作质量. 宿主版本, 已完成检查和限制见

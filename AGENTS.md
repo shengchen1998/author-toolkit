@@ -51,11 +51,14 @@ Validate an individual project or artifact:
 node scripts/validate.mjs --help
 node scripts/validate.mjs --manifest /path/to/.author-toolkit/project.json
 node scripts/validate.mjs --report /path/to/report.md
+node scripts/status.mjs --manifest /path/to/.author-toolkit/project.json --scope-id scope-001
 node scripts/findings.mjs next-finding-id STANDARD --manifest /path/to/.author-toolkit/project.json --count 35
 node scripts/findings.mjs record-findings --manifest /path/to/.author-toolkit/project.json --report /path/to/report.md
 ```
 
-The help output defines the creation-batch, commit-journal, story-state, coverage, review-job, review-brief, and reader-state options. A review-brief check requires the tracker for decision comparison. Report validation rejects duplicate report IDs; repeated reports, `--tracker`, or `--manifest` enable batch or historical identity checks. Manifest validation also checks registered files and the tracker; for v3.1 with `current_scope`, it checks current manuscript hashes. Validation failures exit nonzero; argument errors exit with status 2.
+The help output defines the creation-batch, commit-journal, story-state, coverage, review-job, review-brief, and reader-state options. A review-brief check requires the tracker for decision comparison. Report validation rejects duplicate report IDs; repeated reports, `--tracker`, or `--manifest` enable batch or historical identity checks. Manifest validation also checks registered files, the tracker, and execution receipts; for v3.1 with `current_scope`, it checks current manuscript hashes. Validation failures exit nonzero; argument errors exit with status 2.
+
+`author-project status` uses the installed `status.mjs` CLI to join edit approvals to execution receipts and restore approvals to restoration records without reading manuscript content. Missing receipts are reported as `unverified`, not malformed state. Use `--scope-id` for target-scope current-draft revision convergence checks and `--json` for the complete list.
 
 `author-project next-finding-id` allocates a consecutive unused ID block from tracker and report history. `author-project record-findings` validates and atomically upserts a complete report batch into the tracker while preserving existing decisions and timestamps. Both use the installed setup CLI and do not replace semantic finding identity reconciliation or author decisions.
 
@@ -76,18 +79,18 @@ Author Toolkit 3.1.0 contains 16 writing skills for Claude Code and Kimi Code, p
 The skills have three invocation modes:
 
 - Seven explicit user entries: `setup-author-toolkit`, `ask-author`, and the five shared strategies `write-fiction`, `revise-fiction`, `revise-draft`, `revise-increment`, and `revise-request`. Their frontmatter sets `disable-model-invocation: true`; routers display exact host commands rather than invoking them through the Skill tool.
-- Three shared orchestration capabilities: `author-project` owns state, paths, validation, backups, commits, and restores; `author-handoff` preserves resumable context; `author-review` performs manuscript reading and synthesis.
+- Three shared orchestration capabilities: `author-project` owns state, paths, validation, backups, execution receipts, commits, and restores; `author-handoff` preserves resumable context; `author-review` performs manuscript reading and synthesis.
 - Six independent skills: `fiction-workshop`, `character-archetypes`, `story-structure`, `narrative-nonfiction`, `prose-mechanics`, and `avoid-ai-writing`. They work without setup, retain their standalone contracts, and leave shared state unchanged unless the author incorporates their output.
 
 `tests/skills.test.mjs` checks the complete inventory, matching directory and frontmatter names, and invocation modes. Shared workflows support one single-book fiction project per manifest with Markdown or plain-text manuscripts. English and Chinese are the core workflow languages. Narrative nonfiction uses `narrative-nonfiction`; multi-book manifests and other hosts are outside supported 3.1 workflows.
 
 ### Validation boundaries
 
-`scripts/validate.mjs`, `scripts/project-digest.mjs`, and `scripts/findings.mjs` expose the implementation in `scripts/lib/`; `index.mjs` is the library export surface. Ajv and ajv-formats provide strict JSON Schema draft 2020-12 validation. The main module boundaries are:
+`scripts/validate.mjs`, `scripts/status.mjs`, `scripts/project-digest.mjs`, and `scripts/findings.mjs` expose the implementation in `scripts/lib/`; `index.mjs` is the library export surface. Ajv and ajv-formats provide strict JSON Schema draft 2020-12 validation. The main module boundaries are:
 
 - `schemas.mjs` loads schemas and configures Ajv. `manifest.mjs` accepts only v3.1 validation.
 - `manuscript.mjs` inventories `.md`, `.markdown`, and `.txt` files, excluding registered operational paths and creation staging. `project-files.mjs` checks registered files, artifacts, scope hashes, and newly added manuscript files.
-- `markdown.mjs` extracts the single report JSON envelope and validates language and evidence coverage. `finding-identity.mjs` allocates unused ID blocks and checks finding identity conflicts; `findings.mjs` batches validated report findings into the living tracker. `tracker.mjs` parses and validates living finding and approval tables; `approval-paths.mjs` handles paths containing commas, pipes, and backticks.
+- `markdown.mjs` extracts the single report JSON envelope and validates language and evidence coverage. `finding-identity.mjs` allocates unused ID blocks and checks finding identity conflicts; `findings.mjs` batches validated report findings into the living tracker. `tracker.mjs` parses and validates living finding and approval tables; `approval-paths.mjs` handles paths containing commas, pipes, and backticks. `execution-receipts.mjs` validates post-write receipts and derives scoped unverified approvals without comparing historical output hashes to current manuscript.
 - `artifacts.mjs` validates story state, creation batches, commit journals, coverage artifacts, and coverage reuse. `review.mjs` validates review-job ranges, chunk/volume/book completion, request-only passage coverage, fresh-reader ordering, and reader-state continuity. `review-brief.mjs` checks the derived resolved/dismissed summary against the living tracker.
 - `digest.mjs` generates the bounded `PROJECT_STATE.md` navigation cache from the valid v3.1 manifest, tracker, latest session, and report paths without reading the backup index. The cache is disposable and never authoritative.
 
@@ -97,7 +100,7 @@ Use native ESM with named imports, two-space indentation, double quotes, semicol
 
 All five creation and revision strategies require the same user-invoked `setup-author-toolkit`. It registers existing paths without imposing a manuscript layout. On every setup, it overwrites the writing project's root `AGENTS.md` with `skills/setup-author-toolkit/assets/AGENTS.md` and replaces `CLAUDE.md` with a relative symlink to `AGENTS.md`. That template routes work inside a writing project; this repository-root file documents toolkit development.
 
-Shared runtime contracts live in the installed setup skill's `assets/references/` and its self-contained validation and project-digest CLIs live in its `scripts/`. `author-project` resolves these files from `<setup-skill-root>` for shared `read`, `validate`, `status`, and `status --digest` operations. Missing required files indicate an incomplete installation and stop shared work. Setup never copies shared contracts into the writing project or relies on project-side copies.
+Shared runtime contracts live in the installed setup skill's `assets/references/` and its self-contained validation, status, and project-digest CLIs live in its `scripts/`. `author-project` resolves these files from `<setup-skill-root>` for shared `read`, `validate`, `status`, and `status --digest` operations. Missing required files indicate an incomplete installation and stop shared work. Setup never copies shared contracts into the writing project or relies on project-side copies.
 
 The canonical manifest is `<project-root>/.author-toolkit/project.json`. A v3.1 manifest records registration, `manuscript_root`, seven operational paths, and optional `current_scope` and `pending_action`. It has no `workflow.name`, `current_stage`, `stages`, or shared-reference path. Only schema 3.1.0 is accepted; other manifest versions are rejected without conversion.
 
@@ -139,6 +142,7 @@ Release metadata has four separate locations: `package.json`, `kimi.plugin.json`
 
 - Stored project paths are portable project-relative paths with forward slashes. Reject absolute paths, home expansion, URI schemes, backslashes, and `..` segments. Resolve registered paths against the selected project root and exclude the entire creation root from manuscript inventory.
 - Before a manuscript edit, require explicit current approval for the exact operation, scope, paths, actions, and input versions. Back up every affected existing file, recompute SHA-256 hashes immediately before writing, and stop on mismatch. Before creation publication, require every create target to remain absent and represent its original input hash as null.
+- After an approved edit batch, verify every output hash and append one execution receipt linked to its approval and backups. Keep the approval `approved`; the receipt proves execution. A missing receipt is an unverified approval, not proof that no write occurred. Do not infer historical receipts from backups alone.
 - Write the creation commit journal before touching manuscript content. Publish each file through a verified temporary sibling and atomic rename, updating the journal after every transition. The journal coordinates files; it is not a multi-file filesystem transaction. Interrupted publication stops for an explicit author decision.
 - Restores require separate approval naming the backup or creation commit and exact files, plus a safety backup of current content. Move files created by the restored batch into that safety backup before removing them. Edit or creation approval is not restore approval.
 - Use `creation-import` to reconcile externally added, modified, deleted, or reordered manuscript. Report changed inputs instead of silently refreshing scope hashes, story state, or stale evidence.

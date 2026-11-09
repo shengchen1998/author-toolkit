@@ -50,9 +50,9 @@ At a stable operation gate, the author may switch to `write-fiction`, `revise-dr
 
 **Inputs:** Approved revision plan, relevant baselines, manuscript, and tracker.
 
-**Work:** For one approved batch at a time, invoke `fiction-workshop` first for diagnosis. Read `<setup-skill-root>/assets/references/context-fit.md` and complete its check before presenting an edit proposal. Propose edits without writing. Show the exact files and changes, obtain and record approval, back up every file through `author-project`, and then implement that batch. Recheck affected continuity and update current-scope file hashes after the writes. Update plan batch status and finding decisions.
+**Work:** For one approved batch at a time, invoke `fiction-workshop` first for diagnosis. Read `<setup-skill-root>/assets/references/context-fit.md` and complete its check before presenting an edit proposal. Propose edits without writing. Show the exact files and changes, obtain and record approval, back up every file through `author-project`, and then implement that batch. Verify output hashes and invoke `author-project` with `record-execution` after the exact batch completes. Recheck affected continuity and update current-scope file hashes after the writes. Update plan batch status and finding decisions.
 
-**Gate:** Every planned batch is completed and accepted, or explicitly deferred with its downstream effect recorded. Each modified file has a successful backup record linked to its approval. No requested batch remains unapproved or partially edited. Approved structural or character-fact changes trigger stale propagation.
+**Gate:** Every planned batch is completed and accepted, or explicitly deferred with its downstream effect recorded. Each modified file has a successful backup record linked to its approval and a completed execution receipt. No requested batch remains unapproved, unverified, or partially edited. Approved structural or character-fact changes trigger stale propagation.
 
 ## 7. Prose
 
@@ -60,7 +60,7 @@ At a stable operation gate, the author may switch to `write-fiction`, `revise-dr
 
 **Work:** Before starting, verify the structure gate and character-fact stability for this exact scope. If unstable, stop and display the required earlier operation. Before presenting an edit proposal for concrete fixes, read `<setup-skill-root>/assets/references/context-fit.md` and complete its check. The author may instead approve a `prose-override` in the shared tracker; bind it to the current scope and structural evidence. Invoke `prose-mechanics` for author-selected audits among audits 1-18, one at a time and in upstream order. Produce report v2, wait for author decisions, and back up before applying approved fixes.
 
-**Gate:** Every selected audit has a current report for every in-scope file, all findings have tracker decisions, and approved fixes have approvals and backups. The structure remains stable or a current override covers the exact scope. When the author selects only some audits, name the uncovered audits and record limited operation coverage.
+**Gate:** Every selected audit has a current report for every in-scope file, all findings have tracker decisions, and approved fixes have approvals, backups, and execution receipts. The structure remains stable or a current override covers the exact scope. When the author selects only some audits, name the uncovered audits and record limited operation coverage.
 
 ## 8. AI cleanup
 
@@ -68,7 +68,7 @@ At a stable operation gate, the author may switch to `write-fiction`, `revise-dr
 
 **Work:** Read `<setup-skill-root>/assets/references/avoid-ai-writing-adapter.md` and follow it exactly. For concrete rewrites, read `<setup-skill-root>/assets/references/context-fit.md` and complete its check before presenting an edit proposal. Run English spans through the upstream `avoid-ai-writing` skill and Chinese spans through the adapter's local Chinese catalog. Rewrites require the standard approval and backup gate and a second detection pass.
 
-**Gate:** Each in-scope file has a full result for its requested language procedure or an explicit `skipped` or `partial` language result. Reports contain severity mappings, engine and fallback details, coverage, and degradation. Every rewrite has approval, a backup ID, and second-pass detection. Every finding has a tracker decision. A failure in a required upstream or local execution path leaves the affected coverage blocked rather than producing a clean result.
+**Gate:** Each in-scope file has a full result for its requested language procedure or an explicit `skipped` or `partial` language result. Reports contain severity mappings, engine and fallback details, coverage, and degradation. Every rewrite has approval, a backup ID, an execution receipt, and second-pass detection. Every finding has a tracker decision. A failure in a required upstream or local execution path leaves the affected coverage blocked rather than producing a clean result.
 
 ## 9. Final review
 

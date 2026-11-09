@@ -180,6 +180,7 @@ test("controlled terminology covers every current shared schema enum", async () 
     "coverage-index-schema.json",
     "creation-batch-schema.json",
     "creation-commit-schema.json",
+    "execution-receipt-schema.json",
     "review-job-schema.json",
     "reader-state-schema.json",
     "story-state-schema.json",

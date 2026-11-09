@@ -20,6 +20,7 @@ const reportSchema = readSchema("report-schema-v2.json");
 const storyStateSchema = readSchema("story-state-schema.json");
 const creationBatchSchema = readSchema("creation-batch-schema.json");
 const creationCommitSchema = readSchema("creation-commit-schema.json");
+const executionReceiptSchema = readSchema("execution-receipt-schema.json");
 const coverageUnitSchema = readSchema("coverage-unit-schema.json");
 const coverageIndexSchema = readSchema("coverage-index-schema.json");
 const reviewJobSchema = readSchema("review-job-schema.json");
@@ -35,6 +36,7 @@ ajv.addSchema(reportSchema);
 ajv.addSchema(storyStateSchema);
 ajv.addSchema(creationBatchSchema);
 ajv.addSchema(creationCommitSchema);
+ajv.addSchema(executionReceiptSchema);
 ajv.addSchema(coverageUnitSchema);
 ajv.addSchema(coverageIndexSchema);
 ajv.addSchema(reviewJobSchema);
@@ -48,6 +50,7 @@ const reportValidator = ajv.getSchema("report-schema-v2.json");
 const storyStateValidator = ajv.getSchema("story-state-schema.json");
 const creationBatchValidator = ajv.getSchema("creation-batch-schema.json");
 const creationCommitValidator = ajv.getSchema("creation-commit-schema.json");
+const executionReceiptValidator = ajv.getSchema("execution-receipt-schema.json");
 const coverageUnitValidator = ajv.getSchema("coverage-unit-schema.json");
 const coverageIndexValidator = ajv.getSchema("coverage-index-schema.json");
 const reviewJobValidator = ajv.getSchema("review-job-schema.json");
@@ -93,6 +96,10 @@ export function validateCreationCommitSchema(value) {
   return evaluate(creationCommitValidator, value);
 }
 
+export function validateExecutionReceiptSchema(value) {
+  return evaluate(executionReceiptValidator, value);
+}
+
 export function validateCoverageUnitSchema(value) {
   return evaluate(coverageUnitValidator, value);
 }
@@ -120,6 +127,7 @@ export function validateSchemaDefinitions() {
     ["story-state-schema.json", storyStateSchema],
     ["creation-batch-schema.json", creationBatchSchema],
     ["creation-commit-schema.json", creationCommitSchema],
+    ["execution-receipt-schema.json", executionReceiptSchema],
     ["coverage-unit-schema.json", coverageUnitSchema],
     ["coverage-index-schema.json", coverageIndexSchema],
     ["review-job-schema.json", reviewJobSchema],
