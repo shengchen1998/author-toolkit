@@ -45,20 +45,13 @@ A pending action records interrupted or awaiting work. Recheck current evidence 
 
 ## Keep author decisions explicit
 
-Follow the shared author decision loop at every gate. Unless the author explicitly requests batch handling, present one active decision with its evidence, recommendation, and main tradeoff, then ask one question. Discussion and acceptance of a finding are not manuscript-edit approval.
+Follow the active skill's author decision loop and operation gates. These project invariants remain mandatory:
 
-Before any manuscript edit:
-
-1. For a revision, read `<setup-skill-root>/assets/references/context-fit.md` and complete its check before presenting an edit proposal. Show the exact operation, scope, affected paths, intended change batch, and checked local context. The check does not expand the approved edit paths or extend request-review units.
-2. Obtain explicit author approval for that batch and record it in the shared tracker with its input versions.
-3. Use `author-project` to back up every existing affected file under that approval.
-4. Reread the manifest and scope, recompute each existing file's SHA-256 hash and each create target's absence, and write only when every path, hash, approval, and dependency still matches. A mismatch stops the batch for reconciliation.
-
-For shared creation, write proposed text only beneath `<paths.creation>/staging/<batch-id>/` before acceptance. The author approves the write plan and later accepts the exact staged batch and resulting scope. `creation-commit` then verifies dependencies, expected absence and old hashes, existing-file backups, and its recovery journal before publication. Acceptance supplies the commit approval; interrupted commits stop for reconciliation.
-
-A restore requires separate explicit approval naming the backup or commit and files, followed by a safety backup of current content through `author-project`. Move batch-created files into that safety backup before removing them from the manuscript. Story Bible creative changes require author confirmation and consistency with the approved plan.
-
-Standalone skill runs leave shared project state unchanged. Incorporate their output only when the author explicitly requests it, preserving the source and recording the decision and shared evidence required by the active strategy.
+- Manuscript edits require explicit approval of the exact operation, scope, paths, actions, and input versions, recorded in the shared tracker. Discussing or accepting a finding does not approve an edit; for revisions, complete `<setup-skill-root>/assets/references/context-fit.md` before presenting the proposal.
+- Before any write, back up every existing affected file through `author-project`, recompute each existing file's SHA-256 hash, verify each create target's absence, and stop if any approval, path, hash, or dependency no longer matches.
+- For shared creation, stage proposed text only beneath `<paths.creation>/staging/<batch-id>/` and require acceptance of the exact staged batch and resulting scope before `creation-commit`. Stop interrupted commits for reconciliation.
+- Restores require separate explicit approval naming the backup or commit and exact files, plus a safety backup of current content through `author-project`; move batch-created files into that safety backup before removing them. Story Bible creative changes require author confirmation.
+- Standalone skill runs leave shared project state unchanged unless the author explicitly requests incorporation of their output under the active strategy's evidence and decision rules.
 
 ## Preserve truthful evidence
 
