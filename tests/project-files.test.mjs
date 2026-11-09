@@ -42,7 +42,7 @@ test("example manifests resolve their project roots and validate all on-disk sta
   }
 });
 
-test("manifest file validation reports missing operational paths and stage artifacts", async (t) => {
+test("manifest file validation reports missing operational paths and pending artifacts", async (t) => {
   const missingDirectoryRoot = await copyExample(t);
   await rm(path.join(missingDirectoryRoot, "handoffs"), { recursive: true });
   const missingDirectoryManifest = await readManifest();
@@ -64,7 +64,7 @@ test("manifest file validation reports missing operational paths and stage artif
   assert.equal(missingArtifact.valid, false);
   assert.ok(
     missingArtifact.errors.some((error) =>
-      error.instancePath.startsWith("/workflow/stages/2/artifacts/"),
+      error.instancePath.startsWith("/pending_action/artifacts/"),
     ),
   );
 });

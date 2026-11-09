@@ -11,7 +11,6 @@ import {
   validateMarkdownReport,
   validateProjectFiles,
   validateProjectSchema,
-  validateProjectV3Schema,
   validateScopeCurrency,
   validateTracker,
   validateTrackerMarkdown,
@@ -24,9 +23,9 @@ const approvalTable =
   "| Approval ID | Type | Operation | Scope ID | Paths | Status | Reason | Updated |\n" +
   "|---|---|---|---|---|---|---|---|";
 
-function manifestV3() {
+function manifestV31() {
   return {
-    schema_version: "3.0.0",
+    schema_version: "3.1.0",
     project_type: "fiction",
     language: "en",
     manuscript_root: "manuscript",
@@ -37,6 +36,7 @@ function manifestV3() {
       sessions: "sessions",
       backups: "backups",
       handoffs: "handoffs",
+      creation: ".author-toolkit/creation",
     },
     created_at: timestamp,
     updated_at: timestamp,
@@ -45,7 +45,7 @@ function manifestV3() {
 
 function addScope(manifest) {
   manifest.current_scope = {
-    scope_id: "scope-v3-migration",
+    scope_id: "scope-current",
     description: "Author confirmation is required.",
     status: "proposed",
     files: [{ path: "manuscript/chapter.md", sha256: "a".repeat(64) }],
@@ -63,7 +63,7 @@ async function trackerTemplate() {
 }
 
 function approvalRow(id = "LEGACY-001") {
-  return `| ${id} | gate-override | structure | scope-v3-migration | \`manuscript/chapter.md\`, \`manuscript/other.txt\` | deferred | Legacy decision; confirm before resume. | ${timestamp} |`;
+  return `| ${id} | gate-override | structure | scope-current | \`manuscript/chapter.md\`, \`manuscript/other.txt\` | deferred | Legacy decision; confirm before resume. | ${timestamp} |`;
 }
 
 function reportWith(stage, notes) {
@@ -84,50 +84,48 @@ function reportWith(stage, notes) {
   });
 }
 
-test("v3 uses its own schema while v2 retains schema and workflow invariants", async () => {
-  const v3 = manifestV3();
-  assert.equal(validateProjectV3Schema(v3).valid, true);
-  assert.equal(validateManifest(v3).valid, true);
-  assert.equal(validateProjectSchema(v3).valid, false);
+test("v3.1 uses the only supported manifest schema", () => {
+  const manifest = manifestV31();
+  assert.equal(validateProjectSchema(manifest).valid, true);
+  assert.equal(validateManifest(manifest).valid, true);
 
-  const withWorkflow = clone(v3);
+  const withWorkflow = clone(manifest);
   withWorkflow.workflow = { name: "revise-fiction" };
   assert.equal(validateManifest(withWorkflow).valid, false);
 
-  const v2 = await readManifest();
-  assert.equal(validateManifest(v2).valid, true);
-  assert.equal(validateProjectV3Schema(v2).valid, false);
-
-  const unknown = { ...v3, schema_version: "4.0.0" };
-  const result = validateManifest(unknown);
-  assert.equal(result.valid, false);
-  assert.ok(result.errors.some((error) => error.keyword === "schema-version"));
+  for (const schemaVersion of ["2.0.0", "3.0.0", "4.0.0"]) {
+    const unsupported = { ...manifest, schema_version: schemaVersion };
+    const result = validateManifest(unsupported);
+    assert.equal(result.valid, false);
+    assert.ok(result.errors.some((error) => error.keyword === "schema-version"));
+    assert.deepEqual(result.errors[0].params.supported, ["3.1.0"]);
+  }
 });
 
-test("v3 current_scope enforces portable paths, hashes, and closed nested objects", () => {
-  const valid = addScope(manifestV3());
-  assert.equal(validateProjectV3Schema(valid).valid, true);
+test("v3.1 current_scope enforces portable paths, hashes, and closed nested objects", () => {
+  const valid = addScope(manifestV31());
+  assert.equal(validateProjectSchema(valid).valid, true);
 
   const uppercaseHash = clone(valid);
   uppercaseHash.current_scope.files[0].sha256 = "A".repeat(64);
-  assert.equal(validateProjectV3Schema(uppercaseHash).valid, false);
+  assert.equal(validateProjectSchema(uppercaseHash).valid, false);
 
   const emptyFiles = clone(valid);
   emptyFiles.current_scope.files = [];
-  assert.equal(validateProjectV3Schema(emptyFiles).valid, false);
+  assert.equal(validateProjectSchema(emptyFiles).valid, false);
 
   const escapingPath = clone(valid);
   escapingPath.current_scope.excluded_files = ["../outside.png"];
-  assert.equal(validateProjectV3Schema(escapingPath).valid, false);
+  assert.equal(validateProjectSchema(escapingPath).valid, false);
 
   const additional = clone(valid);
   additional.current_scope.files[0].size = 12;
-  const result = validateProjectV3Schema(additional);
+  const result = validateProjectSchema(additional);
   assert.equal(result.valid, false);
   assert.ok(result.errors.some((error) => error.keyword === "additionalProperties"));
 });
 
-test("v3 pending_action accepts every neutral operation and requires recovery metadata", () => {
+test("v3.1 pending_action accepts every neutral operation and requires recovery metadata", () => {
   const operations = [
     "intake",
     "story-bible",
@@ -143,7 +141,7 @@ test("v3 pending_action accepts every neutral operation and requires recovery me
     "final-review",
   ];
   for (const operation of operations) {
-    const manifest = manifestV3();
+    const manifest = manifestV31();
     manifest.pending_action = {
       operation,
       status: "awaiting_author",
@@ -152,28 +150,28 @@ test("v3 pending_action accepts every neutral operation and requires recovery me
       artifacts: ["reports/report.md"],
       updated_at: timestamp,
     };
-    assert.equal(validateProjectV3Schema(manifest).valid, true, operation);
+    assert.equal(validateProjectSchema(manifest).valid, true, operation);
   }
 
-  const invalid = manifestV3();
+  const invalid = manifestV31();
   invalid.pending_action = {
     operation: "diagnostics",
     status: "complete",
     updated_at: timestamp,
   };
-  const result = validateProjectV3Schema(invalid);
+  const result = validateProjectSchema(invalid);
   assert.equal(result.valid, false);
   assert.ok(result.errors.some((error) => error.params.missingProperty === "reason"));
   assert.ok(result.errors.some((error) => error.instancePath === "/pending_action/status"));
 });
 
-test("v3 file checks cover scope and pending artifacts without recomputing hashes", async (t) => {
+test("v3.1 file checks cover scope and pending artifacts without recomputing hashes", async (t) => {
   const output = path.join(root, ".test-output");
   await mkdir(output, { recursive: true });
   const temporary = await mkdtemp(path.join(output, "v3-files-"));
   t.after(() => rm(temporary, { recursive: true, force: true }));
 
-  const manifest = addScope(manifestV3());
+  const manifest = addScope(manifestV31());
   manifest.pending_action = {
     operation: "structure",
     status: "blocked",
@@ -183,7 +181,7 @@ test("v3 file checks cover scope and pending artifacts without recomputing hashe
   };
   const manifestPath = path.join(temporary, ".author-toolkit", "project.json");
   await mkdir(path.dirname(manifestPath), { recursive: true });
-  for (const directory of ["manuscript", "reports", "sessions", "backups", "handoffs"]) {
+  for (const directory of ["manuscript", "reports", "sessions", "backups", "handoffs", ".author-toolkit/creation"]) {
     await mkdir(path.join(temporary, directory), { recursive: true });
   }
   await writeFile(path.join(temporary, "story-bible.md"), "Story", "utf8");

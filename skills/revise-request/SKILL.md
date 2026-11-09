@@ -10,7 +10,7 @@ Coordinate an author-defined revision of existing manuscript content from a full
 
 ## Start or resume
 
-1. Locate `.author-toolkit/project.json`. If it is absent or has `schema_version: "2.0.0"`, display the host command for `setup-author-toolkit` and stop. Use the same setup command forms as `revise-fiction`.
+1. Locate `.author-toolkit/project.json`. If it is absent, display the host command for `setup-author-toolkit` and stop. Use the same setup command forms as `revise-fiction`. If the manifest has any schema version other than `3.1.0`, report that it is unsupported and stop without changing it.
 2. Resolve callees only when needed and copy their actual registered names. Never invoke a user-invoked entry through the Skill tool.
 3. Invoke `author-project` in separate calls with `read`, `validate`, and `status --digest`. These calls use the shared contracts and validator installed with setup. If they report an incomplete toolkit installation, stop and report the missing installed files; do not deploy contracts into the project. Read `PROJECT_STATE.md` first, then read only the tracker sections, sessions, current plan, scope, pending action, coverage units and index, review jobs, and prior revision evidence needed for the requested work. Do not read the full tracker or backup index for routine navigation. Reconcile an interrupted write or commit before dependent work.
 4. On a new request, inventory the complete manuscript and verify that the confirmed base scope is a full-manuscript scope that has reached [Current-draft revision convergence](../revise-fiction/references/state-and-findings.md#current-draft-revision-convergence). Open findings, missing or stale required coverage, unexecuted approved edits, and scope or hash mismatches prevent entry. Show `revise-increment` when creation or import grew the scope; otherwise show `revise-draft`. Stop rather than using the new request to bypass unfinished work for the base scope.
@@ -64,7 +64,7 @@ Before writing any report or changing finding or approval status, read [`../revi
 
 ## Strategy switching and shared state
 
-`write-fiction`, `revise-fiction`, `revise-draft`, `revise-increment`, and `revise-request` use the same manifest, tracker, reports, sessions, backups, handoffs, and creation state. At any stable operation gate, show the exact command for the author's selected strategy and wait. Switching does not reset evidence, resume writes, or require migration. This entry adds no report v2 `stage` value, pending-action operation name, manifest field, or separate state tree.
+`write-fiction`, `revise-fiction`, `revise-draft`, `revise-increment`, and `revise-request` use the same manifest, tracker, reports, sessions, backups, handoffs, and creation state. At any stable operation gate, show the exact command for the author's selected strategy and wait. Switching does not reset evidence, resume writes, or recreate shared project state. This entry adds no report v2 `stage` value, pending-action operation name, manifest field, or separate state tree.
 
 ## Finish
 

@@ -38,7 +38,7 @@ async function markdownFiles(directory) {
   return files.filter((file) => file.endsWith(".md"));
 }
 
-test("setup carries self-contained validation and migration CLIs", async (t) => {
+test("setup carries self-contained validation and state CLIs", async (t) => {
   await mkdir(path.join(root, ".test-output"), { recursive: true });
   const temporaryRoot = await mkdtemp(path.join(root, ".test-output", "setup-cli-"));
   t.after(() => rm(temporaryRoot, { recursive: true, force: true }));
@@ -79,7 +79,7 @@ test("setup carries self-contained validation and migration CLIs", async (t) => 
   );
 
   const nodeArgs = ["--no-warnings", "--experimental-loader", loader, "--require", preload];
-  for (const script of ["validate.mjs", "migrate-v3.mjs", "project-digest.mjs", "findings.mjs"]) {
+  for (const script of ["validate.mjs", "project-digest.mjs", "findings.mjs"]) {
     const result = spawnSync(
       process.execPath,
       [...nodeArgs, path.join(installedSetup, "scripts", script), "--help"],
@@ -99,34 +99,10 @@ test("setup carries self-contained validation and migration CLIs", async (t) => 
     { encoding: "utf8" },
   );
   assert.equal(result.status, 0, result.stderr);
-  assert.match(result.stdout, /3 checks, 0 failures/);
+  assert.match(result.stdout, /4 checks, 0 failures/);
 
-  const project = path.join(temporaryRoot, "migration-project");
+  const project = path.join(temporaryRoot, "writing-project");
   await cp(path.join(root, "examples", "fiction-revision-zh"), project, { recursive: true });
-  const migration = spawnSync(
-    process.execPath,
-    [
-      ...nodeArgs,
-      path.join(installedSetup, "scripts", "migrate-v3.mjs"),
-      "--project-root",
-      project,
-    ],
-    { encoding: "utf8" },
-  );
-  assert.equal(migration.status, 0, migration.stderr);
-
-  const migratedValidation = spawnSync(
-    process.execPath,
-    [
-      ...nodeArgs,
-      path.join(installedSetup, "scripts", "validate.mjs"),
-      "--manifest",
-      path.join(project, ".author-toolkit", "project.json"),
-    ],
-    { encoding: "utf8" },
-  );
-  assert.equal(migratedValidation.status, 0, migratedValidation.stderr);
-  assert.match(migratedValidation.stdout, /4 checks, 0 failures/);
 
   const allocation = spawnSync(
     process.execPath,
@@ -176,7 +152,7 @@ test("workflow commands resolve the installed setup CLIs", async () => {
     "utf8",
   );
   assert.match(operations, /node <setup-skill-root>\/scripts\/validate\.mjs --manifest/);
-  assert.match(operations, /node <setup-skill-root>\/scripts\/migrate-v3\.mjs --project-root/);
+  assert.doesNotMatch(operations, /migrate-v3\.mjs/);
 });
 
 test("setup carries a byte-identical copy of every shared reference", async () => {
@@ -261,7 +237,7 @@ test("setup overwrites AGENTS.md and links CLAUDE.md to it", async () => {
   assert.match(setup, /remove any existing regular files or symlinks with `rm -f AGENTS\.md CLAUDE\.md`/);
   assert.match(setup, /run `ln -s AGENTS\.md CLAUDE\.md`/);
   assert.match(setup, /If either target is a directory, or any operation fails, stop/);
-  assert.match(setup, /applies to new projects, existing v3 projects, and v2 migrations/);
+  assert.match(setup, /applies to new projects and existing v3\.1 projects/);
   assert.match(setup, /Except for the two project-root agent entry files described above/);
 });
 

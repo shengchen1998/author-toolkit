@@ -2,13 +2,13 @@
 
 > **Fixture notice:** The seeded observations and structure report are handwritten and describe intentional manuscript defects. No entry is evidence of a model run, and no audit has author approval to alter the manuscript.
 
-## Workflow
+## Project
 
 - Project root: `.`
 - Manifest created at: `2026-01-10T09:00:00Z`
-- Main workflow: `revise-fiction`
-- Current stage: `structure`
-- Next action: Resolve the midpoint and climax questions before rerunning downstream stages.
+- Current scope: `scope-example-revision`
+- Pending action: `structure` (`awaiting_author`)
+- Next action: Resolve the midpoint and climax questions before continuing revision.
 
 ## Findings
 
@@ -27,6 +27,13 @@ Allowed statuses: `open`, `resolved`, `deferred`, `dismissed`, `stale`.
 |---|---|---|---|---|---|---|
 | structure | All three chapters and all landmark checks | `reports/structure/2026-01-17_structure.md` | `conversational`, `degraded: true`, no execution | full | 2026-01-17T18:00:00Z | Handwritten fixture; schema validation only; no model run. |
 
+## Approvals
+
+Allowed statuses: `approved`, `deferred`, `cancelled`, `superseded`.
+
+| Approval ID | Type | Operation | Scope ID | Paths | Status | Reason | Updated |
+|---|---|---|---|---|---|---|---|
+
 ## Open questions
 
 These fixture leads have no corresponding report and are not formal tracker findings:
@@ -44,7 +51,7 @@ These fixture leads have no corresponding report and are not formal tracker find
 
 ## Current Handoff
 
-The fixture state represents a requested structure rework after the midpoint and climax diagnostics. Return to `structure`; do not begin line edits merely because sentence issues are easy to spot. After structural choices are approved, rerun `characters`, rebuild `revision-plan`, and only then resume chapter and prose work. The manifest and `sessions/rework-resume.fixture.json` show which downstream artifacts become stale.
+The fixture state represents a requested structure rework after the midpoint and climax diagnostics. Return to `structure`; do not begin line edits merely because sentence issues are easy to spot. After structural choices are approved, rerun `characters`, rebuild `revision-plan`, and only then resume chapter and prose work. The manifest and session notes identify pending work and evidence that needs revalidation.
 
 ## Refusal Boundary
 

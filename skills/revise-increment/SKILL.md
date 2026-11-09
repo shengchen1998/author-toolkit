@@ -10,7 +10,7 @@ Coordinate revision after incremental manuscript growth. Use the current-draft o
 
 ## Start or resume
 
-1. Locate `.author-toolkit/project.json`. If it is absent or has `schema_version: "2.0.0"`, display the host command for `setup-author-toolkit` and stop. Use the same setup command forms as `revise-fiction`.
+1. Locate `.author-toolkit/project.json`. If it is absent, display the host command for `setup-author-toolkit` and stop. Use the same setup command forms as `revise-fiction`. If the manifest has any schema version other than `3.1.0`, report that it is unsupported and stop without changing it.
 2. Resolve callees only when needed and copy their actual registered names. Never invoke a user-invoked entry through the Skill tool.
 3. Invoke `author-project` in separate calls with `read`, `validate`, and `status --digest`. These calls use the shared contracts and validator installed with setup. If they report an incomplete toolkit installation, stop and report the missing installed files; do not deploy contracts into the project. Read `PROJECT_STATE.md` first, then read only the tracker sections, sessions, current plan and scope, pending action, applicable creation batches and commit journals, coverage units and index, review jobs, and prior revision evidence needed for the requested work. Do not read the full tracker or backup index for routine navigation. Reconcile an interrupted write or commit before dependent work.
 4. On a new increment, establish the previous scope, the requested target scope, and the change set. Verify that the previous scope has reached current-draft revision convergence; if it has open findings, unresolved required coverage, or unexecuted approved edits, show the `revise-draft` command and stop rather than skipping unfinished work for the previous scope. The target scope normally contains every retained chapter from the previous scope plus the selected new chapters. The change set includes every created, modified, deleted, or reordered path and every path whose evidence or dependencies changed. Creation batches can locate changes; their `create` action alone cannot prove that other chapters are unaffected.
@@ -55,7 +55,7 @@ At every author gate, follow the [Author decision loop](../revise-fiction/refere
 
 ## Strategy switching and shared state
 
-`write-fiction`, `revise-draft`, `revise-fiction`, `revise-increment`, and `revise-request` use the same manifest, tracker, reports, sessions, backups, handoffs, and creation state. At any stable operation gate, show the exact command for the author's selected strategy and wait. Switching does not reset evidence, resume writes, or require migration. This entry adds no report v2 `stage` value, pending-action operation name, manifest field, or separate state tree.
+`write-fiction`, `revise-draft`, `revise-fiction`, `revise-increment`, and `revise-request` use the same manifest, tracker, reports, sessions, backups, handoffs, and creation state. At any stable operation gate, show the exact command for the author's selected strategy and wait. Switching does not reset evidence, resume writes, or recreate shared project state. This entry adds no report v2 `stage` value, pending-action operation name, manifest field, or separate state tree.
 
 Before writing any report or changing finding or approval status, read [`../revise-fiction/references/state-and-findings.md`](../revise-fiction/references/state-and-findings.md). Validate newly written reports and artifacts with the installed validator and preserve historical evidence.
 

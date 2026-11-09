@@ -42,8 +42,7 @@ async function fixture(t) {
   await writeFile(manifestPath, JSON.stringify(manifest, null, 2), "utf8");
   await mkdir(path.join(projectRoot, "state"), { recursive: true });
   const tracker = (await readTracker()).replaceAll("`reports/structure/2026-01-17_structure.md`", "`evidence/structure/old.md`");
-  const approvals = "## Approvals\n\n| Approval ID | Type | Operation | Scope ID | Paths | Status | Reason | Updated |\n|---|---|---|---|---|---|---|---|\n\n";
-  await writeFile(path.join(projectRoot, "state", "custom-tracker.md"), tracker.replace(/(?=## Open questions)/, approvals), "utf8");
+  await writeFile(path.join(projectRoot, "state", "custom-tracker.md"), tracker, "utf8");
   return { directory: projectRoot, manifest, manifestPath, report };
 }
 

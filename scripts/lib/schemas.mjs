@@ -15,8 +15,6 @@ function readSchema(name) {
 const findingV1Schema = readSchema("finding-schema.json");
 const findingV2Schema = readSchema("finding-schema-v2.json");
 const relativePathSchema = readSchema("relative-path-schema.json");
-const projectSchema = readSchema("project-schema.json");
-const projectV3Schema = readSchema("project-schema-v3.json");
 const projectV31Schema = readSchema("project-schema-v3.1.json");
 const reportSchema = readSchema("report-schema-v2.json");
 const storyStateSchema = readSchema("story-state-schema.json");
@@ -32,8 +30,6 @@ addFormats(ajv);
 ajv.addSchema(findingV1Schema, "finding-schema-v1.json");
 ajv.addSchema(findingV2Schema);
 ajv.addSchema(relativePathSchema);
-ajv.addSchema(projectSchema);
-ajv.addSchema(projectV3Schema);
 ajv.addSchema(projectV31Schema);
 ajv.addSchema(reportSchema);
 ajv.addSchema(storyStateSchema);
@@ -47,8 +43,6 @@ ajv.addSchema(readerStateSchema);
 const findingV1Validator = ajv.getSchema("finding-schema-v1.json");
 const findingV2Validator = ajv.getSchema("finding-schema-v2.json");
 const relativePathValidator = ajv.getSchema("relative-path-schema.json");
-const projectValidator = ajv.getSchema("project-schema.json");
-const projectV3Validator = ajv.getSchema("project-schema-v3.json");
 const projectV31Validator = ajv.getSchema("project-schema-v3.1.json");
 const reportValidator = ajv.getSchema("report-schema-v2.json");
 const storyStateValidator = ajv.getSchema("story-state-schema.json");
@@ -76,14 +70,6 @@ export function validateFindingV2(value) {
 }
 
 export function validateProjectSchema(value) {
-  return evaluate(projectValidator, value);
-}
-
-export function validateProjectV3Schema(value) {
-  return evaluate(projectV3Validator, value);
-}
-
-export function validateProjectV31Schema(value) {
   return evaluate(projectV31Validator, value);
 }
 
@@ -129,8 +115,6 @@ export function validateSchemaDefinitions() {
     ["finding-schema.json", findingV1Schema],
     ["finding-schema-v2.json", findingV2Schema],
     ["relative-path-schema.json", relativePathSchema],
-    ["project-schema.json", projectSchema],
-    ["project-schema-v3.json", projectV3Schema],
     ["project-schema-v3.1.json", projectV31Schema],
     ["report-schema-v2.json", reportSchema],
     ["story-state-schema.json", storyStateSchema],

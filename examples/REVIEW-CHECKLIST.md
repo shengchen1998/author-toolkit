@@ -2,8 +2,7 @@
 
 本清单用于真实运行技能, 不是自动测试的替代品. `fiction-revision-en` 与 `fiction-revision-zh`
 是同一原创故事的两个语言版本, 预置报告和会话记录全部是手写 fixture, 不得写成 "模型运行结果".
-其中旧 v2 manifest, 阶段状态快照和 override 样例只用于迁移及 legacy 兼容性验证, 不是 v3.1
-项目的操作模板. 只在副本上运行迁移, 不转换仓库内原始 examples. 共享自然语言使用
+其中预置状态只用于展示 v3.1 证据与恢复行为, 不是作者批准或模型运行证据. 共享自然语言使用
 [受控术语表](../references/terminology.md) 中的固定中文用语.
 
 ## 1. 评审准备与证据
@@ -20,12 +19,12 @@
 - [ ] 对 `write-fiction`, `revise-fiction`, `revise-draft`, `revise-increment` 和 `revise-request` 都先运行同一个 `setup-author-toolkit`; 确认 setup 不接受工作流或操作参数, 五个用户入口的登记和 `intake` 行为一致.
 - [ ] 确认共享契约直接从已安装 setup 技能的 `assets/references/` 读取, setup 不在写作项目中创建共享引用副本. 移除安装载荷中的必需文件后, 确认共享工作流报告工具包安装不完整并停止, 不尝试从项目内副本恢复.
 - [ ] 确认五个用户入口使用同一份中性 `.author-toolkit/project.json` (v3.1), 以及共享的 `audit-tracker.md`, `story-bible.md`, `reports/`, `sessions/`, `backups/` 和 `handoffs/`.
-- [ ] 检查 v3.1 manifest 只将 `current_scope` 与 `pending_action` 作为可选进度字段, 其余内容用于项目登记, 证据和路径; 不读取或手改 v2 阶段状态.
+- [ ] 检查 v3.1 manifest 只将 `current_scope` 与 `pending_action` 作为可选进度字段, 其余内容用于项目登记, 证据和路径; 不包含旧 `workflow` 阶段状态.
 - [ ] 确认 `paths.creation` 默认指向 `.author-toolkit/creation/`, 自定义路径也按 manifest 解析; `state/current.md`, `state/chapters/`, `state/volumes/`, `batches/` 和 `staging/` 位于该根目录下.
 - [ ] 确认创作根目录和 staging 被排除在正文清单外, 没有把故事状态, 创作批次或暂存稿统计为正文.
-- [ ] 确认没有策略专属目录或第二套状态. 在五个技能的稳定操作门禁之间切换后复用共享产物, 不执行迁移.
+- [ ] 确认没有策略专属目录或第二套状态. 在五个技能的稳定操作门禁之间切换后复用共享产物, 不重置共享状态.
 - [ ] 登记后核对稿件仍在原路径, 自定义产物路径仍有效; setup 和技能切换都不移动正文稿件, 报告或备份.
-- [ ] 对 v3.0 项目确认 3.1 工具仍可读取; 在创作写入前完成作者确认的增量 `upgrade-v31`, 并核对原有范围, 待处理操作, 发现项, 批准和备份未丢失.
+- [ ] 对非 v3.1 manifest 确认工具报告不支持并停止, 不自动转换或重写原文件.
 
 ## 3. `revise-fiction` 全书九项操作
 
@@ -117,7 +116,7 @@
 
 - [ ] 会话结束时在共享 `sessions/` 记录已完成工作, 作者决定, 未决问题, 当前范围, 待处理操作和停止点.
 - [ ] 开一个全新的宿主会话, 不依赖上一会话的聊天记忆. 先读持久文件, 再根据证据和依赖恢复下一操作.
-- [ ] 在 `write-fiction`, `revise-fiction`, `revise-draft`, `revise-increment` 和 `revise-request` 的稳定操作门禁之间逐对双向切换, 确认读取同一 manifest 和共享产物, 没有迁移, 目录分叉或自动恢复写入.
+- [ ] 在 `write-fiction`, `revise-fiction`, `revise-draft`, `revise-increment` 和 `revise-request` 的稳定操作门禁之间逐对双向切换, 确认读取同一 manifest 和共享产物, 没有共享状态重置, 目录分叉或自动恢复写入.
 - [ ] 在暂存稿存在时切换到修订入口再返回, 核对依赖指纹和当前项目状态; 可复用时重新复核, 依赖不匹配时重新规划, 不直接发布.
 - [ ] 切换后重新判断操作, 范围, 覆盖度和依赖; 可复用证据继续复用, 不匹配证据标为 `stale` 或要求新审计, 不清空历史记录.
 - [ ] 记录恢复过程中实际读了哪些文件, 以及待处理操作的依据, 而不是只记录 "已恢复上下文". 待处理操作本身不能作为发布许可.
@@ -139,22 +138,7 @@
 - [ ] 对 `revise-draft` 的 `current-scope-review`, 把完整结局, 全书节拍和完整弧线等不适用项记为 `skipped`; 不因无结局而给当前正文稿件判定全书失败.
 - [ ] 汇总三种视角的分歧, 交作者决定. 复核不能只检查 schema, 也不能把当前范围或里程碑结论表述为全书结论.
 
-## 11. v2/v3.0 迁移与 legacy 验证
-
-只在旧 fixture 的副本上执行本节. 旧阶段快照用于核对转换结果, 不用于指导 v3.1 日常操作.
-
-- [ ] 分别验证统一 `setup-author-toolkit` 路径和 `node <setup-skill-root>/scripts/migrate-v3.mjs --project-root <project-root>` 命令路径.
-- [ ] 对 v3.0 副本确认增量终态为 schema 3.1.0, 只新增 `paths.creation` 和创作目录骨架并更新版本字段; 原有正文稿件, 报告, 发现项, 批准, 范围, 待处理工作和备份保持不变.
-- [ ] 确认 v3.0 快照位于 `.author-toolkit/migrations/<stamp>-v3_0-v3_1/`; 对 v2 副本确认直达 v3.1, 快照仍位于 `.author-toolkit/migrations/<stamp>-v2-v3/`.
-- [ ] 对 v2 副本确认旧 stage 只保留为历史证据, 旧 current stage 转为 `awaiting_author` 待处理操作; v3.1 不延续 v2 阶段状态机.
-- [ ] 确认旧 override 转为共享 tracker 中的 `deferred` `LEGACY` 批准, 未被当成当前批准; 迁移生成的范围为 `proposed`, 含可复算 SHA-256, 并由作者确认后才使用.
-- [ ] 在无稿件 v2 副本上验证迁移失败且原 manifest 保持不变; 不通过手工修补 manifest 掩盖失败.
-- [ ] 对有效 v3.1 项目重复执行迁移, 确认幂等且 `snapshot: null`, 不重复转换或重复写入 legacy approvals.
-- [ ] 确认 report v2 和 finding v2 版本不变, 创作操作未加入报告 v2 `stage`; 新创作和复核产物使用各自独立契约.
-- [ ] 用旧 3.0 工具边界做兼容性说明: 3.1 工具可读取 v3.0, 旧工具可能拒绝 v3.1 或不理解创作契约; 不删除 `paths.creation` 或伪造版本号强行兼容.
-- [ ] 对 legacy v1 findings 和六个独立技能产物验证原有读取行为, 不把它们批量改写成 v2 或搬入新目录.
-
-## 12. 六个底层 skill 独立调用
+## 11. 六个底层 skill 独立调用
 
 每项都单独启动, 单独给输入, 单独保存结果. 不能用一个总控工作流或一次 `fiction-workshop`
 调用冒充其他技能已经运行. 确认 3.1 没有改变它们的名称, 触发方式, 停止点和独立行为.
@@ -168,7 +152,7 @@
 - [ ] **prose-mechanics**: 独立选择一种审计运行; 若需覆盖多种, 分次运行并分别生成发现项, 保持句子诊断在结构稳定之后.
 - [ ] **avoid-ai-writing**: 独立运行 Detect; 如评估 Rewrite, 另发明确请求并保留前后文本供作者审阅, 不把检测与改写合并成静默修改.
 
-## 13. 双宿主运行
+## 12. 双宿主运行
 
 - [ ] 在 **Claude Code** 的新会话中使用一份干净项目副本, 完成目标技能调用, 报告验证和恢复测试, 记录宿主版本与不支持的能力.
 - [ ] 在 **Kimi Code** 的新会话中对另一份干净副本执行相同任务, 同样记录证据; 不复用第一宿主的聊天上下文或生成结果.
@@ -177,7 +161,7 @@
 - [ ] 验证 16 个技能的安装与发现, 特别是 `write-fiction`, `revise-increment` 和 `revise-request` 的用户入口调用模式; 静态 frontmatter 检查不能替代真实宿主发现.
 - [ ] 任一宿主失败时保留失败报告和复现步骤; 另一宿主通过不能抵消该失败. 未实际运行的 3.1 宿主路径明确标为未验证.
 
-## 14. 人工写作质量与规模评价
+## 13. 人工写作质量与规模评价
 
 每次修订或创作批次前后都记录具体引文和理由, 可用 1-5 分帮助比较, 但分数没有自动通过阈值,
 也不设固定生成文本. 对未完当前正文稿件只评价已经存在的范围, 不补写假想结局后评分.

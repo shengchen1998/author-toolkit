@@ -25,9 +25,7 @@ import {
   validateStoryStateMarkdown,
   projectRootFromManifest,
   validateTracker,
-  validateWorkflowSequence,
 } from "./lib/index.mjs";
-import { V3_SCHEMA_VERSIONS } from "./lib/constants.mjs";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
 const examples = ["fiction-revision-en", "fiction-revision-zh"];
@@ -60,12 +58,12 @@ const artifactTypes = [
 function usage() {
   console.log(`Usage:
   node scripts/validate.mjs
-  node scripts/validate.mjs [--manifest FILE] [--report FILE] [--tracker FILE] [--workflow-fixture FILE]...
+  node scripts/validate.mjs [--manifest FILE] [--report FILE] [--tracker FILE]...
   node scripts/validate.mjs [--creation-batch FILE] [--creation-commit FILE]...
   node scripts/validate.mjs [--coverage-unit FILE] [--coverage-index FILE]...
   node scripts/validate.mjs [--review-job FILE] [--review-brief FILE --tracker FILE] [--reader-state FILE] [--story-state FILE]...
 
-With no options, all schemas, example manifests, reports, and workflow fixtures are checked.`);
+With no options, all schemas, example manifests, and reports are checked.`);
 }
 
 async function readJson(file) {
@@ -86,7 +84,6 @@ function parseArguments(args) {
   const selection = {
     manifests: [],
     reports: [],
-    workflowFixtures: [],
     trackers: [],
     ...Object.fromEntries(artifactTypes.map(({ key }) => [key, []])),
     help: false,
@@ -94,7 +91,6 @@ function parseArguments(args) {
   const destinations = {
     "--manifest": "manifests",
     "--report": "reports",
-    "--workflow-fixture": "workflowFixtures",
     "--tracker": "trackers",
     ...Object.fromEntries(artifactTypes.map(({ key, option }) => [option, key])),
   };
@@ -155,12 +151,6 @@ async function main() {
       const directory = path.join(root, "examples", example);
       selection.manifests.push(path.join(directory, ".author-toolkit", "project.json"));
       selection.reports.push(...(await markdownFiles(path.join(directory, "reports"))));
-      const sessions = await readdir(path.join(directory, "sessions"));
-      selection.workflowFixtures.push(
-        ...sessions
-          .filter((file) => file.endsWith(".fixture.json"))
-          .map((file) => path.join(directory, "sessions", file)),
-      );
     }
   }
 
@@ -172,18 +162,13 @@ async function main() {
 
       if (result.valid) {
         check(`${path.relative(root, file)}#files`, await validateProjectFiles(manifest, file));
-        if (V3_SCHEMA_VERSIONS.has(manifest.schema_version) && manifest.current_scope) {
+        if (manifest.current_scope) {
           check(`${path.relative(root, file)}#scope`, await validateScopeCurrency(manifest, file));
         }
         check(`${path.relative(root, file)}#tracker`, await validateTracker(manifest, file));
-      } else if (
-        !["2.0.0", "3.0.0", "3.1.0"].includes(manifest?.schema_version) ||
-        manifest?.project_type !== "fiction" ||
-        (manifest?.schema_version === "2.0.0" &&
-          manifest?.workflow?.name !== "revise-fiction")
-      ) {
+      } else if (manifest?.schema_version !== "3.1.0" || manifest?.project_type !== "fiction") {
         console.error(
-          "  legacy or standalone project detected; run setup-author-toolkit to register or migrate it before revision",
+          "  unsupported project detected; only v3.1 fiction manifests are supported",
         );
       }
     } catch (error) {
@@ -252,42 +237,6 @@ async function main() {
       }
     } catch (error) {
       check("finding identity", { valid: false, errors: [{ instancePath: "", message: error.message }] });
-    }
-  }
-
-  for (const file of selection.workflowFixtures) {
-    try {
-      const fixture = await readJson(file);
-      if (fixture.fixture !== true || !Array.isArray(fixture.snapshots) || !fixture.project) {
-        throw new Error("Workflow fixture requires fixture=true, project, and snapshots");
-      }
-      const base = await readJson(path.resolve(path.dirname(file), fixture.project));
-      const projects = fixture.snapshots.map((snapshot) => {
-        if (!snapshot.label || !snapshot.paths || !snapshot.workflow || !snapshot.updated_at) {
-          throw new Error(
-            "Every workflow snapshot requires label, paths, updated_at, and workflow",
-          );
-        }
-        return {
-          ...base,
-          paths: snapshot.paths,
-          updated_at: snapshot.updated_at,
-          workflow: snapshot.workflow,
-        };
-      });
-
-      projects.forEach((project, index) => {
-        check(
-          `${path.relative(root, file)}#${fixture.snapshots[index].label}`,
-          validateManifest(project),
-        );
-      });
-      check(`${path.relative(root, file)}#sequence`, validateWorkflowSequence(projects));
-    } catch (error) {
-      check(path.relative(root, file), {
-        valid: false,
-        errors: [{ instancePath: "", message: error.message }],
-      });
     }
   }
 

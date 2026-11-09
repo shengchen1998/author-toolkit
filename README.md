@@ -5,9 +5,6 @@ project evidence model, plus six independent writing skills for Claude Code and
 Kimi Code.
 
 [Chinese quick start](README.zh-CN.md) | [Controlled terminology](references/terminology.md) |
-[3.1 migration](docs/MIGRATION-3.1.md) |
-[3.0 migration history](docs/MIGRATION-3.0.md) |
-[2.0 migration history](docs/MIGRATION-2.0.md) |
 [Validation status](docs/VALIDATION.md)
 
 ## What is included
@@ -136,7 +133,7 @@ Add `-g` to install at user level instead:
 npx skills@latest add shengchen1998/author-toolkit -a claude-code -a kimi-code-cli -g
 ```
 
-The setup skill includes self-contained validation, migration, and finding-state CLIs under
+The setup skill includes self-contained validation, project-digest, and finding-state CLIs under
 `setup-author-toolkit/scripts/`. Shared workflows resolve that installed skill
 directory directly; no repository checkout or writing-project `npm install` is
 required.
@@ -177,7 +174,7 @@ A quick run looks like this:
    setup, it overwrites the project-root `AGENTS.md` with the installed template
    and replaces a regular `CLAUDE.md` or existing symlink with a relative
    `CLAUDE.md -> AGENTS.md` symlink. Custom content in these two files is not
-   preserved. Do not pass a workflow name or operation argument. After a toolkit update, existing v3
+   preserved. Do not pass a workflow name or operation argument. After a toolkit update, existing v3.1
    projects use the updated installed contracts without another deployment.
    Initial `author-project` read, validation, and status calls report missing
    installed contracts or scripts as an incomplete toolkit installation rather
@@ -345,8 +342,8 @@ The skill definitions contain the full gates and audit rules.
 ## Shared project files and evidence
 
 All five strategies use the same neutral `.author-toolkit/project.json` and
-artifact paths. New projects and migrated projects use schema 3.1.0; v3.0
-manifests remain readable and can receive the additive 3.1 upgrade.
+artifact paths. Only schema 3.1.0 is supported; other manifest versions are
+rejected and are not converted automatically.
 
 - `project.json` records project registration, artifact locations, and optional
   `current_scope` and `pending_action`. It has no `workflow.name`,
@@ -395,7 +392,7 @@ enter story state or manuscript scope.
 The manifest records the actual paths, including custom locations. Switching
 among `write-fiction`, `revise-fiction`, `revise-draft`, `revise-increment`, and
 `revise-request` at a stable operation gate reuses these artifacts and requires
-no second project tree or migration. It does not automatically resume a pending
+no second project tree or shared-state reset. It does not automatically resume a pending
 write.
 
 ### Evidence reuse and pending actions
@@ -469,18 +466,11 @@ Creation batches, commit journals, story state, coverage units and indexes,
 review jobs, and reader state use their own artifact contracts rather than
 masquerading as revision reports. The canonical project registration schema is
 `references/project-schema-v3.1.json`; it is mirrored with the other shared
-contracts in the installed setup skill. The v3.0 schema remains available for
-reading and upgrading existing projects.
+contracts in the installed setup skill. Existing reports are not automatically
+rewritten.
 
-Existing reports are not automatically rewritten. See
-[Migrating to 3.1](docs/MIGRATION-3.1.md). The
-[3.0 migration guide](docs/MIGRATION-3.0.md) and
-[2.0 migration guide](docs/MIGRATION-2.0.md) remain available as historical
-documentation.
-
-The shipped English and Chinese examples intentionally retain legacy v2
-manifests and workflow fixtures for compatibility testing. Do not migrate them
-in place merely to make them look current.
+The shipped English and Chinese examples use v3.1 manifests and retain
+handwritten reports and resume sessions as validation fixtures.
 
 ## Invoke an independent skill directly
 
@@ -520,7 +510,7 @@ implicitly restore a backup.
 ## Development
 
 The development package requires Node.js >= 22. The generic skills installer
-requires Node.js >= 22.20. After changing validation or migration
+requires Node.js >= 22.20. After changing validation
 implementation, regenerate the checked-in setup runtime mirror:
 
 ```bash
@@ -529,7 +519,7 @@ npm run sync:setup-runtime
 
 After installing dependencies, run the protocol tests and validation from the
 repository root. The deployment test checks that the mirror is current and runs
-both installed CLIs without external runtime packages:
+both installed validation and project-state CLIs without external runtime packages:
 
 ```bash
 npm test

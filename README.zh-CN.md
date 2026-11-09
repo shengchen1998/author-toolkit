@@ -57,7 +57,7 @@ npx skills@latest add shengchen1998/author-toolkit -a claude-code -a kimi-code-c
 npx skills@latest add shengchen1998/author-toolkit -a claude-code -a kimi-code-cli -g
 ```
 
-setup 技能在 `setup-author-toolkit/scripts/` 下提供自包含的校验、迁移和发现项状态 CLI, 包括运行依赖.
+setup 技能在 `setup-author-toolkit/scripts/` 下提供自包含的校验和发现项状态 CLI, 包括运行依赖.
 共享工作流直接解析该技能的安装目录, 无需仓库检出, 也无需在写作项目中运行 `npm install`.
 
 更新需要手动执行:
@@ -87,7 +87,7 @@ npx skills update
    共享契约保留在 setup 技能安装目录的 `assets/references/` 中并由运行时直接读取, 不部署到写作项目.
    每次 setup 都会用安装模板覆盖项目根目录的 `AGENTS.md`, 并将普通文件或已有符号链接
    `CLAUDE.md` 替换为指向 `AGENTS.md` 的相对符号链接; 这两个文件中的自定义内容不会保留.
-   不指定工作流或操作参数. 工具包更新后, 已有 v3 项目直接使用更新后的安装契约, 无需再次部署.
+   不指定工作流或操作参数. 工具包更新后, 已有 v3.1 项目直接使用更新后的安装契约, 无需再次部署.
    初始 `author-project` 读取, 校验和状态调用会将缺失的安装契约或脚本报告为工具包安装不完整,
    不依赖项目内的共享引用副本.
 3. setup 验证共享 manifest 后, 根据目标选择 `write-fiction`, `revise-fiction`,
@@ -200,8 +200,8 @@ AI, 作者和混合创作使用相同门禁. 每本书只保留一个活动创�
 
 ## 共享项目产物与证据
 
-五个策略共用中性的 `.author-toolkit/project.json` 和同一组登记路径. 新项目和迁移终态使用
-schema 3.1.0; v3.0 manifest 仍可读取, 并可进行增量 3.1 升级.
+五个策略共用中性的 `.author-toolkit/project.json` 和同一组登记路径. 仅支持 schema 3.1.0;
+其他 manifest 版本会被拒绝且不会被自动转换.
 
 - `project.json`: 项目登记, 产物路径, 以及可选的 `current_scope` 和 `pending_action`.
   不包含 `workflow.name`, `current_stage` 或 `stages`.
@@ -232,7 +232,7 @@ schema 3.1.0; v3.0 manifest 仍可读取, 并可进行增量 3.1 升级.
 
 实际路径以 manifest 登记为准, 包括自定义位置. 在稳定操作门禁处, 可在 `write-fiction`,
 `revise-fiction`, `revise-draft`, `revise-increment` 与 `revise-request` 之间切换并复用这些产物,
-无需第二套项目目录或迁移. 切换不会自动恢复待处理写入.
+无需第二套项目目录或共享状态重置. 切换不会自动恢复待处理写入.
 
 证据是否可以复用, 由 `operation`, `scope_id`, 输入版本, 覆盖度, 子检查和依赖共同判断.
 新范围需要作者确认. 输入或依赖变化时, 受影响证据标为 `stale`; 旧报告符合 schema 并不代表
@@ -271,15 +271,9 @@ hash 或故事状态.
 Finding v2 和 report v2 的版本保持不变, 创作操作不加入封闭的报告 v2 `stage` 枚举.
 共享工作流从已安装 setup 技能的 `assets/references/` 直接读取这些契约; 独立技能从各自技能目录读取 finding v1.
 创作批次, 提交日志, 故事状态, 覆盖单元和覆盖索引, 复核任务和读者状态使用独立产物契约.
-项目登记的源契约为 `references/project-schema-v3.1.json`, 它与其他共享契约一起镜像到已安装 setup 技能中;
-v3.0 schema 保留用于读取和升级旧项目.
+项目登记的源契约为 `references/project-schema-v3.1.json`, 它与其他共享契约一起镜像到已安装 setup 技能中.
 
-迁移说明见 [docs/MIGRATION-3.1.md](docs/MIGRATION-3.1.md). 历史说明保留在
-[docs/MIGRATION-3.0.md](docs/MIGRATION-3.0.md) 和
-[docs/MIGRATION-2.0.md](docs/MIGRATION-2.0.md).
-
-随仓库提供的中英文 examples 有意保留 legacy v2 manifests 和 workflow fixtures 用于兼容性测试,
-不要为了显得最新而原地迁移它们.
+随仓库提供的中英文 examples 使用 v3.1 manifests, 保留手写的报告和恢复会话作为校验 fixture.
 
 ## 恢复, 切换与返工
 
@@ -334,22 +328,22 @@ AI 关联发现只描述文本模式, 不能证明文本由 AI 生成.
 
 ## 验证状态
 
-3.1.0 工作树的仓库检查已通过: 139 项协议测试和 19 项默认校验, 详见
+3.1.0 工作树的仓库检查已通过: 144 项协议测试和 11 项默认校验, 详见
 [docs/VALIDATION.md](docs/VALIDATION.md). 通用本地源安装已发现全部 16 个技能, setup 共享载荷,
-自包含校验与迁移 CLI, 项目内 schema 和独立技能本地契约均已验证. Kimi Code 已完成有限范围的创作提交和双向切换验证;
+自包含校验 CLI, 项目内 schema 和独立技能本地契约均已验证. Kimi Code 已完成有限范围的创作提交和双向切换验证;
 完整宿主流程, `revise-increment` 与 `revise-request` 端到端运行和百万字稿件的创作质量仍未验证.
-3.0 和 2.0 的历史结果单独保留, 不能作为 3.1 已通过宿主或质量验证的证据.
+历史结果单独保留, 不能作为当前版本已通过宿主或质量验证的证据.
 
 ## 开发与产物校验
 
-开发包需要 Node.js >= 22, 通用技能安装器需要 Node.js >= 22.20. 修改校验或迁移实现后,
+开发包需要 Node.js >= 22, 通用技能安装器需要 Node.js >= 22.20. 修改校验实现后,
 重新生成纳入版本控制的 setup 运行镜像:
 
 ```bash
 npm run sync:setup-runtime
 ```
 
-安装依赖后在仓库根目录运行以下检查. 部署测试会核对镜像, 并在禁止加载外部运行包的环境中执行两个安装版 CLI:
+安装依赖后在仓库根目录运行以下检查. 部署测试会核对镜像, 并在禁止加载外部运行包的环境中执行安装版校验和项目状态 CLI:
 
 ```bash
 npm test

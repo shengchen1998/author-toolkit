@@ -66,8 +66,8 @@ async function main() {
 
   const projectRoot = projectRootFromManifest(selection.manifest);
   const manifest = JSON.parse(await readFile(selection.manifest, "utf8"));
-  if (!validateManifest(manifest).valid || !["3.0.0", "3.1.0"].includes(manifest.schema_version)) {
-    throw new Error("findings tools require a valid v3 project manifest");
+  if (!validateManifest(manifest).valid) {
+    throw new Error("findings tools require a valid v3.1 project manifest");
   }
   const trackerPath = path.resolve(projectRoot, manifest.paths.audit_tracker);
   const tracker = await readFile(trackerPath, "utf8");

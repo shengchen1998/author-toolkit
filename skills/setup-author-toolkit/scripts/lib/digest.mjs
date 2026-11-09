@@ -1,7 +1,6 @@
 import { readFile, readdir, rename, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-import { V3_SCHEMA_VERSIONS } from "./constants.mjs";
 import { validateManifest } from "./manifest.mjs";
 import { validateRelativePath } from "./schemas.mjs";
 import { splitTrackerRow, TRACKER_STATUSES } from "./tracker.mjs";
@@ -146,9 +145,9 @@ export async function generateProjectDigest(projectRoot) {
     throw new Error(`Cannot read manifest ${manifestPath}: ${error.message}`);
   }
   const validation = validateManifest(manifest);
-  if (!validation.valid || !V3_SCHEMA_VERSIONS.has(manifest.schema_version)) {
+  if (!validation.valid) {
     const details = validation.errors.map((error) => `${error.instancePath || "/"} ${error.message}`).join("; ");
-    throw new Error(`Cannot generate digest: manifest requires setup migration or validation. ${details}`);
+    throw new Error(`Cannot generate digest: invalid v3.1 manifest. ${details}`);
   }
   const tracker = await readFile(path.resolve(projectRoot, manifest.paths.audit_tracker), "utf8");
   const [latestReport, latestSession] = await Promise.all([

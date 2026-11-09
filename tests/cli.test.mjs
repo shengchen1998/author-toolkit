@@ -19,7 +19,7 @@ function runValidator(args = []) {
 test("the default CLI validates every shipped schema and example", () => {
   const result = runValidator();
   assert.equal(result.status, 0, result.stderr);
-  assert.match(result.stdout, /19 checks, 0 failures/);
+  assert.match(result.stdout, /11 checks, 0 failures/);
   assert.match(result.stdout, /fiction-revision-en\/reports\/structure/);
   assert.match(result.stdout, /fiction-revision-zh\/reports\/structure/);
 });
@@ -56,7 +56,7 @@ test("the CLI exits nonzero for an invalid manifest and invalid Markdown", async
   );
   const standalone = runValidator(["--manifest", standalonePath]);
   assert.equal(standalone.status, 1);
-  assert.match(standalone.stderr, /run setup-author-toolkit to register or migrate it/);
+  assert.match(standalone.stderr, /only v3\.1 fiction manifests are supported/);
 });
 
 test("the CLI enforces evidence semantics for current-draft operation reports", async (t) => {

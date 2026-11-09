@@ -8084,8 +8084,6 @@ function readSchema(name) {
 var findingV1Schema = readSchema("finding-schema.json");
 var findingV2Schema = readSchema("finding-schema-v2.json");
 var relativePathSchema = readSchema("relative-path-schema.json");
-var projectSchema = readSchema("project-schema.json");
-var projectV3Schema = readSchema("project-schema-v3.json");
 var projectV31Schema = readSchema("project-schema-v3.1.json");
 var reportSchema = readSchema("report-schema-v2.json");
 var storyStateSchema = readSchema("story-state-schema.json");
@@ -8100,8 +8098,6 @@ var ajv = new import__.default({ allErrors: true, strict: true });
 ajv.addSchema(findingV1Schema, "finding-schema-v1.json");
 ajv.addSchema(findingV2Schema);
 ajv.addSchema(relativePathSchema);
-ajv.addSchema(projectSchema);
-ajv.addSchema(projectV3Schema);
 ajv.addSchema(projectV31Schema);
 ajv.addSchema(reportSchema);
 ajv.addSchema(storyStateSchema);
@@ -8114,8 +8110,6 @@ ajv.addSchema(readerStateSchema);
 var findingV1Validator = ajv.getSchema("finding-schema-v1.json");
 var findingV2Validator = ajv.getSchema("finding-schema-v2.json");
 var relativePathValidator = ajv.getSchema("relative-path-schema.json");
-var projectValidator = ajv.getSchema("project-schema.json");
-var projectV3Validator = ajv.getSchema("project-schema-v3.json");
 var projectV31Validator = ajv.getSchema("project-schema-v3.1.json");
 var reportValidator = ajv.getSchema("report-schema-v2.json");
 var storyStateValidator = ajv.getSchema("story-state-schema.json");
@@ -8139,12 +8133,6 @@ function validateFindingV2(value) {
   return evaluate(findingV2Validator, value);
 }
 function validateProjectSchema(value) {
-  return evaluate(projectValidator, value);
-}
-function validateProjectV3Schema(value) {
-  return evaluate(projectV3Validator, value);
-}
-function validateProjectV31Schema(value) {
   return evaluate(projectV31Validator, value);
 }
 function validateReportEnvelope(value) {
@@ -8180,8 +8168,6 @@ function validateSchemaDefinitions() {
     ["finding-schema.json", findingV1Schema],
     ["finding-schema-v2.json", findingV2Schema],
     ["relative-path-schema.json", relativePathSchema],
-    ["project-schema.json", projectSchema],
-    ["project-schema-v3.json", projectV3Schema],
     ["project-schema-v3.1.json", projectV31Schema],
     ["report-schema-v2.json", reportSchema],
     ["story-state-schema.json", storyStateSchema],
@@ -8209,8 +8195,6 @@ export {
   validateFindingV1,
   validateFindingV2,
   validateProjectSchema,
-  validateProjectV31Schema,
-  validateProjectV3Schema,
   validateReaderStateSchema,
   validateRelativePath,
   validateReportEnvelope,

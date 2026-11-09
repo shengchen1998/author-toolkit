@@ -91,7 +91,7 @@ test("v2 rejects a synthetic line attached to chapter scope and malformed IDs", 
   assert.ok(result.errors.some((error) => error.instancePath === "/location/line"));
 });
 
-test("both example manifests satisfy the project schema and workflow invariants", async () => {
+test("both example manifests satisfy the v3.1 project schema", async () => {
   for (const language of ["en", "zh"]) {
     const result = validateManifest(await readManifest(language));
     assert.deepEqual(result.errors, []);
@@ -117,29 +117,6 @@ test("project paths reject absolute, parent, and home expansion forms", async (t
       assert.ok(result.errors.some((error) => error.instancePath === "/paths/reports"));
     });
   }
-});
-
-test("project validation rejects reordered and unknown stages", async () => {
-  const reordered = await readManifest();
-  [reordered.workflow.stages[2], reordered.workflow.stages[3]] = [
-    reordered.workflow.stages[3],
-    reordered.workflow.stages[2],
-  ];
-  assert.equal(validateProjectSchema(reordered).valid, false);
-  assert.equal(validateManifest(reordered).valid, false);
-
-  const unknown = await readManifest();
-  unknown.workflow.stages[2].name = "copyediting";
-  assert.equal(validateProjectSchema(unknown).valid, false);
-});
-
-test("a stale project stage requires a human-readable reason", async () => {
-  const manifest = await readManifest();
-  delete manifest.workflow.stages[3].reason;
-  const result = validateManifest(manifest);
-
-  assert.equal(result.valid, false);
-  assert.ok(result.errors.some((error) => error.instancePath.endsWith("/reason")));
 });
 
 test("both localized reports validate and cover the two engine names", async () => {
@@ -177,7 +154,7 @@ test("report envelopes reject additional fields and nested legacy findings", asy
   assert.equal(validateReportEnvelope(legacyFinding).valid, false);
 });
 
-test("revise-fiction requires six operational paths and a fiction-only manifest", async () => {
+test("v3.1 requires seven operational paths and a fiction-only manifest", async () => {
   const empty = await readManifest();
   empty.paths = {};
   const emptyResult = validateProjectSchema(empty);
@@ -188,7 +165,7 @@ test("revise-fiction requires six operational paths and a fiction-only manifest"
         .filter((error) => error.keyword === "required")
         .map((error) => error.params.missingProperty),
     ),
-    new Set(["story_bible", "audit_tracker", "reports", "sessions", "backups", "handoffs"]),
+    new Set(["story_bible", "audit_tracker", "reports", "sessions", "backups", "handoffs", "creation"]),
   );
 
   const missingBackups = await readManifest();

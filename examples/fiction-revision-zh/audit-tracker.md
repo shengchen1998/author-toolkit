@@ -2,13 +2,13 @@
 
 > **Fixture 说明：**预置观察和结构报告均为手写，描述有意保留的正文缺陷。任何条目都不是模型运行证据，也没有任何审计获得修改正文的作者授权。
 
-## Workflow
+## Project
 
 - Project root: `.`
 - Manifest created at: `2026-01-10T09:00:00Z`
-- Main workflow: `revise-fiction`
-- Current stage: `structure`
-- Next action: 先解决中点和高潮问题，再重跑下游阶段。
+- Current scope: `scope-example-revision`
+- Pending action: `structure` (`awaiting_author`)
+- Next action: 先解决中点和高潮问题，再继续修订。
 
 ## Findings
 
@@ -27,6 +27,13 @@ Allowed statuses: `open`, `resolved`, `deferred`, `dismissed`, `stale`.
 |---|---|---|---|---|---|---|
 | structure | 全部三章及所有 landmark 检查 | `reports/structure/2026-01-17_structure.md` | `scriptorium`, `degraded: true`, no execution | full | 2026-01-17T18:00:00Z | Handwritten fixture; schema validation only; no model run. |
 
+## Approvals
+
+Allowed statuses: `approved`, `deferred`, `cancelled`, `superseded`.
+
+| Approval ID | Type | Operation | Scope ID | Paths | Status | Reason | Updated |
+|---|---|---|---|---|---|---|---|
+
 ## Open questions
 
 以下 fixture leads 没有对应报告，不是正式 tracker findings:
@@ -44,7 +51,7 @@ Allowed statuses: `open`, `resolved`, `deferred`, `dismissed`, `stale`.
 
 ## 当前交接
 
-Fixture 状态表示在中点和高潮诊断后请求结构返工。应回到 `structure`, 不能因为句子问题容易发现就越过结构直接润色。结构选择获批后，重跑 `characters`, 重建 `revision-plan`, 再恢复章节和句子工作。manifest 与 `sessions/rework-resume.fixture.json` 展示下游产物如何变为 `stale`。
+Fixture 状态表示在中点和高潮诊断后请求结构返工。应回到 `structure`, 不能因为句子问题容易发现就越过结构直接润色。结构选择获批后，重跑 `characters`, 重建 `revision-plan`, 再恢复章节和句子工作。manifest 与会话记录标识待处理工作及需要重新验证的证据。
 
 ## 拒绝修改的边界
 

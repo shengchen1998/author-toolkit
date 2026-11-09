@@ -2,7 +2,7 @@
 
 Apply this vocabulary to shared creation and revision documentation, reports, trackers, templates, handoffs, and artifact contracts. It adapts the ASD-STE100 principles of one approved term for one meaning, explicit definitions, and consistent word forms. It does not claim ASD-STE100 certification for project prose.
 
-Independent skills keep their craft vocabularies. Register a craft term here before giving it a shared workflow meaning. Historical migration documents and legacy fixtures retain their historical wording; new instructions and artifacts use this vocabulary.
+Independent skills keep their craft vocabularies. Register a craft term here before giving it a shared workflow meaning. Preserve historical artifacts without rewriting them to retrofit current terminology; new instructions and artifacts use this vocabulary.
 
 ## Writing rules
 

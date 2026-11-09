@@ -6,13 +6,13 @@ For each shared-state operation, finish by refreshing the navigation cache as de
 
 ## Paths and manifest identity
 
-Resolve the project root before reading or writing. The canonical manifest is `.author-toolkit/project.json` beneath that root. Accept `schema_version: "3.0.0"` and `"3.1.0"`; both store project metadata, `manuscript_root`, shared `paths`, and optional `current_scope` and `pending_action`, with no `workflow`, `current_stage`, or `stages` properties. A v3.1 manifest also registers `paths.creation`, defaulting to `.author-toolkit/creation/`. Preserve a v3.0 project until the author confirms `upgrade-v31`; recognize v2 only for setup migration.
+Resolve the project root before reading or writing. The canonical manifest is `.author-toolkit/project.json` beneath that root. Accept only `schema_version: "3.1.0"`; it stores project metadata, `manuscript_root`, shared `paths`, and optional `current_scope` and `pending_action`, with no `workflow`, `current_stage`, or `stages` properties. A v3.1 manifest registers `paths.creation`, defaulting to `.author-toolkit/creation/`. Report other schema versions as unsupported and do not convert them.
 
 Keep stored paths relative to the project root and use forward slashes. Resolve them against the root when reading. Reject absolute paths, backslashes, URI schemes, home paths, and `..` segments. Resolve `paths.creation` by the same rules and exclude it from manuscript inventory. Shared runtime contracts remain in the installed setup skill's `assets/references/` directory. They are not project artifacts and have no manifest field. One manifest represents one book. A separate book needs its own project root and manifest.
 
 `write-fiction`, `revise-fiction`, `revise-draft`, `revise-increment`, and `revise-request` are author-invoked strategies over the same manifest, tracker, reports, sessions, backups, and handoffs. No strategy owns the shared project state. Do not create a strategy-specific subdirectory or a second tracker. At any stable operation gate, switching preserves current scope, evidence, decisions, staged drafts, and pending action; it never resumes writing automatically.
 
-Valid pending-action operation names are `intake`, `story-bible`, `draft-baseline`, `structure`, `characters`, `diagnostics`, `revision-plan`, `chapter-revision`, `prose`, `ai-cleanup`, `current-scope-review`, `final-review`, `creation-baseline`, `writing-plan`, `chapter-creation`, `chapter-review`, `creation-commit`, `creation-import`, and `milestone-review`. The legacy `STAGES` remains revision-only; do not add creation operations to it or to report v2 `stage`.
+Valid pending-action operation names are `intake`, `story-bible`, `draft-baseline`, `structure`, `characters`, `diagnostics`, `revision-plan`, `chapter-revision`, `prose`, `ai-cleanup`, `current-scope-review`, `final-review`, `creation-baseline`, `writing-plan`, `chapter-creation`, `chapter-review`, `creation-commit`, `creation-import`, and `milestone-review`. Creation operations remain outside report v2 `stage`.
 
 ## Shared scope and evidence
 
@@ -53,7 +53,7 @@ After the caller completes finding-identity reconciliation, record the complete 
 node <setup-skill-root>/scripts/findings.mjs record-findings --manifest <project-root>/.author-toolkit/project.json --report <report-path> [--report <report-path>...]
 ```
 
-The command accepts only valid v3 manifests and reports beneath the registered reports path. It validates every input and the complete result before writing the tracker through a verified temporary sibling and atomic rename. A duplicate report ID, conflicting identity, malformed tracker row, missing current report, or invalid result leaves the tracker unchanged. Argument errors exit 2; validation and filesystem failures exit 1.
+The command accepts only valid v3.1 manifests and reports beneath the registered reports path. It validates every input and the complete result before writing the tracker through a verified temporary sibling and atomic rename. A duplicate report ID, conflicting identity, malformed tracker row, missing current report, or invalid result leaves the tracker unchanged. Argument errors exit 2; validation and filesystem failures exit 1.
 
 A new finding enters as `open` with the report creation timestamp and `No author decision recorded.` An existing ID updates only its location and current report pointer after comparison with the tracker row's current report; preserve its status, author reason, and updated timestamp. Reimporting the same report does not append duplicate rows. Historical reports remain immutable: a changed rerun uses a new report file. The command does not perform semantic identity matching, reopen a decided finding, record author decisions, or refresh the review brief; the caller completes those steps and refreshes the navigation cache after the logical state operation.
 
@@ -62,17 +62,10 @@ For explicit report validation, `--report` may be repeated. `node <setup-skill-r
 ## Initialize
 
 1. For a new project, start with `../assets/project-template.json`. Replace sentinel timestamps with the current UTC timestamp and `und` with the detected or author-supplied BCP 47 language. Register supplied project metadata and paths, retaining template defaults for omitted paths, including `paths.creation`. Do not add a workflow, entry operation, or strategy owner.
-2. For an existing v3.0 or v3.1 manifest, validate and return it without resetting current scope, pending action, paths, artifacts, decisions, or external backup records.
-3. For an existing v2 manifest, preserve it and run `node <setup-skill-root>/scripts/migrate-v3.mjs --project-root <project-root>`. Retain the script's snapshot and migrate current scope, pending action, and legacy overrides directly to v3.1. Report the snapshot path and migration diagnostics. Validate the resulting v3.1 manifest. Never silently replace or reset a v2 project.
-4. Resolve `paths.backups` and create `<paths.backups>/index.json` from `../assets/backup-index-template.json` when absent. Keep backup records in this index rather than adding undeclared manifest properties.
+2. For an existing v3.1 manifest, validate and return it without resetting current scope, pending action, paths, artifacts, decisions, or external backup records. For any other schema version, report that it is unsupported and stop without changing it.
+3. Resolve `paths.backups` and create `<paths.backups>/index.json` from `../assets/backup-index-template.json` when absent. Keep backup records in this index rather than adding undeclared manifest properties.
 
 The caller creates directories and empty creative templates. Initialization does not populate manuscript or Story Bible creative content, establish an entry operation, or invoke a strategy.
-
-## Upgrade v3.1
-
-Use `upgrade-v31` only after the author confirms the additive upgrade for a valid v3.0 project. Add `paths.creation`, using the supplied safe project-relative path or `.author-toolkit/creation/`, change only `schema_version` to `"3.1.0"`, and update `updated_at`. Write the manifest atomically and validate it as v3.1. Preserve manuscripts, reports, findings, approvals, scopes, pending work, backups, and every other registered path. Existing creation artifacts remain untouched.
-
-For a valid v3.1 manifest, validate and return it without another write. For v2, return to setup migration instead of composing upgrades. Do not create manuscript files or mark creation evidence current during this upgrade.
 
 ## Read and validate
 
@@ -80,7 +73,7 @@ Before a shared workflow `read`, `validate`, or `status`, confirm that the insta
 
 Shared state readiness requires a valid manifest and the installed setup payload, not a project-local reference copy.
 
-For every read, parse JSON and check `schema_version`. Apply the installed v3 schema and operation rules for the declared v3.0 or v3.1 version, including required fields, additional-property restrictions, current scope, pending action, timestamps, safe relative paths, and creation registration. Use `<setup-skill-root>/assets/references/project-schema.json` only to recognize legacy v2 state before migration. Return v2 as requiring migration through setup; do not reinterpret it as v3.
+For every read, parse JSON and check `schema_version`. Apply `<setup-skill-root>/assets/references/project-schema-v3.1.json` and the operation rules for v3.1, including required fields, additional-property restrictions, current scope, pending action, timestamps, safe relative paths, and creation registration. Report every other schema version as unsupported; do not reinterpret or convert it.
 
 Run the self-contained installed validator:
 
@@ -88,7 +81,7 @@ Run the self-contained installed validator:
 node <setup-skill-root>/scripts/validate.mjs --manifest <manifest-path>
 ```
 
-Use the documented Node environment. The bundled CLI includes its runtime dependencies and needs no repository checkout or project `npm install`. If the required installed script is missing, report an incomplete toolkit installation and stop. Report the command, exit status, and diagnostics. For v3 with a current scope, the command also recomputes manuscript hashes and reports them under `#scope`. Treat a `scope-currency` diagnostic as changed input: mark dependent evidence stale and reconcile the scope with the author before relying on it or writing. Do not refresh hashes silently. Script validation is authoritative. On read or status, report validation failures, changed inputs, and missing registered paths without repairing them implicitly. A read returns the full parsed manifest plus the shared state view below; status returns that compact view.
+Use the documented Node environment. The bundled CLI includes its runtime dependencies and needs no repository checkout or project `npm install`. If the required installed script is missing, report an incomplete toolkit installation and stop. Report the command, exit status, and diagnostics. For a v3.1 project with a current scope, the command also recomputes manuscript hashes and reports them under `#scope`. Treat a `scope-currency` diagnostic as changed input: mark dependent evidence stale and reconcile the scope with the author before relying on it or writing. Do not refresh hashes silently. Script validation is authoritative. On read or status, report validation failures, changed inputs, and missing registered paths without repairing them implicitly. A read returns the full parsed manifest plus the shared state view below; status returns that compact view.
 
 ## Status
 
@@ -111,7 +104,7 @@ For `status --digest`, accept the project root and run:
 node <setup-skill-root>/scripts/project-digest.mjs --project-root <project-root>
 ```
 
-The CLI validates a v3.0 or v3.1 manifest before replacing anything. It writes the bounded navigation cache `<project-root>/PROJECT_STATE.md`, containing the current scope and a pointer to its hashes, pending action, finding counts, active plan, latest report and session, next action, and pointers to the authoritative files. It does not read the backup index, manuscript content, or full report content. An invalid manifest or failed generation preserves an existing cache; report the error instead of hand-writing a substitute.
+The CLI validates a v3.1 manifest before replacing anything. It writes the bounded navigation cache `<project-root>/PROJECT_STATE.md`, containing the current scope and a pointer to its hashes, pending action, finding counts, active plan, latest report and session, next action, and pointers to the authoritative files. It does not read the backup index, manuscript content, or full report content. An invalid manifest or failed generation preserves an existing cache; report the error instead of hand-writing a substitute.
 
 The cache is disposable and generated, never a third authority. The manifest, tracker, and current evidence remain authoritative. Once per logical shared-state operation or stopping point, after that operation's state writes, run `status --digest` through `author-project`; do not regenerate between individual commit-journal transitions. A refresh failure is reported without rolling back completed state or manuscript writes. Also refresh at the start of resume. The cache grants no approval and does not replace evidence validation, manuscript reading, or an operation gate.
 

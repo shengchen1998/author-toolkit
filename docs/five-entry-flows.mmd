@@ -82,8 +82,7 @@ flowchart TD
 
   subgraph WF["write-fiction｜增量创作"]
     direction LR
-    WF0([入口]) --> WFV["v3.0 创作写入前<br/>作者确认 upgrade-v31"]
-    WFV --> WFTYPE{"任务类型"}
+    WF0([入口]) --> WFTYPE{"任务类型"}
     WFTYPE -->|缺少基础| WF1["creation-baseline"]
     WFTYPE -->|外部稿件变化| WF2["creation-import"]
     WFTYPE -->|卷 / 故事阶段| WF3["milestone-review"]
@@ -111,7 +110,7 @@ flowchart TD
   classDef note fill:#FAFAFA,stroke:#90A4AE,color:#37474F,stroke-dasharray:4 3;
 
   class START,RF0,RD0,RI0,RR0,WF0 startEnd;
-  class SETUP,REFS,READ,STATE,GATES,WAIT,RDN,RISTATE,RIRESUME,RIV,RIBASE,RISTOP,RDC,RIC,RRV,RRBASE,RRISTOP,RRDSTOP,RRC,WFV,WFTYPE,WFA,WFR,WF8 control;
+  class SETUP,REFS,READ,STATE,GATES,WAIT,RDN,RISTATE,RIRESUME,RIV,RIBASE,RISTOP,RDC,RIC,RRV,RRBASE,RRISTOP,RRDSTOP,RRC,WFTYPE,WFA,WFR,WF8 control;
   class RF1,RF4,RF5,RF6,RF7,RF8,RD1,RD4,RD5,RD6,RD7,RD8,RI2,RI5,RI6,RI7,RI8,RI9,RR2,RR4,RR5,RR6 shared;
   class RD2,RD3,RD9,RI3,RI4,RI10,RR3,RR7 draftShared;
   class RF2,RF3,RF9,RI1,RR1,WF1,WF2,WF3,WF4,WF5,WF6,WF7 unique;
