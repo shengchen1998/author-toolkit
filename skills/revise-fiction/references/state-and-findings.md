@@ -27,7 +27,7 @@ Historical reports are immutable. Author decisions, stale marks, later locations
 
 ## Finding identity across reruns
 
-Read the latest prior reports for the same operation, audit, and scope before assigning IDs. Reuse an existing ID for the same underlying issue. Match by upstream stable ID, then by the same audit, technique, file, normalized quotation and issue, then by clearly overlapping location after nearby text changed. Allocate a fresh ID for a different issue and link any possible predecessor in tracker notes.
+Read the latest prior reports for the same operation, audit, and scope before assigning IDs. Reuse an existing ID for the same underlying issue. Match by upstream stable ID, then by the same audit, technique, file, normalized quotation and issue, then by clearly overlapping location after nearby text changed. Allocate a fresh ID for a different issue and link any possible predecessor in tracker notes. Before dispatching new findings, invoke `author-project` with `next-finding-id` for the complete planned batch and supply its returned ID block to the callee; do not restart each reviewer or chunk at `001` or use fixed review-pass number blocks.
 
 A finding absent from an equivalent complete rerun becomes `stale`, not `resolved`, unless the author confirmed and the new text verifies the fix. New findings enter as `open`.
 
@@ -59,6 +59,8 @@ Match each new review observation using the Finding identity rules above before 
 Reopen the finding as `open` only when the relevant quoted passage or location, a fact or dependency on which the decision relied, or the underlying issue has materially changed. Name that concrete change and the prior decision when asking for a new decision. A genuinely different issue receives a new ID. Reviewers, including the fresh reader, do not receive this brief; decision reconciliation happens after their independent observations are returned.
 
 ## Living tracker
+
+After reconciling new observations with prior findings and decisions, invoke `author-project` with `record-findings` and the complete report set to batch upsert finding rows through the installed CLI. Do not hand-write batches of tracker rows. New IDs enter as `open`; a reused ID retains its status, author reason, and updated timestamp while its location and current report pointer change. Preserve historical reports and refresh the review brief when applicable. The CLI rejects duplicate report IDs and conflicting identities but does not replace semantic identity reconciliation.
 
 Use only these finding statuses:
 

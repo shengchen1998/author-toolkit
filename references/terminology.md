@@ -64,6 +64,8 @@ Independent skills keep their craft vocabularies. Register a craft term here bef
 | `reader-state` | 读者状态 | Noun | The fresh reader's isolated resumable reading state. It is not a summary shared with another perspective. | |
 | `fresh reader` | 新读者 | Noun | The sequential review perspective that reads actual manuscript text through one logical reviewer and only that reviewer's reader-state. | |
 | `finding` | 发现项 | Noun | A stable, located observation with a recommendation. Finding status lives in the tracker, not in finding v2. | |
+| `finding ID allocation` | 发现项 ID 分配 | Noun | The selection of an unused consecutive ID block after all tracker and report-history occupancy for one prefix. It is not a persisted cross-process reservation or permission to reuse an ID for a different issue. | `fixed review-pass block` |
+| `finding batch upsert` | 发现项批量更新 | Noun | The validated atomic insertion or update of tracker finding rows from immutable reports. New findings enter as `open`; existing author decisions and timestamps remain unchanged. It does not replace finding identity reconciliation or an author decision. | `tracker append` |
 | `author decision` | 作者决定 | Noun | An explicit author choice recorded for one active item. A model recommendation is not an author decision. | |
 | `author decision loop` | 作者决定循环 | Noun | The procedure that presents one active decision, records its explicit outcome, and then advances to the next decision. | |
 | `context-fit check` | 上下文适配检查 | Noun | The editorial judgment applied to exact edit candidates against local continuity, history, repetition, voice, request intent, and narrative dependencies before proposal presentation. It neither approves an edit nor expands its scope or coverage. | `context-fit checklist` |

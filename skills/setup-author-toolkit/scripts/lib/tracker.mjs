@@ -30,7 +30,14 @@ function trackerError(instancePath, message) {
 }
 
 function cleanCell(value = "") {
-  return value.trim().replace(/^`([^`]*)`$/, "$1").trim();
+  const trimmed = value.trim();
+  const delimiter = trimmed.match(/^`+/)?.[0];
+  if (delimiter && trimmed.endsWith(delimiter) && trimmed.length >= delimiter.length * 2) {
+    let text = trimmed.slice(delimiter.length, -delimiter.length);
+    if (delimiter.length > 1 && text.startsWith(" ") && text.endsWith(" ")) text = text.slice(1, -1);
+    return text.trim();
+  }
+  return trimmed;
 }
 
 export function splitTrackerRow(line) {
@@ -40,14 +47,24 @@ export function splitTrackerRow(line) {
   const cells = [];
   let value = "";
   let escaped = false;
-  for (const character of trimmed.slice(1, -1)) {
+  let codeDelimiter = null;
+  for (let index = 1; index < trimmed.length - 1; index += 1) {
+    const character = trimmed[index];
     if (escaped) {
       value += character;
       escaped = false;
     } else if (character === "\\") {
       escaped = true;
       value += character;
-    } else if (character === "|") {
+    } else if (character === "`") {
+      let end = index + 1;
+      while (trimmed[end] === "`") end += 1;
+      const delimiter = trimmed.slice(index, end);
+      if (codeDelimiter === null) codeDelimiter = delimiter;
+      else if (codeDelimiter === delimiter) codeDelimiter = null;
+      value += delimiter;
+      index = end - 1;
+    } else if (character === "|" && codeDelimiter === null) {
       cells.push(value.trim());
       value = "";
     } else {
@@ -111,6 +128,56 @@ export function trackerDecisions(markdown) {
 function reportCell(value) {
   const link = value.match(/\[[^\]]+\]\(([^)]+)\)/);
   return cleanCell(link?.[1] ?? value);
+}
+
+export function trackerFindingRows(markdown) {
+  const section = findingsSection(markdown);
+  if (section.error !== undefined) return [];
+  const rows = [];
+  for (let index = 0; index < section.lines.length - 1; index += 1) {
+    const header = splitTrackerRow(section.lines[index]);
+    const separator = splitTrackerRow(section.lines[index + 1]);
+    if (!header || !isSeparator(separator)) continue;
+    const columns = Object.fromEntries(
+      Object.entries(COLUMN_ALIASES).map(([name, aliases]) => [
+        name,
+        header.map(normalizeHeader).findIndex((column) => aliases.includes(column)),
+      ]),
+    );
+    if (Object.values(columns).some((column) => column < 0)) continue;
+    for (const line of section.lines.slice(index + 2)) {
+      const row = splitTrackerRow(line);
+      if (!row) break;
+      if (row.length !== Object.keys(columns).length) continue;
+      rows.push(Object.fromEntries(
+        Object.entries(columns).map(([name, column]) => [name, cleanCell(row[column])]),
+      ));
+    }
+    break;
+  }
+  return rows;
+}
+
+export function validateTrackerFindingIds(markdown) {
+  const errors = [];
+  const section = findingsSection(markdown);
+  if (section.error !== undefined) {
+    return { valid: false, errors: [trackerError("/Findings", "expected exactly one ## Findings heading")] };
+  }
+  const ids = new Set();
+  for (const [rowIndex, line] of section.lines.entries()) {
+    const row = splitTrackerRow(line);
+    if (!row || row.length === 0) continue;
+    const id = cleanCell(row[0]);
+    if (normalizeHeader(row[0]) === "finding id" || isSeparator(row)) continue;
+    if (row.length !== 8 || !/^[A-Z][A-Z0-9]*-[0-9]{3,}$/.test(id)) {
+      errors.push(trackerError(`/Findings/${rowIndex}/id`, "invalid finding row or ID"));
+    } else if (ids.has(id)) {
+      errors.push(trackerError(`/Findings/${rowIndex}/id`, `duplicate finding ID: ${id}`));
+    }
+    ids.add(id);
+  }
+  return { valid: errors.length === 0, errors };
 }
 
 export async function validateTrackerMarkdown(markdown, projectRoot) {

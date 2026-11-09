@@ -39,6 +39,26 @@ Approval statuses are `approved`, `deferred`, `cancelled`, and `superseded`. Rec
 
 A diagnostic proposes changes but does not create an approval. Creation acceptance records manuscript and resulting-scope approvals separately. A restore always needs a separate approval ID. Backup, commit, and restoration records cite the applicable approval, scope, and input hashes.
 
+Before assigning IDs to different issues, allocate one consecutive block for the complete planned report or review-unit batch:
+
+```bash
+node <setup-skill-root>/scripts/findings.mjs next-finding-id STANDARD --manifest <project-root>/.author-toolkit/project.json --count 35
+```
+
+The JSON `ids` result starts after the highest occupied number for that prefix across tracker findings and every readable report-v2 envelope beneath the registered reports path, including stale reports and nonnumeric gaps. Pass the exact allocated block to the reviewer or callee; an isolated reviewer must not choose its own starting number. Allocation reads state and does not reserve IDs across concurrent processes, so assign the whole block before dispatch and reconcile conflicts when recording findings. Do not use fixed 1xx/2xx review-pass blocks.
+
+After the caller completes finding-identity reconciliation, record the complete new report set through the installed CLI rather than manually inserting tracker rows:
+
+```bash
+node <setup-skill-root>/scripts/findings.mjs record-findings --manifest <project-root>/.author-toolkit/project.json --report <report-path> [--report <report-path>...]
+```
+
+The command accepts only valid v3 manifests and reports beneath the registered reports path. It validates every input and the complete result before writing the tracker through a verified temporary sibling and atomic rename. A duplicate report ID, conflicting identity, malformed tracker row, missing current report, or invalid result leaves the tracker unchanged. Argument errors exit 2; validation and filesystem failures exit 1.
+
+A new finding enters as `open` with the report creation timestamp and `No author decision recorded.` An existing ID updates only its location and current report pointer after comparison with the tracker row's current report; preserve its status, author reason, and updated timestamp. Reimporting the same report does not append duplicate rows. Historical reports remain immutable: a changed rerun uses a new report file. The command does not perform semantic identity matching, reopen a decided finding, record author decisions, or refresh the review brief; the caller completes those steps and refreshes the navigation cache after the logical state operation.
+
+For explicit report validation, `--report` may be repeated. `node <setup-skill-root>/scripts/validate.mjs --report <path>...` checks report-internal duplicate IDs and conflicting identities within the supplied set. Add `--tracker <path>` to compare tracker stage and audit identity; use exactly one `--manifest <path>` with reports from that project to load its tracker and historical report identities. Independent project reports must not be compared as one batch.
+
 ## Initialize
 
 1. For a new project, start with `../assets/project-template.json`. Replace sentinel timestamps with the current UTC timestamp and `und` with the detected or author-supplied BCP 47 language. Register supplied project metadata and paths, retaining template defaults for omitted paths, including `paths.creation`. Do not add a workflow, entry operation, or strategy owner.

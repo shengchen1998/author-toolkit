@@ -21,6 +21,8 @@ Accept one operation per invocation:
 | `validate` | Project root or manifest path | Run the installed project schema validator and report diagnostics |
 | `status` | Project root or manifest path | Return current scope, pending action, shared stale or blocked evidence, approvals, and next action |
 | `status --digest` | Project root | Generate the bounded `PROJECT_STATE.md` navigation cache and return its path |
+| `next-finding-id` | Uppercase audit prefix and positive batch count | Return an unused consecutive ID block after all tracker and immutable-report history |
+| `record-findings` | Project root and one or more immutable report paths beneath the registered reports path | Validate and atomically insert or update finding rows while preserving author decisions |
 | `set-pending` | Operation, status, scope ID, reason, and artifacts | Write the requested pending action without stage progression |
 | `record-scope` | Scope ID, description, ordered files with SHA-256 hashes, excluded files, and `proposed` or `confirmed` status | Record the current scope after the required author confirmation |
 | `record-backup` | Operation, scope ID, approval ID, affected files and actions, and backup ID | Back up existing files and record expected absence for create targets |

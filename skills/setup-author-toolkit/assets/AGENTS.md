@@ -64,6 +64,8 @@ Standalone skill runs leave shared project state unchanged. Incorporate their ou
 
 Before writing a shared report or changing finding or approval status, read the active strategy's pointers to `state-and-findings.md` and `<setup-skill-root>/assets/references/workflow-reporting.md`. Shared diagnostic and review work uses finding v2 and immutable report v2 files; reruns create new reports. Creation operations and report v2 `stage` remain distinct. Standalone skills retain their own skill-local reporting contracts.
 
+Use `author-project next-finding-id` to allocate a complete unused ID block before dispatching new findings, and `record-findings` to batch upsert validated reports into the tracker. Do not manually append finding rows or restart each reviewer at `001`. Preserve prior finding identities and existing author decisions; neither operation grants an approval or replaces semantic reconciliation.
+
 Record actual operation, scope, input, language, and subcheck coverage. Label partial or skipped checks with their reasons. Keep the coverage index beneath registered `paths.reports`. In `revise-draft`, `revise-increment`, `revise-request`, and shared creation, unknown future plot and an unwritten ending remain baseline unknowns unless they cause a concrete problem in existing text.
 
 At each stop, update pending state, the living tracker, and a session note as directed by the active skill, then follow `author-project`'s navigation-cache contract. For a session transfer or context-exhausted stop, use `author-handoff` after shared state is current; handoffs contain paths, IDs, approved decision summaries, and next actions rather than manuscript, story-state, or baseline excerpts. Fresh-reader state remains independent and is transferred only by path.

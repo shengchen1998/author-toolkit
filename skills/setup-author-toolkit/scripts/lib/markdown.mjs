@@ -1,4 +1,5 @@
 import { validateReportEnvelope } from "./schemas.mjs";
+import { validateFindingIdentity } from "./finding-identity.mjs";
 
 export class ReportEnvelopeError extends Error {
   constructor(message) {
@@ -110,7 +111,10 @@ export function validateMarkdownReport(markdown) {
   }
 
   const result = validateReportEnvelope(envelope);
-  const errors = [...result.errors];
+  const errors = [
+    ...result.errors,
+    ...(result.valid ? validateFindingIdentity(envelope).errors : []),
+  ];
   const coverageHeadings = languageCoverageHeadingCount(markdown);
   if (coverageHeadings !== 1) {
     errors.push({

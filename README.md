@@ -36,7 +36,7 @@ These skills support the user entries. They are not separate user workflows.
 
 | Skill | Purpose |
 | --- | --- |
-| `author-project` | Read and update project registration, neutral evidence, current scope, pending actions, artifact paths, backups, and restores. |
+| `author-project` | Read and update project registration, neutral evidence, current scope, pending actions, artifact paths, finding ID allocation and batch upsert, backups, and restores. |
 | `author-handoff` | Preserve session context and support resume, rework, and switching between creation and revision user entries. |
 | `author-review` | Run independent intent, craft, and fresh-reader reviews without editing the manuscript, including resumable chunked review for large books. |
 
@@ -136,7 +136,7 @@ Add `-g` to install at user level instead:
 npx skills@latest add shengchen1998/author-toolkit -a claude-code -a kimi-code-cli -g
 ```
 
-The setup skill includes self-contained validation and migration CLIs under
+The setup skill includes self-contained validation, migration, and finding-state CLIs under
 `setup-author-toolkit/scripts/`. Shared workflows resolve that installed skill
 directory directly; no repository checkout or writing-project `npm install` is
 required.
@@ -357,7 +357,10 @@ manifests remain readable and can receive the additive 3.1 upgrade.
   observed story facts; neither source silently overwrites the other when they
   conflict.
 - `audit-tracker.md` records stable finding IDs, statuses, author decisions,
-  shared approvals, and report pointers.
+  shared approvals, and report pointers. `author-project next-finding-id` supplies
+  unused consecutive ID blocks from tracker and report history. `record-findings`
+  validates and atomically upserts complete report batches, preserving existing
+  author decisions and timestamps rather than manually appending Markdown rows.
 - `PROJECT_STATE.md` is a generated navigation cache. Invoke `author-project`
   with `status --digest` to regenerate it after shared-state writes and at
   resume. It points to the current scope and hashes, pending action, finding

@@ -79,7 +79,7 @@ test("setup carries self-contained validation and migration CLIs", async (t) => 
   );
 
   const nodeArgs = ["--no-warnings", "--experimental-loader", loader, "--require", preload];
-  for (const script of ["validate.mjs", "migrate-v3.mjs", "project-digest.mjs"]) {
+  for (const script of ["validate.mjs", "migrate-v3.mjs", "project-digest.mjs", "findings.mjs"]) {
     const result = spawnSync(
       process.execPath,
       [...nodeArgs, path.join(installedSetup, "scripts", script), "--help"],
@@ -127,6 +127,23 @@ test("setup carries self-contained validation and migration CLIs", async (t) => 
   );
   assert.equal(migratedValidation.status, 0, migratedValidation.stderr);
   assert.match(migratedValidation.stdout, /4 checks, 0 failures/);
+
+  const allocation = spawnSync(
+    process.execPath,
+    [
+      ...nodeArgs,
+      path.join(installedSetup, "scripts", "findings.mjs"),
+      "next-finding-id",
+      "STRUCT",
+      "--manifest",
+      path.join(project, ".author-toolkit", "project.json"),
+      "--count",
+      "2",
+    ],
+    { encoding: "utf8" },
+  );
+  assert.equal(allocation.status, 0, allocation.stderr);
+  assert.deepEqual(JSON.parse(allocation.stdout).ids, ["STRUCT-005", "STRUCT-006"]);
 
   const digest = spawnSync(
     process.execPath,

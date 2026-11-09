@@ -19,8 +19,11 @@ import {
   validateReviewBrief,
   validateSchemaDefinitions,
   validateScopeCurrency,
+  reportFindingIdentities,
+  validateFindingBatch,
   validateStoryState,
   validateStoryStateMarkdown,
+  projectRootFromManifest,
   validateTracker,
   validateWorkflowSequence,
 } from "./lib/index.mjs";
@@ -57,7 +60,7 @@ const artifactTypes = [
 function usage() {
   console.log(`Usage:
   node scripts/validate.mjs
-  node scripts/validate.mjs [--manifest FILE] [--report FILE] [--workflow-fixture FILE]...
+  node scripts/validate.mjs [--manifest FILE] [--report FILE] [--tracker FILE] [--workflow-fixture FILE]...
   node scripts/validate.mjs [--creation-batch FILE] [--creation-commit FILE]...
   node scripts/validate.mjs [--coverage-unit FILE] [--coverage-index FILE]...
   node scripts/validate.mjs [--review-job FILE] [--review-brief FILE --tracker FILE] [--reader-state FILE] [--story-state FILE]...
@@ -121,9 +124,9 @@ async function main() {
   if (
     selection.trackers.length > 1 ||
     (selection.reviewBriefs.length > 0 && selection.trackers.length !== 1) ||
-    (selection.reviewBriefs.length === 0 && selection.trackers.length > 0)
+    (selection.reviewBriefs.length === 0 && selection.reports.length === 0 && selection.trackers.length > 0)
   ) {
-    throw new Error("--review-brief requires exactly one --tracker FILE");
+    throw new Error("--tracker requires --review-brief or --report");
   }
 
   const useDefaults = Object.entries(selection).every(
@@ -191,6 +194,7 @@ async function main() {
     }
   }
 
+  const reportInputs = [];
   for (const file of selection.reports) {
     try {
       const markdown = await readFile(file, "utf8");
@@ -199,11 +203,55 @@ async function main() {
         parsed.envelope?.stage,
       );
       check(path.relative(root, file), needsEvidence ? validateEvidenceReport(markdown) : parsed);
+      if (parsed.envelope) reportInputs.push({ path: file, envelope: parsed.envelope });
     } catch (error) {
       check(path.relative(root, file), {
         valid: false,
         errors: [{ instancePath: "", message: error.message }],
       });
+    }
+  }
+
+  if (!useDefaults && reportInputs.length > 0 && (reportInputs.length > 1 || selection.manifests.length > 0 || selection.trackers.length > 0)) {
+    const identityReports = selection.manifests.length === 1
+      ? reportInputs.filter((report) => {
+        const relative = path.relative(projectRootFromManifest(selection.manifests[0]), report.path);
+        return relative && !relative.startsWith(`..${path.sep}`) && relative !== ".." && !path.isAbsolute(relative);
+      })
+      : reportInputs;
+    if (identityReports.length !== reportInputs.length || (!useDefaults && selection.manifests.length > 1 && selection.reports.length > 0)) {
+      throw new Error("finding identity checks require reports from exactly one selected manifest project");
+    }
+    try {
+      let tracker = "";
+      if (selection.trackers.length === 1) {
+        tracker = await readFile(selection.trackers[0], "utf8");
+      } else if (selection.manifests.length === 1) {
+        const manifestFile = selection.manifests[0];
+        const manifest = await readJson(manifestFile);
+        const projectRoot = projectRootFromManifest(manifestFile);
+        tracker = await readFile(path.resolve(projectRoot, manifest.paths.audit_tracker), "utf8");
+      }
+      const history = [];
+      if (selection.manifests.length === 1) {
+        const manifestFile = selection.manifests[0];
+        const manifest = await readJson(manifestFile);
+        const projectRoot = projectRootFromManifest(manifestFile);
+        history.push(...await reportFindingIdentities(projectRoot, manifest.paths.reports));
+        for (const report of reportInputs) {
+          report.path = path.relative(projectRoot, report.path).replaceAll(path.sep, "/");
+        }
+      }
+      const result = validateFindingBatch(identityReports, tracker, history);
+      for (const file of selection.reports) {
+        const reportPath = selection.manifests.length === 1
+          ? path.relative(projectRootFromManifest(selection.manifests[0]), file).replaceAll(path.sep, "/")
+          : file;
+        const errors = result.errors.filter((error) => error.report === reportPath);
+        check(`${path.relative(root, file)}#finding-identity`, { valid: errors.length === 0, errors });
+      }
+    } catch (error) {
+      check("finding identity", { valid: false, errors: [{ instancePath: "", message: error.message }] });
     }
   }
 

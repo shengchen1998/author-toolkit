@@ -57,7 +57,7 @@ npx skills@latest add shengchen1998/author-toolkit -a claude-code -a kimi-code-c
 npx skills@latest add shengchen1998/author-toolkit -a claude-code -a kimi-code-cli -g
 ```
 
-setup 技能在 `setup-author-toolkit/scripts/` 下提供自包含的校验和迁移 CLI, 包括运行依赖.
+setup 技能在 `setup-author-toolkit/scripts/` 下提供自包含的校验、迁移和发现项状态 CLI, 包括运行依赖.
 共享工作流直接解析该技能的安装目录, 无需仓库检出, 也无需在写作项目中运行 `npm install`.
 
 更新需要手动执行:
@@ -208,6 +208,9 @@ schema 3.1.0; v3.0 manifest 仍可读取, 并可进行增量 3.1 升级.
   没有 manifest 字段, 也不复制到写作项目.
 - `story-bible.md`: 记录作者意图. 已验收正文建立观察事实; 两者冲突时不能静默覆盖任一来源.
 - `audit-tracker.md`: 稳定的发现项 ID, 状态, 作者决定, 共享批准记录和报告指针.
+  `author-project next-finding-id` 根据 tracker 和报告历史分配未占用的连续 ID 区段;
+  `record-findings` 校验并以原子方式批量更新报告对应的发现项行, 保留已有作者决定和时间戳,
+  不再手工追加 Markdown 行.
 - `PROJECT_STATE.md`: 生成的导航缓存. 调用 `author-project` 的 `status --digest`, 在共享状态写入后及恢复时重新生成.
   它指向当前范围及哈希, 待处理操作, 发现项计数, 当前计划, 最新会话与报告和下一操作.
   manifest, tracker 和当前证据仍是权威来源; 缓存不提供批准, 也不替代证据读取, 且不读取备份索引.

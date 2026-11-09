@@ -1,5 +1,12 @@
 export { ACTIVE_STATUSES, STAGES } from "./constants.mjs";
 export {
+  readReportFindings,
+  reportFindingIdentities,
+  upsertTrackerFindings,
+  validateFindingBatch,
+} from "./findings.mjs";
+export { allocateFindingIds, validateFindingIdentity } from "./finding-identity.mjs";
+export {
   canReuseCoverageUnit,
   validateCoverageIndex,
   validateCreationBatch,
@@ -23,9 +30,11 @@ export {
 export {
   APPROVAL_STATUSES,
   TRACKER_STATUSES,
+  trackerFindingRows,
   trackerDecisions,
   validateApprovalsMarkdown,
   validateTracker,
+  validateTrackerFindingIds,
   validateTrackerMarkdown,
   validateTrackerV3Markdown,
 } from "./tracker.mjs";
