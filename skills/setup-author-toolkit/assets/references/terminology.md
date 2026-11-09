@@ -66,6 +66,7 @@ Independent skills keep their craft vocabularies. Register a craft term here bef
 | `finding` | 发现项 | Noun | A stable, located observation with a recommendation. Finding status lives in the tracker, not in finding v2. | |
 | `author decision` | 作者决定 | Noun | An explicit author choice recorded for one active item. A model recommendation is not an author decision. | |
 | `author decision loop` | 作者决定循环 | Noun | The procedure that presents one active decision, records its explicit outcome, and then advances to the next decision. | |
+| `context-fit check` | 上下文适配检查 | Noun | The editorial judgment applied to exact edit candidates against local continuity, history, repetition, voice, request intent, and narrative dependencies before proposal presentation. It neither approves an edit nor expands its scope or coverage. | `context-fit checklist` |
 | `confirmation` | 确认 | Noun | An author decision for a scope, baseline, request plan, or creative foundation. Confirmation alone does not authorize a manuscript write. | |
 | `approval` | 批准 | Noun | A tracked authorization for an exact operation, scope, paths, actions, and input versions. Edit and restore approvals are separate. | |
 | `creation acceptance` | 创作批次验收 | Noun | The author decision accepting one exact staged creation batch, its story-state differences, and its publication scope. Record manuscript and scope approvals separately. | |

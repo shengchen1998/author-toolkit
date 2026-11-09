@@ -126,11 +126,13 @@ Key relationship: Tension with Handler (wants to trust, can't fully)
 
 2. **Invoke Persona:** Structure/pacing → Developmental | Prose → Line | Voice → Character | Facts → Continuity
 
-3. **Propose Changes:** Specific, surgical edits with brief "why"
+3. **Check context fit:** Load `references/context-fit.md` and complete it before presenting candidates for every concrete edit, including scene rewrites and cross-persona changes.
 
-4. **Implement:** Use targeted text edits. Link to file after changes.
+4. **Propose Changes:** Specific, surgical edits with brief "why" and the checked local context
 
-5. **Iterate:** Until chapter achieves purpose
+5. **Implement:** Use targeted text edits. Link to file after changes.
+
+6. **Iterate:** Until chapter achieves purpose
 
 ### Role-Specific Guidance
 
@@ -185,6 +187,7 @@ Use these checkpoints to verify you're following the workflow correctly.
 - [ ] Did you avoid mixing feedback from multiple personas in one pass?
 
 **After making edits:**
+- [ ] Did you complete `references/context-fit.md` before presenting the proposal?
 - [ ] Did you use targeted text edits for surgical changes, not reprinting entire sections?
 - [ ] Can you articulate what changed and why it's better?
 - [ ] Is the change consistent with the Story Bible (character voice, plot logic, world rules)?
@@ -281,6 +284,7 @@ When `write-fiction` invokes Chapter Development, use the supplied approved plan
 
 ## Files
 
+- `references/context-fit.md` - Proposal-time continuity, history, repetition, voice, intent, and replacement-read checks
 - `references/developmental-editing.md` - Plot, structure, pacing analysis (see also the `story-structure` skill for landmark-beat percentages and signpost diagnostics)
 - `references/line-editing.md` - English and other non-Chinese prose-level refinement
 - `references/chinese-line-editing.md` - Chinese prose-level refinement with contextual language rules

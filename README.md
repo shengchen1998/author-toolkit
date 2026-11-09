@@ -191,8 +191,13 @@ A quick run looks like this:
    strategy establishes and confirms the initial target scope when one is needed.
 4. Review evidence and proposals at the author gates. The agent presents one
    active decision at a time so you can discuss evidence and alternatives before
-   deciding. Planning, manuscript writes, creation acceptance, and restores have
-   distinct approvals.
+   deciding. Before presenting a concrete revision, the agent completes a
+   context-fit check against the whole local scene and necessary history: references
+   and continuity, character and object familiarity, repeated wording and actions,
+   voice and collocation, request intent and setup/reveal dependencies, and the exact
+   replacement in context. This is editorial judgment, not lint or permission to
+   expand the edit or review scope. Planning, manuscript writes, creation acceptance,
+   and restores have distinct approvals.
 
 ### `write-fiction`: incremental creation
 

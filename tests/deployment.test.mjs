@@ -185,6 +185,16 @@ test("standalone skills carry byte-identical copies of their local contracts", a
     ]);
     assert.equal(deployed, canonical, `${skill} carries finding v1`);
   }
+  for (const file of ["context-fit.md"]) {
+    const canonical = await readFile(path.join(canonicalReferences, file), "utf8");
+    for (const skill of ["fiction-workshop", "prose-mechanics"]) {
+      const deployed = await readFile(
+        path.join(root, "skills", skill, "references", file),
+        "utf8",
+      );
+      assert.equal(deployed, canonical, `${skill} carries ${file}`);
+    }
+  }
   for (const file of ["avoid-ai-writing-adapter.md", "avoid-ai-writing-zh-CN.md"]) {
     const [canonical, deployed] = await Promise.all([
       readFile(path.join(canonicalReferences, file), "utf8"),
@@ -294,6 +304,7 @@ test("standalone entry points name their deployed skill-local contracts", async 
     readFile(path.join(root, "skills", "prose-mechanics", "references", "chinese-rules.md"), "utf8"),
   ]);
   assert.match(prose, /`references\/avoid-ai-writing-adapter\.md`/);
+  assert.match(prose, /`references\/context-fit\.md`/);
   assert.match(languageSupport, /\(avoid-ai-writing-adapter\.md\)/);
   assert.match(chineseRules, /\[`avoid-ai-writing-adapter\.md`\]\(avoid-ai-writing-adapter\.md\)/);
 });

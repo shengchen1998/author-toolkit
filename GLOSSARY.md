@@ -4,6 +4,10 @@ Shared fiction creation and revision state uses one vocabulary for manuscript sc
 
 ## Review and decisions
 
+**Context-fit check**:
+The proposal-time comparison of exact edit candidates with local continuity, character and object history, repetition, voice, request intent, and narrative dependencies.
+_Avoid_: Context-fit lint, context-fit approval
+
 **Review brief**:
 A summary of resolved and dismissed findings used to recognize previously decided observations.
 _Avoid_: Reviewer context, fresh-reader brief

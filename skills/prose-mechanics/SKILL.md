@@ -89,7 +89,7 @@ For each audit:
 
 2. **Run the pass:** Read the prose looking for the specific patterns named in the relevant reference file. Do **not** look for other classes of issue—keep the lens narrow.
 
-3. **Produce a flagged-issues report:** For each flagged passage, output:
+3. **Produce a flagged-issues report:** Before presenting fixes for author review, read `references/context-fit.md` in standalone mode or `<setup-skill-root>/assets/references/context-fit.md` in workflow mode and complete the context-fit check. This does not add diagnostic categories to the selected audit. For each flagged passage, output:
    - File and approximate location
    - The flagged text (short excerpt)
    - Why it was flagged (which detection pattern matched)

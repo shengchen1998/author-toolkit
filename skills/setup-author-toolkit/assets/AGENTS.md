@@ -49,7 +49,7 @@ Follow the shared author decision loop at every gate. Unless the author explicit
 
 Before any manuscript edit:
 
-1. Complete the diagnosis or proposal and show the exact operation, scope, affected paths, and intended change batch.
+1. For a revision, read `<setup-skill-root>/assets/references/context-fit.md` and complete its check before presenting an edit proposal. Show the exact operation, scope, affected paths, intended change batch, and checked local context. The check does not expand the approved edit paths or extend request-review units.
 2. Obtain explicit author approval for that batch and record it in the shared tracker with its input versions.
 3. Use `author-project` to back up every existing affected file under that approval.
 4. Reread the manifest and scope, recompute each existing file's SHA-256 hash and each create target's absence, and write only when every path, hash, approval, and dependency still matches. A mismatch stops the batch for reconciliation.

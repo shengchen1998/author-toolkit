@@ -50,7 +50,7 @@ Before prose over text with approved but unexecuted changes, explain the rework 
 
 ## Approval and backup gate
 
-For manuscript changes, first diagnose and show affected paths and intended changes without editing. Record explicit author approval in the shared tracker, then invoke `author-project` with `record-backup` for every affected file and the approval ID. Apply only the approved batch after every backup succeeds. Restore requires separate explicit approval and a safety backup.
+For manuscript changes, first diagnose without editing. Read `<setup-skill-root>/assets/references/context-fit.md` and complete its check before presenting an edit proposal. Then show affected paths, exact intended changes, and checked local context. Record explicit author approval in the shared tracker, then invoke `author-project` with `record-backup` for every affected file and the approval ID. Apply only the approved batch after every backup succeeds. Restore requires separate explicit approval and a safety backup.
 
 Baseline writes distinguish text-established facts, interpretations, and unknowns. Interpretations remain labeled until the author turns them into creative decisions. Only affected baseline differences are presented after an edit; unknowns never become automatic blockers.
 

@@ -48,7 +48,7 @@ At a stable operation gate, the author may switch to `write-fiction`, `revise-fi
 
 **Inputs:** Approved plan, draft-baseline, manuscript, and tracker.
 
-**Work:** Diagnose one batch and show exact changes before writing. Local chapter splits, merges, reordering, cuts, and scene rewrites require the same explicit approval and backups as other edits. Implement only the approved batch, update current-scope hashes, and recheck affected continuity and baseline differences.
+**Work:** Diagnose one batch. Read `<setup-skill-root>/assets/references/context-fit.md` and complete its check before presenting an edit proposal. Show the exact changes and checked local context before writing. Local chapter splits, merges, reordering, cuts, and scene rewrites require the same explicit approval and backups as other edits. Implement only the approved batch, update current-scope hashes, and recheck affected continuity and baseline differences.
 
 **Gate:** Every planned batch is accepted or explicitly deferred, each modified file has a backup linked to its approval, no requested batch is partially edited, and affected evidence is marked stale by dependency.
 
@@ -56,7 +56,7 @@ At a stable operation gate, the author may switch to `write-fiction`, `revise-fi
 
 **Inputs:** Intake, confirmed scope, language metadata, current manuscript, and tracker.
 
-**Work:** The author may enter directly without diagnostics or a full-book baseline. Check for approved but unexecuted edits to the selected text; explain rework risk and record a `prose-risk` approval if the author proceeds. Invoke `prose-mechanics` audits 1-18 one at a time in upstream order, wait for decisions, and back up approved fixes. Persist full local coverage units for each fully covered path and requested audit. Issues outside the scope and unknown future structure do not block this operation.
+**Work:** The author may enter directly without diagnostics or a full-book baseline. For concrete fixes, read `<setup-skill-root>/assets/references/context-fit.md` and complete its check before presenting an edit proposal. Check for approved but unexecuted edits to the selected text; explain rework risk and record a `prose-risk` approval if the author proceeds. Invoke `prose-mechanics` audits 1-18 one at a time in upstream order, wait for decisions, and back up approved fixes. Persist full local coverage units for each fully covered path and requested audit. Issues outside the scope and unknown future structure do not block this operation.
 
 **Gate:** Each selected audit has a current report for the scope, findings have tracker decisions, and fixes have approvals and backups. Name unselected audits and record limited operation coverage. A requested pass intended to establish current-draft revision convergence covers audits 1-18 with current local coverage and a full-target synthesis rather than carrying an unselected-audit gap into that claim.
 
@@ -64,7 +64,7 @@ At a stable operation gate, the author may switch to `write-fiction`, `revise-fi
 
 **Inputs:** Confirmed scope, language metadata, current manuscript, and tracker.
 
-**Work:** Follow `<setup-skill-root>/assets/references/avoid-ai-writing-adapter.md`. Use the upstream skill for English spans and the local Chinese catalog for Chinese spans. Detection and approved rewrites use the shared approval and backup records. A second detection follows every rewrite. Persist full local coverage units for every fully covered path and requested check, including engine and dependency identity.
+**Work:** Follow `<setup-skill-root>/assets/references/avoid-ai-writing-adapter.md`. For concrete rewrites, read `<setup-skill-root>/assets/references/context-fit.md` and complete its check before presenting an edit proposal. Use the upstream skill for English spans and the local Chinese catalog for Chinese spans. Detection and approved rewrites use the shared approval and backup records. A second detection follows every rewrite. Persist full local coverage units for every fully covered path and requested check, including engine and dependency identity.
 
 **Gate:** Every in-scope file has full, partial, or skipped language coverage with engine and degradation details. Every finding has a tracker decision. An upstream failure blocks the operation rather than producing a clean result. Partial or skipped requested applicable coverage prevents current-draft revision convergence; a narrowed requested pass names its actual limits. Documented inapplicable language checks remain explicitly `skipped` with their reasons.
 
