@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, utimes, writeFile } from "node:fs/promises";
 import path from "node:path";
 import test from "node:test";
 
@@ -104,6 +104,8 @@ test("project digest generates a bounded navigation cache from shared state", as
   assert.match(output, /Latest session: `sessions\/2026-11-09_diagnostics\.md`/);
   assert.match(output, /Next action: 确认 DIAG-001。/);
   assert.match(output, /Tracker: `audit-tracker.md` -> `## Findings`, `## Audit runs`, `## Approved decisions`/);
+  assert.match(output, /Status: use `author-project status` for recorded blockers and execution evidence\./);
+  assert.match(output, /Validation: use `author-project validate` for current hashes and missing paths\./);
   assert.doesNotMatch(output, /index\.json|unreadable backup index/);
 
   const manifest = JSON.parse(await readFile(path.join(projectRoot, ".author-toolkit", "project.json"), "utf8"));
@@ -126,6 +128,50 @@ test("project digest uses explicit session fields and a historical report fallba
   assert.match(output, /Active plan: `\.author-toolkit\/revision-plan\/plan-session\.md`/);
   assert.match(output, /Latest report: `reports\/diagnostics\/legacy\.md`/);
   assert.match(output, /Next action: 从 session 继续。/);
+});
+
+test("project digest selects the newest timestamp across report directories", async (t) => {
+  const projectRoot = await projectFixture(t);
+  const manifestPath = path.join(projectRoot, ".author-toolkit", "project.json");
+  const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
+  manifest.paths.reports = "reports/";
+  await writeFile(manifestPath, JSON.stringify(manifest), "utf8");
+  await rm(path.join(projectRoot, "reports/diagnostics/latest.md"));
+  await mkdir(path.join(projectRoot, "reports/intake"), { recursive: true });
+  await mkdir(path.join(projectRoot, "reports/prose"), { recursive: true });
+  await writeFile(
+    path.join(projectRoot, "reports/prose/2026-11-08_172000_target-synthesis.md"),
+    "Older report",
+  );
+  await writeFile(
+    path.join(projectRoot, "reports/intake/2026-11-09_144735_request-intake.md"),
+    "Newer report",
+  );
+  await utimes(
+    path.join(projectRoot, "reports/prose/2026-11-08_172000_target-synthesis.md"),
+    new Date("2026-11-10T00:00:00Z"),
+    new Date("2026-11-10T00:00:00Z"),
+  );
+
+  const result = digestCli(projectRoot);
+  assert.equal(result.status, 0, result.stderr);
+  const output = await readFile(path.join(projectRoot, "PROJECT_STATE.md"), "utf8");
+  assert.match(output, /Latest report: `reports\/intake\/2026-11-09_144735_request-intake\.md`/);
+  assert.doesNotMatch(output, /reports\/\//);
+});
+
+test("project digest uses modification time when filenames have no timestamp", async (t) => {
+  const projectRoot = await projectFixture(t);
+  const previous = path.join(projectRoot, "reports/diagnostics/latest.md");
+  const latest = path.join(projectRoot, "reports/diagnostics/undated-newer.md");
+  await writeFile(latest, "Newer undated report");
+  await utimes(previous, new Date("2026-11-08T00:00:00Z"), new Date("2026-11-08T00:00:00Z"));
+  await utimes(latest, new Date("2026-11-09T00:00:00Z"), new Date("2026-11-09T00:00:00Z"));
+
+  const result = digestCli(projectRoot);
+  assert.equal(result.status, 0, result.stderr);
+  const output = await readFile(path.join(projectRoot, "PROJECT_STATE.md"), "utf8");
+  assert.match(output, /Latest report: `reports\/diagnostics\/undated-newer\.md`/);
 });
 
 test("project digest keeps long pending reasons and artifact lists bounded", async (t) => {

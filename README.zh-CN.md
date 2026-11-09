@@ -57,7 +57,7 @@ npx skills@latest add shengchen1998/author-toolkit -a claude-code -a kimi-code-c
 npx skills@latest add shengchen1998/author-toolkit -a claude-code -a kimi-code-cli -g
 ```
 
-setup 技能在 `setup-author-toolkit/scripts/` 下提供自包含的校验和发现项状态 CLI, 包括运行依赖.
+setup 技能在 `setup-author-toolkit/scripts/` 下提供自包含的校验, 状态, 项目导航和发现项状态 CLI, 包括运行依赖.
 共享工作流直接解析该技能的安装目录, 无需仓库检出, 也无需在写作项目中运行 `npm install`.
 
 更新需要手动执行:
@@ -203,6 +203,12 @@ AI, 作者和混合创作使用相同门禁. 每本书只保留一个活动创�
 五个策略共用中性的 `.author-toolkit/project.json` 和同一组登记路径. 仅支持 schema 3.1.0;
 其他 manifest 版本会被拒绝且不会被自动转换.
 
+`author-project read` 通过普通文本读取返回完整 manifest 和解析后的路径, 没有独立的 `read.mjs`.
+`validate` 检查注册文件和当前哈希; `status` 报告当前范围, 待处理操作, 已记录阻塞和执行回执;
+`status --digest` 生成发现项计数, 最新指针和下一操作等导航信息. `--scope-id` 筛选未核对批准和
+`blocked` 待处理操作, 但 stale 发现项始终覆盖全项目, 因为 tracker 发现项行没有 scope ID.
+`status` 不判断特定操作的证据完整性, 可复用性或当前草稿修订收敛; 这些仍由当前策略按操作门禁评估.
+
 - `project.json`: 项目登记, 产物路径, 以及可选的 `current_scope` 和 `pending_action`.
   不包含 `workflow.name`, `current_stage` 或 `stages`.
 - 共享运行时契约: 保留在已安装 setup 技能的 `assets/references/` 中并直接读取,
@@ -216,7 +222,9 @@ AI, 作者和混合创作使用相同门禁. 每本书只保留一个活动创�
   它指向当前范围及哈希, 待处理操作, 发现项计数, 当前计划, 最新会话与报告和下一操作.
   manifest, tracker 和当前证据仍是权威来源; 缓存不提供批准, 也不替代证据读取, 且不读取备份索引.
   在最新会话中记录 `- Active plan: <project-relative-path>` 和 `- Next action: <concise action>`, 供缓存定位.
-  旧 tracker 中的 `Next action` 保留为回退.
+  旧 tracker 中的 `Next action` 保留为回退. 最新文件优先使用文件名开头的 UTC 时间戳,
+  无时间戳文件使用修改时间. Read next 部分指向 `author-project status` 以查看已记录阻塞和执行证据,
+  并指向 `validate` 以检查当前哈希和缺失路径; `status` 不把缓存作为数据源.
 - `reports/`: 诊断上下文和机器可读结果. 重新审计生成新报告, 不覆盖已交付报告. 可复用
   覆盖单元和持续更新的覆盖索引也保存在登记的 reports 路径下. `review_brief.md` 是从 tracker 的
   resolved 和 dismissed 发现项派生的可丢弃摘要, 用于复用决定, 不作为 reviewer 输入或权威决定记录.
@@ -330,7 +338,7 @@ AI 关联发现只描述文本模式, 不能证明文本由 AI 生成.
 
 ## 验证状态
 
-3.1.0 工作树的仓库检查已通过: 151 项协议测试和 13 项默认校验, 详见
+3.1.0 工作树的仓库检查已通过: 154 项协议测试和 13 项默认校验, 详见
 [docs/VALIDATION.md](docs/VALIDATION.md). 通用本地源安装已发现全部 16 个技能, setup 共享载荷,
 自包含校验 CLI, 项目内 schema 和独立技能本地契约均已验证. Kimi Code 已完成有限范围的创作提交和双向切换验证;
 完整宿主流程, `revise-increment` 与 `revise-request` 端到端运行和百万字稿件的创作质量仍未验证.

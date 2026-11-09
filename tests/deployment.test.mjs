@@ -137,6 +137,8 @@ test("setup carries self-contained validation and state CLIs", async (t) => {
   assert.ok(cache.trimEnd().split("\n").length <= 30);
   assert.match(cache, /Generated navigation cache/);
   assert.match(cache, /Latest session: `sessions\/2026-01-19_resume\.md`/);
+  assert.match(cache, /Status: use `author-project status` for recorded blockers and execution evidence\./);
+  assert.match(cache, /Validation: use `author-project validate` for current hashes and missing paths\./);
   assert.doesNotMatch(cache, /backups\/index\.json/);
 
   const status = spawnSync(
@@ -153,10 +155,14 @@ test("setup carries self-contained validation and state CLIs", async (t) => {
     { encoding: "utf8" },
   );
   assert.equal(status.status, 0, status.stderr);
-  const execution = JSON.parse(status.stdout).execution;
+  const statusResult = JSON.parse(status.stdout);
+  const execution = statusResult.execution;
   assert.equal(execution.scope_id, "scope-example-revision");
   assert.equal(execution.required, 0);
   assert.equal(execution.unverified_count, 0);
+  assert.equal(statusResult.recorded_blockers.stale_finding_count, 0);
+  assert.equal(statusResult.recorded_blockers.blocked_pending_action, null);
+  assert.equal(statusResult.evidence.operation_specific, "not_evaluated");
 });
 
 test("workflow commands resolve the installed setup CLIs", async () => {

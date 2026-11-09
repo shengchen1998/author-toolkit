@@ -5,6 +5,8 @@ import path from "node:path";
 
 import {
   inspectExecutionReceipts,
+  projectRootFromManifest,
+  trackerFindingRows,
   validateManifest,
   validateTracker,
 } from "./lib/index.mjs";
@@ -19,10 +21,44 @@ function usage() {
   console.log(`Usage:
   node scripts/status.mjs --manifest FILE [--scope-id ID] [--json]
 
-Report current scope, pending action, and execution-receipt coverage without
-reading manuscript content or comparing historical output hashes. --scope-id
-limits the execution summary to one target scope. Missing receipts are valid
-intermediate state and do not set a nonzero exit status.`);
+Report current scope, pending action, recorded stale or blocked state, and
+execution-receipt coverage without reading manuscript content or comparing
+historical output hashes. --scope-id limits blocked-pending and execution results
+to one target scope; stale findings remain project-wide because tracker finding rows
+have no scope ID. Missing receipts are valid intermediate state and do not set a
+nonzero exit status. Operation-specific evidence completeness is not evaluated.`);
+}
+
+function concise(value, limit = 240) {
+  const characters = [...String(value).replace(/\s+/g, " ").trim()];
+  return characters.length > limit ? `${characters.slice(0, limit - 1).join("")}…` : characters.join("");
+}
+
+function recordedBlockers(manifest, tracker, scopeId) {
+  const staleFindings = trackerFindingRows(tracker)
+    .filter((finding) => finding.status.toLowerCase() === "stale")
+    .map((finding) => ({
+      finding_id: finding.id,
+      operation: finding.stage,
+      audit: finding.audit,
+      location: finding.location,
+      current_report: finding.report,
+      updated: finding.updated,
+      reason: finding.reason,
+    }));
+  const pending = manifest.pending_action;
+  const blockedPending = pending?.status === "blocked" && (!scopeId || pending.scope_id === scopeId)
+    ? {
+        operation: pending.operation,
+        scope_id: pending.scope_id,
+        reason: pending.reason,
+      }
+    : null;
+  return {
+    stale_finding_count: staleFindings.length,
+    stale_findings: staleFindings,
+    blocked_pending_action: blockedPending,
+  };
 }
 
 function options(args) {
@@ -64,6 +100,9 @@ async function main() {
     throw new Error(`invalid execution receipts: ${validationMessage(inspection)}`);
   }
 
+  const projectRoot = projectRootFromManifest(selection.manifest);
+  const tracker = await readFile(path.resolve(projectRoot, manifest.paths.audit_tracker), "utf8");
+  const blockers = recordedBlockers(manifest, tracker, selection.scopeId);
   const result = {
     scope: manifest.current_scope
       ? {
@@ -81,6 +120,10 @@ async function main() {
     execution: {
       scope_id: selection.scopeId ?? null,
       ...inspection.summary,
+    },
+    recorded_blockers: blockers,
+    evidence: {
+      operation_specific: "not_evaluated",
     },
   };
   if (selection.json) {
@@ -103,6 +146,21 @@ async function main() {
   if (execution.unverified_count > 8) {
     console.log(`- ... ${execution.unverified_count - 8} more; use --json for the complete list`);
   }
+  console.log(`Recorded stale findings (all scopes): ${blockers.stale_finding_count}`);
+  for (const finding of blockers.stale_findings.slice(0, 8)) {
+    console.log(
+      `- ${finding.finding_id} (${finding.operation}; ${concise(finding.location, 120)}): ${concise(finding.reason, 160)}`,
+    );
+  }
+  if (blockers.stale_finding_count > 8) {
+    console.log(`- ... ${blockers.stale_finding_count - 8} more; use --json for the complete list`);
+  }
+  const blocked = blockers.blocked_pending_action;
+  console.log(
+    `Blocked pending action: ${blocked ? `${blocked.operation} (${blocked.scope_id}): ${concise(blocked.reason)}` : selection.scopeId ? "none recorded in selected scope" : "none recorded"}`,
+  );
+  console.log("Operation-specific evidence: not evaluated; use validate and the active strategy's operation gates");
+  console.log("Navigation: use author-project status --digest and PROJECT_STATE.md");
 }
 
 try {

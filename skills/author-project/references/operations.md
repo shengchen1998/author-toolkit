@@ -77,34 +77,29 @@ Shared state readiness requires a valid manifest and the installed setup payload
 
 For every read, parse JSON and check `schema_version`. Apply `<setup-skill-root>/assets/references/project-schema-v3.1.json` and the operation rules for v3.1, including required fields, additional-property restrictions, current scope, pending action, timestamps, safe relative paths, and creation registration. Report every other schema version as unsupported; do not reinterpret or convert it.
 
+`read` is a skill operation with no standalone `read.mjs`. Use normal text reads for the complete manifest and resolved paths; do not print a second copy through a wrapper CLI. Use the installed validator and the compact commands below for their respective checks.
+
 Run the self-contained installed validator:
 
 ```bash
 node <setup-skill-root>/scripts/validate.mjs --manifest <manifest-path>
 ```
 
-Use the documented Node environment. The bundled CLI includes its runtime dependencies and needs no repository checkout or project `npm install`. If the required installed script is missing, report an incomplete toolkit installation and stop. Report the command, exit status, and diagnostics. For a v3.1 project with a current scope, the command also recomputes manuscript hashes and reports them under `#scope`. Treat a `scope-currency` diagnostic as changed input: mark dependent evidence stale and reconcile the scope with the author before relying on it or writing. Do not refresh hashes silently. The `#executions` check validates receipt structure, approval and backup references, and per-file hash rules; a missing receipt alone is valid intermediate state and is reported by `status`, not rejected as malformed state. Script validation is authoritative. On read or status, report validation failures, changed inputs, and missing registered paths without repairing them implicitly. A read returns the full parsed manifest plus the shared state view below; status returns that compact view.
+Use the documented Node environment. The bundled CLI includes its runtime dependencies and needs no repository checkout or project `npm install`. If the required installed script is missing, report an incomplete toolkit installation and stop. Report the command, exit status, and diagnostics. For a v3.1 project with a current scope, the command also recomputes manuscript hashes and reports them under `#scope`. Treat a `scope-currency` diagnostic as changed input: mark dependent evidence stale and reconcile the scope with the author before relying on it or writing. Do not refresh hashes silently. The `#executions` check validates receipt structure, approval and backup references, and per-file hash rules; a missing receipt alone is valid intermediate state and is reported by `status`, not rejected as malformed state. Script validation is authoritative. On read, report validation failures, changed inputs, and missing registered paths without repairing them implicitly. A read returns the full parsed manifest and resolved paths, not the compact navigation view.
 
 ## Status
 
-Return a compact shared state view containing:
-
-- project root, manifest schema and creation timestamps, project type, language, and manuscript root;
-- current scope ID, confirmation status, ordered paths and hashes, and exclusions;
-- pending action, status, scope ID, reason, and artifacts, or its absence;
-- every stale or blocked evidence item with its operation, scope, dependency reason, and source report or tracker row;
-- the next action recorded in the tracker or latest session note;
-- validation errors, missing paths, and unresolved approval, backup, commit, or restore requirements.
-
-Run the installed status CLI for the mechanical approval and execution view:
+Run the installed status CLI for the mechanical state and execution view:
 
 ```bash
 node <setup-skill-root>/scripts/status.mjs --manifest <project-root>/.author-toolkit/project.json
 ```
 
-The text output bounds the unverified-approval list; add `--json` for the complete machine-readable list. Add `--scope-id <target-scope-id>` when checking current-draft revision convergence or a previous or base scope so unrelated historical scopes do not block the result. The command joins approved `edit` approvals to post-write execution receipts and approved `restore` approvals to completed restoration records. Missing receipts appear as `unverified` and leave the CLI successful because they can be valid intermediate state. They still block current-draft revision convergence and any entry gate that requires a verified previous or base scope. Malformed receipts, duplicate approval receipts, unknown approvals or backups, and identity mismatches fail validation.
+The command returns the current scope ID and status, pending action, recorded blockers, and approval execution evidence. Recorded blockers comprise stale tracker findings and a blocked pending action. Add `--scope-id <target-scope-id>` when checking current-draft revision convergence or a previous or base scope. The scope filter applies to unverified approvals and a blocked pending action; stale findings remain project-wide because tracker finding rows have no scope ID.
 
-The status CLI reads the manifest, tracker, and backup index without reading manuscript content or session notes. It does not compare historical output hashes with current manuscript files; later edits do not invalidate an earlier receipt. Supplement its execution view with the stale evidence and next action from the shared state above.
+The text output bounds the unverified-approval and stale-finding lists to eight entries each and truncates displayed long reasons. Add `--json` for complete machine-readable lists and untruncated values. The command joins approved `edit` approvals to post-write execution receipts and approved `restore` approvals to completed restoration records. Missing receipts appear as `unverified` and leave the CLI successful because they can be valid intermediate state. They still block current-draft revision convergence and any entry gate that requires a verified previous or base scope. Malformed receipts, duplicate approval receipts, unknown approvals or backups, and identity mismatches fail validation.
+
+The status CLI reads the manifest, tracker, and backup index without reading manuscript content or session notes. It does not compare historical output hashes with current manuscript files; later edits do not invalidate an earlier receipt. Its `evidence.operation_specific` value is `not_evaluated`: it does not infer missing evidence, stale evidence beyond recorded tracker rows, coverage reuse, or current-draft revision convergence. Use `read` for full scope paths and hashes, `validate` for current hashes and missing paths, and `status --digest` for finding counts, latest report and session, and next action. The active strategy evaluates operation-specific evidence and its operation gates.
 
 Status does not infer operation completion, select a strategy, or advance pending action.
 
@@ -116,7 +111,7 @@ For `status --digest`, accept the project root and run:
 node <setup-skill-root>/scripts/project-digest.mjs --project-root <project-root>
 ```
 
-The CLI validates a v3.1 manifest before replacing anything. It writes the bounded navigation cache `<project-root>/PROJECT_STATE.md`, containing the current scope and a pointer to its hashes, pending action, finding counts, active plan, latest report and session, next action, and pointers to the authoritative files. It does not read the backup index, manuscript content, or full report content. An invalid manifest or failed generation preserves an existing cache; report the error instead of hand-writing a substitute.
+The CLI validates a v3.1 manifest before replacing anything. It writes the bounded navigation cache `<project-root>/PROJECT_STATE.md`, containing the current scope and a pointer to its hashes, pending action, finding counts, active plan, latest report and session, next action, and pointers to the authoritative files and mechanical status and validation commands. Latest-file selection prefers a UTC timestamp at the start of the filename, falls back to modification time for undated files, and emits normalized project-relative paths. It does not read the backup index, manuscript content, or full report content. An invalid manifest or failed generation preserves an existing cache; report the error instead of hand-writing a substitute.
 
 The cache is disposable and generated, never a third authority. The manifest, tracker, and current evidence remain authoritative. Once per logical shared-state operation or stopping point, after that operation's state writes, run `status --digest` through `author-project`; do not regenerate between individual commit-journal transitions. A refresh failure is reported without rolling back completed state or manuscript writes. Also refresh at the start of resume. The cache grants no approval and does not replace evidence validation, manuscript reading, or an operation gate.
 

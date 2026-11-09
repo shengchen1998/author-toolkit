@@ -234,7 +234,7 @@ test("status text is bounded while scoped JSON retains the complete execution re
   assert.equal(text.status, 0, text.stderr);
   assert.match(text.stdout, /Unverified approvals: 11/);
   assert.match(text.stdout, /3 more; use --json/);
-  assert.equal(text.stdout.trimEnd().split("\n").length, 13);
+  assert.equal(text.stdout.trimEnd().split("\n").length, 17);
 
   const scoped = runCli("status.mjs", [
     "--manifest",
@@ -249,4 +249,46 @@ test("status text is bounded while scoped JSON retains the complete execution re
   assert.equal(result.execution.required, 2);
   assert.equal(result.execution.executed, 2);
   assert.equal(result.execution.unverified_count, 0);
+  assert.equal(result.recorded_blockers.stale_finding_count, 0);
+  assert.equal(result.recorded_blockers.blocked_pending_action, null);
+  assert.equal(result.evidence.operation_specific, "not_evaluated");
+});
+
+test("status reports bounded recorded blockers without implying evidence completeness", async (t) => {
+  const project = await fixture(t);
+  const staleRows = Array.from({ length: 10 }, (_, index) =>
+    `| STALE-${String(index + 1).padStart(3, "0")} | structure | story-structure-audit | \`manuscript/chapter-01.md\` | stale | \`reports/structure/2026-01-17_structure.md\` | ${timestamp} | ${`Stale reason ${index + 1}. ${"long ".repeat(100)}`} |`,
+  );
+  const tracker = await readFile(project.trackerPath, "utf8");
+  await writeFile(
+    project.trackerPath,
+    tracker.replace("\n\n## Audit runs", `\n${staleRows.join("\n")}\n\n## Audit runs`),
+    "utf8",
+  );
+  const manifest = clone(project.manifest);
+  manifest.pending_action.status = "blocked";
+  manifest.pending_action.scope_id = "scope-old";
+  manifest.pending_action.reason = `Waiting for reconciliation. ${"long ".repeat(100)}`;
+  await writeFile(project.manifestPath, JSON.stringify(manifest), "utf8");
+
+  const text = runCli("status.mjs", ["--manifest", project.manifestPath]);
+  assert.equal(text.status, 0, text.stderr);
+  assert.match(text.stdout, /Recorded stale findings \(all scopes\): 10/);
+  assert.match(text.stdout, /2 more; use --json for the complete list/);
+  assert.match(text.stdout, /Blocked pending action: structure \(scope-old\)/);
+  assert.match(text.stdout, /Operation-specific evidence: not evaluated/);
+  assert.match(text.stdout, /Navigation: use author-project status --digest and PROJECT_STATE\.md/);
+  assert.ok(text.stdout.trimEnd().split("\n").length <= 20);
+  assert.ok(text.stdout.split("\n").every((line) => [...line].length <= 400));
+
+  const global = JSON.parse(runCli("status.mjs", ["--manifest", project.manifestPath, "--json"]).stdout);
+  assert.equal(global.recorded_blockers.stale_findings.length, 10);
+  assert.equal(global.recorded_blockers.blocked_pending_action.scope_id, "scope-old");
+  assert.equal(global.evidence.operation_specific, "not_evaluated");
+
+  const scoped = JSON.parse(
+    runCli("status.mjs", ["--manifest", project.manifestPath, "--scope-id", targetScope, "--json"]).stdout,
+  );
+  assert.equal(scoped.recorded_blockers.stale_findings.length, 10);
+  assert.equal(scoped.recorded_blockers.blocked_pending_action, null);
 });

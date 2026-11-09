@@ -1,4 +1,4 @@
-import { readFile, readdir, rename, rm, writeFile } from "node:fs/promises";
+import { readFile, readdir, rename, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import { validateManifest } from "./manifest.mjs";
@@ -51,6 +51,26 @@ function relativePath(value) {
   return unquoted && validateRelativePath(unquoted).valid ? unquoted : null;
 }
 
+function filenameTimestamp(filename) {
+  const match = filename.match(/^(\d{4}-\d{2}-\d{2})(?:[_T](\d{2}):?(\d{2}):?(\d{2})Z?)?(?:_|\.)/);
+  if (!match) return null;
+  const time = match[2] ? `${match[2]}:${match[3]}:${match[4]}` : "00:00:00";
+  const timestamp = Date.parse(`${match[1]}T${time}Z`);
+  return Number.isFinite(timestamp) ? timestamp : null;
+}
+
+function isNewer(candidate, latest) {
+  if (
+    candidate.timestamp !== null &&
+    latest.timestamp !== null &&
+    candidate.timestamp !== latest.timestamp
+  ) {
+    return candidate.timestamp > latest.timestamp;
+  }
+  if (candidate.mtimeMs !== latest.mtimeMs) return candidate.mtimeMs > latest.mtimeMs;
+  return candidate.path > latest.path;
+}
+
 async function latestFile(projectRoot, directory, extension) {
   if (!relativePath(directory)) return null;
   let latest = null;
@@ -63,17 +83,20 @@ async function latestFile(projectRoot, directory, extension) {
       throw error;
     }
     for (const entry of entries) {
-      const relative = `${relativeDirectory}/${entry.name}`;
+      const relative = path.posix.join(relativeDirectory, entry.name);
       if (entry.isDirectory()) await visit(relative);
-      else if (
-        entry.isFile() &&
-        entry.name.endsWith(extension) &&
-        (latest === null || relative > latest)
-      ) latest = relative;
+      else if (entry.isFile() && entry.name.endsWith(extension)) {
+        const candidate = {
+          path: relative,
+          timestamp: filenameTimestamp(entry.name),
+          mtimeMs: (await stat(path.resolve(projectRoot, relative))).mtimeMs,
+        };
+        if (latest === null || isNewer(candidate, latest)) latest = candidate;
+      }
     }
   }
   await visit(directory);
-  return latest;
+  return latest?.path ?? null;
 }
 
 function findingCounts(tracker) {
@@ -128,6 +151,8 @@ export function renderProjectDigest({ manifest, tracker, latestReport, latestSes
     "## Read next",
     "",
     `- Manifest: ${code(".author-toolkit/project.json")} for the full scope record and pending action.`,
+    "- Status: use `author-project status` for recorded blockers and execution evidence.",
+    "- Validation: use `author-project validate` for current hashes and missing paths.",
     `- Tracker: ${code(manifest.paths.audit_tracker)} -> ${code("## Findings")}, ${code("## Audit runs")}, ${code("## Approved decisions")}`,
     "- Read the plan, latest session, and evidence linked above only as needed for the requested operation.",
     "- Regenerate after each shared-state operation; revalidate evidence before reuse. This cache grants no approval.",

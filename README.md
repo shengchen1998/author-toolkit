@@ -133,7 +133,7 @@ Add `-g` to install at user level instead:
 npx skills@latest add shengchen1998/author-toolkit -a claude-code -a kimi-code-cli -g
 ```
 
-The setup skill includes self-contained validation, project-digest, and finding-state CLIs under
+The setup skill includes self-contained validation, status, project-digest, and finding-state CLIs under
 `setup-author-toolkit/scripts/`. Shared workflows resolve that installed skill
 directory directly; no repository checkout or writing-project `npm install` is
 required.
@@ -345,6 +345,16 @@ All five strategies use the same neutral `.author-toolkit/project.json` and
 artifact paths. Only schema 3.1.0 is supported; other manifest versions are
 rejected and are not converted automatically.
 
+`author-project read` returns the full manifest and resolved paths through normal
+text reads; there is no standalone `read.mjs`. Use `validate` for registered files
+and current hashes, `status` for current scope, pending action, recorded blockers,
+and execution receipts, and `status --digest` for navigation counts, latest
+pointers, and next action. `--scope-id` filters unverified approvals and a blocked
+pending action, but stale findings remain project-wide because tracker finding
+rows have no scope ID. Status does not evaluate operation-specific evidence
+completeness, evidence reuse, or current-draft revision convergence; the active
+strategy retains those judgments at operation gates.
+
 - `project.json` records project registration, artifact locations, and optional
   `current_scope` and `pending_action`. It has no `workflow.name`,
   `current_stage`, or `stages` state.
@@ -367,7 +377,11 @@ rejected and are not converted automatically.
   approval and does not replace evidence reading. It does not read the backup
   index. Record `- Active plan: <project-relative-path>` and
   `- Next action: <concise action>` in the latest session so the cache can
-  locate them. A legacy tracker `Next action` remains a fallback.
+  locate them. A legacy tracker `Next action` remains a fallback. Latest-file
+  selection prefers UTC filename timestamps and uses modification time for
+  undated files. Its Read next section points to `author-project status` for
+  recorded blockers and execution evidence, and to `validate` for current hashes
+  and missing paths; status does not use the cache as a data source.
 - `reports/` preserves diagnostic context and machine-readable results. A rerun
   creates a new report instead of rewriting a delivered report. Reusable
   coverage units and the living coverage index also belong under this
