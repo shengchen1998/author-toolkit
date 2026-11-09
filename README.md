@@ -341,6 +341,15 @@ manifests remain readable and can receive the additive 3.1 upgrade.
   conflict.
 - `audit-tracker.md` records stable finding IDs, statuses, author decisions,
   shared approvals, and report pointers.
+- `PROJECT_STATE.md` is a generated navigation cache. Invoke `author-project`
+  with `status --digest` to regenerate it after shared-state writes and at
+  resume. It points to the current scope and hashes, pending action, finding
+  counts, active plan, latest session and report, and next action. The manifest,
+  tracker, and current evidence remain authoritative; the cache grants no
+  approval and does not replace evidence reading. It does not read the backup
+  index. Record `- Active plan: <project-relative-path>` and
+  `- Next action: <concise action>` in the latest session so the cache can
+  locate them. A legacy tracker `Next action` remains a fallback.
 - `reports/` preserves diagnostic context and machine-readable results. A rerun
   creates a new report instead of rewriting a delivered report. Reusable
   coverage units and the living coverage index also belong under this

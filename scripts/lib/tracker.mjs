@@ -33,7 +33,7 @@ function cleanCell(value = "") {
   return value.trim().replace(/^`([^`]*)`$/, "$1").trim();
 }
 
-function splitRow(line) {
+export function splitTrackerRow(line) {
   const trimmed = line.trim();
   if (!trimmed.startsWith("|") || !trimmed.endsWith("|")) return null;
 
@@ -107,8 +107,8 @@ export async function validateTrackerMarkdown(markdown, projectRoot) {
   let headerIndex = -1;
   let columns = null;
   for (let index = 0; index < section.lines.length - 1; index += 1) {
-    const header = splitRow(section.lines[index]);
-    const separator = splitRow(section.lines[index + 1]);
+    const header = splitTrackerRow(section.lines[index]);
+    const separator = splitTrackerRow(section.lines[index + 1]);
     if (!header || !isSeparator(separator)) continue;
 
     const normalized = header.map(normalizeHeader);
@@ -139,7 +139,7 @@ export async function validateTrackerMarkdown(markdown, projectRoot) {
   const dataLines = section.lines.slice(headerIndex + 2);
   for (const [rowIndex, line] of dataLines.entries()) {
     if (!line.trim()) continue;
-    const row = splitRow(line);
+    const row = splitTrackerRow(line);
     if (!row) break;
     const rowPath = `/Findings/${rowIndex}`;
     const get = (name) => cleanCell(row[columns[name]]);
@@ -249,8 +249,8 @@ export function validateApprovalsMarkdown(markdown) {
 
   const tables = [];
   for (let index = 0; index < section.lines.length - 1; index += 1) {
-    const header = splitRow(section.lines[index]);
-    const separator = splitRow(section.lines[index + 1]);
+    const header = splitTrackerRow(section.lines[index]);
+    const separator = splitTrackerRow(section.lines[index + 1]);
     if (header && isSeparator(separator)) tables.push({ header, index });
   }
   if (tables.length !== 1) {
@@ -289,7 +289,7 @@ export function validateApprovalsMarkdown(markdown) {
   const dataLines = section.lines.slice(headerIndex + 2);
   for (const [rowIndex, line] of dataLines.entries()) {
     if (!line.trim()) continue;
-    const row = splitRow(line);
+    const row = splitTrackerRow(line);
     if (!row) break;
     const rowPath = `/Approvals/${rowIndex}`;
     const get = (name) => cleanCell(row[columns[name]]);

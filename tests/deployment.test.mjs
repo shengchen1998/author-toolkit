@@ -79,7 +79,7 @@ test("setup carries self-contained validation and migration CLIs", async (t) => 
   );
 
   const nodeArgs = ["--no-warnings", "--experimental-loader", loader, "--require", preload];
-  for (const script of ["validate.mjs", "migrate-v3.mjs"]) {
+  for (const script of ["validate.mjs", "migrate-v3.mjs", "project-digest.mjs"]) {
     const result = spawnSync(
       process.execPath,
       [...nodeArgs, path.join(installedSetup, "scripts", script), "--help"],
@@ -127,6 +127,24 @@ test("setup carries self-contained validation and migration CLIs", async (t) => 
   );
   assert.equal(migratedValidation.status, 0, migratedValidation.stderr);
   assert.match(migratedValidation.stdout, /4 checks, 0 failures/);
+
+  const digest = spawnSync(
+    process.execPath,
+    [
+      ...nodeArgs,
+      path.join(installedSetup, "scripts", "project-digest.mjs"),
+      "--project-root",
+      project,
+    ],
+    { encoding: "utf8" },
+  );
+  assert.equal(digest.status, 0, digest.stderr);
+  assert.equal(digest.stdout, "PROJECT_STATE.md\n");
+  const cache = await readFile(path.join(project, "PROJECT_STATE.md"), "utf8");
+  assert.ok(cache.trimEnd().split("\n").length <= 30);
+  assert.match(cache, /Generated navigation cache/);
+  assert.match(cache, /Latest session: `sessions\/2026-01-19_resume\.md`/);
+  assert.doesNotMatch(cache, /backups\/index\.json/);
 });
 
 test("workflow commands resolve the installed setup CLIs", async () => {

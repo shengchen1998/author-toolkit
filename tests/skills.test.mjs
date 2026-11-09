@@ -82,6 +82,29 @@ test("backup and handoff writes resolve registered project paths", async () => {
   assert.match(review, /paths\.handoffs/);
 });
 
+test("project digest is a generated navigation cache, not another source of truth", async () => {
+  const [project, operations, instructions] = await Promise.all([
+    readFile(path.join(root, "skills/author-project/SKILL.md"), "utf8"),
+    readFile(path.join(root, "skills/author-project/references/operations.md"), "utf8"),
+    readFile(path.join(root, "skills/setup-author-toolkit/assets/AGENTS.md"), "utf8"),
+  ]);
+  assert.match(project, /`status --digest`/);
+  assert.match(operations, /project-digest\.mjs --project-root/);
+  assert.match(operations, /PROJECT_STATE\.md/);
+  assert.match(operations, /once per logical shared-state operation/i);
+  assert.match(operations, /navigation cache/i);
+  assert.match(instructions, /read `PROJECT_STATE\.md` first/i);
+  assert.match(instructions, /authoritative/i);
+  assert.match(instructions, /only the tracker sections, sessions, plans, and evidence needed/i);
+
+  for (const skill of ["write-fiction", "revise-fiction", "revise-draft", "revise-increment", "revise-request"]) {
+    const text = await readFile(path.join(root, "skills", skill, "SKILL.md"), "utf8");
+    assert.match(text, /`status --digest`/, skill);
+    assert.match(text, /Read `PROJECT_STATE\.md` first/, skill);
+    assert.match(text, /needed for the requested work/i, skill);
+  }
+});
+
 test("workflow reporting pointers do not form a cycle", async () => {
   const reporting = await readFile(path.join(root, "references/workflow-reporting.md"), "utf8");
   const state = await readFile(

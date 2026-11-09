@@ -2,6 +2,8 @@
 
 For every operation, resolve the installed `setup-author-toolkit` skill's root as `<setup-skill-root>` and read shared runtime contracts directly from its `assets/references/` payload. Use the controlled workflow terminology in `<setup-skill-root>/assets/references/terminology.md` for shared names, contract values, and their boundaries. If the setup skill or a required installed contract or script is missing, report an incomplete toolkit installation and stop; do not copy contracts into the writing project.
 
+For each shared-state operation, finish by refreshing the navigation cache as described under [Digest](#digest). Do not read the backup index to generate it.
+
 ## Paths and manifest identity
 
 Resolve the project root before reading or writing. The canonical manifest is `.author-toolkit/project.json` beneath that root. Accept `schema_version: "3.0.0"` and `"3.1.0"`; both store project metadata, `manuscript_root`, shared `paths`, and optional `current_scope` and `pending_action`, with no `workflow`, `current_stage`, or `stages` properties. A v3.1 manifest also registers `paths.creation`, defaulting to `.author-toolkit/creation/`. Preserve a v3.0 project until the author confirms `upgrade-v31`; recognize v2 only for setup migration.
@@ -80,6 +82,20 @@ Return a compact shared state view containing:
 - validation errors, missing paths, and unresolved approval, backup, commit, or restore requirements.
 
 Status does not infer operation completion, select a strategy, or advance pending action.
+
+### Digest
+
+For `status --digest`, accept the project root and run:
+
+```bash
+node <setup-skill-root>/scripts/project-digest.mjs --project-root <project-root>
+```
+
+The CLI validates a v3.0 or v3.1 manifest before replacing anything. It writes the bounded navigation cache `<project-root>/PROJECT_STATE.md`, containing the current scope and a pointer to its hashes, pending action, finding counts, active plan, latest report and session, next action, and pointers to the authoritative files. It does not read the backup index, manuscript content, or full report content. An invalid manifest or failed generation preserves an existing cache; report the error instead of hand-writing a substitute.
+
+The cache is disposable and generated, never a third authority. The manifest, tracker, and current evidence remain authoritative. Once per logical shared-state operation or stopping point, after that operation's state writes, run `status --digest` through `author-project`; do not regenerate between individual commit-journal transitions. A refresh failure is reported without rolling back completed state or manuscript writes. Also refresh at the start of resume. The cache grants no approval and does not replace evidence validation, manuscript reading, or an operation gate.
+
+The latest session supplies the navigation fields `- Active plan: <project-relative-path>` and `- Next action: <concise action>`, or `none` when no active plan is recorded. These are pointers, not new approval state. An existing session without these fields yields `none recorded`; a legacy tracker `Next action` remains a fallback.
 
 ## Set pending
 

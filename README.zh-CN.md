@@ -200,6 +200,11 @@ schema 3.1.0; v3.0 manifest 仍可读取, 并可进行增量 3.1 升级.
   没有 manifest 字段, 也不复制到写作项目.
 - `story-bible.md`: 记录作者意图. 已验收正文建立观察事实; 两者冲突时不能静默覆盖任一来源.
 - `audit-tracker.md`: 稳定的发现项 ID, 状态, 作者决定, 共享批准记录和报告指针.
+- `PROJECT_STATE.md`: 生成的导航缓存. 调用 `author-project` 的 `status --digest`, 在共享状态写入后及恢复时重新生成.
+  它指向当前范围及哈希, 待处理操作, 发现项计数, 当前计划, 最新会话与报告和下一操作.
+  manifest, tracker 和当前证据仍是权威来源; 缓存不提供批准, 也不替代证据读取, 且不读取备份索引.
+  在最新会话中记录 `- Active plan: <project-relative-path>` 和 `- Next action: <concise action>`, 供缓存定位.
+  旧 tracker 中的 `Next action` 保留为回退.
 - `reports/`: 诊断上下文和机器可读结果. 重新审计生成新报告, 不覆盖已交付报告. 可复用
   覆盖单元和持续更新的覆盖索引也保存在登记的 reports 路径下.
 - `sessions/`: 已完成工作, 待决事项, 备份路径和停止位置.
