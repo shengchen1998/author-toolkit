@@ -309,6 +309,12 @@ test("new report stages keep the v2 envelope and use opt-in evidence semantics",
   );
   assert.equal(validateEvidenceReport(baseline).valid, true);
 
+  const semicolonSeparated = await reportWith(
+    "diagnostics",
+    "Coverage: full. scope_id=scope-1; operation_coverage=full; subchecks=arc,continuity;",
+  );
+  assert.equal(validateEvidenceReport(semicolonSeparated).valid, true);
+
   const badScope = await reportWith(
     "structure",
     "Coverage: full. scope_id=../bad operation_coverage=full",

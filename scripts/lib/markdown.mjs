@@ -147,7 +147,7 @@ function evidenceError(message) {
 }
 
 function evidenceValue(notes, name) {
-  return notes.match(new RegExp(`(?:^|\\s)${name}=([^\\s]+)`))?.[1];
+  return notes.match(new RegExp(`(?:^|\\s)${name}=([^\\s]+)`))?.[1]?.replace(/;$/, "");
 }
 
 export function validateEvidenceReport(markdown) {
