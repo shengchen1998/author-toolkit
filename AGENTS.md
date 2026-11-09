@@ -70,6 +70,14 @@ node scripts/project-digest.mjs --project-root /path/to/writing-project
 
 `author-project status --digest` uses the installed setup CLI. Regenerate once after each logical shared-state operation and at resume; the manifest, tracker, and current evidence remain authoritative. Digest implementation changes also require `npm run sync:setup-runtime` before testing.
 
+Resolve an author-supplied inline character range before editing or proposing text:
+
+```bash
+node scripts/range.mjs --project-root /path/to/writing-project "manuscript/1.md:1:56-71"
+```
+
+Positions are 1-based and inclusive, and characters count Unicode code points. The helper reads one project-relative file and writes nothing; it does not read the manifest or shared state.
+
 `skills/author-project/assets/project-template.json` is the neutral v3.1 starting point. Both localized examples use v3.1 manifests and handwritten evidence fixtures.
 
 ## Architecture
@@ -86,7 +94,7 @@ The skills have three invocation modes:
 
 ### Validation boundaries
 
-`scripts/validate.mjs`, `scripts/status.mjs`, `scripts/project-digest.mjs`, and `scripts/findings.mjs` expose the implementation in `scripts/lib/`; `index.mjs` is the library export surface. Ajv and ajv-formats provide strict JSON Schema draft 2020-12 validation. The main module boundaries are:
+`scripts/validate.mjs`, `scripts/status.mjs`, `scripts/project-digest.mjs`, and `scripts/findings.mjs` expose the implementation in `scripts/lib/`; `index.mjs` is the library export surface. `scripts/range.mjs` resolves an author-supplied `path:line:start-end` character range without using the shared library or changing project state; positions are 1-based and inclusive and count Unicode code points. Ajv and ajv-formats provide strict JSON Schema draft 2020-12 validation. The main module boundaries are:
 
 - `schemas.mjs` loads schemas and configures Ajv. `manifest.mjs` accepts only v3.1 validation.
 - `manuscript.mjs` inventories `.md`, `.markdown`, and `.txt` files, excluding registered operational paths and creation staging. `project-files.mjs` checks registered files, artifacts, scope hashes, and newly added manuscript files.
@@ -100,7 +108,7 @@ Use native ESM with named imports, two-space indentation, double quotes, semicol
 
 All five creation and revision strategies require the same user-invoked `setup-author-toolkit`. It registers existing paths without imposing a manuscript layout. On every setup, it overwrites the writing project's root `AGENTS.md` with `skills/setup-author-toolkit/assets/AGENTS.md` and replaces `CLAUDE.md` with a relative symlink to `AGENTS.md`. That template routes work inside a writing project; this repository-root file documents toolkit development.
 
-Shared runtime contracts live in the installed setup skill's `assets/references/` and its self-contained validation, status, and project-digest CLIs live in its `scripts/`. `author-project` resolves these files from `<setup-skill-root>` for shared `read`, `validate`, `status`, and `status --digest` operations. Missing required files indicate an incomplete installation and stop shared work. Setup never copies shared contracts into the writing project or relies on project-side copies.
+Shared runtime contracts live in the installed setup skill's `assets/references/` and its self-contained validation, status, project-digest, finding-state, and character-range CLIs live in its `scripts/`. `author-project` resolves these files from `<setup-skill-root>` for shared `read`, `validate`, `status`, and `status --digest` operations. Missing required files indicate an incomplete installation and stop shared work. Setup never copies shared contracts into the writing project or relies on project-side copies.
 
 The canonical manifest is `<project-root>/.author-toolkit/project.json`. A v3.1 manifest records registration, `manuscript_root`, seven operational paths, and optional `current_scope` and `pending_action`. It has no `workflow.name`, `current_stage`, `stages`, or shared-reference path. Only schema 3.1.0 is accepted; other manifest versions are rejected without conversion.
 

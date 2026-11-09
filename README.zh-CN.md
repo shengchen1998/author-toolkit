@@ -57,7 +57,7 @@ npx skills@latest add shengchen1998/author-toolkit -a claude-code -a kimi-code-c
 npx skills@latest add shengchen1998/author-toolkit -a claude-code -a kimi-code-cli -g
 ```
 
-setup 技能在 `setup-author-toolkit/scripts/` 下提供自包含的校验, 状态, 项目导航和发现项状态 CLI, 包括运行依赖.
+setup 技能在 `setup-author-toolkit/scripts/` 下提供自包含的校验, 状态, 项目导航, 发现项状态和行内字符区间 CLI, 包括运行依赖.
 共享工作流直接解析该技能的安装目录, 无需仓库检出, 也无需在写作项目中运行 `npm install`.
 
 更新需要手动执行:
@@ -368,7 +368,10 @@ node scripts/validate.mjs --help
 node scripts/validate.mjs --manifest /path/to/.author-toolkit/project.json
 node scripts/validate.mjs --report /path/to/report.md
 node scripts/status.mjs --manifest /path/to/.author-toolkit/project.json --scope-id scope-001
+node scripts/range.mjs --project-root /path/to/writing-project "manuscript/1.md:1:56-71"
 ```
+
+`range.mjs` 解析作者给出的行内字符区间; 行号和字符位置均从 1 开始且包含端点, 字符按 Unicode 码点计数.
 
 这些命令只覆盖仓库级契约, 不代表宿主运行验证或创作质量. 宿主版本, 已完成检查和限制见
 [docs/VALIDATION.md](docs/VALIDATION.md).

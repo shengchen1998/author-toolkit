@@ -38,7 +38,7 @@ async function markdownFiles(directory) {
   return files.filter((file) => file.endsWith(".md"));
 }
 
-test("setup carries self-contained validation and state CLIs", async (t) => {
+test("setup carries self-contained validation, state, and range CLIs", async (t) => {
   await mkdir(path.join(root, ".test-output"), { recursive: true });
   const temporaryRoot = await mkdtemp(path.join(root, ".test-output", "setup-cli-"));
   t.after(() => rm(temporaryRoot, { recursive: true, force: true }));
@@ -79,7 +79,7 @@ test("setup carries self-contained validation and state CLIs", async (t) => {
   );
 
   const nodeArgs = ["--no-warnings", "--experimental-loader", loader, "--require", preload];
-  for (const script of ["validate.mjs", "status.mjs", "project-digest.mjs", "findings.mjs"]) {
+  for (const script of ["validate.mjs", "status.mjs", "project-digest.mjs", "findings.mjs", "range.mjs"]) {
     const result = spawnSync(
       process.execPath,
       [...nodeArgs, path.join(installedSetup, "scripts", script), "--help"],
@@ -103,6 +103,24 @@ test("setup carries self-contained validation and state CLIs", async (t) => {
 
   const project = path.join(temporaryRoot, "writing-project");
   await cp(path.join(root, "examples", "fiction-revision-zh"), project, { recursive: true });
+
+  const rangeProject = path.join(temporaryRoot, "range-project");
+  await mkdir(path.join(rangeProject, "manuscript"), { recursive: true });
+  await writeFile(path.join(rangeProject, "manuscript", "1.md"), "温暖与热带\n", "utf8");
+  const range = spawnSync(
+    process.execPath,
+    [
+      ...nodeArgs,
+      path.join(installedSetup, "scripts", "range.mjs"),
+      "--project-root",
+      rangeProject,
+      "manuscript/1.md:1:3-4",
+      "--json",
+    ],
+    { encoding: "utf8" },
+  );
+  assert.equal(range.status, 0, range.stderr);
+  assert.equal(JSON.parse(range.stdout).text, "与热");
 
   const allocation = spawnSync(
     process.execPath,

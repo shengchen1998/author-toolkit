@@ -133,7 +133,7 @@ Add `-g` to install at user level instead:
 npx skills@latest add shengchen1998/author-toolkit -a claude-code -a kimi-code-cli -g
 ```
 
-The setup skill includes self-contained validation, status, project-digest, and finding-state CLIs under
+The setup skill includes self-contained validation, status, project-digest, finding-state, and character-range CLIs under
 `setup-author-toolkit/scripts/`. Shared workflows resolve that installed skill
 directory directly; no repository checkout or writing-project `npm install` is
 required.
@@ -555,7 +555,11 @@ node scripts/validate.mjs --help
 node scripts/validate.mjs --manifest /path/to/.author-toolkit/project.json
 node scripts/validate.mjs --report /path/to/report.md
 node scripts/status.mjs --manifest /path/to/.author-toolkit/project.json --scope-id scope-001
+node scripts/range.mjs --project-root /path/to/writing-project "manuscript/1.md:1:56-71"
 ```
+
+`range.mjs` resolves an author-supplied inline character range. Positions are
+1-based and inclusive, and characters count Unicode code points.
 
 These commands cover repository-level contracts, not host-specific runtime
 verification or creative quality. Host versions, completed checks, and current
