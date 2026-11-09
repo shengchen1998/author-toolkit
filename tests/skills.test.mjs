@@ -244,7 +244,7 @@ test("incremental revision restores current-draft revision convergence for the t
   assert.match(state, /Recompute this state from current evidence at each resume/);
 });
 
-test("request-driven revision restores current-draft revision convergence for the full-manuscript target scope", async () => {
+test("request-driven revision defaults to request review and preserves prior decisions", async () => {
   const [request, draft, increment, fiction, write, setup, ask, state, reporting, structure] =
     await Promise.all([
       readFile(path.join(root, "skills/revise-request/SKILL.md"), "utf8"),
@@ -272,8 +272,18 @@ test("request-driven revision restores current-draft revision convergence for th
     request,
     /Required coverage for current-draft revision convergence includes every applicable subcheck required by the base scope's current-draft revision convergence evidence plus newly requested checks/,
   );
-  assert.match(request, /After any manuscript change, run a new full-target current-scope review/);
-  assert.match(request, /fresh reader reads the full target scope sequentially/);
+  assert.match(request, /Propose `review_mode=request`/);
+  assert.match(request, /explicitly requests a full-target current-scope review/);
+  assert.match(request, /only the declared request-review units/);
+  assert.match(request, /Do not silently turn them into full chapters/);
+  assert.match(request, /once per logical round/);
+  assert.match(request, /`review_mode=request` never satisfies the full-target current-scope review requirement/);
+  assert.match(request, /convergence has not been reverified/);
+  assert.match(request, /shared review-brief decision-reuse rules/);
+  assert.match(state, /## Review brief and decision reuse/);
+  assert.match(state, /<paths\.reports>\/review_brief\.md/);
+  assert.match(state, /Keep a `resolved` or `dismissed` status and its original reason/);
+  assert.match(state, /Reviewers, including the fresh reader, do not receive this brief/);
   assert.match(request, /Request completion alone does not establish current-draft revision convergence/);
   assert.match(
     request,

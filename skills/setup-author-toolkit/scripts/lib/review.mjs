@@ -130,17 +130,19 @@ function structureErrors(job) {
     }
   }
 
-  if (job?.perspective === "fresh") {
+  if (job?.perspective === "fresh" || job?.mode === "request") {
     const fileIndexes = new Map(files.map((file, index) => [file.path, index]));
     let previousFileIndex = -1;
     let previousLineEnd = 0;
+    const reviewOrderRequired = job.perspective === "fresh" || job.mode === "request";
+    const modeLabel = job.perspective === "fresh" ? "fresh" : "request";
     for (const [index, chunk] of chunks.entries()) {
-      if (chunk.sequence !== index + 1) {
+      if (reviewOrderRequired && chunk.sequence !== index + 1) {
         errors.push(
           reviewError(
             `/chunks/${index}/sequence`,
             "review-sequence",
-            "fresh review chunks must use continuous sequence numbers starting at 1",
+            `${modeLabel} review chunks must use continuous sequence numbers starting at 1`,
           ),
         );
       }
@@ -148,14 +150,14 @@ function structureErrors(job) {
         const fileIndex = fileIndexes.get(source.path);
         if (fileIndex === undefined) continue;
         if (
-          fileIndex < previousFileIndex ||
+          (reviewOrderRequired && fileIndex < previousFileIndex) ||
           (fileIndex === previousFileIndex && source.line_start <= previousLineEnd)
         ) {
           errors.push(
             reviewError(
               `/chunks/${index}/sources/${sourceIndex}/line_start`,
               "review-order",
-              "fresh review sources must follow job.files order and increasing, non-overlapping line ranges",
+              `${modeLabel} review sources must follow job.files order and increasing, non-overlapping line ranges`,
             ),
           );
         }
@@ -174,7 +176,7 @@ function structureErrors(job) {
         reviewError(
           "/next_chunk_id",
           "review-resume",
-          "next chunk must be the first incomplete fresh review chunk",
+          "next chunk must be the first incomplete sequential review chunk",
         ),
       );
     }
@@ -185,7 +187,7 @@ function structureErrors(job) {
             reviewError(
               `/chunks/${index}/status`,
               "review-progress",
-              "fresh review chunks must be completed in declared order",
+              "sequential review chunks must be completed in declared order",
             ),
           );
         }
@@ -240,7 +242,7 @@ export function checkReviewCoverage(job) {
   const chunks = objectArray(job?.chunks);
   const volumes = objectArray(job?.volumes);
   const completedChunks = chunks.filter((chunk) => chunk.status === "complete" && chunk.report);
-  const uncoveredFiles = files
+  const uncoveredFiles = job?.mode === "request" ? [] : files
     .filter((file) => {
       const ranges = completedChunks.flatMap((chunk) =>
         objectArray(chunk.sources).filter(

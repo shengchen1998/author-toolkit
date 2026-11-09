@@ -70,6 +70,12 @@ function reportWith(stage, notes) {
   return readReport().then((markdown) => {
     const envelope = extractReportEnvelope(markdown);
     envelope.stage = stage;
+    envelope.created_at = "2026-11-09T00:00:00Z";
+    if (stage === "current-scope-review") {
+      envelope.created_at = notes?.includes("review_mode=")
+        ? "2026-11-09T00:00:00Z"
+        : "2026-01-17T00:00:00Z";
+    }
     if (notes) envelope.engine.notes = notes;
     return markdown.replace(
       /```json\n[\s\S]*?\n```/,
@@ -290,7 +296,8 @@ test("new report stages keep the v2 envelope and use opt-in evidence semantics",
   for (const stage of ["characters", "diagnostics", "current-scope-review"]) {
     const missingSubchecks = await reportWith(
       stage,
-      "Coverage: full. scope_id=scope-1 operation_coverage=full",
+      "Coverage: full. scope_id=scope-1 operation_coverage=full" +
+        (stage === "current-scope-review" ? " review_mode=current-scope" : ""),
     );
     const result = validateEvidenceReport(missingSubchecks);
     assert.equal(result.valid, false, stage);
@@ -298,9 +305,30 @@ test("new report stages keep the v2 envelope and use opt-in evidence semantics",
 
     const complete = await reportWith(
       stage,
-      "Coverage: full. scope_id=scope-1 operation_coverage=full subchecks=arc,continuity",
+      "Coverage: full. scope_id=scope-1 operation_coverage=full subchecks=arc,continuity" +
+        (stage === "current-scope-review" ? " review_mode=current-scope" : ""),
     );
-    assert.equal(validateEvidenceReport(complete).valid, true, stage);
+    if (stage === "current-scope-review") {
+      assert.equal(validateEvidenceReport(complete).valid, true);
+      assert.equal(validateMarkdownReport(complete).valid, true);
+      const historical = await reportWith(
+        stage,
+        "Coverage: full. scope_id=scope-1 operation_coverage=full subchecks=arc,continuity",
+      );
+      assert.equal(validateEvidenceReport(historical).valid, true);
+      const current = await reportWith(
+        stage,
+        "Coverage: full. scope_id=scope-1 operation_coverage=full subchecks=fresh review_mode=request",
+      );
+      assert.equal(validateEvidenceReport(current).valid, true);
+      const missingMode = await reportWith(
+        stage,
+        "Coverage: full. scope_id=scope-1 operation_coverage=full subchecks=fresh review_mode=invalid",
+      );
+      assert.equal(validateEvidenceReport(missingMode).valid, false);
+    } else {
+      assert.equal(validateEvidenceReport(complete).valid, true, stage);
+    }
   }
 
   const baseline = await reportWith(

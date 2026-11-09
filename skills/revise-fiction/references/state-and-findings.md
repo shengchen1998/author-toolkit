@@ -15,7 +15,7 @@ Populate the actual v2 fields:
 - `language` is the BCP 47 tag of the evaluated text. Split reports when one tag cannot describe mixed coverage truthfully.
 - `inputs` lists every manuscript, baseline, plan, or prior-report input with its available content hash or other truthful version. Current v3 manuscript scopes require SHA-256 hashes.
 - `engine.name` is exactly `conversational` or `scriptorium`. Record the actual version or `unknown`, a truthful `degraded` boolean, and detailed notes containing the execution path, fallback, context profile, mode, and degradation.
-- `engine.notes` also contains `scope_id=<id>` and `operation_coverage=full|partial|skipped`. For `characters`, `diagnostics`, and `current-scope-review`, add `subchecks=` followed by the actual checks covered. Operation coverage is distinct from language coverage.
+- `engine.notes` also contains `scope_id=<id>` and `operation_coverage=full|partial|skipped`. For `characters`, `diagnostics`, and `current-scope-review`, add `subchecks=` followed by the actual checks covered. For new `current-scope-review` reports, add `review_mode=current-scope|request`; historical reports without that field retain current-scope semantics. Operation coverage is distinct from language coverage.
 - Under `Language coverage`, mark each requested rule or category `full`, `partial`, or `skipped` with a reason. Repeat the concise language summary in `engine.notes`.
 - Every finding has an uppercase audit-specific ID prefix and at least three digits, a nonempty `recommendation`, and the narrowest truthful `location.scope`. Do not invent a line or quotation for a broad issue.
 
@@ -30,6 +30,33 @@ Historical reports are immutable. Author decisions, stale marks, later locations
 Read the latest prior reports for the same operation, audit, and scope before assigning IDs. Reuse an existing ID for the same underlying issue. Match by upstream stable ID, then by the same audit, technique, file, normalized quotation and issue, then by clearly overlapping location after nearby text changed. Allocate a fresh ID for a different issue and link any possible predecessor in tracker notes.
 
 A finding absent from an equivalent complete rerun becomes `stale`, not `resolved`, unless the author confirmed and the new text verifies the fix. New findings enter as `open`.
+
+## Review brief and decision reuse
+
+Before processing shared review findings, generate or refresh `<paths.reports>/review_brief.md` from the current tracker. This review brief is a disposable navigation summary, not an immutable report or another authority. It has exactly these sections:
+
+```md
+# Review Brief
+
+- Updated: <UTC timestamp>
+- Tracker: <project-relative tracker path>
+
+## Resolved decisions
+
+| Finding ID | Location | Decision reason | Current report |
+|---|---|---|---|
+
+## Dismissed decisions
+
+| Finding ID | Location | Decision reason | Current report |
+|---|---|---|---|
+```
+
+Include every tracker row whose status is `resolved` or `dismissed`; copy its actual location, decision reason, and report path without expanding it into a full finding or manuscript excerpt. If neither status has any rows, state `No resolved or dismissed findings.` beneath both headings instead of inventing decisions. Refresh the brief after relevant tracker changes and validate it with `node <setup-skill-root>/scripts/validate.mjs --review-brief <path> --tracker <tracker-path>`. The tracker remains authoritative; rebuild a missing or inconsistent brief rather than treating its contents as approval.
+
+Match each new review observation using the Finding identity rules above before presenting an author decision. For the same underlying issue, reuse its existing ID and point the current report at the new immutable report. Keep a `resolved` or `dismissed` status and its original reason; do not put the observation back into the decision queue merely because a reviewer reports it again. Record the decision reuse in the session note. An unrelated wording change or a new report alone is not new evidence.
+
+Reopen the finding as `open` only when the relevant quoted passage or location, a fact or dependency on which the decision relied, or the underlying issue has materially changed. Name that concrete change and the prior decision when asking for a new decision. A genuinely different issue receives a new ID. Reviewers, including the fresh reader, do not receive this brief; decision reconciliation happens after their independent observations are returned.
 
 ## Living tracker
 

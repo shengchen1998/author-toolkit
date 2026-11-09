@@ -5,7 +5,7 @@ description: Use when running independent final or current-scope manuscript revi
 
 # Author Review
 
-Organize three independent reviews and produce findings only. Accept `all`, one perspective (`intent`, `standards`, or `fresh`), or `collect`, plus a project root, review job, or review handoff. Accept `review_mode=final|current-scope`; the default is `final`.
+Organize three independent reviews and produce findings only. Accept `all`, one perspective (`intent`, `standards`, or `fresh`), or `collect`, plus a project root, review job, or review handoff. Accept `review_mode=final|current-scope|request`; the default is `final`.
 
 This skill does not revise prose, update Story Bible creative content, or apply fixes. When called by `write-fiction`, `revise-fiction`, `revise-draft`, `revise-increment`, or `revise-request`, the caller owns manifest and tracker writes. Standalone use leaves shared project state unchanged unless the author explicitly incorporates the resulting reports later.
 
@@ -19,9 +19,10 @@ This skill does not revise prose, update Story Bible creative content, or apply 
 |---|---|---|---|
 | `final` | `final-review/` | `final-review` | `final-review/` |
 | `current-scope` | `current-scope-review/` | `current-scope-review` | `current-scope-review/` |
+| `request` | `current-scope-review/` | `current-scope-review` | `current-scope-review/` |
 
-   With default paths, these report destinations are `reports/final-review/` and `reports/current-scope-review/`. Use unique UTC-stamped filenames. Creation callers retain their own operation identity and never add a creation operation to report v2 `stage`.
-4. Establish one confirmed `scope_id` and one manuscript scope for all three perspectives. A final review covers the whole book. A current-scope review covers only the confirmed current scope and never claims whole-book final approval. Apply the checklist's skipped-item rules for whole-book questions that do not apply.
+   With default paths, these report destinations are `reports/final-review/` and `reports/current-scope-review/`. Use unique UTC-stamped filenames. Creation callers retain their own operation identity and never add a creation operation to report v2 `stage`. A request report's `operation_coverage` describes the requested perspectives and checks, while its `Review coverage` identifies the actual selected units; neither claims full-target reading.
+4. Establish one confirmed `scope_id` and one manuscript scope for all three perspectives. A final review covers the whole book. A current-scope review covers only the confirmed current scope and never claims whole-book final approval. A request review retains the target scope ID but reads only the declared changed and dependency-affected passages with necessary local context; it never claims full-target coverage or current-draft revision convergence. Apply the checklist's skipped-item rules for whole-book and unreviewed-passage questions that do not apply.
 5. Create or resume one review job per requested perspective and its chunk -> volume/phase -> book plan from actual manuscript paths, hashes, chapter or scene boundaries, and the available context budget. Use the installed review-job and reader-state artifact contracts; the handoff carries their paths rather than copying their content.
 6. Use the uppercase finding ID prefixes `INTENT`, `STANDARD`, and `READER`. Every reviewer uses judgment confidence and includes a recommendation. The caller enters returned findings as `open` in the shared tracker; status is not a finding v2 property.
 7. Preserve input independence as follows:
@@ -38,13 +39,14 @@ For `language=zh*` or an actually Chinese manuscript, the standards reviewer mus
 
 Follow [`references/chunked-review.md`](references/chunked-review.md) for unit coverage, synthesis dependencies, reader-state, findings, and completion. Dispatch independent perspectives with fresh contexts. `intent` and `standards` chunk work may run in parallel; the `fresh` chain remains strictly sequential with one logical reviewer. Do not share one perspective's output with another.
 
-Write immutable chunk reports and each applicable volume/phase and book synthesis report with human-readable scope, a `Language coverage` section, a `Review coverage` section, and exactly one report v2 JSON envelope. Mark inapplicable whole-book checklist items `skipped` with reasons in current-scope mode and record every other gap truthfully.
+Write immutable chunk reports and each applicable volume/phase and book synthesis report with human-readable scope, a `Language coverage` section, a `Review coverage` section, and exactly one report v2 JSON envelope. Mark inapplicable whole-book checklist items `skipped` with reasons in current-scope mode; in request mode, mark checks requiring unread passages `skipped` with `outside request review` and record every other gap truthfully.
 
 For Chinese standards, `Language coverage` must itemize the Chinese subchecks in the loaded reference as actually performed, with `full`, `partial`, or `skipped` status and reasons for gaps. Claim `full` only when every applicable Chinese subcheck covers the requested actual manuscript scope; a sampled, translated, unread, or unexecuted check cannot be folded into `full`. Keep `Review coverage` tied to actual manuscript units and syntheses.
 
 Use `engine.name: "conversational"` and record the actual execution path, version or `unknown`, and degradation. Every report's `engine.notes` contains:
 
 - `scope_id=<actual-scope-id>`;
+- `review_mode=final|current-scope|request`;
 - actual `operation_coverage=full|partial|skipped`;
 - `subchecks=intent`, `subchecks=standards`, or `subchecks=fresh` for one perspective.
 

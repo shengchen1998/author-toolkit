@@ -84,6 +84,30 @@ function findingsSection(markdown) {
   return { lines: lines.slice(start, end), start };
 }
 
+export function trackerDecisions(markdown) {
+  const lines = markdown.split(/\r?\n/);
+  const start = lines.findIndex((line) => /^ {0,3}##[ \t]+Findings[ \t]*$/.test(line));
+  if (start === -1) return [];
+  const decisions = [];
+  for (const line of lines.slice(start + 1)) {
+    if (/^ {0,3}##[ \t]+/.test(line)) break;
+    const row = splitTrackerRow(line);
+    if (!row || !/^[A-Z][A-Z0-9]*-[0-9]{3,}$/.test(cleanCell(row[0]))) continue;
+    if (["finding id", "id"].includes(normalizeHeader(row[0]))) continue;
+    if (row.length !== Object.keys(COLUMN_ALIASES).length) continue;
+    const status = cleanCell(row[4]).toLowerCase();
+    if (!["resolved", "dismissed"].includes(status)) continue;
+    decisions.push({
+      id: cleanCell(row[0]),
+      location: cleanCell(row[3]),
+      status,
+      report: reportCell(row[5]),
+      reason: cleanCell(row[7]),
+    });
+  }
+  return decisions;
+}
+
 function reportCell(value) {
   const link = value.match(/\[[^\]]+\]\(([^)]+)\)/);
   return cleanCell(link?.[1] ?? value);

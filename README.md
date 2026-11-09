@@ -24,7 +24,7 @@ Version 3.1.0 contains 16 skills in three groups.
 | `revise-fiction` | Revise a whole novel through its Story Bible, macro structure, character arcs, and final review. |
 | `revise-draft` | Revise the current manuscript through a draft baseline, local narrative diagnostics, and current-scope review of the target scope. |
 | `revise-increment` | Revise added or affected chapters after incremental creation while applying the evidence-reuse rules to unchanged chapters and completing a full-target current-scope review. |
-| `revise-request` | Apply an author-defined revision to existing content from a full-manuscript base scope that has reached current-draft revision convergence and restore that state for the full-manuscript target scope. |
+| `revise-request` | Apply an author-defined revision to existing content from a full-manuscript base scope that has reached current-draft revision convergence, with request-only review by default and optional full-scope review. |
 
 `write-fiction`, `revise-fiction`, `revise-draft`, `revise-increment`, and `revise-request` must all run the same
 `setup-author-toolkit` first. Setup does not accept a workflow name or operation
@@ -73,9 +73,10 @@ judging the percentage of a future book or penalizing beats that do not yet
 exist. `revise-increment` applies the same current-draft operation gates after
 scope growth, reusing only reusable evidence for unchanged text and reviewing the
 full target scope. `revise-request` starts from a full-manuscript base scope that
-has reached current-draft revision convergence, applies an author-defined
-revision to existing content, and restores that state for the full-manuscript
-target scope.
+has reached current-draft revision convergence and applies an author-defined
+revision to existing content. Its default request review covers only changed and
+affected passages; an explicit full-scope review is required to reverify
+current-draft revision convergence for the full-manuscript target scope.
 
 Narrative nonfiction remains a direct `narrative-nonfiction` task. Multi-book
 projects and integrations with other hosts are outside the supported 3.1
@@ -185,8 +186,9 @@ A quick run looks like this:
    for the available manuscript and current-scope review, `revise-increment` to
    bring added or affected chapters to current-draft revision convergence, or
    `revise-request` to revise existing content from a full-manuscript base scope
-   that has reached that state. The selected strategy establishes and confirms
-   the initial target scope when one is needed.
+   that has reached that state. Request review covers changed and affected passages
+   by default; full-scope review is a separate explicit choice. The selected
+   strategy establishes and confirms the initial target scope when one is needed.
 4. Review evidence and proposals at the author gates. The agent presents one
    active decision at a time so you can discuss evidence and alternatives before
    deciding. Planning, manuscript writes, creation acceptance, and restores have
@@ -307,8 +309,9 @@ can additionally use `story-structure` Audit without adopting the
    reached that state, or to `revise-increment` when creation or import has
    grown the scope.
 2. Confirm the requested outcome, constraints, request set, full-manuscript
-   target scope, and initial work set. The request set determines what to change;
-   the full-manuscript target scope determines what must be proven current again.
+   target scope, and initial work set. Choose the default request review with
+   exact changed and affected passages plus necessary local context, or explicitly
+   choose a full-target current-scope review.
 3. Apply only approved batches with backups. Expand the work set by actual text
    and dependency impact, rerun affected operations, and compose new operation
    coverage and full-target syntheses for the target scope while reusing matching
@@ -317,10 +320,19 @@ can additionally use `story-structure` Audit without adopting the
    revision convergence evidence and add newly requested checks. A local request
    does not silently reduce the coverage required for current-draft revision
    convergence.
-5. After any manuscript change, run another full-target current-scope review with
-   all three perspectives and a sequential fresh reader. Process findings and
-   rework, then report request completion and current-draft revision convergence
-   for the full-manuscript target scope separately.
+5. After a logical round of approved changes, run `review_mode=request` over only
+   the declared changed and affected passages with all three perspectives. Do not
+   silently expand them to full chapters or the full manuscript. If full-scope
+   review was explicitly selected, instead run a full-target current-scope review
+   with a sequential fresh reader.
+6. Generate `reports/review_brief.md` from resolved and dismissed tracker findings.
+   Reconcile repeated observations after independent review: preserve their finding
+   IDs and decisions unless the relevant passage, factual basis, dependency, or
+   underlying issue materially changed. Reviewers, including the fresh reader, do
+   not receive this brief.
+7. Report request completion separately from current-draft revision convergence.
+   Request review never satisfies the full-target current-scope review requirement; after only
+   request review, state that full-manuscript current-draft revision convergence has not been reverified.
 
 The skill definitions contain the full gates and audit rules.
 
@@ -353,7 +365,10 @@ manifests remain readable and can receive the additive 3.1 upgrade.
 - `reports/` preserves diagnostic context and machine-readable results. A rerun
   creates a new report instead of rewriting a delivered report. Reusable
   coverage units and the living coverage index also belong under this
-  registered path.
+  registered path. `review_brief.md` is a disposable summary of resolved and
+  dismissed tracker findings used for decision reuse, not reviewer input or an
+  authoritative decision record. Validate it against the tracker with
+  `node <setup-skill-root>/scripts/validate.mjs --review-brief <path> --tracker <path>`.
 - `sessions/` records completed work, open decisions, backup paths, and the
   stopping point so a later session can resume or handle rework.
 - `backups/` preserves affected manuscript files before approved edits.
@@ -427,8 +442,10 @@ synthesizes volume or story-phase results, and finally the book. Intent and
 standards reviewers may run in parallel. Fresh-reader review proceeds in reading
 order through one logical reviewer carrying only that reviewer's isolated
 reader-state. Summaries and extracted story state cannot replace reading the
-manuscript. Report `full` coverage only when the target scope was actually
-covered.
+manuscript. Request review instead reads only its declared changed and affected
+line ranges in sequence and cannot establish a full-target reader chain. Report
+`full` coverage only for the units required by the selected review mode, never as
+a claim that unread target-scope text was covered.
 
 ### Finding, report, and creation artifact schemas
 

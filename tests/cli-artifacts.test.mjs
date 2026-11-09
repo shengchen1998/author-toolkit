@@ -199,6 +199,48 @@ test("the public CLI accepts repeated options for every new artifact", async (t)
   assert.match(result.stdout, /8 checks, 0 failures/);
 });
 
+test("review brief CLI validates resolved and dismissed decisions against the tracker", async (t) => {
+  const directory = await temporaryDirectory(t);
+  const tracker = `## Findings
+
+| Finding ID | Stage | Audit | Location | Status | Current report | Updated | Decision or stale reason |
+|---|---|---|---|---|---|---|---|
+| READER-001 | current-scope-review | fresh | manuscript/chapter-001.md:12 | dismissed | reports/current-scope-review/old.md | ${timestamp} | Intentional prop detail |
+| INTENT-002 | current-scope-review | intent | manuscript/chapter-001.md | resolved | [report](reports/current-scope-review/fix.md) | ${timestamp} | Verified corrected timeline |
+| STANDARD-003 | current-scope-review | standards | manuscript/chapter-001.md:20 | open | reports/current-scope-review/open.md | ${timestamp} | Awaiting author choice |
+`;
+  const brief = `# Review Brief
+
+- Updated: ${timestamp}
+- Tracker: \`audit-tracker.md\`
+
+## Resolved decisions
+
+| Finding ID | Location | Decision reason | Current report |
+|---|---|---|---|
+| INTENT-002 | manuscript/chapter-001.md | Verified corrected timeline | reports/current-scope-review/fix.md |
+
+## Dismissed decisions
+
+| Finding ID | Location | Decision reason | Current report |
+|---|---|---|---|
+| READER-001 | manuscript/chapter-001.md:12 | Intentional prop detail | reports/current-scope-review/old.md |
+`;
+  const trackerFile = path.join(directory, "tracker.md");
+  const briefFile = path.join(directory, "brief.md");
+  await writeFile(trackerFile, tracker);
+  await writeFile(briefFile, brief);
+  const valid = runValidator(["--review-brief", briefFile, "--tracker", trackerFile]);
+  assert.equal(valid.status, 0, valid.stderr);
+  assert.match(valid.stdout, /1 checks, 0 failures/);
+
+  const forged = brief.replace("Intentional prop detail", "A different reason");
+  const forgedFile = path.join(directory, "forged.md");
+  await writeFile(forgedFile, forged);
+  assert.equal(runValidator(["--review-brief", forgedFile, "--tracker", trackerFile]).status, 1);
+  assert.equal(runValidator(["--review-brief", briefFile]).status, 2);
+});
+
 test("artifact validation failures exit 1 and argument errors exit 2", async (t) => {
   const directory = await temporaryDirectory(t);
   const commit = artifacts().commit;

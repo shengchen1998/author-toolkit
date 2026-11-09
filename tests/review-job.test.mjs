@@ -158,6 +158,34 @@ test("review coverage counts every source line exactly once for every perspectiv
   }
 });
 
+test("request review completes declared passages without claiming full-file coverage", () => {
+  const job = reviewJob();
+  job.mode = "request";
+  job.perspective = "intent";
+  job.chunks[0].sources[0].line_end = 20;
+  job.chunks[1].sources[0].line_start = 100;
+  job.volumes[0].report = "reports/current-scope-review/request/volume-001.md";
+  job.book.report = "reports/current-scope-review/request/synthesis.md";
+
+  assert.equal(checkReviewCoverage(job).coverage, "full");
+  assert.equal(validateReviewJob(job).valid, true);
+
+  job.mode = "current-scope";
+  assert.equal(checkReviewCoverage(job).coverage, "partial");
+  assert.equal(validateReviewJob(job).valid, false);
+});
+
+test("request review preserves sequential nonoverlapping passage reading", () => {
+  const job = reviewJob();
+  job.mode = "request";
+  job.perspective = "intent";
+  job.chunks[1].sources[0].line_start = 80;
+  const result = validateReviewJob(job);
+
+  assert.equal(result.valid, false);
+  assert.ok(result.errors.some((error) => error.keyword === "review-order"));
+});
+
 test("malformed review references return validation errors instead of throwing", () => {
   const job = reviewJob();
   job.volumes[0].chunk_ids = { unexpected: "chunk-001" };

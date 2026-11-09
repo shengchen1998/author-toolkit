@@ -25,7 +25,7 @@
   "properties": {
     "schema_version": { "const": "1.0.0" },
     "job_id": { "$ref": "#/$defs/id" },
-    "mode": { "enum": ["final", "current-scope"] },
+    "mode": { "enum": ["final", "current-scope", "request"] },
     "perspective": { "enum": ["intent", "standards", "fresh"] },
     "scope_id": { "$ref": "#/$defs/id" },
     "status": { "enum": ["prepared", "in_progress", "interrupted", "complete"] },

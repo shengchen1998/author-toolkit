@@ -16,6 +16,7 @@ import {
   validateReaderState,
   validateReaderStateMarkdown,
   validateReviewJob,
+  validateReviewBrief,
   validateSchemaDefinitions,
   validateScopeCurrency,
   validateStoryState,
@@ -33,6 +34,12 @@ const artifactTypes = [
   { key: "coverageUnits", option: "--coverage-unit", validate: validateCoverageUnit },
   { key: "coverageIndexes", option: "--coverage-index", validate: validateCoverageIndex },
   { key: "reviewJobs", option: "--review-job", validate: validateReviewJob },
+  {
+    key: "reviewBriefs",
+    option: "--review-brief",
+    validate: validateReviewBrief,
+    validateMarkdown: validateReviewBrief,
+  },
   {
     key: "readerStates",
     option: "--reader-state",
@@ -53,7 +60,7 @@ function usage() {
   node scripts/validate.mjs [--manifest FILE] [--report FILE] [--workflow-fixture FILE]...
   node scripts/validate.mjs [--creation-batch FILE] [--creation-commit FILE]...
   node scripts/validate.mjs [--coverage-unit FILE] [--coverage-index FILE]...
-  node scripts/validate.mjs [--review-job FILE] [--reader-state FILE] [--story-state FILE]...
+  node scripts/validate.mjs [--review-job FILE] [--review-brief FILE --tracker FILE] [--reader-state FILE] [--story-state FILE]...
 
 With no options, all schemas, example manifests, reports, and workflow fixtures are checked.`);
 }
@@ -77,6 +84,7 @@ function parseArguments(args) {
     manifests: [],
     reports: [],
     workflowFixtures: [],
+    trackers: [],
     ...Object.fromEntries(artifactTypes.map(({ key }) => [key, []])),
     help: false,
   };
@@ -84,6 +92,7 @@ function parseArguments(args) {
     "--manifest": "manifests",
     "--report": "reports",
     "--workflow-fixture": "workflowFixtures",
+    "--tracker": "trackers",
     ...Object.fromEntries(artifactTypes.map(({ key, option }) => [option, key])),
   };
 
@@ -108,6 +117,13 @@ async function main() {
   if (selection.help) {
     usage();
     return;
+  }
+  if (
+    selection.trackers.length > 1 ||
+    (selection.reviewBriefs.length > 0 && selection.trackers.length !== 1) ||
+    (selection.reviewBriefs.length === 0 && selection.trackers.length > 0)
+  ) {
+    throw new Error("--review-brief requires exactly one --tracker FILE");
   }
 
   const useDefaults = Object.entries(selection).every(
@@ -232,7 +248,10 @@ async function main() {
       try {
         const isMarkdown = type.validateMarkdown && /\.(?:md|markdown)$/i.test(file);
         const result = isMarkdown
-          ? type.validateMarkdown(await readFile(file, "utf8"))
+          ? type.validateMarkdown(
+              await readFile(file, "utf8"),
+              ...(type.key === "reviewBriefs" ? [await readFile(selection.trackers[0], "utf8")] : []),
+            )
           : type.validate(await readJson(file));
         check(path.relative(root, file), result);
       } catch (error) {

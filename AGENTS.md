@@ -54,7 +54,7 @@ node scripts/validate.mjs --report /path/to/report.md
 node scripts/validate.mjs --workflow-fixture /path/to/fixture.json
 ```
 
-The help output defines the creation-batch, commit-journal, story-state, coverage, review-job, and reader-state options. Manifest validation also checks registered files and the tracker; for v3 with `current_scope`, it checks current manuscript hashes. Validation failures exit nonzero; argument errors exit with status 2.
+The help output defines the creation-batch, commit-journal, story-state, coverage, review-job, review-brief, and reader-state options. A review-brief check requires the tracker for decision comparison. Manifest validation also checks registered files and the tracker; for v3 with `current_scope`, it checks current manuscript hashes. Validation failures exit nonzero; argument errors exit with status 2.
 
 The migration CLI converts v2 or v3.0 directly to v3.1 and preserves manuscripts, evidence, backups, and snapshots. A valid v3.1 rerun is idempotent. Run it against a disposable copy during development:
 
@@ -91,7 +91,7 @@ The skills have three invocation modes:
 - `schemas.mjs` loads schemas and configures Ajv. `manifest.mjs` dispatches v2, v3.0, and v3.1 validation; `workflow.mjs` retains legacy v2 sequence invariants.
 - `manuscript.mjs` inventories `.md`, `.markdown`, and `.txt` files, excluding registered operational paths and creation staging. `project-files.mjs` checks registered files, artifacts, scope hashes, and newly added manuscript files.
 - `markdown.mjs` extracts the single report JSON envelope and validates language and evidence coverage. `tracker.mjs` validates living finding and approval tables; `approval-paths.mjs` handles paths containing commas, pipes, and backticks.
-- `artifacts.mjs` validates story state, creation batches, commit journals, coverage artifacts, and coverage reuse. `review.mjs` validates review-job ranges, chunk/volume/book completion, fresh-reader ordering, and reader-state continuity.
+- `artifacts.mjs` validates story state, creation batches, commit journals, coverage artifacts, and coverage reuse. `review.mjs` validates review-job ranges, chunk/volume/book completion, request-only passage coverage, fresh-reader ordering, and reader-state continuity. `review-brief.mjs` checks the derived resolved/dismissed summary against the living tracker.
 - `migration.mjs` performs preflight checks, preserves snapshots, creates the creation directory skeleton, and writes manifest and tracker changes atomically.
 - `digest.mjs` generates the bounded `PROJECT_STATE.md` navigation cache from the valid v3 manifest, tracker, latest session, and report paths without reading the backup index. The cache is disposable and never authoritative.
 

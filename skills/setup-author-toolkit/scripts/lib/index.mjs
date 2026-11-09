@@ -14,6 +14,7 @@ export {
   validateReaderStateMarkdown,
   validateReviewJob,
 } from "./review.mjs";
+export { validateReviewBrief } from "./review-brief.mjs";
 export {
   projectRootFromManifest,
   validateProjectFiles,
@@ -22,6 +23,7 @@ export {
 export {
   APPROVAL_STATUSES,
   TRACKER_STATUSES,
+  trackerDecisions,
   validateApprovalsMarkdown,
   validateTracker,
   validateTrackerMarkdown,

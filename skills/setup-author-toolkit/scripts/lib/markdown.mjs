@@ -168,6 +168,18 @@ export function validateEvidenceReport(markdown) {
     );
   }
 
+  const reviewMode = evidenceValue(notes, "review_mode");
+  if (
+    result.envelope.stage === "current-scope-review" &&
+    result.envelope.created_at >= "2026-11-09T00:00:00Z" &&
+    !["current-scope", "request"].includes(reviewMode)
+  ) {
+    errors.push(evidenceError("current-scope review requires review_mode=current-scope or request"));
+  }
+  if (reviewMode && !["final", "current-scope", "request"].includes(reviewMode)) {
+    errors.push(evidenceError("engine.notes review_mode must be final, current-scope, or request"));
+  }
+
   if (
     ["characters", "diagnostics", "current-scope-review"].includes(result.envelope.stage) &&
     !evidenceValue(notes, "subchecks")
