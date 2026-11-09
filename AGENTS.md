@@ -103,7 +103,7 @@ Use native ESM with named imports, two-space indentation, double quotes, semicol
 
 ### Shared project state
 
-All five creation and revision strategies require the same user-invoked `setup-author-toolkit`. It registers existing paths without imposing a manuscript layout and installs `skills/setup-author-toolkit/assets/AGENTS.md` into a new writing project only when no `AGENTS.md` exists. That template routes work inside a writing project; this repository-root file documents toolkit development.
+All five creation and revision strategies require the same user-invoked `setup-author-toolkit`. It registers existing paths without imposing a manuscript layout. On every setup, it overwrites the writing project's root `AGENTS.md` with `skills/setup-author-toolkit/assets/AGENTS.md` and replaces `CLAUDE.md` with a relative symlink to `AGENTS.md`. That template routes work inside a writing project; this repository-root file documents toolkit development.
 
 Shared runtime contracts live in the installed setup skill's `assets/references/` and its self-contained validation, migration, and project-digest CLIs live in its `scripts/`. `author-project` resolves these files from `<setup-skill-root>` for shared `read`, `validate`, `status`, and `status --digest` operations. Missing required files indicate an incomplete installation and stop shared work. Setup never copies shared contracts into the writing project or relies on project-side copies.
 

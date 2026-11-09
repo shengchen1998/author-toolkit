@@ -173,10 +173,11 @@ A quick run looks like this:
    and language questions. Registration records paths; it does not move the
    manuscript into a new layout. Shared contracts remain in the setup skill's
    installed `assets/references/` payload and are read directly from that
-   location; setup does not deploy them into the writing project. For a new
-   project, setup also installs the project-level `AGENTS.md` template when no
-   such file exists, preserving any existing agent instructions. Do not pass a
-   workflow name or operation argument. After a toolkit update, existing v3
+   location; setup does not deploy them into the writing project. On every
+   setup, it overwrites the project-root `AGENTS.md` with the installed template
+   and replaces a regular `CLAUDE.md` or existing symlink with a relative
+   `CLAUDE.md -> AGENTS.md` symlink. Custom content in these two files is not
+   preserved. Do not pass a workflow name or operation argument. After a toolkit update, existing v3
    projects use the updated installed contracts without another deployment.
    Initial `author-project` read, validation, and status calls report missing
    installed contracts or scripts as an incomplete toolkit installation rather

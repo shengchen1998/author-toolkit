@@ -250,6 +250,21 @@ test("every installed shared reference named by a skill exists in the setup payl
   assert.deepEqual([...missing].sort(), []);
 });
 
+test("setup overwrites AGENTS.md and links CLAUDE.md to it", async () => {
+  const setup = await readFile(
+    path.join(root, "skills", "setup-author-toolkit", "SKILL.md"),
+    "utf8",
+  );
+
+  assert.match(setup, /On every setup, replace `<project-root>\/AGENTS\.md` with a regular file containing `assets\/AGENTS\.md`/);
+  assert.match(setup, /replace any existing `CLAUDE\.md` file or symlink/);
+  assert.match(setup, /remove any existing regular files or symlinks with `rm -f AGENTS\.md CLAUDE\.md`/);
+  assert.match(setup, /run `ln -s AGENTS\.md CLAUDE\.md`/);
+  assert.match(setup, /If either target is a directory, or any operation fails, stop/);
+  assert.match(setup, /applies to new projects, existing v3 projects, and v2 migrations/);
+  assert.match(setup, /Except for the two project-root agent entry files described above/);
+});
+
 test("setup reads shared references without deploying them into project state", async () => {
   const [setup, instructions] = await Promise.all([
     readFile(path.join(root, "skills", "setup-author-toolkit", "SKILL.md"), "utf8"),
