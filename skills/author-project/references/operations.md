@@ -2,7 +2,7 @@
 
 For every operation, resolve the installed `setup-author-toolkit` skill's root as `<setup-skill-root>` and read shared runtime contracts directly from its `assets/references/` payload. Use the controlled workflow terminology in `<setup-skill-root>/assets/references/terminology.md` for shared names, contract values, and their boundaries. If the setup skill or a required installed contract or script is missing, report an incomplete toolkit installation and stop; do not copy contracts into the writing project.
 
-For each shared-state operation, finish by refreshing the navigation cache as described under [Digest](#digest). Do not read the backup index to generate it.
+For each shared-state operation, finish by refreshing the navigation cache as described under [Digest](read-operations.md#digest). Do not read the backup index to generate it.
 
 ## Paths and manifest identity
 
@@ -69,55 +69,7 @@ For explicit report validation, `--report` may be repeated. `node <setup-skill-r
 
 The caller creates directories and empty creative templates. Initialization does not populate manuscript or Story Bible creative content, establish an entry operation, or invoke a strategy.
 
-## Read and validate
-
-Before a shared workflow `read`, `validate`, or `status`, run `node <setup-skill-root>/scripts/doctor.mjs` to confirm the installed setup payload against its authoritative `assets/payload-manifest.json`. Read shared runtime contracts directly from `<setup-skill-root>/assets/references/`; do not compare them with or copy them into project files. If doctor reports an installed-payload failure, report an incomplete toolkit installation and stop. Do not continue shared work or write project state.
-
-Shared state readiness requires a valid manifest and the installed setup payload, not a project-local reference copy.
-
-For every read, parse JSON and check `schema_version`. Apply `<setup-skill-root>/assets/references/project-schema-v3.1.json` and the operation rules for v3.1, including required fields, additional-property restrictions, current scope, pending action, timestamps, safe relative paths, and creation registration. Report every other schema version as unsupported; do not reinterpret or convert it.
-
-`read` is a skill operation with no standalone `read.mjs`. Use normal text reads for the complete manifest and resolved paths; do not print a second copy through a wrapper CLI. Use the installed validator and the compact commands below for their respective checks.
-
-Run the self-contained installed validator:
-
-```bash
-node <setup-skill-root>/scripts/validate.mjs --manifest <manifest-path>
-```
-
-Use the documented Node environment. The bundled CLI includes its runtime dependencies and needs no repository checkout or project `npm install`. If the required installed script is missing, report an incomplete toolkit installation and stop. Report the command, exit status, and diagnostics. For a v3.1 project with a current scope, the command also recomputes manuscript hashes and reports them under `#scope`. Treat a `scope-currency` diagnostic as changed input: mark dependent evidence stale and reconcile the scope with the author before relying on it or writing. Do not refresh hashes silently. The `#executions` check validates receipt structure, approval and backup references, and per-file hash rules; a missing receipt alone is valid intermediate state and is reported by `status`, not rejected as malformed state. Script validation is authoritative. On read, report validation failures, changed inputs, and missing registered paths without repairing them implicitly. A read returns the full parsed manifest and resolved paths, not the compact navigation view.
-
-## Status
-
-Run the installed status CLI for the mechanical state and execution view:
-
-```bash
-node <setup-skill-root>/scripts/status.mjs --manifest <project-root>/.author-toolkit/project.json
-```
-
-The command returns the current scope ID and status, pending action, recorded blockers, and approval execution evidence. Recorded blockers comprise stale tracker findings and a blocked pending action. Add `--scope-id <target-scope-id> --require-execution` when checking the execution condition for current-draft revision convergence or a previous or base scope. The scope filter applies to unverified approvals and a blocked pending action; stale findings remain project-wide because tracker finding rows have no scope ID.
-
-The text output bounds the unverified-approval and stale-finding lists to eight entries each and truncates displayed long reasons. Add `--json` for complete machine-readable lists and untruncated values. The command joins approved `edit` approvals to post-write execution receipts and approved `restore` approvals to completed restoration records. Missing receipts appear as `unverified` and leave the ordinary CLI successful because they can be valid intermediate state. With `--require-execution`, any unverified approval in the selected scope makes the command exit 1 after reporting the same result. This checks only execution evidence, not the other conditions for current-draft revision convergence or a previous or base scope. Using the flag without `--scope-id` is an argument error and exits 2. Malformed receipts, duplicate approval receipts, unknown approvals or backups, and identity mismatches fail validation.
-
-The status CLI reads the manifest, tracker, and backup index without reading manuscript content or session notes. It does not compare historical output hashes with current manuscript files; later edits do not invalidate an earlier receipt. Its `evidence.operation_specific` value is `not_evaluated`: it does not infer missing evidence, stale evidence beyond recorded tracker rows, coverage reuse, or current-draft revision convergence. Use `read` for full scope paths and hashes, `validate` for current hashes and missing paths, and `status --digest` for finding counts, latest report and session, and next action. The active strategy evaluates operation-specific evidence and its operation gates.
-
-Status does not infer operation completion, select a strategy, or advance pending action.
-
-### Digest
-
-For `status --digest`, accept the project root and run:
-
-```bash
-node <setup-skill-root>/scripts/project-digest.mjs --project-root <project-root>
-```
-
-The CLI validates a v3.1 manifest before replacing anything. It writes the bounded navigation cache `<project-root>/PROJECT_STATE.md`, containing the current scope and a pointer to its hashes, pending action, finding counts, active plan, latest report and session, next action, and pointers to the authoritative files and mechanical status and validation commands. Latest-file selection prefers a UTC timestamp at the start of the filename, falls back to modification time for undated files, and emits normalized project-relative paths. The report scan excludes `<paths.reports>/review_brief.md`, which is a disposable decision summary rather than an immutable report. It does not read the backup index, manuscript content, or full report content. An invalid manifest or failed generation preserves an existing cache; report the error instead of hand-writing a substitute.
-
-For routine navigation, use `PROJECT_STATE.md` pointers, targeted artifact reads, or aggregate counts rather than emitting complete file listings of the registered session or backup directories. Cache generation may scan those directories internally without emitting the list.
-
-The cache is disposable and generated, never a third authority. The manifest, tracker, and current evidence remain authoritative. Once per logical shared-state operation or stopping point, after that operation's state writes, run `status --digest` through `author-project`; do not regenerate between individual commit-journal transitions. A refresh failure is reported without rolling back completed state or manuscript writes. Also refresh at the start of resume. The cache grants no approval and does not replace evidence validation, manuscript reading, or an operation gate.
-
-The latest session supplies the navigation fields `- Active plan: <project-relative-path>` and `- Next action: <concise action>`, or `none` when no active plan is recorded. These are pointers, not new approval state. An existing session without these fields yields `none recorded`; a legacy tracker `Next action` remains a fallback.
+Read, validation, status, and navigation-cache procedures live in [`read-operations.md`](read-operations.md).
 
 ## Set pending
 

@@ -120,16 +120,16 @@ test("backup and handoff writes resolve registered project paths", async () => {
 });
 
 test("project digest is a generated navigation cache, not another source of truth", async () => {
-  const [project, operations, instructions] = await Promise.all([
+  const [project, readOperations, instructions] = await Promise.all([
     readFile(path.join(root, "skills/author-project/SKILL.md"), "utf8"),
-    readFile(path.join(root, "skills/author-project/references/operations.md"), "utf8"),
+    readFile(path.join(root, "skills/author-project/references/read-operations.md"), "utf8"),
     readFile(path.join(root, "skills/setup-author-toolkit/assets/AGENTS.md"), "utf8"),
   ]);
   assert.match(project, /`status --digest`/);
-  assert.match(operations, /project-digest\.mjs --project-root/);
-  assert.match(operations, /PROJECT_STATE\.md/);
-  assert.match(operations, /once per logical shared-state operation/i);
-  assert.match(operations, /navigation cache/i);
+  assert.match(readOperations, /project-digest\.mjs --project-root/);
+  assert.match(readOperations, /PROJECT_STATE\.md/);
+  assert.match(readOperations, /once after each logical shared-state operation/i);
+  assert.match(readOperations, /navigation cache/i);
   assert.match(instructions, /read `PROJECT_STATE\.md` first/i);
   assert.match(instructions, /authoritative/i);
   assert.match(instructions, /only the tracker sections, sessions, plans, and evidence needed/i);
@@ -143,9 +143,9 @@ test("project digest is a generated navigation cache, not another source of trut
 });
 
 test("setup and routine navigation keep operational history listings bounded", async () => {
-  const [setup, operations, instructions, readme, zhReadme] = await Promise.all([
+  const [setup, readOperations, instructions, readme, zhReadme] = await Promise.all([
     readFile(path.join(root, "skills/setup-author-toolkit/SKILL.md"), "utf8"),
-    readFile(path.join(root, "skills/author-project/references/operations.md"), "utf8"),
+    readFile(path.join(root, "skills/author-project/references/read-operations.md"), "utf8"),
     readFile(path.join(root, "skills/setup-author-toolkit/assets/AGENTS.md"), "utf8"),
     readFile(path.join(root, "README.md"), "utf8"),
     readFile(path.join(root, "README.zh-CN.md"), "utf8"),
@@ -157,8 +157,8 @@ test("setup and routine navigation keep operational history listings bounded", a
   assert.match(setup, /use presence checks or counts that do not emit session or backup filenames/);
 
   const navigationRule = /For routine navigation, use `PROJECT_STATE\.md` pointers, targeted artifact reads, or aggregate counts rather than emitting complete file listings of the registered session or backup directories\./;
-  assert.match(operations, navigationRule);
-  assert.match(operations, /Cache generation may scan those directories internally without emitting the list/);
+  assert.match(readOperations, navigationRule);
+  assert.match(readOperations, /Cache generation may scan those directories internally without emitting the list/);
   assert.match(instructions, navigationRule);
   assert.match(readme, /Routine navigation uses its\s+pointers, targeted artifact reads, or aggregate counts/);
   assert.match(readme, /complete\s+file listings of the registered session or backup directories/);
@@ -169,6 +169,37 @@ test("setup and routine navigation keep operational history listings bounded", a
     const text = await readFile(path.join(root, "skills", skill, "SKILL.md"), "utf8");
     assert.match(text, navigationRule, skill);
   }
+});
+
+test("existing-project setup uses bounded inspection references and a categorized summary", async () => {
+  const [project, setup, readOperations, operations, readme, zhReadme] = await Promise.all([
+    readFile(path.join(root, "skills/author-project/SKILL.md"), "utf8"),
+    readFile(path.join(root, "skills/setup-author-toolkit/SKILL.md"), "utf8"),
+    readFile(path.join(root, "skills/author-project/references/read-operations.md"), "utf8"),
+    readFile(path.join(root, "skills/author-project/references/operations.md"), "utf8"),
+    readFile(path.join(root, "README.md"), "utf8"),
+    readFile(path.join(root, "README.zh-CN.md"), "utf8"),
+  ]);
+
+  assert.match(project, /For `initialize` on an existing v3\.1 manifest, `read`, `validate`, `status`, and `status --digest`, read \[`references\/read-operations\.md`\]/);
+  assert.match(project, /For a new manifest and every record or write operation, read \[`references\/operations\.md`\]/);
+  assert.doesNotMatch(project, /For every operation, read \[`references\/operations\.md`\]/);
+  assert.match(setup, /For an existing v3\.1 manifest, follow that invocation with `validate` and `status`/);
+  assert.match(setup, /pass that ID through `--scope-id`/);
+  for (const heading of ["Installation payload", "Project entry files", "Manuscript scope", "Execution evidence"]) {
+    assert.match(setup, new RegExp(`\\*\\*${heading}\\*\\*`));
+  }
+  assert.match(setup, /Distinguish mechanical execution evidence from operation-specific evidence/);
+
+  for (const command of ["doctor\\.mjs", "validate\\.mjs --manifest", "status\\.mjs --manifest", "--scope-id", "--require-execution", "project-digest\\.mjs --project-root"]) {
+    assert.match(readOperations, new RegExp(command));
+  }
+  assert.match(readOperations, /operation-specific evidence, evidence reuse, and current-draft revision convergence/);
+  assert.match(readOperations, /create `<paths\.backups>\/index\.json` .* when absent/);
+  assert.doesNotMatch(readOperations, /## Backup and creation commit|## Record execution|## Restore/);
+  assert.match(operations, /\[Digest\]\(read-operations\.md#digest\)/);
+  assert.match(readme, /installation payload, project entry files, manuscript scope, and execution\s+evidence/);
+  assert.match(zhReadme, /安装载荷、项目入口文件、稿件范围、执行证据/);
 });
 
 test("workflow reporting pointers do not form a cycle", async () => {

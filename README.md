@@ -194,7 +194,11 @@ A quick run looks like this:
    projects use the updated installed contracts without another deployment.
    Initial `author-project` read, validation, and status calls report missing
    installed contracts or scripts as an incomplete toolkit installation rather
-   than relying on project-local reference copies.
+   than relying on project-local reference copies. Existing projects use the
+   bounded initialize, validation, and status reference instead of loading the
+   backup, restore, and creation-commit procedures. Setup summarizes the
+   installation payload, project entry files, manuscript scope, and execution
+   evidence separately.
 3. After setup validates the shared manifest, choose `write-fiction` to create
    or continue a novel, `revise-fiction` for whole-book revision, `revise-draft`
    for the available manuscript and current-scope review, `revise-increment` to

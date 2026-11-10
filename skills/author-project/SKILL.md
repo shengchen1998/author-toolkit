@@ -28,7 +28,7 @@ Accept one operation per invocation:
 | `record-execution` | Completed edit approval ID, backup IDs, exact file actions, verified input and output hashes, and receipt timestamp | Append one post-write execution receipt and report any remaining unverified approvals |
 | `record-restore` | Operation, scope ID, backup or commit ID, files, independent restore approval ID, and safety backup ID | Record an approved restore, including safe removal of batch-created files, and propagate dependency invalidation |
 
-For every operation, read [`references/operations.md`](references/operations.md) and follow its state, evidence, approval, and record rules. Use [`assets/project-template.json`](assets/project-template.json) only for a new v3.1 manifest.
+For `initialize` on an existing v3.1 manifest, `read`, `validate`, `status`, and `status --digest`, read [`references/read-operations.md`](references/read-operations.md). For a new manifest and every record or write operation, read [`references/operations.md`](references/operations.md) and follow its state, evidence, approval, and record rules. Use [`assets/project-template.json`](assets/project-template.json) only for a new v3.1 manifest.
 
 ## Invocation boundary
 
@@ -36,4 +36,4 @@ This skill calls no other skills. Use text reads and writes for normal operation
 
 ## Completion
 
-Finish the requested operation and report the manifest path, changed fields, validation result, and any missing inputs. For each shared-state operation, refresh the navigation cache once after its state writes, following `references/operations.md`. Leave creative files untouched. Initialization ends with shared project state ready for the author to choose `write-fiction`, `revise-fiction`, `revise-draft`, `revise-increment`, or `revise-request`; it does not start a skill or select an entry operation.
+Finish the requested operation and report the manifest path, changed fields, validation result, and any missing inputs. For each shared-state operation, refresh the navigation cache once after its state writes, following [`references/read-operations.md`](references/read-operations.md). Leave creative files untouched. Initialization ends with shared project state ready for the author to choose `write-fiction`, `revise-fiction`, `revise-draft`, `revise-increment`, or `revise-request`; it does not start a skill or select an entry operation.

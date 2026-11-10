@@ -201,7 +201,7 @@ test("workflow commands resolve the installed setup CLIs", async () => {
   }
 
   const operations = await readFile(
-    path.join(root, "skills", "author-project", "references", "operations.md"),
+    path.join(root, "skills", "author-project", "references", "read-operations.md"),
     "utf8",
   );
   assert.match(operations, /node <setup-skill-root>\/scripts\/validate\.mjs --manifest/);
@@ -311,7 +311,7 @@ test("setup reads shared references without deploying them into project state", 
 test("setup uses the authoritative payload inventory and bounded doctor", async () => {
   const [setup, operations, instructions, readme, zhReadme] = await Promise.all([
     readFile(path.join(root, "skills", "setup-author-toolkit", "SKILL.md"), "utf8"),
-    readFile(path.join(root, "skills", "author-project", "references", "operations.md"), "utf8"),
+    readFile(path.join(root, "skills", "author-project", "references", "read-operations.md"), "utf8"),
     readFile(path.join(root, "skills", "setup-author-toolkit", "assets", "AGENTS.md"), "utf8"),
     readFile(path.join(root, "README.md"), "utf8"),
     readFile(path.join(root, "README.zh-CN.md"), "utf8"),
@@ -342,13 +342,12 @@ test("shared workflows resolve installed setup references without project deploy
     "revise-request",
   ];
   const [operations, ...entries] = await Promise.all([
-    readFile(path.join(root, "skills", "author-project", "references", "operations.md"), "utf8"),
+    readFile(path.join(root, "skills", "author-project", "references", "read-operations.md"), "utf8"),
     ...callers.map((skill) => readFile(path.join(root, "skills", skill, "SKILL.md"), "utf8")),
   ]);
 
   assert.match(operations, /read shared runtime contracts directly from its `assets\/references\/` payload/);
-  assert.match(operations, /Before a shared workflow `read`, `validate`, or `status`/);
-  assert.match(operations, /Read shared runtime contracts directly from `<setup-skill-root>\/assets\/references\/`/);
+  assert.match(operations, /Run the installed doctor before each `read`, `validate`, or `status` operation/);
   assert.match(operations, /incomplete toolkit installation/);
   assert.doesNotMatch(operations, /compare every packaged file|missing project-relative paths|reference-version-conflict/);
 

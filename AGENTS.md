@@ -72,7 +72,7 @@ Generate the bounded, disposable `PROJECT_STATE.md` navigation cache for a valid
 node scripts/project-digest.mjs --project-root /path/to/writing-project
 ```
 
-`author-project status --digest` uses the installed setup CLI. Regenerate once after each logical shared-state operation and at resume; the manifest, tracker, and current evidence remain authoritative. Digest implementation changes also require `npm run sync:setup-runtime` before testing.
+`author-project status --digest` uses the installed setup CLI. Regenerate once after each logical shared-state operation and at resume; the manifest, tracker, and current evidence remain authoritative. Existing-project `initialize`, `read`, `validate`, `status`, and `status --digest` use `skills/author-project/references/read-operations.md`; new manifests and state-writing operations use the full `operations.md`. Digest implementation changes also require `npm run sync:setup-runtime` before testing.
 
 Resolve an author-supplied inline character range before editing or proposing text:
 
