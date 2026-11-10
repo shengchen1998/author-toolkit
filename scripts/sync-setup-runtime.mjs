@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { builtinModules } from "node:module";
+import { createHash } from "node:crypto";
 import { cp, mkdir, mkdtemp, readFile, readdir, rename, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -9,6 +10,8 @@ import { build } from "esbuild";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
 const destination = path.join(root, "skills", "setup-author-toolkit", "scripts");
+const setupRoot = path.dirname(destination);
+const payloadManifest = path.join(setupRoot, "assets", "payload-manifest.json");
 const checkOnly = process.argv.length === 3 && process.argv[2] === "--check";
 if (process.argv.length > 3 || (process.argv.length === 3 && !checkOnly)) {
   console.error("Usage: node scripts/sync-setup-runtime.mjs [--check]");
@@ -44,6 +47,7 @@ async function main() {
     });
     assertOnlyNodeBuiltinsAreExternal(result.metafile);
     await copyLicenses(generated);
+    await writePayloadManifest(generated);
 
     if (checkOnly) {
       const differences = await compareDirectories(destination, generated);
@@ -63,6 +67,24 @@ async function main() {
   } finally {
     await rm(temporaryRoot, { recursive: true, force: true });
   }
+}
+
+async function writePayloadManifest(generated) {
+  const files = (await Promise.all([
+    filesUnder(generated, "scripts/"),
+    filesUnder(path.join(setupRoot, "assets", "references"), "assets/references/"),
+    ["assets/AGENTS.md", "SKILL.md"],
+  ])).flat().sort();
+  const entries = await Promise.all(files.map(async (file) => {
+    const source = file.startsWith("scripts/")
+      ? path.join(generated, file.slice("scripts/".length))
+      : path.join(setupRoot, file);
+    return {
+      path: file,
+      sha256: createHash("sha256").update(await readFile(source)).digest("hex"),
+    };
+  }));
+  await writeFile(payloadManifest, `${JSON.stringify({ schema_version: "1.0", files: entries }, null, 2)}\n`);
 }
 
 function assertOnlyNodeBuiltinsAreExternal(metafile) {

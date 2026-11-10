@@ -71,7 +71,7 @@ The caller creates directories and empty creative templates. Initialization does
 
 ## Read and validate
 
-Before a shared workflow `read`, `validate`, or `status`, confirm that the installed setup skill's shared reference payload and bundled validator are available. Read shared runtime contracts directly from `<setup-skill-root>/assets/references/`; do not compare them with or copy them into project files. If a required installed file is missing, report an incomplete toolkit installation and stop. Do not continue shared work or write project state.
+Before a shared workflow `read`, `validate`, or `status`, run `node <setup-skill-root>/scripts/doctor.mjs` to confirm the installed setup payload against its authoritative `assets/payload-manifest.json`. Read shared runtime contracts directly from `<setup-skill-root>/assets/references/`; do not compare them with or copy them into project files. If doctor reports an installed-payload failure, report an incomplete toolkit installation and stop. Do not continue shared work or write project state.
 
 Shared state readiness requires a valid manifest and the installed setup payload, not a project-local reference copy.
 

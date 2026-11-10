@@ -57,8 +57,13 @@ npx skills@latest add shengchen1998/author-toolkit -a claude-code -a kimi-code-c
 npx skills@latest add shengchen1998/author-toolkit -a claude-code -a kimi-code-cli -g
 ```
 
-setup 技能在 `setup-author-toolkit/scripts/` 下提供自包含的校验, 状态, 项目导航, 发现项状态和行内字符区间 CLI, 包括运行依赖.
+setup 技能在 `setup-author-toolkit/scripts/` 下提供自包含的安装检查, 校验, 状态, 项目导航, 发现项状态和行内字符区间 CLI, 包括运行依赖.
 共享工作流直接解析该技能的安装目录, 无需仓库检出, 也无需在写作项目中运行 `npm install`.
+
+运行 `node <setup-skill-root>/scripts/doctor.mjs` 可获得有界安装摘要和失败路径.
+它按 `assets/payload-manifest.json` 核对技能的普通载荷文件, 包括 CLI 内部模块.
+添加 `--project-root <root>` 可同时核对写作项目的 `AGENTS.md` 和相对符号链接
+`CLAUDE.md -> AGENTS.md`; 项目状态校验与宿主命令可见性仍是独立检查.
 
 更新需要手动执行:
 
@@ -345,10 +350,10 @@ AI 关联发现只描述文本模式, 不能证明文本由 AI 生成.
 
 ## 验证状态
 
-3.1.0 工作树的仓库检查已通过: 165 项协议测试和 13 项默认校验, 详见
+3.1.0 工作树的仓库检查已通过: 173 项协议测试和 13 项默认校验, 详见
 [docs/VALIDATION.md](docs/VALIDATION.md). 新增的宿主命令可见性以及有界盘点与导航检查仅为静态契约验证,
 不代表新的宿主 setup 运行, 实际宿主命令可见性观察或上下文降噪实测. 通用本地源安装已发现全部 16 个技能, setup 共享载荷,
-自包含校验 CLI, 项目内 schema 和独立技能本地契约均已验证. Kimi Code 已完成有限范围的创作提交和双向切换验证;
+自包含安装检查与校验 CLI, 项目内 schema 和独立技能本地契约均已验证. Kimi Code 已完成有限范围的创作提交和双向切换验证;
 完整宿主流程, `revise-increment` 与 `revise-request` 端到端运行和百万字稿件的创作质量仍未验证.
 历史结果单独保留, 不能作为当前版本已通过宿主或质量验证的证据.
 
@@ -361,7 +366,7 @@ AI 关联发现只描述文本模式, 不能证明文本由 AI 生成.
 npm run sync:setup-runtime
 ```
 
-安装依赖后在仓库根目录运行以下检查. 部署测试会核对镜像, 并在禁止加载外部运行包的环境中执行安装版校验和项目状态 CLI:
+安装依赖后在仓库根目录运行以下检查. 部署测试会核对镜像, 并在禁止加载外部运行包的环境中执行安装版载荷, 校验和项目状态 CLI:
 
 ```bash
 npm test
@@ -373,6 +378,7 @@ npm run validate
 
 ```bash
 node scripts/validate.mjs --help
+node scripts/doctor.mjs --project-root /path/to/writing-project
 node scripts/validate.mjs --manifest /path/to/.author-toolkit/project.json
 node scripts/validate.mjs --report /path/to/report.md
 node scripts/status.mjs --manifest /path/to/.author-toolkit/project.json --scope-id scope-001

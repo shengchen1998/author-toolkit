@@ -38,7 +38,7 @@ async function markdownFiles(directory) {
   return files.filter((file) => file.endsWith(".md"));
 }
 
-test("setup carries self-contained validation, state, and range CLIs", async (t) => {
+test("setup carries self-contained validation, state, range, and installation CLIs", async (t) => {
   await mkdir(path.join(root, ".test-output"), { recursive: true });
   const temporaryRoot = await mkdtemp(path.join(root, ".test-output", "setup-cli-"));
   t.after(() => rm(temporaryRoot, { recursive: true, force: true }));
@@ -79,7 +79,7 @@ test("setup carries self-contained validation, state, and range CLIs", async (t)
   );
 
   const nodeArgs = ["--no-warnings", "--experimental-loader", loader, "--require", preload];
-  for (const script of ["validate.mjs", "status.mjs", "project-digest.mjs", "findings.mjs", "range.mjs"]) {
+  for (const script of ["validate.mjs", "status.mjs", "project-digest.mjs", "findings.mjs", "range.mjs", "doctor.mjs"]) {
     const result = spawnSync(
       process.execPath,
       [...nodeArgs, path.join(installedSetup, "scripts", script), "--help"],
@@ -100,6 +100,15 @@ test("setup carries self-contained validation, state, and range CLIs", async (t)
   );
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /5 checks, 0 failures/);
+
+  const doctor = spawnSync(
+    process.execPath,
+    [...nodeArgs, path.join(installedSetup, "scripts", "doctor.mjs")],
+    { encoding: "utf8" },
+  );
+  assert.equal(doctor.status, 0, doctor.stderr);
+  assert.match(doctor.stdout, /Failures: 0/);
+  assert.doesNotMatch(doctor.stdout, /AGENTS\.md/);
 
   const project = path.join(temporaryRoot, "writing-project");
   await cp(path.join(root, "examples", "fiction-revision-zh"), project, { recursive: true });
@@ -296,6 +305,28 @@ test("setup reads shared references without deploying them into project state", 
   assert.match(setup, /independent skills do not require setup for standalone use/i);
   assert.match(instructions, /`<setup-skill-root>\/assets\/references\/terminology\.md`/);
   assert.match(instructions, /rather than copying contracts into the writing project/);
+});
+
+test("setup uses the authoritative payload inventory and bounded doctor", async () => {
+  const [setup, operations, instructions, readme, zhReadme] = await Promise.all([
+    readFile(path.join(root, "skills", "setup-author-toolkit", "SKILL.md"), "utf8"),
+    readFile(path.join(root, "skills", "author-project", "references", "operations.md"), "utf8"),
+    readFile(path.join(root, "skills", "setup-author-toolkit", "assets", "AGENTS.md"), "utf8"),
+    readFile(path.join(root, "README.md"), "utf8"),
+    readFile(path.join(root, "README.zh-CN.md"), "utf8"),
+  ]);
+  for (const text of [setup, operations, instructions]) {
+    assert.match(text, /scripts\/doctor\.mjs/);
+  }
+  for (const text of [setup, operations]) {
+    assert.match(text, /assets\/payload-manifest\.json/);
+  }
+  assert.match(setup, /If an installed-payload check fails, report an incomplete toolkit installation and stop/);
+  assert.match(setup, /Rerun the same doctor command/);
+  assert.match(readme, /--project-root <root>/);
+  assert.match(readme, /internal CLI modules/);
+  assert.match(zhReadme, /--project-root <root>/);
+  assert.match(zhReadme, /CLI 内部模块/);
 });
 
 test("shared workflows resolve installed setup references without project deployment", async () => {

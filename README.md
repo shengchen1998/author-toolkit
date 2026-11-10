@@ -133,10 +133,17 @@ Add `-g` to install at user level instead:
 npx skills@latest add shengchen1998/author-toolkit -a claude-code -a kimi-code-cli -g
 ```
 
-The setup skill includes self-contained validation, status, project-digest, finding-state, and character-range CLIs under
+The setup skill includes self-contained installation, validation, status, project-digest, finding-state, and character-range CLIs under
 `setup-author-toolkit/scripts/`. Shared workflows resolve that installed skill
 directory directly; no repository checkout or writing-project `npm install` is
 required.
+
+Run `node <setup-skill-root>/scripts/doctor.mjs` for a bounded installation
+summary and only the failed paths. It verifies the skill's regular payload files,
+including internal CLI modules, against `assets/payload-manifest.json`. Add
+`--project-root <root>` to verify the writing project's `AGENTS.md` and relative
+`CLAUDE.md -> AGENTS.md` link; project-state validation and host command visibility
+remain separate checks.
 
 Updates are manual. Check and apply them with:
 
@@ -550,7 +557,7 @@ npm run sync:setup-runtime
 
 After installing dependencies, run the protocol tests and validation from the
 repository root. The deployment test checks that the mirror is current and runs
-both installed validation and project-state CLIs without external runtime packages:
+the installed payload, validation, and project-state CLIs without external runtime packages:
 
 ```bash
 npm test
@@ -564,6 +571,7 @@ for their exact names:
 
 ```bash
 node scripts/validate.mjs --help
+node scripts/doctor.mjs --project-root /path/to/writing-project
 node scripts/validate.mjs --manifest /path/to/.author-toolkit/project.json
 node scripts/validate.mjs --report /path/to/report.md
 node scripts/status.mjs --manifest /path/to/.author-toolkit/project.json --scope-id scope-001
