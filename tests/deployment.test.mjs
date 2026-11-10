@@ -177,6 +177,7 @@ test("setup carries self-contained validation, state, range, and installation CL
       path.join(project, ".author-toolkit", "project.json"),
       "--scope-id",
       "scope-example-revision",
+      "--require-execution",
       "--json",
     ],
     { encoding: "utf8" },

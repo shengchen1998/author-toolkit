@@ -254,6 +254,47 @@ test("status text is bounded while scoped JSON retains the complete execution re
   assert.equal(result.evidence.operation_specific, "not_evaluated");
 });
 
+test("status strict execution check preserves ordinary reads and selects the target scope", async (t) => {
+  const project = await fixture(t);
+  const manifest = ["--manifest", project.manifestPath];
+
+  const passed = runCli("status.mjs", [
+    ...manifest,
+    "--scope-id",
+    targetScope,
+    "--require-execution",
+  ]);
+  assert.equal(passed.status, 0, passed.stderr);
+  assert.match(passed.stdout, /Execution evidence: 2\/2/);
+
+  const failed = runCli("status.mjs", [
+    ...manifest,
+    "--scope-id",
+    "scope-old",
+    "--require-execution",
+    "--json",
+  ]);
+  assert.equal(failed.status, 1);
+  assert.equal(JSON.parse(failed.stdout).execution.unverified_count, 1);
+  assert.match(failed.stderr, /Execution gate failed: 1 unverified approvals in scope scope-old/);
+
+  const unrelatedScope = runCli("status.mjs", [
+    ...manifest,
+    "--scope-id",
+    targetScope,
+    "--require-execution",
+  ]);
+  assert.equal(unrelatedScope.status, 0, unrelatedScope.stderr);
+
+  const missingScope = runCli("status.mjs", [...manifest, "--require-execution"]);
+  assert.equal(missingScope.status, 2);
+  assert.match(missingScope.stderr, /--require-execution requires --scope-id ID/);
+
+  const ordinary = runCli("status.mjs", [...manifest, "--scope-id", "scope-old"]);
+  assert.equal(ordinary.status, 0, ordinary.stderr);
+  assert.match(ordinary.stdout, /Unverified approvals: 1/);
+});
+
 test("status reports bounded recorded blockers without implying evidence completeness", async (t) => {
   const project = await fixture(t);
   const staleRows = Array.from({ length: 10 }, (_, index) =>

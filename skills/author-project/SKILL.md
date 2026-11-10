@@ -18,7 +18,7 @@ Accept one operation per invocation:
 | `initialize` | Project root, project metadata, paths, and BCP 47 language | Create a neutral v3.1 manifest or validate an existing v3.1 manifest without resetting work |
 | `read` | Project root or manifest path | Return the full parsed manifest and resolved paths through text reads and installed validation; there is no `read.mjs` |
 | `validate` | Project root or manifest path | Run the installed project schema validator and report registered-file and current-scope hash diagnostics |
-| `status` | Project root or manifest path | Return current scope, pending action, recorded blockers, and execution evidence; do not infer operation-specific evidence completeness |
+| `status` | Project root or manifest path; for a current-draft revision convergence or previous/base-scope execution gate, target scope ID and `--require-execution` | Return current scope, pending action, recorded blockers, and execution evidence; do not infer operation-specific evidence completeness |
 | `status --digest` | Project root | Generate the bounded `PROJECT_STATE.md` navigation cache with finding counts, latest pointers, and next action |
 | `next-finding-id` | Uppercase audit prefix and positive batch count | Return an unused consecutive ID block after all tracker and immutable-report history |
 | `record-findings` | Project root and one or more immutable report paths beneath the registered reports path | Validate and atomically insert or update finding rows while preserving author decisions |

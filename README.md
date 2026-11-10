@@ -367,7 +367,10 @@ and current hashes, `status` for current scope, pending action, recorded blocker
 and execution receipts, and `status --digest` for navigation counts, latest
 pointers, and next action. `--scope-id` filters unverified approvals and a blocked
 pending action, but stale findings remain project-wide because tracker finding
-rows have no scope ID. Status does not evaluate operation-specific evidence
+rows have no scope ID. Add `--require-execution` to make unverified approvals in
+the selected scope exit 1; this checks only execution evidence, not the other
+current-draft revision convergence conditions. Without the flag, unverified approvals leave the command
+successful. Status does not evaluate operation-specific evidence
 completeness, evidence reuse, or current-draft revision convergence; the active
 strategy retains those judgments at operation gates.
 

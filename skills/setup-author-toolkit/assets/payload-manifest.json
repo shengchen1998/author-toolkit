@@ -7,7 +7,7 @@
     },
     {
       "path": "assets/AGENTS.md",
-      "sha256": "af992a9eacf27e81668fbf31dc3dec8c73c4f3869b7f10d94c4453d6a0bf4a5f"
+      "sha256": "dfaff3ada32ce99ba05227ad19094dfc60d1e304e83cc0686f6f23c48e5fee70"
     },
     {
       "path": "assets/references/avoid-ai-writing-adapter.md",
@@ -187,7 +187,7 @@
     },
     {
       "path": "scripts/status.mjs",
-      "sha256": "5226e38583100980a26161017ac4bcf592a8fb74c8ce6fd9c973353bf6489bdc"
+      "sha256": "5bcbe2ab08231d8df544906dd64047ce16390b07f93e82eaa54f001923667e96"
     },
     {
       "path": "scripts/validate.mjs",

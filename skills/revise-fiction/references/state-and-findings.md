@@ -147,7 +147,7 @@ For a confirmed target scope, the target scope has reached current-draft revisio
 
 Partial, skipped, or degraded requested applicable coverage prevents current-draft revision convergence unless the author explicitly narrows the requested pass; identify that narrowed requested pass and its gaps instead. Inapplicable whole-book or language-specific checks may remain explicitly `skipped` with their reasons; a skipped coverage unit cannot be reused as a full local coverage unit. A completed creation batch, chapter review, or diagnostic pass alone does not establish current-draft revision convergence. Recompute this state from current evidence at each resume rather than storing a standalone flag for this state.
 
-Use `author-project status` with the target scope ID for the mechanical execution check. Every approved edit or restore approval in that scope must have execution evidence; any `unverified` result prevents current-draft revision convergence, while an unrelated historical scope does not. A legacy approval without a reconciled receipt remains unverified rather than being inferred as executed from its backup.
+Use `author-project status` with the target scope ID and `--require-execution` for the mechanical execution check. Every approved edit or restore approval in that scope must have execution evidence; any `unverified` result prevents current-draft revision convergence, while an unrelated historical scope does not. A legacy approval without a reconciled receipt remains unverified rather than being inferred as executed from its backup.
 
 ## Pending actions and session writes
 
