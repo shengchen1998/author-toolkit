@@ -143,10 +143,9 @@ test("project digest is a generated navigation cache, not another source of trut
 });
 
 test("setup and routine navigation keep operational history listings bounded", async () => {
-  const [setup, readOperations, instructions, readme, zhReadme] = await Promise.all([
+  const [setup, readOperations, readme, zhReadme] = await Promise.all([
     readFile(path.join(root, "skills/setup-author-toolkit/SKILL.md"), "utf8"),
     readFile(path.join(root, "skills/author-project/references/read-operations.md"), "utf8"),
-    readFile(path.join(root, "skills/setup-author-toolkit/assets/AGENTS.md"), "utf8"),
     readFile(path.join(root, "README.md"), "utf8"),
     readFile(path.join(root, "README.zh-CN.md"), "utf8"),
   ]);
@@ -159,7 +158,6 @@ test("setup and routine navigation keep operational history listings bounded", a
   const navigationRule = /For routine navigation, use `PROJECT_STATE\.md` pointers, targeted artifact reads, or aggregate counts rather than emitting complete file listings of the registered session or backup directories\./;
   assert.match(readOperations, navigationRule);
   assert.match(readOperations, /Cache generation may scan those directories internally without emitting the list/);
-  assert.match(instructions, navigationRule);
   assert.match(readme, /Routine navigation uses its\s+pointers, targeted artifact reads, or aggregate counts/);
   assert.match(readme, /complete\s+file listings of the registered session or backup directories/);
   assert.match(zhReadme, /常规导航使用缓存指针, 按需读取目标产物或计数/);
@@ -288,7 +286,7 @@ test("creation and revision strategies share state and stable switching gates", 
     assert.match(text, /revise-increment/);
   }
   assert.match(ask, /standalone `fiction-workshop`/);
-  assert.match(instructions, /staging/);
+  assert.match(instructions, /staged draft/);
   assert.match(instructions, /stable operation gate/i);
   assert.match(state, /Creation evidence does not satisfy `chapter-revision`/);
 });

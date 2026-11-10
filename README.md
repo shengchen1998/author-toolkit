@@ -189,8 +189,10 @@ A quick run looks like this:
    location; setup does not deploy them into the writing project. On every
    setup, it overwrites the project-root `AGENTS.md` with the installed template
    and replaces a regular `CLAUDE.md` or existing symlink with a relative
-   `CLAUDE.md -> AGENTS.md` symlink. Custom content in these two files is not
-   preserved. Do not pass a workflow name or operation argument. After a toolkit update, existing v3.1
+   `CLAUDE.md -> AGENTS.md` symlink. The template keeps routing and manuscript
+   safety guidance; operational details remain in the installed skills and
+   references. Custom content in these two files is not preserved. Do not pass
+   a workflow name or operation argument. After a toolkit update, existing v3.1
    projects use the updated installed contracts without another deployment.
    Initial `author-project` read, validation, and status calls report missing
    installed contracts or scripts as an incomplete toolkit installation rather

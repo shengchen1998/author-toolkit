@@ -305,7 +305,7 @@ test("setup reads shared references without deploying them into project state", 
   assert.doesNotMatch(setup, /Deploy every file|reference-version-conflict|reference-updates/);
   assert.match(setup, /independent skills do not require setup for standalone use/i);
   assert.match(instructions, /`<setup-skill-root>\/assets\/references\/terminology\.md`/);
-  assert.match(instructions, /rather than copying contracts into the writing project/);
+  assert.match(instructions, /Do not copy contracts into the writing project/);
 });
 
 test("setup uses the authoritative payload inventory and bounded doctor", async () => {
