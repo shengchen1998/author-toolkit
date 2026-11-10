@@ -98,6 +98,43 @@ test("setup requires author-confirmed host command visibility", async () => {
   assert.match(zhReadme, /模型侧 Skill 工具列表/);
 });
 
+test("author-facing commands support Codex dollar-prefixed skill invocation", async () => {
+  const [setup, instructions, ask, handoff, reviewHandoff, readme, zhReadme] = await Promise.all([
+    readFile(path.join(root, "skills/setup-author-toolkit/SKILL.md"), "utf8"),
+    readFile(path.join(root, "skills/setup-author-toolkit/assets/AGENTS.md"), "utf8"),
+    readFile(path.join(root, "skills/ask-author/SKILL.md"), "utf8"),
+    readFile(path.join(root, "skills/author-handoff/SKILL.md"), "utf8"),
+    readFile(path.join(root, "skills/author-review/assets/review-handoff-template.md"), "utf8"),
+    readFile(path.join(root, "README.md"), "utf8"),
+    readFile(path.join(root, "README.zh-CN.md"), "utf8"),
+  ]);
+  const strategies = ["write-fiction", "revise-fiction", "revise-draft", "revise-increment", "revise-request"];
+  for (const text of [setup, ask, handoff, readme, zhReadme]) {
+    for (const skill of strategies) assert.match(text, new RegExp(`\\$${skill}\\b`), skill);
+  }
+  assert.match(setup, /Codex uses `\$write-fiction`/);
+  assert.match(setup, /the `\$` autocomplete/);
+  assert.match(setup, /Do not add a Claude Code plugin qualifier or the Kimi Code `\/skill:` prefix in Codex/);
+  assert.doesNotMatch(setup, /On another host, show its skill picker/);
+  assert.match(ask, /\| Need \| Codex \| Claude Code \| Kimi Code \|/);
+  assert.match(instructions, /`\$write-fiction`/);
+  assert.match(instructions, /`\$` autocomplete/);
+  assert.match(instructions, /Do not display `\/skill:` or a Claude Code plugin qualifier as a Codex command/);
+  assert.match(handoff, /`\$author-handoff`/);
+  assert.match(reviewHandoff, /Codex form: `\$author-review`/);
+  for (const text of [setup, ask, handoff]) {
+    assert.match(text, /not (?:select|a syntax inferred from|inferring).*model's name or identity/);
+  }
+  for (const file of ["write-fiction", "revise-fiction", "revise-draft", "revise-increment", "revise-request"]) {
+    const text = await readFile(path.join(root, "skills", file, "SKILL.md"), "utf8");
+    if (["write-fiction", "revise-fiction"].includes(file)) {
+      assert.match(text, /Use `\$setup-author-toolkit` in Codex/);
+    } else {
+      assert.match(text, /Use the same setup command forms as `revise-fiction`/);
+    }
+  }
+});
+
 test("the upstream AI-writing skill has no local integration section", async () => {
   const text = await readFile(path.join(root, "skills/avoid-ai-writing/SKILL.md"), "utf8");
   assert.doesNotMatch(text, /Cross-listed as a prose-mechanics audit/);

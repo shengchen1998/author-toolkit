@@ -6,6 +6,8 @@ Match the author's language. Use these instructions to route work and protect sh
 
 Resolve each skill that the agent will invoke through the Skill tool in the current model-facing skill listing and use its exact registered name, including an `author-toolkit:` qualifier when present. Do not use that listing to check the explicit author entry points below; setup checks the five strategies' host command visibility with the author.
 
+For author-facing commands in Codex, use `$` followed by the exact unqualified registered skill name, such as `$write-fiction`, and check visibility in the `$` autocomplete. Do not display `/skill:` or a Claude Code plugin qualifier as a Codex command. On other hosts, use their documented syntax rather than inferring it from the model's name or identity.
+
 `ask-author`, `setup-author-toolkit`, `write-fiction`, `revise-fiction`, `revise-draft`, `revise-increment`, and `revise-request` are explicit author entry points. When one is needed, display its exact host command and wait for the author; do not invoke it through the Skill tool. Setup, routing, validation, and handoff restoration never start a strategy automatically.
 
 For shared fiction creation or revision, locate `.author-toolkit/project.json`:

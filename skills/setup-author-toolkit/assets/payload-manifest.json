@@ -3,11 +3,11 @@
   "files": [
     {
       "path": "SKILL.md",
-      "sha256": "fa9dc5820c31fae917769df09feb88ded2a068a2473d9a3738e874cf43e04b9a"
+      "sha256": "f1fd534d4809b9b1daaa179f3d0b31284cd646bef12637894ff2e7f1d15b6423"
     },
     {
       "path": "assets/AGENTS.md",
-      "sha256": "cba88d9eef577c101c766ffd54f16cb157de1f20ab274f73f49bbc12fd89431d"
+      "sha256": "81aa46430a4eaadc5e5ceb220bf0eb6b690fd5516bd50c729d033d431d0c6d14"
     },
     {
       "path": "assets/references/avoid-ai-writing-adapter.md",
@@ -75,7 +75,7 @@
     },
     {
       "path": "assets/references/terminology.md",
-      "sha256": "05ea36da21bbe1d4f9cd00b8552f0ee1d52aeb065e514a714ee94f1c62ea1b74"
+      "sha256": "1e2502ff311ef3c3d6bad2a19267bc6ee5b5fb57ee36d305406dd3da73ef24ea"
     },
     {
       "path": "assets/references/workflow-reporting.md",

@@ -1,7 +1,7 @@
 # Author Toolkit 中文快速上手
 
 Author Toolkit 3.1.0 提供增量小说创作, 四个小说修订策略和六个独立写作技能. 创作与修订共享
-同一项目证据模型, 支持 Claude Code 与 Kimi Code. 完整说明见 [英文 README](README.md),
+同一项目证据模型, 支持 Codex, Claude Code 与 Kimi Code. 完整说明见 [英文 README](README.md),
 共享用语见 [受控术语表](references/terminology.md).
 
 ## 包含的 16 个技能
@@ -43,18 +43,24 @@ claude plugin install author-toolkit@author-toolkit
 
 然后执行 `/reload`, 或用 `/new` 开始新会话.
 
+### Codex
+
+使用下面的通用安装方式. Codex 从项目的 `.agents/skills/` 发现项目级技能, 从
+`~/.agents/skills/` 发现用户级技能. 使用 `$` 加准确且不带命名空间的注册技能名调用, 例如
+`$setup-author-toolkit`.
+
 ### 通用安装
 
 通用安装器需要 Node.js >= 22.20. 默认安装到当前项目:
 
 ```bash
-npx skills@latest add shengchen1998/author-toolkit -a claude-code -a kimi-code-cli
+npx skills@latest add shengchen1998/author-toolkit -a codex -a claude-code -a kimi-code-cli
 ```
 
 在命令末尾添加 `-g` 可安装到用户级目录:
 
 ```bash
-npx skills@latest add shengchen1998/author-toolkit -a claude-code -a kimi-code-cli -g
+npx skills@latest add shengchen1998/author-toolkit -a codex -a claude-code -a kimi-code-cli -g
 ```
 
 setup 技能在 `setup-author-toolkit/scripts/` 下提供自包含的安装检查, 校验, 状态, 项目导航, 发现项状态和行内字符区间 CLI, 包括运行依赖.
@@ -78,6 +84,7 @@ npx skills update
 
 | 安装方式 | 宿主 | Setup | 创作 | 全书修订 | 当前草稿修订 | 增量修订 | 请求修订 |
 | --- | --- | --- | --- | --- | --- | --- | --- |
+| 裸技能 | Codex | `$setup-author-toolkit` | `$write-fiction` | `$revise-fiction` | `$revise-draft` | `$revise-increment` | `$revise-request` |
 | 插件 | Claude Code | `/author-toolkit:setup-author-toolkit` | `/author-toolkit:write-fiction` | `/author-toolkit:revise-fiction` | `/author-toolkit:revise-draft` | `/author-toolkit:revise-increment` | `/author-toolkit:revise-request` |
 | 插件 | Kimi Code | `/skill:author-toolkit:setup-author-toolkit` | `/skill:author-toolkit:write-fiction` | `/skill:author-toolkit:revise-fiction` | `/skill:author-toolkit:revise-draft` | `/skill:author-toolkit:revise-increment` | `/skill:author-toolkit:revise-request` |
 | 裸技能 | Claude Code | `/setup-author-toolkit` | `/write-fiction` | `/revise-fiction` | `/revise-draft` | `/revise-increment` | `/revise-request` |
@@ -87,7 +94,7 @@ npx skills update
 
 五个策略都是用户入口, 不要求出现在模型侧 Skill 工具列表中. 只有你确认宿主命令可见性后,
 setup 才报告 ready: 在当前宿主的命令面板或自动补全中, 五个策略的准确命令都必须可见;
-没有技能命令的宿主, 则在技能选择器中确认五个准确注册名. 未确认时, setup 将宿主命令可见性
+Codex 使用 `$` 自动补全. 没有技能命令的宿主, 则在技能选择器中确认五个准确注册名. 未确认时, setup 将宿主命令可见性
 报告为未验证. 仅展示命令字符串或读取插件/技能的 `enabled` 元数据, 都不能确立宿主命令可见性.
 
 快速流程:
@@ -331,6 +338,7 @@ tracker, 故事圣经, 报告, session notes, 备份, handoff 和适用的创作
 
 | 安装方式 | 命令模式 |
 | --- | --- |
+| Codex | `$<skill-name>` |
 | Claude Code 插件 | `/author-toolkit:<skill-name>` |
 | Kimi Code 插件 | `/skill:author-toolkit:<skill-name>` |
 | Claude Code 裸技能 | `/<skill-name>` |
@@ -354,7 +362,7 @@ AI 关联发现只描述文本模式, 不能证明文本由 AI 生成.
 
 ## 验证状态
 
-3.1.0 工作树的仓库检查已通过: 173 项协议测试和 13 项默认校验, 详见
+3.1.0 工作树的仓库检查已通过: 176 项协议测试和 13 项默认校验, 详见
 [docs/VALIDATION.md](docs/VALIDATION.md). 新增的宿主命令可见性以及有界盘点与导航检查仅为静态契约验证,
 不代表新的宿主 setup 运行, 实际宿主命令可见性观察或上下文降噪实测. 通用本地源安装已发现全部 16 个技能, setup 共享载荷,
 自包含安装检查与校验 CLI, 项目内 schema 和独立技能本地契约均已验证. Kimi Code 已完成有限范围的创作提交和双向切换验证;

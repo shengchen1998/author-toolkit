@@ -1,8 +1,8 @@
 # Author Toolkit
 
 Incremental fiction creation and four fiction revision strategies sharing one
-project evidence model, plus six independent writing skills for Claude Code and
-Kimi Code.
+project evidence model, plus six independent writing skills for Codex, Claude
+Code, and Kimi Code.
 
 [Chinese quick start](README.zh-CN.md) | [Controlled terminology](references/terminology.md) |
 [Validation status](docs/VALIDATION.md)
@@ -76,8 +76,8 @@ affected passages; an explicit full-scope review is required to reverify
 current-draft revision convergence for the full-manuscript target scope.
 
 Narrative nonfiction remains a direct `narrative-nonfiction` task. Multi-book
-projects and integrations with other hosts are outside the supported 3.1
-workflows.
+projects and integrations with hosts other than Codex, Claude Code, and Kimi
+Code are outside the supported 3.1 workflows.
 
 English and Chinese are the core workflow languages. Chinese prose audits use
 `skills/prose-mechanics/references/chinese-rules.md`, with Chinese sentence
@@ -118,19 +118,26 @@ Run:
 
 Then run `/reload` or start a new session with `/new`.
 
+### Codex
+
+Use the generic installation below. Codex discovers project skills from
+`.agents/skills/` and user skills from `~/.agents/skills/`. Invoke a skill with
+`$` followed by its exact unqualified registered name, such as
+`$setup-author-toolkit`.
+
 ### Generic project or user installation
 
 The generic installer requires Node.js >= 22.20. Install into the current
-project for both supported hosts:
+project for all three supported hosts:
 
 ```bash
-npx skills@latest add shengchen1998/author-toolkit -a claude-code -a kimi-code-cli
+npx skills@latest add shengchen1998/author-toolkit -a codex -a claude-code -a kimi-code-cli
 ```
 
 Add `-g` to install at user level instead:
 
 ```bash
-npx skills@latest add shengchen1998/author-toolkit -a claude-code -a kimi-code-cli -g
+npx skills@latest add shengchen1998/author-toolkit -a codex -a claude-code -a kimi-code-cli -g
 ```
 
 The setup skill includes self-contained installation, validation, status, project-digest, finding-state, and character-range CLIs under
@@ -162,6 +169,7 @@ Use the command forms that match the installation method:
 
 | Installation | Host | Setup | Creation | Whole-book revision | Current-draft revision | Incremental revision | Request revision |
 | --- | --- | --- | --- | --- | --- | --- | --- |
+| Bare skills | Codex | `$setup-author-toolkit` | `$write-fiction` | `$revise-fiction` | `$revise-draft` | `$revise-increment` | `$revise-request` |
 | Plugin | Claude Code | `/author-toolkit:setup-author-toolkit` | `/author-toolkit:write-fiction` | `/author-toolkit:revise-fiction` | `/author-toolkit:revise-draft` | `/author-toolkit:revise-increment` | `/author-toolkit:revise-request` |
 | Plugin | Kimi Code | `/skill:author-toolkit:setup-author-toolkit` | `/skill:author-toolkit:write-fiction` | `/skill:author-toolkit:revise-fiction` | `/skill:author-toolkit:revise-draft` | `/skill:author-toolkit:revise-increment` | `/skill:author-toolkit:revise-request` |
 | Bare skills | Claude Code | `/setup-author-toolkit` | `/write-fiction` | `/revise-fiction` | `/revise-draft` | `/revise-increment` | `/revise-request` |
@@ -172,7 +180,7 @@ For `ask-author`, use the same command form with that skill name.
 The five strategies are user entries and are not required in the model-facing
 Skill tool list. Setup reports ready only after your confirmation of host
 command visibility: all five exact strategy commands appear in the current
-host's command palette or autocomplete. On a host without skill commands,
+host's command palette or autocomplete (the `$` autocomplete in Codex). On a host without skill commands,
 confirm all five exact registered names in its skill picker instead. Without
 that confirmation, setup reports host command visibility as unverified.
 Displayed command strings and plugin or skill `enabled` metadata do not
@@ -525,6 +533,7 @@ Use the same installation-specific command form and replace the skill name:
 
 | Installation | Command pattern |
 | --- | --- |
+| Codex | `$<skill-name>` |
 | Claude Code plugin | `/author-toolkit:<skill-name>` |
 | Kimi Code plugin | `/skill:author-toolkit:<skill-name>` |
 | Claude Code bare skills | `/<skill-name>` |

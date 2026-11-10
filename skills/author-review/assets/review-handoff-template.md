@@ -42,4 +42,4 @@ Delete the two lines that do not apply. State the fresh target reader inline in 
 
 ## Resume command
 
-Use the host's documented author command with `review_mode=<named mode>`, `perspective=<named perspective>`, `scope_id=<scope ID>`, and `handoff=<this path>`. Claude Code plugin form: `/author-toolkit:author-review`. Kimi Code plugin form: `/skill:author-toolkit:author-review`. Bare forms are `/author-review` in Claude Code and `/skill:author-review` in Kimi Code. If the host has no skill commands, use its skill picker and the exact registered skill name.
+Use the host's documented author command with `review_mode=<named mode>`, `perspective=<named perspective>`, `scope_id=<scope ID>`, and `handoff=<this path>`. Codex form: `$author-review`. Claude Code plugin form: `/author-toolkit:author-review`. Kimi Code plugin form: `/skill:author-toolkit:author-review`. Bare forms are `/author-review` in Claude Code and `/skill:author-review` in Kimi Code. If the host has no skill commands, use its skill picker and the exact registered skill name.

@@ -27,20 +27,20 @@ Show only the routes matching the author's situation and wait for the author to 
 
 ## Author-facing commands
 
-Use the host's actual documented syntax. The table shows qualified plugin commands. Bare installations use `/name` in Claude Code and `/skill:name` in Kimi Code. On another host, show its skill picker and exact registered name instead of inventing a command.
+Use the host's actual documented syntax, not a syntax inferred from the model's name or identity. Codex uses `$name` with the exact unqualified registered skill name. The table shows qualified plugin commands for the other hosts. Bare installations use `/name` in Claude Code and `/skill:name` in Kimi Code. On another host, show its skill picker and exact registered name instead of inventing a command.
 
-| Need | Claude Code | Kimi Code |
-|---|---|---|
-| Set up or register a manuscript project | `/author-toolkit:setup-author-toolkit` | `/skill:author-toolkit:setup-author-toolkit` |
-| Create fiction from scratch or continue shared creation | `/author-toolkit:write-fiction` | `/skill:author-toolkit:write-fiction` |
-| Revise a whole-book baseline, structure, or final review | `/author-toolkit:revise-fiction` | `/skill:author-toolkit:revise-fiction` |
-| Revise an unfinished draft within a confirmed scope | `/author-toolkit:revise-draft` | `/skill:author-toolkit:revise-draft` |
-| Revise added or affected chapters after the previous scope has reached current-draft revision convergence and the manuscript grows | `/author-toolkit:revise-increment` | `/skill:author-toolkit:revise-increment` |
-| Revise existing content after the full-manuscript base scope has reached current-draft revision convergence | `/author-toolkit:revise-request` | `/skill:author-toolkit:revise-request` |
-| Create or restore a session handoff | `/author-toolkit:author-handoff` | `/skill:author-toolkit:author-handoff` |
-| Use standalone fiction writing or editing | `/author-toolkit:fiction-workshop` | `/skill:author-toolkit:fiction-workshop` |
-| Work on narrative nonfiction | `/author-toolkit:narrative-nonfiction` | `/skill:author-toolkit:narrative-nonfiction` |
-| Run sentence-level audits or Chinese AI-Isms detection | `/author-toolkit:prose-mechanics` | `/skill:author-toolkit:prose-mechanics` |
-| Run the upstream English AI-writing catalog | `/author-toolkit:avoid-ai-writing` | `/skill:author-toolkit:avoid-ai-writing` |
+| Need | Codex | Claude Code | Kimi Code |
+|---|---|---|---|
+| Set up or register a manuscript project | `$setup-author-toolkit` | `/author-toolkit:setup-author-toolkit` | `/skill:author-toolkit:setup-author-toolkit` |
+| Create fiction from scratch or continue shared creation | `$write-fiction` | `/author-toolkit:write-fiction` | `/skill:author-toolkit:write-fiction` |
+| Revise a whole-book baseline, structure, or final review | `$revise-fiction` | `/author-toolkit:revise-fiction` | `/skill:author-toolkit:revise-fiction` |
+| Revise an unfinished draft within a confirmed scope | `$revise-draft` | `/author-toolkit:revise-draft` | `/skill:author-toolkit:revise-draft` |
+| Revise added or affected chapters after the previous scope has reached current-draft revision convergence and the manuscript grows | `$revise-increment` | `/author-toolkit:revise-increment` | `/skill:author-toolkit:revise-increment` |
+| Revise existing content after the full-manuscript base scope has reached current-draft revision convergence | `$revise-request` | `/author-toolkit:revise-request` | `/skill:author-toolkit:revise-request` |
+| Create or restore a session handoff | `$author-handoff` | `/author-toolkit:author-handoff` | `/skill:author-toolkit:author-handoff` |
+| Use standalone fiction writing or editing | `$fiction-workshop` | `/author-toolkit:fiction-workshop` | `/skill:author-toolkit:fiction-workshop` |
+| Work on narrative nonfiction | `$narrative-nonfiction` | `/author-toolkit:narrative-nonfiction` | `/skill:author-toolkit:narrative-nonfiction` |
+| Run sentence-level audits or Chinese AI-Isms detection | `$prose-mechanics` | `/author-toolkit:prose-mechanics` | `/skill:author-toolkit:prose-mechanics` |
+| Run the upstream English AI-writing catalog | `$avoid-ai-writing` | `/author-toolkit:avoid-ai-writing` | `/skill:author-toolkit:avoid-ai-writing` |
 
 Routing is complete when the author can see the current or missing shared state and the exact next command. The author, not this skill, starts the selected route.
