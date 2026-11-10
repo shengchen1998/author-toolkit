@@ -142,6 +142,35 @@ test("project digest is a generated navigation cache, not another source of trut
   }
 });
 
+test("setup and routine navigation keep operational history listings bounded", async () => {
+  const [setup, operations, instructions, readme, zhReadme] = await Promise.all([
+    readFile(path.join(root, "skills/setup-author-toolkit/SKILL.md"), "utf8"),
+    readFile(path.join(root, "skills/author-project/references/operations.md"), "utf8"),
+    readFile(path.join(root, "skills/setup-author-toolkit/assets/AGENTS.md"), "utf8"),
+    readFile(path.join(root, "README.md"), "utf8"),
+    readFile(path.join(root, "README.zh-CN.md"), "utf8"),
+  ]);
+
+  assert.match(setup, /^1\. Inspect the project root with shallow listings and targeted existence or type checks\./m);
+  assert.match(setup, /For an existing v3\.1 manifest, take operational paths from it and leave existence checks to the later validation step/);
+  assert.match(setup, /Without a manifest, limit discovery to the candidate component directories and manuscript paths needed for registration/);
+  assert.match(setup, /use presence checks or counts that do not emit session or backup filenames/);
+
+  const navigationRule = /For routine navigation, use `PROJECT_STATE\.md` pointers, targeted artifact reads, or aggregate counts rather than emitting complete file listings of the registered session or backup directories\./;
+  assert.match(operations, navigationRule);
+  assert.match(operations, /Cache generation may scan those directories internally without emitting the list/);
+  assert.match(instructions, navigationRule);
+  assert.match(readme, /Routine navigation uses its\s+pointers, targeted artifact reads, or aggregate counts/);
+  assert.match(readme, /complete\s+file listings of the registered session or backup directories/);
+  assert.match(zhReadme, /常规导航使用缓存指针, 按需读取目标产物或计数/);
+  assert.match(zhReadme, /不输出已登记会话或备份目录的完整文件清单/);
+
+  for (const skill of ["write-fiction", "revise-fiction", "revise-draft", "revise-increment", "revise-request"]) {
+    const text = await readFile(path.join(root, "skills", skill, "SKILL.md"), "utf8");
+    assert.match(text, navigationRule, skill);
+  }
+});
+
 test("workflow reporting pointers do not form a cycle", async () => {
   const reporting = await readFile(path.join(root, "references/workflow-reporting.md"), "utf8");
   const state = await readFile(

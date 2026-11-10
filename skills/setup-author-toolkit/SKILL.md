@@ -10,7 +10,7 @@ Register one book project and prepare its shared persistent files. Accept only t
 
 ## Setup
 
-1. Inspect the project root. Look for `.author-toolkit/project.json`, manuscript text files, a Story Bible, an audit tracker, reports, session notes, and creation state. If several plausible roots or manuscript paths exist, present the choices and let the author select one.
+1. Inspect the project root with shallow listings and targeted existence or type checks. Look for `.author-toolkit/project.json`, manuscript text files, a Story Bible, an audit tracker, and candidate report, session, backup, handoff, and creation locations. For an existing v3.1 manifest, take operational paths from it and leave existence checks to the later validation step. Without a manifest, limit discovery to the candidate component directories and manuscript paths needed for registration; use presence checks or counts that do not emit session or backup filenames. If several plausible roots or manuscript paths exist, present the choices and let the author select one.
 2. Register existing paths as they are. Use these defaults only for missing components:
    - `manuscript/`
    - `story-bible.md`

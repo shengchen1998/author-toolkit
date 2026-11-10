@@ -383,8 +383,10 @@ strategy retains those judgments at operation gates.
   resume. It points to the current scope and hashes, pending action, finding
   counts, active plan, latest session and report, and next action. The manifest,
   tracker, and current evidence remain authoritative; the cache grants no
-  approval and does not replace evidence reading. It does not read the backup
-  index. Record `- Active plan: <project-relative-path>` and
+  approval and does not replace evidence reading. Routine navigation uses its
+  pointers, targeted artifact reads, or aggregate counts rather than emitting
+  complete file listings of the registered session or backup directories. It
+  does not read the backup index. Record `- Active plan: <project-relative-path>` and
   `- Next action: <concise action>` in the latest session so the cache can
   locate them. A legacy tracker `Next action` remains a fallback. Latest-file
   selection prefers UTC filename timestamps and uses modification time for
