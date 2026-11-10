@@ -71,7 +71,7 @@ function isNewer(candidate, latest) {
   return candidate.path > latest.path;
 }
 
-async function latestFile(projectRoot, directory, extension) {
+async function latestFile(projectRoot, directory, extension, excludedPaths = new Set()) {
   if (!relativePath(directory)) return null;
   let latest = null;
   async function visit(relativeDirectory) {
@@ -85,7 +85,7 @@ async function latestFile(projectRoot, directory, extension) {
     for (const entry of entries) {
       const relative = path.posix.join(relativeDirectory, entry.name);
       if (entry.isDirectory()) await visit(relative);
-      else if (entry.isFile() && entry.name.endsWith(extension)) {
+      else if (entry.isFile() && entry.name.endsWith(extension) && !excludedPaths.has(relative)) {
         const candidate = {
           path: relative,
           timestamp: filenameTimestamp(entry.name),
@@ -175,8 +175,9 @@ export async function generateProjectDigest(projectRoot) {
     throw new Error(`Cannot generate digest: invalid v3.1 manifest. ${details}`);
   }
   const tracker = await readFile(path.resolve(projectRoot, manifest.paths.audit_tracker), "utf8");
+  const reviewBriefPath = path.posix.join(manifest.paths.reports, "review_brief.md");
   const [latestReport, latestSession] = await Promise.all([
-    latestFile(projectRoot, manifest.paths.reports, ".md"),
+    latestFile(projectRoot, manifest.paths.reports, ".md", new Set([reviewBriefPath])),
     latestFile(projectRoot, manifest.paths.sessions, ".md"),
   ]);
   const digest = renderProjectDigest({

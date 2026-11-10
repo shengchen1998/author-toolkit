@@ -223,7 +223,8 @@ AI, 作者和混合创作使用相同门禁. 每本书只保留一个活动创�
   manifest, tracker 和当前证据仍是权威来源; 缓存不提供批准, 也不替代证据读取, 且不读取备份索引.
   在最新会话中记录 `- Active plan: <project-relative-path>` 和 `- Next action: <concise action>`, 供缓存定位.
   旧 tracker 中的 `Next action` 保留为回退. 最新文件优先使用文件名开头的 UTC 时间戳,
-  无时间戳文件使用修改时间. Read next 部分指向 `author-project status` 以查看已记录阻塞和执行证据,
+  无时间戳文件使用修改时间. 最新报告扫描排除可丢弃的 `review_brief.md` 决定摘要.
+  Read next 部分指向 `author-project status` 以查看已记录阻塞和执行证据,
   并指向 `validate` 以检查当前哈希和缺失路径; `status` 不把缓存作为数据源.
 - `reports/`: 诊断上下文和机器可读结果. 重新审计生成新报告, 不覆盖已交付报告. 可复用
   覆盖单元和持续更新的覆盖索引也保存在登记的 reports 路径下. `review_brief.md` 是从 tracker 的

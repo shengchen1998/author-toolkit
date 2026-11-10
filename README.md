@@ -379,7 +379,8 @@ strategy retains those judgments at operation gates.
   `- Next action: <concise action>` in the latest session so the cache can
   locate them. A legacy tracker `Next action` remains a fallback. Latest-file
   selection prefers UTC filename timestamps and uses modification time for
-  undated files. Its Read next section points to `author-project status` for
+  undated files. The report scan excludes the disposable `review_brief.md`
+  decision summary. Its Read next section points to `author-project status` for
   recorded blockers and execution evidence, and to `validate` for current hashes
   and missing paths; status does not use the cache as a data source.
 - `reports/` preserves diagnostic context and machine-readable results. A rerun

@@ -160,6 +160,35 @@ test("project digest selects the newest timestamp across report directories", as
   assert.doesNotMatch(output, /reports\/\//);
 });
 
+test("project digest excludes the review brief from latest report selection", async (t) => {
+  const projectRoot = await projectFixture(t);
+  const manifestPath = path.join(projectRoot, ".author-toolkit", "project.json");
+  const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
+  manifest.paths.reports = "reports/";
+  await writeFile(manifestPath, JSON.stringify(manifest), "utf8");
+  await rm(path.join(projectRoot, "reports/diagnostics/latest.md"));
+  await mkdir(path.join(projectRoot, "reports/current-scope-review"), { recursive: true });
+  const report = path.join(
+    projectRoot,
+    "reports/current-scope-review/2026-11-09_173847_current-scope-review.md",
+  );
+  const brief = path.join(projectRoot, "reports/review_brief.md");
+  await writeFile(report, "Current-scope review report");
+  await writeFile(brief, "Review decision summary");
+  await utimes(report, new Date("2026-11-09T17:38:47Z"), new Date("2026-11-09T17:38:47Z"));
+  await utimes(brief, new Date("2026-11-09T17:40:00Z"), new Date("2026-11-09T17:40:00Z"));
+
+  const result = digestCli(projectRoot);
+  assert.equal(result.status, 0, result.stderr);
+  const output = await readFile(path.join(projectRoot, "PROJECT_STATE.md"), "utf8");
+  assert.match(
+    output,
+    /Latest report: `reports\/current-scope-review\/2026-11-09_173847_current-scope-review\.md`/,
+  );
+  assert.doesNotMatch(output, /Latest report: `reports\/review_brief\.md`/);
+  assert.doesNotMatch(output, /reports\/\//);
+});
+
 test("project digest uses modification time when filenames have no timestamp", async (t) => {
   const projectRoot = await projectFixture(t);
   const previous = path.join(projectRoot, "reports/diagnostics/latest.md");
