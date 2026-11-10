@@ -61,6 +61,43 @@ test("the inventory contains exactly 16 skills and seven user entries", async ()
   assert.equal(userEntries.size, 7);
 });
 
+test("setup requires author-confirmed host command visibility", async () => {
+  const [setup, instructions, terminology, readme, zhReadme] = await Promise.all([
+    readFile(path.join(root, "skills/setup-author-toolkit/SKILL.md"), "utf8"),
+    readFile(path.join(root, "skills/setup-author-toolkit/assets/AGENTS.md"), "utf8"),
+    readFile(path.join(root, "references/terminology.md"), "utf8"),
+    readFile(path.join(root, "README.md"), "utf8"),
+    readFile(path.join(root, "README.zh-CN.md"), "utf8"),
+  ]);
+  const setupStep = setup.match(/^8\. .+$/m)?.[0];
+  const readyRule = setup.match(/^Report setup as ready only when .+$/m)?.[0];
+  assert.ok(setupStep);
+  assert.ok(readyRule);
+
+  assert.match(setupStep, /Ask the author to confirm host command visibility/);
+  assert.match(setupStep, /all five commands in the current host's command palette or autocomplete/);
+  assert.match(setupStep, /all five exact registered names in its skill picker on a host without skill commands/);
+  assert.match(setupStep, /Wait for that confirmation and the author's strategy choice/);
+  assert.match(readyRule, /author has confirmed host command visibility for all five strategies/);
+  assert.match(readyRule, /model-facing Skill tool list, displayed command strings, or plugin or skill `enabled` metadata/);
+  assert.match(readyRule, /report host command visibility as unverified and do not report setup as ready/);
+  assert.match(readyRule, /Do not invoke .+ or another writing skill from setup/);
+  for (const skill of ["write-fiction", "revise-fiction", "revise-draft", "revise-increment", "revise-request"]) {
+    assert.match(setupStep, new RegExp(`\`${skill}\``));
+    assert.match(readyRule, new RegExp(`\`${skill}\``));
+  }
+  assert.match(instructions, /each skill that the agent will invoke through the Skill tool/);
+  assert.match(instructions, /Do not use that listing to check the explicit author entry points/);
+  assert.match(instructions, /setup checks the five strategies' host command visibility with the author/);
+  assert.match(instructions, /display its exact host command and wait for the author; do not invoke it through the Skill tool/);
+  assert.match(instructions, /never start a strategy automatically/);
+  assert.match(terminology, /`host command visibility` \| 宿主命令可见性/);
+  assert.match(readme, /confirmation of host\s+command visibility/);
+  assert.match(readme, /model-facing\s+Skill tool list/);
+  assert.match(zhReadme, /宿主命令可见性/);
+  assert.match(zhReadme, /模型侧 Skill 工具列表/);
+});
+
 test("the upstream AI-writing skill has no local integration section", async () => {
   const text = await readFile(path.join(root, "skills/avoid-ai-writing/SKILL.md"), "utf8");
   assert.doesNotMatch(text, /Cross-listed as a prose-mechanics audit/);

@@ -162,6 +162,15 @@ Use the command forms that match the installation method:
 
 For `ask-author`, use the same command form with that skill name.
 
+The five strategies are user entries and are not required in the model-facing
+Skill tool list. Setup reports ready only after your confirmation of host
+command visibility: all five exact strategy commands appear in the current
+host's command palette or autocomplete. On a host without skill commands,
+confirm all five exact registered names in its skill picker instead. Without
+that confirmation, setup reports host command visibility as unverified.
+Displayed command strings and plugin or skill `enabled` metadata do not
+establish it.
+
 A quick run looks like this:
 
 1. Identify the writing project directory. It may contain an existing Markdown

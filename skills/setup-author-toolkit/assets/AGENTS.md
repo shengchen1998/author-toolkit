@@ -4,7 +4,7 @@ These instructions govern an agent working in one writing project with Author To
 
 ## Resolve and route skills
 
-Match the author's language. Resolve every skill in the host's current skill listing and use its exact registered name, including an `author-toolkit:` qualifier when present.
+Match the author's language. Resolve each skill that the agent will invoke through the Skill tool in the current model-facing skill listing, and use its exact registered name, including an `author-toolkit:` qualifier when present. Do not use that listing to check the explicit author entry points below; setup checks the five strategies' host command visibility with the author.
 
 `ask-author`, `setup-author-toolkit`, `write-fiction`, `revise-fiction`, `revise-draft`, `revise-increment`, and `revise-request` are explicit author entry points. When one is needed, display its exact host command and wait for the author; do not invoke it through the Skill tool. Setup, routing, validation, and handoff restoration never start a strategy automatically.
 

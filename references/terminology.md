@@ -21,6 +21,7 @@ Independent skills keep their craft vocabularies. Register a craft term here bef
 | --- | --- | --- | --- | --- |
 | `strategy` | 策略 | Noun | One of the five author-selected shared creation or revision procedures. A strategy is not an operation or persisted shared project state. | |
 | `user entry` | 用户入口 | Noun | A skill that the author invokes explicitly. The five strategies and the setup and routing skills are user entries. | |
+| `host command visibility` | 宿主命令可见性 | Noun | The author-observed presence of every exact strategy command in the current host's command palette or autocomplete, or of every exact registered strategy name in its skill picker when skill commands are unavailable. It requires an explicit author decision and cannot be inferred from the model-facing Skill tool list, displayed command strings, or plugin or skill `enabled` metadata. | `command visibility`<br>`command-visibility` |
 | `operation` | 操作 | Noun | One named unit of work in an operation sequence, pending action, or revision report. Use the exact operation identifier; one invocation runs one operation. | |
 | `shared project state` | 共享项目状态 | Noun | The manifest and registered artifacts shared by all five strategies. It is not owned by one strategy. | `workflow state` |
 | `manuscript` | 正文稿件 | Noun | Creative Markdown or plain-text files included by manuscript inventory. Operational artifacts and staging are not manuscript. | |
@@ -69,7 +70,7 @@ Independent skills keep their craft vocabularies. Register a craft term here bef
 | `author decision` | 作者决定 | Noun | An explicit author choice recorded for one active item. A model recommendation is not an author decision. | |
 | `author decision loop` | 作者决定循环 | Noun | The procedure that presents one active decision, records its explicit outcome, and then advances to the next decision. | |
 | `context-fit check` | 上下文适配检查 | Noun | The editorial judgment applied to exact edit candidates against local continuity, history, repetition, voice, request intent, and narrative dependencies before proposal presentation. It neither approves an edit nor expands its scope or coverage. | `context-fit checklist` |
-| `confirmation` | 确认 | Noun | An author decision for a scope, baseline, request plan, or creative foundation. Confirmation alone does not authorize a manuscript write. | |
+| `confirmation` | 确认 | Noun | An author decision for host command visibility, a scope, baseline, request plan, or creative foundation. Confirmation of host command visibility does not validate the manifest or installed payload; confirmation alone does not authorize a manuscript write. | |
 | `approval` | 批准 | Noun | A tracked authorization for an exact operation, scope, paths, actions, and input versions. Edit and restore approvals are separate. | |
 | `execution receipt` | 执行回执 | Noun | A post-write record linking one edit approval to its backups and verified per-file input and output hashes. A completed restoration record is the execution receipt for a restore. Neither an approval nor a backup proves execution. | |
 | `unverified approval` | 未核对批准 | Noun | An approved edit or restore approval in the selected scope without its execution receipt. It is valid intermediate state, does not establish that no write occurred, and blocks gates that require verified execution. | |
