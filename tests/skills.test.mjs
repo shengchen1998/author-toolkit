@@ -99,6 +99,18 @@ test("setup requires author-confirmed host command visibility", async () => {
   assert.match(zhReadme, /模型侧注册元数据/);
 });
 
+test("setup reads terminology by section from the single installed source", async () => {
+  const [setup, instructions] = await Promise.all([
+    readFile(path.join(root, "skills/setup-author-toolkit/SKILL.md"), "utf8"),
+    readFile(path.join(root, "skills/setup-author-toolkit/assets/AGENTS.md"), "utf8"),
+  ]);
+  assert.match(setup, /For setup, read the bundled \[controlled workflow terminology\]\(assets\/references\/terminology\.md\)'s \*\*Core terms\*\* and \*\*Contract values\*\* sections/);
+  assert.match(setup, /Consult its \*\*Operation identifiers\*\* section by exact identifier/);
+  assert.match(setup, /pending action, group of unverified approvals, or backup-index difference/);
+  assert.match(instructions, /`<setup-skill-root>\/assets\/references\/terminology\.md`/);
+  assert.match(instructions, /Do not copy contracts into the writing project/);
+});
+
 test("deterministic initialization and semantic skills have one implementation each", async () => {
   const [setup, project, operations, instructions, development] = await Promise.all([
     readFile(path.join(root, "skills/setup-author-toolkit/SKILL.md"), "utf8"),
