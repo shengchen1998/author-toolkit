@@ -79,7 +79,7 @@ test("setup carries self-contained preflight, validation, state, range, and inst
   );
 
   const nodeArgs = ["--no-warnings", "--experimental-loader", loader, "--require", preload];
-  for (const script of ["preflight.mjs", "read.mjs", "set-pending.mjs", "validate.mjs", "status.mjs", "project-digest.mjs", "findings.mjs", "range.mjs", "doctor.mjs"]) {
+  for (const script of ["preflight.mjs", "check.mjs", "read.mjs", "set-pending.mjs", "validate.mjs", "status.mjs", "project-digest.mjs", "findings.mjs", "range.mjs", "doctor.mjs", "writes.mjs"]) {
     const result = spawnSync(
       process.execPath,
       [...nodeArgs, path.join(installedSetup, "scripts", script), "--help"],
@@ -144,6 +144,14 @@ test("setup carries self-contained preflight, validation, state, range, and inst
   assert.match(preflight.stdout, /Project validation: 5 checks, 0 failures/);
   assert.match(preflight.stdout, /Navigation cache: refreshed PROJECT_STATE.md/);
   assert.match(preflight.stdout, /Preflight: passed/);
+
+  const check = spawnSync(
+    process.execPath,
+    [...nodeArgs, path.join(installedSetup, "scripts", "check.mjs"), "--project-root", project],
+    { encoding: "utf8" },
+  );
+  assert.equal(check.status, 0, check.stderr);
+  assert.equal(check.stdout, preflight.stdout.replace("Navigation cache: refreshed PROJECT_STATE.md", "Navigation cache: not requested"));
 
   const rangeProject = path.join(temporaryRoot, "range-project");
   await mkdir(path.join(rangeProject, "manuscript"), { recursive: true });

@@ -41,7 +41,7 @@ Use one manifest per book. Resolve registered artifacts through its `paths`; `au
 
 ## Keep author decisions explicit
 
-Manuscript edits require explicit approval of the exact operation, scope, paths, actions, and input versions, recorded in the shared tracker. Discussing or accepting a finding does not approve an edit. Before writing, back up every existing affected file through `author-project`, recompute SHA-256 hashes, verify create-target absence, and stop on any mismatch. Follow the active skill for post-write execution receipts, staged draft acceptance and commit journals, and separately approved restores. Story Bible creative changes require author confirmation.
+Manuscript edits require explicit approval of the exact operation, scope, paths, actions, and input versions, recorded in the shared tracker. Discussing or accepting a finding does not approve an edit. Before writing, invoke `author-project record-backup` for the complete batch, including create targets; its project-wide gate stops while another approval lacks execution evidence. Follow the active skill for post-write execution receipts, staged draft acceptance and commit journals, and separately approved restores. Story Bible creative changes require author confirmation.
 
 ## Preserve truthful evidence
 

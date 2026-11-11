@@ -260,6 +260,9 @@ test("existing-project setup uses bounded inspection references and a categorize
   assert.match(readOperations, /create `<paths\.backups>\/index\.json` .* when absent/);
   assert.doesNotMatch(readOperations, /## Backup and creation commit|## Record execution|## Restore/);
   assert.match(operations, /\[Digest\]\(read-operations\.md#digest\)/);
+  assert.match(operations, /reconcile-executions/);
+  assert.match(operations, /including create-only batches/);
+  assert.match(readOperations, /check\.mjs/);
   assert.match(readme, /installation payload, project entry files, manuscript scope, and execution\s+evidence/);
   assert.match(zhReadme, /安装载荷、项目入口文件、稿件范围、执行证据/);
 });

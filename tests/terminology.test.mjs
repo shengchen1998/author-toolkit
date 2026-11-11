@@ -181,6 +181,8 @@ test("controlled terminology covers every current shared schema enum", async () 
     "creation-batch-schema.json",
     "creation-commit-schema.json",
     "execution-receipt-schema.json",
+    "execution-evidence-schema.json",
+    "backup-index-schema.json",
     "review-job-schema.json",
     "reader-state-schema.json",
     "story-state-schema.json",

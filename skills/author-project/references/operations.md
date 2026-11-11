@@ -91,10 +91,13 @@ Before a later manuscript write, repeat the read, presence, and hash comparison.
 
 Before a manuscript edit, resolve the backup root from `paths.backups`. The calling orchestrator supplies an approved file list and approval ID. Verify that the approval is current and matches the operation, scope ID, paths, and actions. For every existing modify, delete, or reorder target:
 
-1. Read the complete original text and compute its SHA-256 hash.
-2. Write it to `<paths.backups>/<backup-id>/<original-relative-path>`, preserving the relative directory path and exact text.
-3. Create `<paths.backups>/<backup-id>/manifest.json` containing the backup ID, UTC timestamp, operation, approval ID, scope ID, input hashes, approval summary, and source/backup path pairs.
-4. Append one record to `<paths.backups>/index.json` with the same identity fields, paths, and backup manifest path.
+Write a batch JSON containing only `files`, with `path`, `action`, and `input_sha256` for every approved path, then run:
+
+```bash
+node <setup-skill-root>/scripts/writes.mjs record-backup --manifest <project-root>/.author-toolkit/project.json --operation <operation> --scope-id <scope-id> --approval-id <approval-id> --batch <batch-file>
+```
+
+The command verifies the manifest, current scope, approval, exact paths, and current hashes; backs up every existing target under `<paths.backups>/<backup-id>/`; verifies the copies; and atomically appends a `pending_backups` record, including create-only absence evidence. Create targets use a null input hash and must remain absent. The gate is project-wide: an unverified approval from another batch, or an already-started unverified current batch, rejects every new backup, including create-only batches. A current approval without a prior backup may take its first backup. The command does not approve a batch or alter manuscript content.
 
 For each create target, record that the file is expected absent with a null input hash; do not invent an original backup or backup ID. Recheck absence immediately before publication. Use a unique backup ID based on UTC time, operation, and a short scope slug, adding a suffix on collision. Complete and verify every required backup and absence check before the first manuscript write. A partial, unexpected, or hash-mismatched result blocks the write.
 
@@ -102,7 +105,13 @@ For `creation-commit`, follow [`../../write-fiction/references/creation-state.md
 
 ## Record execution
 
-After every completed approved edit batch, record one execution receipt before claiming the batch executed. Read `<setup-skill-root>/assets/references/execution-receipt-schema.json` and append one receipt to `executions` in `<paths.backups>/index.json` with:
+After every completed approved edit batch, verify its output hashes and preserve one immutable project-local record conforming to `<setup-skill-root>/assets/references/execution-evidence-schema.json`. Its `completed_at` records when the exact batch was completed. Then run:
+
+```bash
+node <setup-skill-root>/scripts/writes.mjs record-execution --manifest <project-root>/.author-toolkit/project.json --evidence <project-relative-evidence-path>
+```
+
+The command derives and atomically appends one receipt to `executions` in `<paths.backups>/index.json`, linked to the evidence's project-relative path and SHA-256. It does not require current manuscript hashes to equal historical outputs; those outputs must come from the preserved post-write evidence. The receipt retains:
 
 - `schema_version: "1.0.0"`, the exact edit `approval_id`, operation, and scope ID;
 - every `backup_id` used by the batch; a create-only batch can have an empty list;
@@ -111,9 +120,15 @@ After every completed approved edit batch, record one execution receipt before c
 
 Recompute output hashes immediately after writing and verifying the exact batch. Do not compare historical receipt outputs with the current manuscript after later edits. An incomplete or interrupted batch has no execution receipt; preserve its interrupted state for explicit reconciliation.
 
-Append only one receipt per approval, preserve all existing records, and update the index through a verified temporary sibling and atomic rename. Run the installed manifest validator and `status.mjs`; the approval remains `approved`, while the receipt supplies execution evidence.
+Only one receipt is allowed per approval, and it must cite every backup belonging to that approval. Preserve all existing records. On receipt, existing-file records move from `pending_backups` to `backups`; create-only absence evidence is removed after its linked receipt is preserved. Run the installed manifest validator and `status.mjs`; the approval remains `approved`, while the receipt supplies execution evidence.
 
-For a legacy project, backfill a receipt only after preserved post-write evidence establishes the exact completed batch and output hashes. A backup, an approval, or a session statement alone does not establish those hashes. Later manuscript text is not evidence of an earlier output after subsequent edits. Leave an unreconciled approval `unverified` rather than inventing execution evidence; `recorded_at` records the later reconciliation time.
+For a legacy project, preview reconciliation with one or more `--evidence` arguments, then repeat with `--write` to append the accepted candidates:
+
+```bash
+node <setup-skill-root>/scripts/writes.mjs reconcile-executions --manifest <project-root>/.author-toolkit/project.json --evidence <path>... [--write]
+```
+
+Reconciliation accepts only preserved post-write evidence that establishes the exact completed batch and output hashes. A backup, an approval, or a session statement alone does not establish those hashes. Later manuscript text is not evidence of an earlier output after subsequent edits. Invalid or unprovable inputs are reported in `rejected`; valid candidates may be appended without fabricating receipts for rejected inputs. Unsupported approvals remain `unverified`, and `recorded_at` records the later reconciliation time. Repeating the same evidence is idempotent. A receipt's linked evidence is immutable: a later hash change invalidates project validation. Restore safety backups and interrupted-state recovery remain separate operations; this gate does not require an execution receipt before preserving current content for a restore.
 
 ## Restore
 

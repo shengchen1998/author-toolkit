@@ -140,7 +140,7 @@ Add `-g` to install at user level instead:
 npx skills@latest add shengchen1998/author-toolkit -a codex -a claude-code -a kimi-code-cli -g
 ```
 
-The setup skill includes self-contained installation, preflight, manifest-projection, pending-action, validation, status, project-digest, finding-state, and character-range CLIs under
+The setup skill includes self-contained installation, preflight, manifest-projection, pending-action, validation, status, project-digest, finding-state, manuscript-write, and character-range CLIs under
 `setup-author-toolkit/scripts/`. Shared workflows resolve that installed skill
 directory directly; no repository checkout or writing-project `npm install` is
 required.
@@ -160,6 +160,9 @@ IDs; the endpoints do not imply contiguous ID ranges.
 The current scope is selected by default. Add `--require-execution` with an
 explicit `--scope-id` only for an execution gate; add `--digest` only when the
 navigation cache should be refreshed after successful read-only checks.
+`node <setup-skill-root>/scripts/check.mjs` is the stable local alias with the
+same arguments and exit statuses. It reuses preflight rather than duplicating
+doctor, validation, or strict execution logic.
 
 Updates are manual. Check and apply them with:
 
@@ -458,8 +461,10 @@ Use `read.mjs --project-root <root>` for its bounded manifest projection and
   restoration records for restore approvals. `author-project status` reports
   scoped unverified approvals without reading manuscript content or comparing
   historical outputs with later text. A backup alone does not prove execution;
-  legacy receipts require reconciliation rather than automatic inference.
-  Restoration also requires author approval.
+  `record-backup` refuses new edit batches while another approval is unverified,
+  including create-only batches. `reconcile-executions` adds only receipts backed
+  by preserved post-write evidence; unsupported approvals remain unverified.
+  Restoration also requires author approval and retains its separate safety path.
 - `handoffs/` preserves pointers to the current evidence and next action.
 - `paths.creation` registers creation state and defaults to
   `.author-toolkit/creation/`. It contains `state/current.md`,

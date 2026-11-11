@@ -7,7 +7,7 @@
     },
     {
       "path": "assets/AGENTS.md",
-      "sha256": "3d2ba99ec20242bf34b1379fac49322390a479eb5136fb6b4135a4d6c1a9f05b"
+      "sha256": "a7d4dfbf15e68ce40506101c8df5be391b6037d91e8831aa4029f749824085ae"
     },
     {
       "path": "assets/references/avoid-ai-writing-adapter.md",
@@ -16,6 +16,10 @@
     {
       "path": "assets/references/avoid-ai-writing-zh-CN.md",
       "sha256": "60ae527d100a8a9a7204c3c48ae23130823ed1a98467794d7dda9d4b16f96a5d"
+    },
+    {
+      "path": "assets/references/backup-index-schema.json",
+      "sha256": "7f4ed5b603c24b5c6138f322ce89c25eab6da7584c58064a7d3f5ebb72bf842c"
     },
     {
       "path": "assets/references/context-fit.md",
@@ -38,8 +42,12 @@
       "sha256": "5f6ebd34ee4538ec11d754318cde0ba842642bb8e737e29275bdb08544593d05"
     },
     {
+      "path": "assets/references/execution-evidence-schema.json",
+      "sha256": "c44742e11a54f914a971051e32c0c72a4ab4c57dd4c36bce6b2bb0614f0dd1d2"
+    },
+    {
       "path": "assets/references/execution-receipt-schema.json",
-      "sha256": "8c08e9f0e1bf067acbbd8866faeb6192fd6ae21f89d5f1889d81b009390981dc"
+      "sha256": "87a35a7f9453e35fa5af3cbb0addbfc8a1f367996aa46f0c3f8f03ec7b3d2e51"
     },
     {
       "path": "assets/references/finding-schema-v2.json",
@@ -79,11 +87,15 @@
     },
     {
       "path": "assets/references/terminology.md",
-      "sha256": "09b1cc1b7f1e2db3edc84ae2e2e4cb80f38c3e2c70d59f3cba3d4bcafbf8922d"
+      "sha256": "cf3fab9a2e2e887e1f21cc1bf695d4d488b6ff484213626074278745356357c3"
     },
     {
       "path": "assets/references/workflow-reporting.md",
       "sha256": "6c1f4d7a8f235ee3785903504229dd89b67f6f5cea433d3b2f720255916d7d20"
+    },
+    {
+      "path": "scripts/check.mjs",
+      "sha256": "f63d2d2b94ddd31ab617afabd72d0a32f963b0e7963a719221105773aefcec27"
     },
     {
       "path": "scripts/doctor.mjs",
@@ -102,12 +114,16 @@
       "sha256": "811139b7bdd7df1c851bebb60796535119139e23947ab51cc768513cae056db3"
     },
     {
+      "path": "scripts/lib/atomic-json.mjs",
+      "sha256": "51b84f2d45bf4cda3b0e873c9b373e0362c8558145d577e780b759a19ce90369"
+    },
+    {
       "path": "scripts/lib/digest.mjs",
       "sha256": "b157dc18d4881f928c1bda061882fc672dd69c643851de5031795ac37836562e"
     },
     {
       "path": "scripts/lib/execution-receipts.mjs",
-      "sha256": "5f2542349083f5c5227e1108d04c2ce20c2b982a7b033994366332e433b209dd"
+      "sha256": "57af2407f51b7f2c695dafccd31500b52cbd5678b5c2328c05b063732d496927"
     },
     {
       "path": "scripts/lib/execution-summary.mjs",
@@ -123,7 +139,7 @@
     },
     {
       "path": "scripts/lib/index.mjs",
-      "sha256": "6744f6fc17f4165106fe2ca4052ce9513edcb54cafbac65bcbe089885e5eb417"
+      "sha256": "f94a528a162c453f602ca3020afb4de2aa4bb2fba05a8667789a95ded23c0e95"
     },
     {
       "path": "scripts/lib/manifest.mjs",
@@ -159,15 +175,23 @@
     },
     {
       "path": "scripts/lib/schemas.mjs",
-      "sha256": "0c54b0f819e5de733d639315a3ddc36c97d71468047daeb79a8e569262a6be16"
+      "sha256": "4afabb72fec11db9e8de8b977f348988b47a785dfb96869200a6fe2c337e1233"
     },
     {
       "path": "scripts/lib/setup-payload.mjs",
       "sha256": "78892e243c5abfca8d41031ae4bd8c12bef29e1824c5618b4965ced4b8ad9ed8"
     },
     {
+      "path": "scripts/lib/state-files.mjs",
+      "sha256": "5c855fc5f8f11f75c01264be9cff102e01e6e7f7432b57b9076f8504cb6b0844"
+    },
+    {
       "path": "scripts/lib/tracker.mjs",
       "sha256": "45492c2ae77147635828bb496404680a6217301c5bbaa9bb481e3ad86b22abec"
+    },
+    {
+      "path": "scripts/lib/write-operations.mjs",
+      "sha256": "a921ee05b00e746c25be09fa3cd8309d3962e044cc35e329382af244fa7923c3"
     },
     {
       "path": "scripts/licenses/ajv-formats.txt",
@@ -220,6 +244,10 @@
     {
       "path": "scripts/validate.mjs",
       "sha256": "0db01c933eb47141e8790e0605b7ae964dbcdbba6c28006dfe619ee27222dfff"
+    },
+    {
+      "path": "scripts/writes.mjs",
+      "sha256": "30d4af0ba441cdb76a3883cce3443da1eba9e7287c9c8a02aebde8cae236bcaa"
     }
   ]
 }

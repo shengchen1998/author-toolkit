@@ -1,0 +1,115 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "backup-index-schema.json",
+  "title": "author-toolkit backup and execution index",
+  "type": "object",
+  "required": ["schema_version", "backups", "restorations"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": { "const": "1.0" },
+    "backups": { "type": "array", "items": { "type": "object" } },
+    "restorations": { "type": "array", "items": { "$ref": "#/$defs/restoration" } },
+    "executions": { "type": "array", "items": { "$ref": "execution-receipt-schema.json" } },
+    "pending_backups": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/backupRecord" }
+    }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+    },
+    "hash": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "nullableHash": {
+      "anyOf": [{ "$ref": "#/$defs/hash" }, { "type": "null" }]
+    },
+    "restoration": {
+      "type": "object",
+      "required": [
+        "approval_id",
+        "scope_id"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": { "const": "1.0.0" },
+        "approval_id": { "type": "string", "pattern": "^[A-Z][A-Z0-9]*-[0-9]{3,}$" },
+        "operation": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
+        "scope_id": { "type": "string", "minLength": 1 },
+        "source": {
+          "type": "object",
+          "required": ["kind", "id"],
+          "additionalProperties": false,
+          "properties": {
+            "kind": { "enum": ["backup", "creation_commit"] },
+            "id": { "$ref": "#/$defs/id" }
+          }
+        },
+        "safety_backup_id": { "$ref": "#/$defs/id" },
+        "files": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["path", "action", "input_sha256", "output_sha256", "safety_backup_path"],
+            "additionalProperties": false,
+            "properties": {
+              "path": { "$ref": "relative-path-schema.json" },
+              "action": { "enum": ["create", "modify", "delete", "reorder", "restore", "remove_created"] },
+              "input_sha256": { "$ref": "#/$defs/nullableHash" },
+              "output_sha256": { "$ref": "#/$defs/nullableHash" },
+              "safety_backup_path": { "$ref": "relative-path-schema.json" }
+            }
+          }
+        },
+        "recorded_at": { "type": "string", "format": "date-time" }
+      }
+    },
+    "backupRecord": {
+      "type": "object",
+      "required": [
+        "schema_version",
+        "backup_id",
+        "operation",
+        "approval_id",
+        "scope_id",
+        "approval_summary",
+        "input_hashes",
+        "files",
+        "recorded_at",
+        "manifest_path"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": { "const": "1.0.0" },
+        "backup_id": { "$ref": "#/$defs/id" },
+        "operation": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
+        "approval_id": { "type": "string", "pattern": "^[A-Z][A-Z0-9]*-[0-9]{3,}$" },
+        "scope_id": { "type": "string", "minLength": 1 },
+        "approval_summary": { "type": "string", "minLength": 1 },
+        "input_hashes": {
+          "type": "object",
+          "propertyNames": { "$ref": "relative-path-schema.json" },
+          "additionalProperties": { "$ref": "#/$defs/nullableHash" }
+        },
+        "files": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["source_path", "backup_path"],
+            "additionalProperties": false,
+            "properties": {
+              "source_path": { "$ref": "relative-path-schema.json" },
+              "backup_path": {
+                "anyOf": [{ "$ref": "relative-path-schema.json" }, { "type": "null" }]
+              }
+            }
+          }
+        },
+        "recorded_at": { "type": "string", "format": "date-time" },
+        "manifest_path": { "$ref": "relative-path-schema.json" }
+      }
+    }
+  }
+}

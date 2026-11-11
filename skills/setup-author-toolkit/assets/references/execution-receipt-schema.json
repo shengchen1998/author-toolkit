@@ -41,6 +41,15 @@
         }
       }
     },
+    "evidence": {
+      "type": "object",
+      "required": ["path", "sha256"],
+      "additionalProperties": false,
+      "properties": {
+        "path": { "$ref": "relative-path-schema.json" },
+        "sha256": { "$ref": "#/$defs/hash" }
+      }
+    },
     "recorded_at": { "type": "string", "format": "date-time" }
   },
   "$defs": {

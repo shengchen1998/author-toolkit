@@ -63,7 +63,7 @@ npx skills@latest add shengchen1998/author-toolkit -a codex -a claude-code -a ki
 npx skills@latest add shengchen1998/author-toolkit -a codex -a claude-code -a kimi-code-cli -g
 ```
 
-setup 技能在 `setup-author-toolkit/scripts/` 下提供自包含的安装检查, 预检, manifest 投影, 待处理操作写入, 校验, 状态, 项目导航, 发现项状态和行内字符区间 CLI, 包括运行依赖.
+setup 技能在 `setup-author-toolkit/scripts/` 下提供自包含的安装检查, 预检, manifest 投影, 待处理操作写入, 校验, 状态, 项目导航, 发现项状态, 正文写入和行内字符区间 CLI, 包括运行依赖.
 共享工作流直接解析该技能的安装目录, 无需仓库检出, 也无需在写作项目中运行 `npm install`.
 
 运行 `node <setup-skill-root>/scripts/doctor.mjs` 可获得有界安装摘要和失败路径.
@@ -75,6 +75,8 @@ setup 技能在 `setup-author-toolkit/scripts/` 下提供自包含的安装检�
 项目校验及普通状态汇总; 它复用相同的库实现并输出有界摘要. 默认选择当前范围. 仅在执行门禁场景添加
 `--require-execution` 和显式 `--scope-id`; 仅在只读检查通过后需要刷新导航缓存时添加 `--digest`.
 文本摘要按 operation 聚合未核对批准, 显示数量与首末批准 ID; 首末端点不代表 ID 连续.
+`node <setup-skill-root>/scripts/check.mjs` 是参数和退出状态相同的稳定本地检查入口,
+直接复用 preflight, 不重复实现 doctor, 项目校验或严格执行门禁.
 
 运行 `read.mjs --project-root <root>` 获取有界 manifest 投影; 通过 `set-pending.mjs --help` 查看待处理操作写入参数.
 
@@ -272,7 +274,9 @@ AI, 作者和混合创作使用相同门禁. 每本书只保留一个活动创�
 - `sessions/`: 已完成工作, 待决事项, 备份路径和停止位置.
 - `backups/`: 获批修改前的稿件备份. 其索引还保存 edit 批准的写后执行回执和 restore 批准的完成恢复记录.
   `author-project status` 按范围报告未核对批准, 不读取正文内容, 也不把历史输出与后续文本比较.
-  备份本身不能证明执行; 历史回执必须核对后补录, 不能自动推断. 恢复也需要作者批准.
+  备份本身不能证明执行; 其他批准未核对时, `record-backup` 阻止新编辑批次, 包括纯创建批次.
+  `reconcile-executions` 只根据已保存写入后证据补录回执, 无法证明的批准保持未核对.
+  恢复也需要作者批准, 并保留独立的安全备份路径.
 - `handoffs/`: 当前证据和下一操作的交接指针.
 - `paths.creation`: 创作产物路径, 默认 `.author-toolkit/creation/`, 包含
   `state/current.md`, `state/chapters/`, `state/volumes/`, `batches/` 和 `staging/`.

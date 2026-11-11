@@ -7,8 +7,15 @@ export {
 export { allocateFindingIds, validateFindingIdentity } from "./finding-identity.mjs";
 export {
   inspectExecutionReceipts,
+  validateExecutionReceiptBatch,
   validateExecutionReceipts,
 } from "./execution-receipts.mjs";
+export {
+  readExecutionEvidence,
+  reconcileExecutions,
+  recordBackup,
+  recordExecution,
+} from "./write-operations.mjs";
 export {
   canReuseCoverageUnit,
   validateCoverageIndex,
@@ -58,6 +65,8 @@ export {
   validateCreationBatchSchema,
   validateCreationCommitSchema,
   validateExecutionReceiptSchema,
+  validateExecutionEvidenceSchema,
+  validateBackupIndexSchema,
   validateFindingV1,
   validateFindingV2,
   validateProjectSchema,

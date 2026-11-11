@@ -8091,6 +8091,8 @@ var storyStateSchema = readSchema("story-state-schema.json");
 var creationBatchSchema = readSchema("creation-batch-schema.json");
 var creationCommitSchema = readSchema("creation-commit-schema.json");
 var executionReceiptSchema = readSchema("execution-receipt-schema.json");
+var executionEvidenceSchema = readSchema("execution-evidence-schema.json");
+var backupIndexSchema = readSchema("backup-index-schema.json");
 var coverageUnitSchema = readSchema("coverage-unit-schema.json");
 var coverageIndexSchema = readSchema("coverage-index-schema.json");
 var reviewJobSchema = readSchema("review-job-schema.json");
@@ -8107,6 +8109,8 @@ ajv.addSchema(storyStateSchema);
 ajv.addSchema(creationBatchSchema);
 ajv.addSchema(creationCommitSchema);
 ajv.addSchema(executionReceiptSchema);
+ajv.addSchema(executionEvidenceSchema);
+ajv.addSchema(backupIndexSchema);
 ajv.addSchema(coverageUnitSchema);
 ajv.addSchema(coverageIndexSchema);
 ajv.addSchema(reviewJobSchema);
@@ -8121,6 +8125,8 @@ var storyStateValidator = ajv.getSchema("story-state-schema.json");
 var creationBatchValidator = ajv.getSchema("creation-batch-schema.json");
 var creationCommitValidator = ajv.getSchema("creation-commit-schema.json");
 var executionReceiptValidator = ajv.getSchema("execution-receipt-schema.json");
+var executionEvidenceValidator = ajv.getSchema("execution-evidence-schema.json");
+var backupIndexValidator = ajv.getSchema("backup-index-schema.json");
 var coverageUnitValidator = ajv.getSchema("coverage-unit-schema.json");
 var coverageIndexValidator = ajv.getSchema("coverage-index-schema.json");
 var reviewJobValidator = ajv.getSchema("review-job-schema.json");
@@ -8162,6 +8168,12 @@ function validateCreationCommitSchema(value) {
 function validateExecutionReceiptSchema(value) {
   return evaluate(executionReceiptValidator, value);
 }
+function validateExecutionEvidenceSchema(value) {
+  return evaluate(executionEvidenceValidator, value);
+}
+function validateBackupIndexSchema(value) {
+  return evaluate(backupIndexValidator, value);
+}
 function validateCoverageUnitSchema(value) {
   return evaluate(coverageUnitValidator, value);
 }
@@ -8187,6 +8199,8 @@ function validateSchemaDefinitions() {
     ["creation-batch-schema.json", creationBatchSchema],
     ["creation-commit-schema.json", creationCommitSchema],
     ["execution-receipt-schema.json", executionReceiptSchema],
+    ["execution-evidence-schema.json", executionEvidenceSchema],
+    ["backup-index-schema.json", backupIndexSchema],
     ["coverage-unit-schema.json", coverageUnitSchema],
     ["coverage-index-schema.json", coverageIndexSchema],
     ["review-job-schema.json", reviewJobSchema],
@@ -8202,10 +8216,12 @@ function validateSchemaDefinitions() {
   return { valid: errors.length === 0, errors };
 }
 export {
+  validateBackupIndexSchema,
   validateCoverageIndexSchema,
   validateCoverageUnitSchema,
   validateCreationBatchSchema,
   validateCreationCommitSchema,
+  validateExecutionEvidenceSchema,
   validateExecutionReceiptSchema,
   validateFindingV1,
   validateFindingV2,

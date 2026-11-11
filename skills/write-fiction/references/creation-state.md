@@ -39,13 +39,14 @@ On resume, recompute the fingerprint from current dependencies. Unrelated manusc
 
 ## Commit protocol
 
-1. Read the manifest, current scope, accepted batch, and approvals immediately before publication. Require exact operation, paths, input versions, and acceptance.
+1. Read the manifest, current scope, accepted batch, and approvals immediately before publication. Require exact operation, paths, input versions, and acceptance. Resolve every earlier unverified edit or restore approval through its execution evidence before starting publication.
 2. Recompute the dependency fingerprint and each existing target's hash. Require every create target to remain absent and every modify, delete, or reorder target to match its accepted input. Stop on any mismatch.
-3. Invoke `author-project` with `record-backup` for every existing target. New files record expected absence instead of an invented original backup.
+3. Invoke `author-project` once with `record-backup` for the complete accepted batch, including create targets with null input hashes. Its project-wide gate refuses publication while another unverified approval remains. New files record expected absence instead of an invented original backup.
 4. Write `<paths.creation>/batches/<commit-id>.json` with `status: "in_progress"` and every planned file action, input/output hash, backup ID, and `pending` status. Write the batch and journal atomically before touching manuscript text.
 5. For each file, write staged content to a temporary sibling, verify its SHA-256, and rename it atomically. Apply only the accepted action. Mark it `written`, reread it, and then mark `verified`. Update the journal after every transition.
 6. Publish accepted story-state differences and the resulting scope. The author's acceptance supplies the exact ordered paths and hashes; actual output must match them. Validate manuscript inventory, state artifacts, tracker, and scope.
 7. Mark the journal `committed`, freeze the accepted batch with `status: "committed"`, update pending action and session state, and propagate evidence changes. Local units can be reused only through the coverage rules. Full-book synthesis from the old scope is no longer current for the expanded book.
+8. Preserve the verified batch and commit as the structured post-write evidence required by `execution-evidence-schema.json`, then invoke `author-project` with `record-execution` for the manuscript edit approval. A create-only batch has no backup IDs; an existing-file batch cites all of its backups. The resulting scope approval is separate and is not an edit execution receipt.
 
 Multiple files are coordinated by the journal, not claimed as a single filesystem transaction. If the process stops, compare each actual target with its accepted input and output hashes. Report completed, pending, and unexpected actions. Leave `status: "interrupted"` and require an explicit author decision to continue or restore; never silently roll back.
 

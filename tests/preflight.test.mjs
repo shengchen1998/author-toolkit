@@ -92,8 +92,19 @@ test("preflight reports only project-entry mismatches as repairable setup failur
 
   const json = run(["--project-root", projectRoot, "--json"]);
   const parsed = JSON.parse(json.stdout);
-  assert.equal(parsed.payload.clis, 9);
+  assert.equal(parsed.payload.clis, 11);
   assert.equal(parsed.payload.project.agents, "ok");
+});
+
+test("check is a strict-mode-compatible preflight alias", async (t) => {
+  const { projectRoot } = await fixture(t);
+  const ordinary = run(["--project-root", projectRoot]);
+  const alias = run(["--project-root", projectRoot], path.join(root, "scripts", "check.mjs"));
+  assert.equal(alias.status, ordinary.status, alias.stderr);
+  assert.equal(alias.stdout, ordinary.stdout);
+  const help = run(["--help"], path.join(root, "scripts", "check.mjs"));
+  assert.equal(help.status, 0, help.stderr);
+  assert.match(help.stdout, /--require-execution/);
 });
 
 test("preflight rejects an incomplete installed payload before reading project state", async (t) => {

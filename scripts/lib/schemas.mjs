@@ -22,6 +22,8 @@ const storyStateSchema = readSchema("story-state-schema.json");
 const creationBatchSchema = readSchema("creation-batch-schema.json");
 const creationCommitSchema = readSchema("creation-commit-schema.json");
 const executionReceiptSchema = readSchema("execution-receipt-schema.json");
+const executionEvidenceSchema = readSchema("execution-evidence-schema.json");
+const backupIndexSchema = readSchema("backup-index-schema.json");
 const coverageUnitSchema = readSchema("coverage-unit-schema.json");
 const coverageIndexSchema = readSchema("coverage-index-schema.json");
 const reviewJobSchema = readSchema("review-job-schema.json");
@@ -39,6 +41,8 @@ ajv.addSchema(storyStateSchema);
 ajv.addSchema(creationBatchSchema);
 ajv.addSchema(creationCommitSchema);
 ajv.addSchema(executionReceiptSchema);
+ajv.addSchema(executionEvidenceSchema);
+ajv.addSchema(backupIndexSchema);
 ajv.addSchema(coverageUnitSchema);
 ajv.addSchema(coverageIndexSchema);
 ajv.addSchema(reviewJobSchema);
@@ -54,6 +58,8 @@ const storyStateValidator = ajv.getSchema("story-state-schema.json");
 const creationBatchValidator = ajv.getSchema("creation-batch-schema.json");
 const creationCommitValidator = ajv.getSchema("creation-commit-schema.json");
 const executionReceiptValidator = ajv.getSchema("execution-receipt-schema.json");
+const executionEvidenceValidator = ajv.getSchema("execution-evidence-schema.json");
+const backupIndexValidator = ajv.getSchema("backup-index-schema.json");
 const coverageUnitValidator = ajv.getSchema("coverage-unit-schema.json");
 const coverageIndexValidator = ajv.getSchema("coverage-index-schema.json");
 const reviewJobValidator = ajv.getSchema("review-job-schema.json");
@@ -107,6 +113,14 @@ export function validateExecutionReceiptSchema(value) {
   return evaluate(executionReceiptValidator, value);
 }
 
+export function validateExecutionEvidenceSchema(value) {
+  return evaluate(executionEvidenceValidator, value);
+}
+
+export function validateBackupIndexSchema(value) {
+  return evaluate(backupIndexValidator, value);
+}
+
 export function validateCoverageUnitSchema(value) {
   return evaluate(coverageUnitValidator, value);
 }
@@ -136,6 +150,8 @@ export function validateSchemaDefinitions() {
     ["creation-batch-schema.json", creationBatchSchema],
     ["creation-commit-schema.json", creationCommitSchema],
     ["execution-receipt-schema.json", executionReceiptSchema],
+    ["execution-evidence-schema.json", executionEvidenceSchema],
+    ["backup-index-schema.json", backupIndexSchema],
     ["coverage-unit-schema.json", coverageUnitSchema],
     ["coverage-index-schema.json", coverageIndexSchema],
     ["review-job-schema.json", reviewJobSchema],

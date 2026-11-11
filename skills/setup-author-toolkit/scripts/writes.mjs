@@ -1,0 +1,109 @@
+#!/usr/bin/env node
+
+import { mkdir, open, rm } from "node:fs/promises";
+import path from "node:path";
+
+import { reconcileExecutions, recordBackup, recordExecution } from "./lib/index.mjs";
+import { projectRootFromManifest } from "./lib/project-files.mjs";
+import { readJson } from "./lib/state-files.mjs";
+
+function argumentError(message) {
+  const error = new Error(message);
+  error.code = "ERR_ARGUMENT";
+  return error;
+}
+
+function usage() {
+  console.log(`Usage:
+  node scripts/writes.mjs record-backup --manifest FILE --operation ID
+    --scope-id ID --approval-id ID --batch FILE [--backup-id ID]
+    [--recorded-at TIMESTAMP]
+  node scripts/writes.mjs record-execution --manifest FILE --evidence FILE
+    [--recorded-at TIMESTAMP]
+  node scripts/writes.mjs reconcile-executions --manifest FILE --evidence FILE...
+    [--write] [--recorded-at TIMESTAMP]
+
+The batch JSON contains only a files array of path, action, and input_sha256.
+Evidence follows execution-evidence-schema.json. Backup refuses every new edit
+batch while any unverified approval remains. Reconciliation is a dry run unless
+--write is present; rejected evidence never creates a receipt.`);
+}
+
+function options(args) {
+  const result = { evidence: [] };
+  for (let index = 0; index < args.length; index += 1) {
+    const argument = args[index];
+    if (argument === "--write") result.write = true;
+    else if (["--manifest", "--operation", "--scope-id", "--approval-id", "--batch", "--backup-id", "--evidence", "--recorded-at"].includes(argument) && args[index + 1]) {
+      const value = args[++index];
+      if (argument === "--evidence") result.evidence.push(value);
+      else result[{ "--manifest": "manifest", "--operation": "operation", "--scope-id": "scopeId", "--approval-id": "approvalId", "--batch": "batch", "--backup-id": "backupId", "--recorded-at": "recordedAt" }[argument]] = value;
+    } else throw argumentError(`Unknown or incomplete argument: ${argument}`);
+  }
+  return result;
+}
+
+async function withWriteLock(manifestPath, operation) {
+  const manifest = await readJson(manifestPath);
+  const backupRoot = path.resolve(projectRootFromManifest(manifestPath), manifest.paths.backups);
+  await mkdir(backupRoot, { recursive: true });
+  const lockPath = path.join(backupRoot, ".writes.lock");
+  const lock = await open(lockPath, "wx").catch((error) => {
+    if (error.code === "EEXIST") {
+      const locked = new Error("another project write is active or left a lock; reconcile it before continuing");
+      locked.code = "ERR_WRITE_GATE";
+      throw locked;
+    }
+    throw error;
+  });
+  try {
+    await lock.writeFile(`${process.pid}\n`);
+    return await operation();
+  } finally {
+    await lock.close();
+    await rm(lockPath, { force: true });
+  }
+}
+
+async function execute(operation, selection) {
+  if (operation === "record-backup") {
+    if (!selection.operation || !selection.scopeId || !selection.approvalId || !selection.batch || selection.evidence.length > 0 || selection.write) {
+      throw argumentError("record-backup requires operation, scope, approval, and one batch, without evidence or --write");
+    }
+    const batch = await readJson(path.resolve(selection.batch));
+    if (!batch || !Array.isArray(batch.files) || batch.files.length === 0 || Object.keys(batch).some((key) => key !== "files")) {
+      throw argumentError("batch JSON must contain only a nonempty files array");
+    }
+    return recordBackup(selection.manifest, { ...selection, files: batch.files });
+  }
+  if (selection.evidence.length === 0 || selection.operation || selection.scopeId || selection.approvalId || selection.batch || selection.backupId) {
+    throw argumentError(`${operation} requires evidence and no batch-selection arguments`);
+  }
+  if (operation === "record-execution") {
+    if (selection.evidence.length !== 1 || selection.write) throw argumentError("record-execution requires exactly one evidence file and no --write");
+    return recordExecution(selection.manifest, { ...selection, evidence: selection.evidence[0] });
+  }
+  return reconcileExecutions(selection.manifest, selection);
+}
+
+try {
+  const args = process.argv.slice(2);
+  if (args.length === 1 && ["--help", "-h"].includes(args[0])) {
+    usage();
+  } else {
+    const operation = args.shift();
+    const selection = options(args);
+    if (!selection.manifest || !["record-backup", "record-execution", "reconcile-executions"].includes(operation)) {
+      throw argumentError("expected record-backup, record-execution, or reconcile-executions, plus --manifest FILE");
+    }
+    selection.manifest = path.resolve(selection.manifest);
+    selection.recordedAt ??= new Date().toISOString();
+    if (!Number.isFinite(Date.parse(selection.recordedAt))) throw argumentError("--recorded-at must be a valid timestamp");
+    const result = await withWriteLock(selection.manifest, () => execute(operation, selection));
+    console.log(JSON.stringify(result, null, 2));
+  }
+} catch (error) {
+  console.error(error.message);
+  if (error.code === "ERR_ARGUMENT") usage();
+  process.exitCode = error.code === "ERR_ARGUMENT" ? 2 : 1;
+}

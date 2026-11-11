@@ -32,6 +32,8 @@ To combine that payload check, project validation, and ordinary status after ini
 node <setup-skill-root>/scripts/preflight.mjs --project-root <project-root>
 ```
 
+`node <setup-skill-root>/scripts/check.mjs` accepts the same arguments and is the stable local alias for this combined check, including the strict execution mode below. It is a thin preflight entry point, not a second implementation.
+
 It checks the installed payload once, includes project entry files, and shares the validation and status implementation with the individual CLIs. Its default status selects the manifest's current scope ID when present; an explicit `--scope-id` takes precedence. The bounded text output summarizes each stage and groups unverified approvals by operation; `--json` returns complete results. A project-entry mismatch is reported for setup's repair procedure and does not stop validation or set the final exit status by itself. An installed-payload or project-validation failure exits 1 and stops later stages; a digest generation error also exits 1. Use standalone `validate.mjs` to diagnose a validation failure rather than repeating it after a successful preflight. `--digest` refreshes `PROJECT_STATE.md` only after the read-only checks pass; without it, preflight writes nothing. Add `--require-execution` with an explicit `--scope-id` for an execution gate; ordinary preflight leaves unverified approvals nonblocking and does not establish operation-specific evidence completeness. Argument errors exit 2.
 
 For every `read`, run:
