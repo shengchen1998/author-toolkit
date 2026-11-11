@@ -28,6 +28,7 @@ export {
 export { validateReviewBrief } from "./review-brief.mjs";
 export {
   projectRootFromManifest,
+  validatePendingArtifactIndex,
   validateProjectFiles,
   validateScopeCurrency,
 } from "./project-files.mjs";
@@ -60,6 +61,7 @@ export {
   validateFindingV1,
   validateFindingV2,
   validateProjectSchema,
+  validatePendingArtifactsSchema,
   validateReaderStateSchema,
   validateRelativePath,
   validateReportEnvelope,

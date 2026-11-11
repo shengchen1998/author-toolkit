@@ -16,7 +16,7 @@ Accept one operation per invocation:
 | Operation | Required input | Result |
 |---|---|---|
 | `initialize` | Project root, project metadata, paths, and BCP 47 language | Create a neutral v3.1 manifest or validate an existing v3.1 manifest without resetting work |
-| `read` | Project root or manifest path | Return the full parsed manifest and resolved paths through text reads and installed validation; there is no `read.mjs` |
+| `read` | Project root or manifest path | Return the bounded validated manifest projection, resolved paths, scope hashes, and pending-artifact counts through `read.mjs` |
 | `validate` | Project root or manifest path | Run the installed project schema validator and report registered-file and current-scope hash diagnostics |
 | `status` | Project root or manifest path; for a current-draft revision convergence or previous/base-scope execution gate, target scope ID and `--require-execution` | Return current scope, pending action, recorded blockers, and execution evidence; do not infer operation-specific evidence completeness |
 | `status --digest` | Project root | Generate the bounded `PROJECT_STATE.md` navigation cache with finding counts, latest pointers, and next action |

@@ -79,7 +79,7 @@ test("setup carries self-contained preflight, validation, state, range, and inst
   );
 
   const nodeArgs = ["--no-warnings", "--experimental-loader", loader, "--require", preload];
-  for (const script of ["preflight.mjs", "validate.mjs", "status.mjs", "project-digest.mjs", "findings.mjs", "range.mjs", "doctor.mjs"]) {
+  for (const script of ["preflight.mjs", "read.mjs", "set-pending.mjs", "validate.mjs", "status.mjs", "project-digest.mjs", "findings.mjs", "range.mjs", "doctor.mjs"]) {
     const result = spawnSync(
       process.execPath,
       [...nodeArgs, path.join(installedSetup, "scripts", script), "--help"],
@@ -100,6 +100,19 @@ test("setup carries self-contained preflight, validation, state, range, and inst
   );
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /5 checks, 0 failures/);
+
+  const projection = spawnSync(
+    process.execPath,
+    [
+      ...nodeArgs,
+      path.join(installedSetup, "scripts", "read.mjs"),
+      "--project-root",
+      path.join(root, "examples", "fiction-revision-zh"),
+    ],
+    { encoding: "utf8" },
+  );
+  assert.equal(projection.status, 0, projection.stderr);
+  assert.equal(JSON.parse(projection.stdout).pending_action.artifact_count, 1);
 
   const doctor = spawnSync(
     process.execPath,

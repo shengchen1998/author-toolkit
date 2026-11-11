@@ -63,7 +63,7 @@ npx skills@latest add shengchen1998/author-toolkit -a codex -a claude-code -a ki
 npx skills@latest add shengchen1998/author-toolkit -a codex -a claude-code -a kimi-code-cli -g
 ```
 
-setup 技能在 `setup-author-toolkit/scripts/` 下提供自包含的安装检查, 预检, 校验, 状态, 项目导航, 发现项状态和行内字符区间 CLI, 包括运行依赖.
+setup 技能在 `setup-author-toolkit/scripts/` 下提供自包含的安装检查, 预检, manifest 投影, 待处理操作写入, 校验, 状态, 项目导航, 发现项状态和行内字符区间 CLI, 包括运行依赖.
 共享工作流直接解析该技能的安装目录, 无需仓库检出, 也无需在写作项目中运行 `npm install`.
 
 运行 `node <setup-skill-root>/scripts/doctor.mjs` 可获得有界安装摘要和失败路径.
@@ -74,6 +74,8 @@ setup 技能在 `setup-author-toolkit/scripts/` 下提供自包含的安装检�
 运行 `node <setup-skill-root>/scripts/preflight.mjs --project-root <root>` 可一次完成载荷和入口文件检查,
 项目校验及普通状态汇总; 它复用相同的库实现并输出有界摘要. 默认选择当前范围. 仅在执行门禁场景添加
 `--require-execution` 和显式 `--scope-id`; 仅在只读检查通过后需要刷新导航缓存时添加 `--digest`.
+
+运行 `read.mjs --project-root <root>` 获取有界 manifest 投影; 通过 `set-pending.mjs --help` 查看待处理操作写入参数.
 
 更新需要手动执行:
 
@@ -226,7 +228,8 @@ AI, 作者和混合创作使用相同门禁. 每本书只保留一个活动创�
 五个策略共用中性的 `.author-toolkit/project.json` 和同一组登记路径. 仅支持 schema 3.1.0;
 其他 manifest 版本会被拒绝且不会被自动转换.
 
-`author-project read` 通过普通文本读取返回完整 manifest 和解析后的路径, 没有独立的 `read.mjs`.
+`author-project read` 通过 `read.mjs` 返回经过校验的有界投影, 包含解析后的路径, 完整当前范围哈希和待处理产物计数.
+存在时先读 `PROJECT_STATE.md`; 缓存只用于导航, 不是证据或批准.
 `validate` 检查注册文件和当前哈希; `status` 报告当前范围, 待处理操作, 已记录阻塞和执行回执;
 `status --digest` 生成发现项计数, 最新指针和下一操作等导航信息. `--scope-id` 筛选未核对批准和
 `blocked` 待处理操作, 但 stale 发现项始终覆盖全项目, 因为 tracker 发现项行没有 scope ID.
@@ -242,6 +245,9 @@ AI, 作者和混合创作使用相同门禁. 每本书只保留一个活动创�
 
 - `project.json`: 项目登记, 产物路径, 以及可选的 `current_scope` 和 `pending_action`.
   不包含 `workflow.name`, `current_stage` 或 `stages`.
+- 新待处理操作最多内联 8 个产物路径. 更长的完整列表保存在 `.author-toolkit/pending-artifacts.json`,
+  由 `pending_action.artifact_index` 指向, 并通过 `set-pending.mjs` 校验和写入.
+  没有索引的既有长列表继续有效; setup 和检查不会自动迁移或截断它们.
 - 共享运行时契约: 保留在已安装 setup 技能的 `assets/references/` 中并直接读取,
   没有 manifest 字段, 也不复制到写作项目.
 - `story-bible.md`: 记录作者意图. 已验收正文建立观察事实; 两者冲突时不能静默覆盖任一来源.

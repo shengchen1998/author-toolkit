@@ -4,6 +4,8 @@ For every operation, resolve the installed `setup-author-toolkit` skill's root a
 
 For each shared-state operation, finish by refreshing the navigation cache as described under [Digest](read-operations.md#digest). Do not read the backup index to generate it.
 
+Use bounded reads for routine state inspection. `set-pending` is the only operation whose CLI requires manifest input; other operations obtain their required state through the bounded projection, current scope, tracker sections, and named artifacts. A manuscript write, backup, execution receipt, restore, or scope record still verifies exact current input hashes and approved paths immediately before its state transition. Reading the full manifest is reserved for diagnosing a reported manifest inconsistency, not for routine navigation.
+
 ## Paths and manifest identity
 
 Resolve the project root before reading or writing. The canonical manifest is `.author-toolkit/project.json` beneath that root. Accept only `schema_version: "3.1.0"`; it stores project metadata, `manuscript_root`, shared `paths`, and optional `current_scope` and `pending_action`, with no `workflow`, `current_stage`, or `stages` properties. A v3.1 manifest registers `paths.creation`, defaulting to `.author-toolkit/creation/`. Report other schema versions as unsupported and do not convert them.
@@ -73,13 +75,15 @@ Read, validation, status, and navigation-cache procedures live in [`read-operati
 
 ## Set pending
 
-Read the manifest immediately before each write. Write the requested `pending_action` values: `operation`, `status`, `scope_id`, `reason`, and `artifacts`. Status is `in_progress`, `awaiting_author`, or `blocked`; reason is always nonempty and identifies the decision, interruption, or dependency. Preserve `current_scope` and all historical records. Append unique artifact paths and set both `pending_action.updated_at` and top-level `updated_at` to the current UTC timestamp.
+The CLI reads the manifest internally immediately before each write. Use `node <setup-skill-root>/scripts/set-pending.mjs --project-root <project-root> --operation <operation> --status <status> --reason <reason> [--scope-id <scope-id>] [--artifact <path>...]`. Status is `in_progress`, `awaiting_author`, or `blocked`; reason is always nonempty and identifies the decision, interruption, or dependency. Preserve `current_scope` and all historical records. The command removes duplicate artifact paths while preserving first occurrence, retains at most eight inline in `pending_action.artifacts`, and writes the complete list to `.author-toolkit/pending-artifacts.json` when longer. The index matches the pending operation, scope ID, pending timestamp, and top-level manifest timestamp, and `pending_action.artifact_index` points to it. Shorter lists stay inline without an index. Set both `pending_action.updated_at` and top-level `updated_at` to the same current UTC timestamp; validate both files through the installed validator. An interrupted two-file update requires reconciliation before relying on either file.
+
+The index is the current pending action's living artifact index, not a history of completed operations. A subsequent pending action replaces it only as part of that state update. Preserve reports, sessions, batches, and other historical evidence at their original paths. An existing long inline list without `artifact_index` remains valid until an author-requested pending-action update; never migrate it as part of setup or read-only work.
 
 `pending_action` describes requested or interrupted work, not linear operation progress. Do not mark an operation complete, choose a following operation, or resume a write because another skill was invoked. The calling strategy supplies each explicit transition. If a write fails after the manifest was read, reread before retrying.
 
 ## Record scope
 
-Read the manifest and hash every complete manuscript file immediately before writing. Record the scope ID, description, ordered paths, SHA-256 hashes, `excluded_files`, `proposed` or `confirmed` status, and creation timestamp. A confirmed write requires the author's explicit confirmation of that exact record. Preserve the prior scope in reports and session history.
+Hash every complete manuscript file immediately before writing. Record the scope ID, description, ordered paths, SHA-256 hashes, `excluded_files`, `proposed` or `confirmed` status, and creation timestamp. A confirmed write requires the author's explicit confirmation of that exact record. Preserve the prior scope in reports and session history.
 
 Before a later manuscript write, repeat the read, presence, and hash comparison. Treat a mismatch as a stopped approval and backup gate, not as permission to refresh the scope silently.
 

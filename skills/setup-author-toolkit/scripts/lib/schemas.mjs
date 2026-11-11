@@ -8085,6 +8085,7 @@ var findingV1Schema = readSchema("finding-schema.json");
 var findingV2Schema = readSchema("finding-schema-v2.json");
 var relativePathSchema = readSchema("relative-path-schema.json");
 var projectV31Schema = readSchema("project-schema-v3.1.json");
+var pendingArtifactsSchema = readSchema("pending-artifacts-schema.json");
 var reportSchema = readSchema("report-schema-v2.json");
 var storyStateSchema = readSchema("story-state-schema.json");
 var creationBatchSchema = readSchema("creation-batch-schema.json");
@@ -8100,6 +8101,7 @@ ajv.addSchema(findingV1Schema, "finding-schema-v1.json");
 ajv.addSchema(findingV2Schema);
 ajv.addSchema(relativePathSchema);
 ajv.addSchema(projectV31Schema);
+ajv.addSchema(pendingArtifactsSchema);
 ajv.addSchema(reportSchema);
 ajv.addSchema(storyStateSchema);
 ajv.addSchema(creationBatchSchema);
@@ -8113,6 +8115,7 @@ var findingV1Validator = ajv.getSchema("finding-schema-v1.json");
 var findingV2Validator = ajv.getSchema("finding-schema-v2.json");
 var relativePathValidator = ajv.getSchema("relative-path-schema.json");
 var projectV31Validator = ajv.getSchema("project-schema-v3.1.json");
+var pendingArtifactsValidator = ajv.getSchema("pending-artifacts-schema.json");
 var reportValidator = ajv.getSchema("report-schema-v2.json");
 var storyStateValidator = ajv.getSchema("story-state-schema.json");
 var creationBatchValidator = ajv.getSchema("creation-batch-schema.json");
@@ -8137,6 +8140,9 @@ function validateFindingV2(value) {
 }
 function validateProjectSchema(value) {
   return evaluate(projectV31Validator, value);
+}
+function validatePendingArtifactsSchema(value) {
+  return evaluate(pendingArtifactsValidator, value);
 }
 function validateReportEnvelope(value) {
   return evaluate(reportValidator, value);
@@ -8175,6 +8181,7 @@ function validateSchemaDefinitions() {
     ["finding-schema-v2.json", findingV2Schema],
     ["relative-path-schema.json", relativePathSchema],
     ["project-schema-v3.1.json", projectV31Schema],
+    ["pending-artifacts-schema.json", pendingArtifactsSchema],
     ["report-schema-v2.json", reportSchema],
     ["story-state-schema.json", storyStateSchema],
     ["creation-batch-schema.json", creationBatchSchema],
@@ -8202,6 +8209,7 @@ export {
   validateExecutionReceiptSchema,
   validateFindingV1,
   validateFindingV2,
+  validatePendingArtifactsSchema,
   validateProjectSchema,
   validateReaderStateSchema,
   validateRelativePath,

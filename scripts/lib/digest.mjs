@@ -4,6 +4,7 @@ import path from "node:path";
 import { validateManifest } from "./manifest.mjs";
 import { validateRelativePath } from "./schemas.mjs";
 import { splitTrackerRow, TRACKER_STATUSES } from "./tracker.mjs";
+import { readPendingArtifactIndex } from "./pending-artifacts.mjs";
 
 function markdown(value) {
   return value.replaceAll("\\", "\\\\").replaceAll("`", "\\`").replaceAll("\r", " ").replaceAll("\n", " ").trim();
@@ -116,15 +117,16 @@ function fallbackReport(tracker) {
   return null;
 }
 
-function pendingArtifacts(pending) {
+async function pendingArtifacts(pending, projectRoot) {
   const artifacts = pending?.artifacts ?? [];
-  if (artifacts.length === 0) return "none recorded";
+  const total = pending?.artifact_index ? (await readPendingArtifactIndex(projectRoot)).artifacts.length : artifacts.length;
+  if (total === 0) return "none recorded";
   const visible = artifacts.slice(0, 2).map(code).join(", ");
-  const remainder = artifacts.length > 2 ? `, + ${artifacts.length - 2} more; see ${code(".author-toolkit/project.json")}` : "";
+  const remainder = total > 2 ? `, + ${total - 2} more; see ${code(pending.artifact_index ?? ".author-toolkit/project.json")}` : "";
   return `${visible}${remainder}`;
 }
 
-export function renderProjectDigest({ manifest, tracker, latestReport, latestSession, sessionText = "" }) {
+export async function renderProjectDigest({ manifest, tracker, latestReport, latestSession, sessionText = "", projectRoot = "" }) {
   const counts = findingCounts(tracker);
   const report = latestReport ?? fallbackReport(tracker);
   const scope = manifest.current_scope;
@@ -141,7 +143,7 @@ export function renderProjectDigest({ manifest, tracker, latestReport, latestSes
     `- Pending action: ${pending ? `${code(pending.operation)} (${pending.status})` : "none recorded"}`,
     `- Pending scope: ${pending?.scope_id ? code(pending.scope_id) : "none recorded"}`,
     `- Pending reason: ${pending ? concise(pending.reason) : "none recorded"}`,
-    `- Pending artifacts: ${pendingArtifacts(pending)}`,
+    `- Pending artifacts: ${await pendingArtifacts(pending, projectRoot)}`,
     `- Findings: ${Object.entries(counts).map(([status, count]) => `${status}=${count}`).join(", ")}`,
     `- Active plan: ${plan ? code(plan) : "none recorded"}`,
     `- Latest report: ${report ? code(report) : "none recorded"}`,
@@ -150,7 +152,7 @@ export function renderProjectDigest({ manifest, tracker, latestReport, latestSes
     "",
     "## Read next",
     "",
-    `- Manifest: ${code(".author-toolkit/project.json")} for the full scope record and pending action.`,
+    "- Manifest: use `author-project read` for the bounded manifest projection and scope hashes.",
     "- Status: use `author-project status` for recorded blockers and execution evidence.",
     "- Validation: use `author-project validate` for current hashes and missing paths.",
     `- Tracker: ${code(manifest.paths.audit_tracker)} -> ${code("## Findings")}, ${code("## Audit runs")}, ${code("## Approved decisions")}`,
@@ -180,12 +182,13 @@ export async function generateProjectDigest(projectRoot) {
     latestFile(projectRoot, manifest.paths.reports, ".md", new Set([reviewBriefPath])),
     latestFile(projectRoot, manifest.paths.sessions, ".md"),
   ]);
-  const digest = renderProjectDigest({
+  const digest = await renderProjectDigest({
     manifest,
     tracker,
     latestReport,
     latestSession,
     sessionText: latestSession ? await readFile(path.resolve(projectRoot, latestSession), "utf8") : "",
+    projectRoot,
   });
   if (digest.trimEnd().split("\n").length > 30) throw new Error("Project digest exceeds 30 lines");
   const destination = path.join(projectRoot, "PROJECT_STATE.md");

@@ -153,7 +153,7 @@ On a nonzero strict result, do not claim the state, enter a strategy that requir
 
 ## Pending actions and session writes
 
-The neutral manifest stores only the current scope and an optional shared pending action. A pending action records `operation`, `status`, `scope_id`, `reason`, `artifacts`, and `updated_at`; status is `in_progress`, `awaiting_author`, or `blocked`. It does not record which orchestration skill created it.
+The neutral manifest stores only the current scope and an optional shared pending action. A pending action records `operation`, `status`, `scope_id`, `reason`, `artifacts`, optional `artifact_index`, and `updated_at`; status is `in_progress`, `awaiting_author`, or `blocked`. It does not record which orchestration skill created it. Use `author-project set-pending` to retain at most eight inline artifacts and put longer complete lists in the linked pending artifact index. Legacy longer inline lists without an index remain valid.
 
 At each stop, update the manifest through `author-project`, then the tracker and a short session note. Record work performed, author decisions, report and backup paths, open questions, stale propagation, and the exact next action. Follow `author-project`'s navigation-cache contract for session navigation fields and cache refresh. On resume, rederive gates from current evidence rather than treating a pending action as permission to write. Read-only work may continue with an unrelated pending decision; reconcile conflicting writes first.
 

@@ -16,6 +16,7 @@ const findingV1Schema = readSchema("finding-schema.json");
 const findingV2Schema = readSchema("finding-schema-v2.json");
 const relativePathSchema = readSchema("relative-path-schema.json");
 const projectV31Schema = readSchema("project-schema-v3.1.json");
+const pendingArtifactsSchema = readSchema("pending-artifacts-schema.json");
 const reportSchema = readSchema("report-schema-v2.json");
 const storyStateSchema = readSchema("story-state-schema.json");
 const creationBatchSchema = readSchema("creation-batch-schema.json");
@@ -32,6 +33,7 @@ ajv.addSchema(findingV1Schema, "finding-schema-v1.json");
 ajv.addSchema(findingV2Schema);
 ajv.addSchema(relativePathSchema);
 ajv.addSchema(projectV31Schema);
+ajv.addSchema(pendingArtifactsSchema);
 ajv.addSchema(reportSchema);
 ajv.addSchema(storyStateSchema);
 ajv.addSchema(creationBatchSchema);
@@ -46,6 +48,7 @@ const findingV1Validator = ajv.getSchema("finding-schema-v1.json");
 const findingV2Validator = ajv.getSchema("finding-schema-v2.json");
 const relativePathValidator = ajv.getSchema("relative-path-schema.json");
 const projectV31Validator = ajv.getSchema("project-schema-v3.1.json");
+const pendingArtifactsValidator = ajv.getSchema("pending-artifacts-schema.json");
 const reportValidator = ajv.getSchema("report-schema-v2.json");
 const storyStateValidator = ajv.getSchema("story-state-schema.json");
 const creationBatchValidator = ajv.getSchema("creation-batch-schema.json");
@@ -74,6 +77,10 @@ export function validateFindingV2(value) {
 
 export function validateProjectSchema(value) {
   return evaluate(projectV31Validator, value);
+}
+
+export function validatePendingArtifactsSchema(value) {
+  return evaluate(pendingArtifactsValidator, value);
 }
 
 export function validateReportEnvelope(value) {
@@ -123,6 +130,7 @@ export function validateSchemaDefinitions() {
     ["finding-schema-v2.json", findingV2Schema],
     ["relative-path-schema.json", relativePathSchema],
     ["project-schema-v3.1.json", projectV31Schema],
+    ["pending-artifacts-schema.json", pendingArtifactsSchema],
     ["report-schema-v2.json", reportSchema],
     ["story-state-schema.json", storyStateSchema],
     ["creation-batch-schema.json", creationBatchSchema],

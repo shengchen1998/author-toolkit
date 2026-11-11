@@ -118,8 +118,25 @@
           "type": "array",
           "items": { "$ref": "relative-path-schema.json" }
         },
+        "artifact_index": {
+          "const": ".author-toolkit/pending-artifacts.json"
+        },
         "updated_at": { "$ref": "#/$defs/timestamp" }
-      }
+      },
+      "allOf": [
+        {
+          "if": {
+            "type": "object",
+            "properties": { "artifact_index": { "const": ".author-toolkit/pending-artifacts.json" } },
+            "required": ["artifact_index"]
+          },
+          "then": {
+            "properties": {
+              "artifacts": { "type": "array", "maxItems": 8 }
+            }
+          }
+        }
+      ]
     },
     "created_at": { "$ref": "#/$defs/timestamp" },
     "updated_at": { "$ref": "#/$defs/timestamp" }

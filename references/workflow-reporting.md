@@ -4,7 +4,7 @@ Use this mode only when `write-fiction`, `revise-fiction`, `revise-draft`, `revi
 
 ## Diagnostic boundary
 
-Read the manifest, named inputs, and shared tracker. Apply the calling skill's diagnostic method within the requested scope and language. Record full, partial, or skipped coverage instead of presenting it as completed. Return findings and proposed creative changes without advancing `pending_action` or creating an approval. Switching among the five calling strategies at a stable operation gate does not change the scope or authorize a pending write. Creation operations keep their own artifact identity and never enter report v2 `stage`.
+Use the bounded `author-project read` projection, named inputs, and shared tracker. Apply the calling skill's diagnostic method within the requested scope and language. Record full, partial, or skipped coverage instead of presenting it as completed. Return findings and proposed creative changes without advancing `pending_action` or creating an approval. Switching among the five calling strategies at a stable operation gate does not change the scope or authorize a pending write. Creation operations keep their own artifact identity and never enter report v2 `stage`.
 
 When the work produces a concrete manuscript edit, read `<setup-skill-root>/assets/references/context-fit.md` and complete its check before presenting the exact candidate for author review. A context-fit check does not approve a manuscript edit, expand its paths, or replace later review and evidence coverage.
 

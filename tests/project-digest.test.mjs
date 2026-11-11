@@ -220,6 +220,28 @@ test("project digest keeps long pending reasons and artifact lists bounded", asy
   assert.ok(output.length < 3000);
 });
 
+test("project digest follows the pending artifact index for long current lists", async (t) => {
+  const projectRoot = await projectFixture(t);
+  const manifestPath = path.join(projectRoot, ".author-toolkit", "project.json");
+  const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
+  manifest.pending_action.artifacts = Array.from({ length: 8 }, () => "reports/diagnostics/latest.md");
+  manifest.pending_action.artifact_index = ".author-toolkit/pending-artifacts.json";
+  await writeFile(manifestPath, JSON.stringify(manifest));
+  await writeFile(path.join(projectRoot, manifest.pending_action.artifact_index), JSON.stringify({
+    schema_version: "1.0.0",
+    operation: manifest.pending_action.operation,
+    scope_id: manifest.pending_action.scope_id,
+    artifacts: Array.from({ length: 115 }, () => "reports/diagnostics/latest.md"),
+    updated_at: manifest.pending_action.updated_at,
+  }));
+
+  const result = digestCli(projectRoot);
+  assert.equal(result.status, 0, result.stderr);
+  const output = await readFile(path.join(projectRoot, "PROJECT_STATE.md"), "utf8");
+  assert.match(output, /Pending artifacts: .*\+ 113 more; see `\.author-toolkit\/pending-artifacts\.json`/);
+  assert.ok(output.length < 3000);
+});
+
 test("project digest stays outside manuscript inventory even at the manuscript root", async (t) => {
   const projectRoot = await projectFixture(t);
   const manifestPath = path.join(projectRoot, ".author-toolkit", "project.json");

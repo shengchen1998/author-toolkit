@@ -3,7 +3,7 @@ import { readFile, stat } from "node:fs/promises";
 import path from "node:path";
 
 import { collectManuscriptInventory } from "./manuscript.mjs";
-import { validateRelativePath } from "./schemas.mjs";
+import { validatePendingArtifactsSchema, validateRelativePath } from "./schemas.mjs";
 
 const OPERATIONAL_PATHS = [
   "story_bible",
@@ -52,7 +52,7 @@ async function checkExists(root, instancePath, relativePath) {
   }
 }
 
-export async function validateProjectFiles(manifest, manifestPath) {
+export async function validateProjectFiles(manifest, manifestPath, { skipPendingArtifacts = false } = {}) {
   const projectRoot = projectRootFromManifest(manifestPath);
   if (isUninitializedProjectTemplate(manifest)) {
     return { valid: true, errors: [], projectRoot };
@@ -63,9 +63,11 @@ export async function validateProjectFiles(manifest, manifestPath) {
     checks.push([`/paths/${name}`, manifest.paths?.[name]]);
   }
 
-  manifest.pending_action?.artifacts?.forEach((artifact, artifactIndex) => {
-    checks.push([`/pending_action/artifacts/${artifactIndex}`, artifact]);
-  });
+  if (!skipPendingArtifacts) {
+    manifest.pending_action?.artifacts?.forEach((artifact, artifactIndex) => {
+      checks.push([`/pending_action/artifacts/${artifactIndex}`, artifact]);
+    });
+  }
   manifest.current_scope?.files?.forEach((file, fileIndex) => {
     checks.push([`/current_scope/files/${fileIndex}/path`, file.path]);
   });
@@ -77,6 +79,55 @@ export async function validateProjectFiles(manifest, manifestPath) {
   }
 
   return { valid: errors.length === 0, errors, projectRoot };
+}
+
+export async function validatePendingArtifactIndex(manifest, manifestPath, suppliedIndex) {
+  const pending = manifest.pending_action;
+  if (!pending?.artifact_index) return { valid: true, errors: [] };
+  const projectRoot = projectRootFromManifest(manifestPath);
+  let index = suppliedIndex;
+  if (index === undefined) {
+    try {
+      index = JSON.parse(await readFile(path.resolve(projectRoot, pending.artifact_index), "utf8"));
+    } catch (error) {
+      return {
+        valid: false,
+        errors: [fileError("/pending_action/artifact_index", `cannot read pending artifact index: ${error.message}`)],
+      };
+    }
+  }
+
+  const result = validatePendingArtifactsSchema(index);
+  const errors = result.errors.map((error) => ({
+    ...error,
+    instancePath: `/pending_action/artifact_index${error.instancePath}`,
+  }));
+  if (index.operation !== pending.operation) {
+    errors.push(fileError("/pending_action/artifact_index/operation", "index operation must match pending action"));
+  }
+  if ((index.scope_id ?? null) !== (pending.scope_id ?? null)) {
+    errors.push(fileError("/pending_action/artifact_index/scope_id", "index scope ID must match pending action"));
+  }
+  if (index.updated_at !== pending.updated_at) {
+    errors.push(fileError("/pending_action/artifact_index/updated_at", "index timestamp must match pending action"));
+  }
+  if (index.updated_at !== manifest.updated_at) {
+    errors.push(fileError("/pending_action/artifact_index/updated_at", "index timestamp must match manifest update time"));
+  }
+  const inline = pending.artifacts ?? [];
+  if (!Array.isArray(index.artifacts) || inline.some((artifact, position) => index.artifacts[position] !== artifact)) {
+    errors.push(fileError("/pending_action/artifacts", "inline artifacts must be a prefix of the pending artifact index"));
+  }
+  const indexedArtifacts = Array.isArray(index.artifacts) ? index.artifacts : [];
+  for (const artifactIndex of inline.keys()) {
+    if (indexedArtifacts[artifactIndex] === inline[artifactIndex]) continue;
+    errors.push(fileError(`/pending_action/artifact_index/artifacts/${artifactIndex}`, "inline artifact must match the pending artifact index"));
+  }
+  for (const [artifactIndex, artifact] of indexedArtifacts.entries()) {
+    const error = await checkExists(projectRoot, `/pending_action/artifact_index/artifacts/${artifactIndex}`, artifact);
+    if (error) errors.push(error);
+  }
+  return { valid: errors.length === 0, errors };
 }
 
 export async function validateScopeCurrency(manifest, manifestPath) {

@@ -157,10 +157,11 @@ test("backup and handoff writes resolve registered project paths", async () => {
 });
 
 test("project digest is a generated navigation cache, not another source of truth", async () => {
-  const [project, readOperations, instructions] = await Promise.all([
+  const [project, readOperations, instructions, setup] = await Promise.all([
     readFile(path.join(root, "skills/author-project/SKILL.md"), "utf8"),
     readFile(path.join(root, "skills/author-project/references/read-operations.md"), "utf8"),
     readFile(path.join(root, "skills/setup-author-toolkit/assets/AGENTS.md"), "utf8"),
+    readFile(path.join(root, "skills/setup-author-toolkit/SKILL.md"), "utf8"),
   ]);
   assert.match(project, /`status --digest`/);
   assert.match(readOperations, /project-digest\.mjs --project-root/);
@@ -168,6 +169,7 @@ test("project digest is a generated navigation cache, not another source of trut
   assert.match(readOperations, /once after each logical shared-state operation/i);
   assert.match(readOperations, /navigation cache/i);
   assert.match(instructions, /read `PROJECT_STATE\.md` first/i);
+  assert.match(setup, /read `PROJECT_STATE\.md` first/i);
   assert.match(instructions, /authoritative/i);
   assert.match(instructions, /only the tracker sections, sessions, plans, and evidence needed/i);
 
@@ -188,7 +190,9 @@ test("setup and routine navigation keep operational history listings bounded", a
   ]);
 
   assert.match(setup, /^1\. Inspect the project root with shallow listings and targeted existence or type checks\./m);
-  assert.match(setup, /For an existing v3\.1 manifest, take operational paths from it and leave existence checks to the later validation step/);
+  assert.match(setup, /For an existing v3\.1 manifest, read `PROJECT_STATE\.md` first when present/);
+  assert.match(setup, /use `read\.mjs --project-root <project-root>` for the bounded validated projection/);
+  assert.match(setup, /do not print `payload-manifest\.json`, the complete manifest, or the full backup index/);
   assert.match(setup, /Without a manifest, limit discovery to the candidate component directories and manuscript paths needed for registration/);
   assert.match(setup, /use presence checks or counts that do not emit session or backup filenames/);
 
@@ -226,7 +230,7 @@ test("existing-project setup uses bounded inspection references and a categorize
   }
   assert.match(setup, /Distinguish mechanical execution evidence from operation-specific evidence/);
 
-  for (const command of ["doctor\\.mjs", "preflight\\.mjs --project-root", "validate\\.mjs --manifest", "status\\.mjs --manifest", "--scope-id", "--require-execution", "--digest", "project-digest\\.mjs --project-root"]) {
+  for (const command of ["doctor\\.mjs", "read\\.mjs --project-root", "preflight\\.mjs --project-root", "validate\\.mjs --manifest", "status\\.mjs --manifest", "--scope-id", "--require-execution", "--digest", "project-digest\\.mjs --project-root"]) {
     assert.match(readOperations, new RegExp(command));
   }
   assert.match(readOperations, /operation-specific evidence, evidence reuse, and current-draft revision convergence/);

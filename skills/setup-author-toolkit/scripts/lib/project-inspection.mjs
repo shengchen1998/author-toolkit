@@ -5,6 +5,7 @@ import { inspectExecutionReceipts } from "./execution-receipts.mjs";
 import { validateManifest } from "./manifest.mjs";
 import {
   projectRootFromManifest,
+  validatePendingArtifactIndex,
   validateProjectFiles,
   validateScopeCurrency,
 } from "./project-files.mjs";
@@ -36,6 +37,9 @@ export async function inspectProjectManifest(manifestPath) {
   }
 
   check("files", await validateProjectFiles(manifest, manifestPath));
+  if (manifest.pending_action?.artifact_index) {
+    check("pending-artifacts", await validatePendingArtifactIndex(manifest, manifestPath));
+  }
   if (manifest.current_scope) {
     check("scope", await validateScopeCurrency(manifest, manifestPath));
   }
