@@ -168,6 +168,47 @@ test("setup carries self-contained preflight, validation, state, range, and inst
   assert.equal(check.status, 0, check.stderr);
   assert.equal(check.stdout, preflight.stdout.replace("Navigation cache: refreshed PROJECT_STATE.md", "Navigation cache: not requested"));
 
+  const diagnosisProject = path.join(temporaryRoot, "diagnosis-project");
+  await cp(project, diagnosisProject, { recursive: true });
+  const projectManifestPath = path.join(diagnosisProject, ".author-toolkit", "project.json");
+  const projectManifest = JSON.parse(await readFile(projectManifestPath, "utf8"));
+  const projectTrackerPath = path.join(diagnosisProject, projectManifest.paths.audit_tracker);
+  await writeFile(
+    projectTrackerPath,
+    (await readFile(projectTrackerPath, "utf8")).replace(
+      "| Approval ID | Type | Operation | Scope ID | Paths | Status | Reason | Updated |\n|---|---|---|---|---|---|---|---|",
+      "| Approval ID | Type | Operation | Scope ID | Paths | Status | Reason | Updated |\n|---|---|---|---|---|---|---|---|\n| PLAN-001 | plan | revision-plan | scope-example-revision | `manuscript/chapter-01.md` | approved | Exact test batch. | 2026-11-11T00:00:00Z |",
+    ),
+  );
+  const projectIndexPath = path.join(diagnosisProject, projectManifest.paths.backups, "index.json");
+  const projectIndex = JSON.parse(await readFile(projectIndexPath, "utf8"));
+  projectIndex.backups.push({
+    backup_id: "backup-plan-001",
+    approval_id: "PLAN-001",
+    operation: "draft-baseline",
+    scope_id: "scope-example-revision",
+    input_hashes: {},
+  });
+  await writeFile(projectIndexPath, JSON.stringify(projectIndex));
+  const diagnosis = spawnSync(
+    process.execPath,
+    [
+      ...nodeArgs,
+      path.join(installedSetup, "scripts", "preflight.mjs"),
+      "--project-root",
+      diagnosisProject,
+      "--diagnose",
+      "--json",
+    ],
+    { encoding: "utf8" },
+  );
+  assert.equal(diagnosis.status, 1, diagnosis.stderr);
+  const diagnosed = JSON.parse(diagnosis.stdout);
+  assert.equal(diagnosed.diagnosis.projection.verification, "recorded_unverified");
+  assert.deepEqual(diagnosed.diagnosis.backup_index.records[0].differences, [
+    { field: "operation", backup: "draft-baseline", approval: "revision-plan" },
+  ]);
+
   const rangeProject = path.join(temporaryRoot, "range-project");
   await mkdir(path.join(rangeProject, "manuscript"), { recursive: true });
   await writeFile(path.join(rangeProject, "manuscript", "1.md"), "温暖与热带\n", "utf8");
@@ -381,6 +422,9 @@ test("setup uses the authoritative payload inventory and bounded doctor", async 
   assert.match(setup, /Rerun the same doctor command/);
   assert.match(operations, /at most eight operation groups/);
   assert.match(operations, /Use standalone `validate\.mjs` to diagnose a validation failure/);
+  assert.match(operations, /--diagnose/);
+  assert.match(operations, /recorded_unverified/);
+  assert.match(setup, /rerun that command once with `--diagnose`/);
   assert.match(readme, /--project-root <root>/);
   assert.match(readme, /internal CLI modules/);
   assert.match(zhReadme, /--project-root <root>/);

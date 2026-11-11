@@ -250,7 +250,7 @@ test("existing-project setup uses bounded inspection references and a categorize
   }
   assert.match(setup, /Distinguish mechanical execution evidence from operation-specific evidence/);
 
-  for (const command of ["doctor\\.mjs", "read\\.mjs --project-root", "preflight\\.mjs --project-root", "validate\\.mjs --manifest", "status\\.mjs --manifest", "writes\\.mjs check-index --manifest", "--explain", "--scope-id", "--require-execution", "--digest", "project-digest\\.mjs --project-root"]) {
+  for (const command of ["doctor\\.mjs", "read\\.mjs --project-root", "preflight\\.mjs --project-root", "validate\\.mjs --manifest", "status\\.mjs --manifest", "writes\\.mjs check-index --manifest", "--explain", "--scope-id", "--require-execution", "--digest", "--diagnose", "project-digest\\.mjs --project-root"]) {
     assert.match(readOperations, new RegExp(command));
   }
   assert.match(readOperations, /operation-specific evidence, evidence reuse, and current-draft revision convergence/);

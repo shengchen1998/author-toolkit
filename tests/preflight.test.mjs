@@ -192,6 +192,120 @@ test("preflight stops before status or digest when project validation fails", as
   assert.equal(await readFile(path.join(projectRoot, "PROJECT_STATE.md"), "utf8"), previous);
 });
 
+test("preflight diagnose returns recorded projection and backup-index differences without repairing state", async (t) => {
+  const { projectRoot, manifestPath } = await fixture(t);
+  const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
+  const trackerPath = path.join(projectRoot, manifest.paths.audit_tracker);
+  const tracker = await readFile(trackerPath, "utf8");
+  await writeFile(
+    trackerPath,
+    tracker.replace(
+      "| Approval ID | Type | Operation | Scope ID | Paths | Status | Reason | Updated |\n|---|---|---|---|---|---|---|---|",
+      `| Approval ID | Type | Operation | Scope ID | Paths | Status | Reason | Updated |\n|---|---|---|---|---|---|---|---|\n| PLAN-001 | plan | revision-plan | ${scopeId} | \`manuscript/chapter-01.md\` | approved | Exact test batch. | ${timestamp} |`,
+    ),
+  );
+  const indexPath = path.join(projectRoot, manifest.paths.backups, "index.json");
+  const index = JSON.parse(await readFile(indexPath, "utf8"));
+  index.backups.push({
+    backup_id: "backup-plan-001",
+    approval_id: "PLAN-001",
+    operation: "draft-baseline",
+    scope_id: scopeId,
+    input_hashes: { "manuscript/chapter-01.md": manifest.current_scope.files[0].sha256 },
+    manifest_path: "backups/backup-plan-001/manifest.json",
+  });
+  await writeFile(indexPath, JSON.stringify(index));
+  manifest.pending_action.artifacts = Array.from({ length: 115 }, (_, position) => `reports/structure/pending-${position}.md`);
+  await writeFile(manifestPath, JSON.stringify(manifest));
+  const before = await readFile(path.join(projectRoot, "PROJECT_STATE.md"), "utf8");
+
+  const ordinary = run(["--project-root", projectRoot, "--json"]);
+  assert.equal(ordinary.status, 1);
+  assert.equal(JSON.parse(ordinary.stdout).diagnosis, null);
+  assert.ok(JSON.parse(ordinary.stdout).validation.checks.every((check) => check.valid || !Object.hasOwn(check, "omitted_error_count")));
+
+  const result = run(["--project-root", projectRoot, "--diagnose", "--json"]);
+  assert.equal(result.status, 1, result.stderr);
+  const parsed = JSON.parse(result.stdout);
+  assert.equal(parsed.valid, false);
+  assert.equal(parsed.validation.valid, false);
+  assert.equal(parsed.status, null);
+  assert.equal(parsed.digest, null);
+  assert.equal(parsed.diagnosis.read_only, true);
+  assert.equal(parsed.diagnosis.projection.verification, "recorded_unverified");
+  assert.equal(parsed.diagnosis.projection.current_scope.scope_id, scopeId);
+  assert.equal(parsed.diagnosis.projection.current_scope.files[0].sha256, manifest.current_scope.files[0].sha256);
+  assert.equal(parsed.diagnosis.projection.pending_action.artifacts.length, 2);
+  assert.equal(parsed.diagnosis.projection.pending_action.artifact_count, 115);
+  assert.deepEqual(parsed.diagnosis.backup_index.records[0].differences, [
+    { field: "operation", backup: "draft-baseline", approval: "revision-plan" },
+  ]);
+  assert.equal(await readFile(path.join(projectRoot, "PROJECT_STATE.md"), "utf8"), before);
+  assert.equal(JSON.parse(await readFile(indexPath, "utf8")).backups.at(-1).operation, "draft-baseline");
+
+  const text = run(["--project-root", projectRoot, "--diagnose"]);
+  assert.equal(text.status, 1, text.stderr);
+  assert.match(text.stdout, /Recorded projection: unverified/);
+  assert.match(text.stdout, /Pending artifacts: 115; 2 bounded pointers shown in --json/);
+  assert.match(text.stdout, /backups\[0\] backup-plan-001 \/ PLAN-001: operation: backup=draft-baseline, approval=revision-plan/);
+  assert.match(text.stdout, /Diagnosis: recorded state only; no repairs or writes performed/);
+  assert.doesNotMatch(text.stdout, /pending-2\.md/);
+  assert.ok(text.stdout.trimEnd().split("\n").length <= 24);
+
+  const incompatible = run(["--project-root", projectRoot, "--diagnose", "--digest"]);
+  assert.equal(incompatible.status, 2);
+  assert.match(incompatible.stderr, /--diagnose cannot be combined with --digest/);
+});
+
+test("preflight diagnose bounds repeated errors and reports an unreadable pending artifact index", async (t) => {
+  const { projectRoot, manifestPath } = await fixture(t);
+  const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
+  const trackerPath = path.join(projectRoot, manifest.paths.audit_tracker);
+  const approvalTable = "| Approval ID | Type | Operation | Scope ID | Paths | Status | Reason | Updated |\n|---|---|---|---|---|---|---|---|";
+  const rows = Array.from({ length: 94 }, (_, position) =>
+    `| EDIT-${String(position + 1).padStart(3, "0")} | edit | chapter-revision | ${scopeId} | \`manuscript/chapter-01.md\` | approved | Exact test batch. | ${timestamp} |`,
+  );
+  await writeFile(trackerPath, (await readFile(trackerPath, "utf8")).replace(approvalTable, `${approvalTable}\n${rows.join("\n")}`));
+  const indexPath = path.join(projectRoot, manifest.paths.backups, "index.json");
+  const index = JSON.parse(await readFile(indexPath, "utf8"));
+  index.backups = Array.from({ length: 14 }, (_, position) => ({
+    backup_id: `backup-${position}`,
+    approval_id: `MISSING-${String(position + 1).padStart(3, "0")}`,
+    operation: "chapter-revision",
+    scope_id: scopeId,
+    input_hashes: {},
+    manifest_path: `backups/backup-${position}/manifest.json`,
+  }));
+  await writeFile(indexPath, JSON.stringify(index));
+  manifest.pending_action.artifacts = ["reports/structure/2026-01-17_structure.md"];
+  manifest.pending_action.artifact_index = ".author-toolkit/pending-artifacts.json";
+  await writeFile(manifestPath, JSON.stringify(manifest));
+  await writeFile(path.join(projectRoot, ".author-toolkit", "pending-artifacts.json"), "{ invalid\n");
+
+  const result = run(["--project-root", projectRoot, "--diagnose", "--json"]);
+  assert.equal(result.status, 1, result.stderr);
+  const parsed = JSON.parse(result.stdout);
+  const executions = parsed.validation.checks.find((check) => check.path === "executions");
+  assert.equal(executions.errors.length, 12, "diagnostic JSON bounds displayed failure diagnostics");
+  assert.equal(executions.omitted_error_count, 16);
+  assert.equal(executions.summary.unverified_count, 94);
+  assert.equal(executions.summary.unverified, undefined);
+  const diagnosis = parsed.diagnosis;
+  assert.equal(diagnosis.projection.pending_action.artifact_count, null);
+  assert.match(diagnosis.projection.pending_action.artifact_count_error, /JSON|position|Unexpected/);
+  assert.equal(diagnosis.projection.pending_action.artifacts.length, 1);
+  assert.equal(diagnosis.backup_index.records.length, 12);
+  assert.equal(diagnosis.backup_index.omitted_record_count, 2);
+
+  const text = run(["--project-root", projectRoot, "--diagnose"]);
+  assert.equal(text.status, 1, text.stderr);
+  assert.match(text.stdout, /Execution evidence: 0\/94 verified; 94 unverified/);
+  assert.match(text.stdout, /\.\.\. 16 more errors/);
+  assert.match(text.stdout, /Pending artifacts: unavailable; 1 bounded pointers shown in --json/);
+  assert.match(text.stdout, /2 more conflicting records/);
+  assert.ok(text.stdout.trimEnd().split("\n").length <= 40);
+});
+
 test("preflight reports malformed manifests and argument errors", async (t) => {
   const { projectRoot, manifestPath } = await fixture(t);
   await writeFile(manifestPath, "{ invalid\n");
