@@ -164,6 +164,13 @@ navigation cache should be refreshed after successful read-only checks.
 same arguments and exit statuses. It reuses preflight rather than duplicating
 doctor, validation, or strict execution logic.
 
+`read.mjs` bounds failed validation to failed checks, 12 errors per check, and
+operation-grouped unverified-approval summaries. Add `--details` for complete
+failed checks and approval details. For a backup-index inconsistency, run
+`writes.mjs check-index --manifest <manifest> --explain` for read-only backup
+index inspection; it reports exact record locations and backup/approval identity
+differences without migrating history or selecting a repair value.
+
 Updates are manual. Check and apply them with:
 
 ```bash
@@ -388,7 +395,9 @@ artifact paths. Only schema 3.1.0 is supported; other manifest versions are
 rejected and are not converted automatically.
 
 `author-project read` uses `read.mjs` for a bounded validated projection with
-resolved paths, complete current-scope hashes, and pending-artifact counts. Read
+resolved paths, complete current-scope hashes, and pending-artifact counts. Its
+failure output is bounded by default; `--details` returns complete failed checks.
+Read
 `PROJECT_STATE.md` first when present; use `validate` for registered files
 and current hashes, `status` for current scope, pending action, recorded blockers,
 and execution receipts, and `status --digest` for navigation counts, latest
@@ -464,6 +473,8 @@ Use `read.mjs --project-root <root>` for its bounded manifest projection and
   `record-backup` refuses new edit batches while another approval is unverified,
   including create-only batches. `reconcile-executions` adds only receipts backed
   by preserved post-write evidence; unsupported approvals remain unverified.
+  `check-index --explain` provides read-only backup index inspection for identity
+  mismatches without migrating historical records or adding execution receipts.
   Restoration also requires author approval and retains its separate safety path.
 - `handoffs/` preserves pointers to the current evidence and next action.
 - `paths.creation` registers creation state and defaults to
@@ -625,6 +636,7 @@ node scripts/preflight.mjs --project-root /path/to/writing-project
 node scripts/validate.mjs --manifest /path/to/.author-toolkit/project.json
 node scripts/validate.mjs --report /path/to/report.md
 node scripts/status.mjs --manifest /path/to/.author-toolkit/project.json --scope-id scope-001
+node scripts/writes.mjs check-index --manifest /path/to/.author-toolkit/project.json --explain
 node scripts/range.mjs --project-root /path/to/writing-project "manuscript/1.md:1:56-71"
 ```
 

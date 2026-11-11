@@ -131,6 +131,68 @@ test("a legacy backup index is valid but its backups do not prove execution", as
   assert.match(validation.stdout, /5 checks, 0 failures/);
 });
 
+test("check-index explains backup and approval differences without writing state", async (t) => {
+  const project = await fixture(t);
+  project.index.backups.push({
+    backup_id: "backup-plan-002",
+    approval_id: "PLAN-001",
+    operation: "draft-baseline",
+    scope_id: targetScope,
+    input_hashes: { "draft-baseline.md": inputHash },
+  });
+  await project.saveIndex();
+  const before = await readFile(project.indexPath, "utf8");
+  const trackerBefore = await readFile(project.trackerPath, "utf8");
+
+  const result = runCli("writes.mjs", ["check-index", "--manifest", project.manifestPath, "--explain"]);
+  assert.equal(result.status, 1, result.stderr);
+  const explanation = JSON.parse(result.stdout);
+  assert.equal(explanation.valid, false);
+  assert.equal(explanation.read_only, true);
+  assert.equal(explanation.records.length, 1);
+  assert.equal(explanation.records[0].collection, "backups");
+  assert.equal(explanation.records[0].index, 2);
+  assert.equal(explanation.records[0].backup_id, "backup-plan-002");
+  assert.equal(explanation.records[0].approval_id, "PLAN-001");
+  assert.deepEqual(explanation.records[0].differences, [
+    { field: "operation", backup: "draft-baseline", approval: "revision-plan" },
+  ]);
+  assert.equal(explanation.records[0].approval.type, "plan");
+  assert.match(explanation.next_actions.join("\n"), /do not infer which recorded operation or scope is correct/);
+  assert.match(explanation.next_actions.join("\n"), /does not repair backup identity mismatches/);
+  assert.equal(await readFile(project.indexPath, "utf8"), before);
+  assert.equal(await readFile(project.trackerPath, "utf8"), trackerBefore);
+
+  const irrelevantTimestamp = runCli("writes.mjs", ["check-index", "--manifest", project.manifestPath, "--explain", "--recorded-at", timestamp]);
+  assert.equal(irrelevantTimestamp.status, 1, "a diagnostic timestamp never repairs or hides the mismatch");
+  for (const args of [
+    ["check-index", "--manifest", project.manifestPath],
+    ["check-index", "--manifest", project.manifestPath, "--explain", "--write"],
+    ["record-backup", "--manifest", project.manifestPath, "--explain"],
+  ]) {
+    const invalid = runCli("writes.mjs", args);
+    assert.equal(invalid.status, 2);
+    assert.match(invalid.stdout, /check-index --manifest FILE --explain/);
+  }
+});
+
+test("check-index succeeds for valid legacy and current indexes without a write lock", async (t) => {
+  const project = await fixture(t);
+  for (const executions of [project.index.executions, undefined]) {
+    if (executions) project.index.executions = executions;
+    else delete project.index.executions;
+    await project.saveIndex();
+    const before = await readFile(project.indexPath, "utf8");
+    const result = runCli("writes.mjs", ["check-index", "--manifest", project.manifestPath, "--explain"]);
+    assert.equal(result.status, 0, result.stderr);
+    const explanation = JSON.parse(result.stdout);
+    assert.equal(explanation.valid, true);
+    assert.deepEqual(explanation.records, []);
+    assert.deepEqual(explanation.errors, []);
+    assert.equal(await readFile(project.indexPath, "utf8"), before);
+  }
+});
+
 test("receipt identity and backup references must match the approval", async (t) => {
   const project = await fixture(t);
   project.index.executions[0] = receipt({

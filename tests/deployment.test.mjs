@@ -114,6 +114,21 @@ test("setup carries self-contained preflight, validation, state, range, and inst
   assert.equal(projection.status, 0, projection.stderr);
   assert.equal(JSON.parse(projection.stdout).pending_action.artifact_count, 1);
 
+  const indexInspection = spawnSync(
+    process.execPath,
+    [
+      ...nodeArgs,
+      path.join(installedSetup, "scripts", "writes.mjs"),
+      "check-index",
+      "--manifest",
+      path.join(root, "examples", "fiction-revision-zh", ".author-toolkit", "project.json"),
+      "--explain",
+    ],
+    { encoding: "utf8" },
+  );
+  assert.equal(indexInspection.status, 0, indexInspection.stderr);
+  assert.equal(JSON.parse(indexInspection.stdout).valid, true);
+
   const doctor = spawnSync(
     process.execPath,
     [...nodeArgs, path.join(installedSetup, "scripts", "doctor.mjs")],

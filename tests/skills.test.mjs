@@ -237,7 +237,7 @@ test("existing-project setup uses bounded inspection references and a categorize
     readFile(path.join(root, "README.zh-CN.md"), "utf8"),
   ]);
 
-  assert.match(project, /For `initialize` on an existing v3\.1 manifest, `read`, `validate`, `status`, and `status --digest`, read \[`references\/read-operations\.md`\]/);
+  assert.match(project, /For `initialize` on an existing v3\.1 manifest, `read`, `validate`, `status`, `status --digest`, and `check-index`, read \[`references\/read-operations\.md`\]/);
   assert.match(project, /For a new manifest and every record or write operation, read \[`references\/operations\.md`\]/);
   assert.doesNotMatch(project, /For every operation, read \[`references\/operations\.md`\]/);
   assert.match(setup, /For an existing v3\.1 manifest, follow initialization with one `preflight\.mjs` call/);
@@ -250,7 +250,7 @@ test("existing-project setup uses bounded inspection references and a categorize
   }
   assert.match(setup, /Distinguish mechanical execution evidence from operation-specific evidence/);
 
-  for (const command of ["doctor\\.mjs", "read\\.mjs --project-root", "preflight\\.mjs --project-root", "validate\\.mjs --manifest", "status\\.mjs --manifest", "--scope-id", "--require-execution", "--digest", "project-digest\\.mjs --project-root"]) {
+  for (const command of ["doctor\\.mjs", "read\\.mjs --project-root", "preflight\\.mjs --project-root", "validate\\.mjs --manifest", "status\\.mjs --manifest", "writes\\.mjs check-index --manifest", "--explain", "--scope-id", "--require-execution", "--digest", "project-digest\\.mjs --project-root"]) {
     assert.match(readOperations, new RegExp(command));
   }
   assert.match(readOperations, /operation-specific evidence, evidence reuse, and current-draft revision convergence/);

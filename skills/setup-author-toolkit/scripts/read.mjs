@@ -3,7 +3,10 @@
 import path from "node:path";
 
 import { inspectProjectManifest, projectRootFromManifest } from "./lib/index.mjs";
+import { unverifiedOperationGroups } from "./lib/execution-summary.mjs";
 import { readPendingArtifactIndex } from "./lib/pending-artifacts.mjs";
+
+const errorLimit = 12;
 
 function concise(value, limit = 240) {
   const characters = [...String(value).replace(/\s+/g, " ").trim()];
@@ -14,10 +17,14 @@ function usage() {
   console.log(`Usage:
   node scripts/read.mjs --project-root DIR
   node scripts/read.mjs --manifest FILE
+    [--details]
 
 Return validated project registration, resolved paths, current scope, and a
 bounded pending-action projection. Artifact counts include the pending artifact
-index without returning its complete list. This command writes nothing.`);
+index without returning its complete list. Failed validation returns only failed
+checks, bounded errors, and unverified-approval summaries by default. --details
+returns the complete failed checks, including every unverified approval. This
+command writes nothing.`);
 }
 
 function options(args) {
@@ -27,6 +34,8 @@ function options(args) {
       result.projectRoot = path.resolve(args[++index]);
     } else if (args[index] === "--manifest" && args[index + 1]) {
       result.manifest = path.resolve(args[++index]);
+    } else if (args[index] === "--details") {
+      result.details = true;
     } else {
       const error = new Error(`Unknown or incomplete argument: ${args[index]}`);
       error.code = "ERR_ARGUMENT";
@@ -37,6 +46,28 @@ function options(args) {
     const error = new Error("provide exactly one of --project-root DIR or --manifest FILE");
     error.code = "ERR_ARGUMENT";
     throw error;
+  }
+  return result;
+}
+
+function failedCheck(check, details) {
+  if (details) return check;
+  const result = {
+    path: check.path,
+    valid: false,
+    errors: check.errors.slice(0, errorLimit).map((error) => ({
+      ...error,
+      message: concise(error.message),
+    })),
+  };
+  if (check.unsupported) result.unsupported = true;
+  if (check.errors.length > errorLimit) result.omitted_error_count = check.errors.length - errorLimit;
+  if (check.summary) {
+    const { unverified, ...summary } = check.summary;
+    result.summary = {
+      ...summary,
+      unverified_by_operation: unverifiedOperationGroups(unverified),
+    };
   }
   return result;
 }
@@ -89,7 +120,8 @@ try {
     const projectRoot = selection.projectRoot ?? projectRootFromManifest(manifestPath);
     const result = await inspectProjectManifest(manifestPath);
     if (!result.valid) {
-      console.error(JSON.stringify({ valid: false, checks: result.checks }, null, 2));
+      const checks = result.checks.filter((check) => !check.valid).map((check) => failedCheck(check, selection.details));
+      console.error(JSON.stringify({ valid: false, checks }, null, 2));
       process.exitCode = 1;
     } else {
       const projected = await projection(result.manifest, projectRoot);

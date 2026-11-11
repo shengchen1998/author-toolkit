@@ -3,7 +3,7 @@
 import { mkdir, open, rm } from "node:fs/promises";
 import path from "node:path";
 
-import { reconcileExecutions, recordBackup, recordExecution } from "./lib/index.mjs";
+import { explainBackupIndex, reconcileExecutions, recordBackup, recordExecution } from "./lib/index.mjs";
 import { projectRootFromManifest } from "./lib/project-files.mjs";
 import { readJson } from "./lib/state-files.mjs";
 
@@ -20,13 +20,16 @@ function usage() {
     [--recorded-at TIMESTAMP]
   node scripts/writes.mjs record-execution --manifest FILE --evidence FILE
     [--recorded-at TIMESTAMP]
+  node scripts/writes.mjs check-index --manifest FILE --explain
   node scripts/writes.mjs reconcile-executions --manifest FILE --evidence FILE...
     [--write] [--recorded-at TIMESTAMP]
 
 The batch JSON contains only a files array of path, action, and input_sha256.
 Evidence follows execution-evidence-schema.json. Backup refuses every new edit
 batch while any unverified approval remains. Reconciliation is a dry run unless
---write is present; rejected evidence never creates a receipt.`);
+--write is present; rejected evidence never creates a receipt. check-index
+--explain is read-only and explains backup and approval identity differences
+without selecting a historical repair or changing project state.`);
 }
 
 function options(args) {
@@ -34,6 +37,7 @@ function options(args) {
   for (let index = 0; index < args.length; index += 1) {
     const argument = args[index];
     if (argument === "--write") result.write = true;
+    else if (argument === "--explain") result.explain = true;
     else if (["--manifest", "--operation", "--scope-id", "--approval-id", "--batch", "--backup-id", "--evidence", "--recorded-at"].includes(argument) && args[index + 1]) {
       const value = args[++index];
       if (argument === "--evidence") result.evidence.push(value);
@@ -66,6 +70,14 @@ async function withWriteLock(manifestPath, operation) {
 }
 
 async function execute(operation, selection) {
+  if (operation === "check-index") {
+    if (!selection.explain || Object.keys(selection).some((key) => !["manifest", "explain", "recordedAt", "evidence"].includes(key)) || selection.evidence.length > 0) {
+      throw argumentError("check-index requires --explain and no write or batch-selection arguments");
+    }
+    const manifest = await readJson(selection.manifest);
+    return explainBackupIndex(manifest, selection.manifest);
+  }
+  if (selection.explain) throw argumentError(`${operation} does not accept --explain`);
   if (operation === "record-backup") {
     if (!selection.operation || !selection.scopeId || !selection.approvalId || !selection.batch || selection.evidence.length > 0 || selection.write) {
       throw argumentError("record-backup requires operation, scope, approval, and one batch, without evidence or --write");
@@ -93,14 +105,17 @@ try {
   } else {
     const operation = args.shift();
     const selection = options(args);
-    if (!selection.manifest || !["record-backup", "record-execution", "reconcile-executions"].includes(operation)) {
-      throw argumentError("expected record-backup, record-execution, or reconcile-executions, plus --manifest FILE");
+    if (!selection.manifest || !["record-backup", "record-execution", "check-index", "reconcile-executions"].includes(operation)) {
+      throw argumentError("expected record-backup, record-execution, check-index, or reconcile-executions, plus --manifest FILE");
     }
     selection.manifest = path.resolve(selection.manifest);
     selection.recordedAt ??= new Date().toISOString();
     if (!Number.isFinite(Date.parse(selection.recordedAt))) throw argumentError("--recorded-at must be a valid timestamp");
-    const result = await withWriteLock(selection.manifest, () => execute(operation, selection));
+    const result = operation === "check-index"
+      ? await execute(operation, selection)
+      : await withWriteLock(selection.manifest, () => execute(operation, selection));
     console.log(JSON.stringify(result, null, 2));
+    if (operation === "check-index" && !result.valid) process.exitCode = 1;
   }
 } catch (error) {
   console.error(error.message);

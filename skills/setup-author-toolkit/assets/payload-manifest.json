@@ -3,7 +3,7 @@
   "files": [
     {
       "path": "SKILL.md",
-      "sha256": "ce144b1c3cdc22cdc002cf5cbe5d0033bb76f3c8d7b2b8e07dd157d9ae969da9"
+      "sha256": "8542350268f141fb5aadf5f0da351a60258a004a39616cdeaa0086e024b447c6"
     },
     {
       "path": "assets/AGENTS.md",
@@ -87,7 +87,7 @@
     },
     {
       "path": "assets/references/terminology.md",
-      "sha256": "cf3fab9a2e2e887e1f21cc1bf695d4d488b6ff484213626074278745356357c3"
+      "sha256": "816a16e39e2e8e13b530946b4fd5bb0cdf42bd969875a1e2594f66e52c0a4676"
     },
     {
       "path": "assets/references/workflow-reporting.md",
@@ -118,6 +118,10 @@
       "sha256": "51b84f2d45bf4cda3b0e873c9b373e0362c8558145d577e780b759a19ce90369"
     },
     {
+      "path": "scripts/lib/backup-index-diagnostics.mjs",
+      "sha256": "147816ca860abf71d049496b0882397147bece1199b4fd0214392d472f32529b"
+    },
+    {
       "path": "scripts/lib/digest.mjs",
       "sha256": "b157dc18d4881f928c1bda061882fc672dd69c643851de5031795ac37836562e"
     },
@@ -139,7 +143,7 @@
     },
     {
       "path": "scripts/lib/index.mjs",
-      "sha256": "f94a528a162c453f602ca3020afb4de2aa4bb2fba05a8667789a95ded23c0e95"
+      "sha256": "9ce6ee3bf954df60d4d245f7b079c52923f75112137f37263b20799ff7fe161c"
     },
     {
       "path": "scripts/lib/manifest.mjs",
@@ -231,7 +235,7 @@
     },
     {
       "path": "scripts/read.mjs",
-      "sha256": "c32aefbdff9a036b73e9459ec804b8b269f8a2b5f5a831329dd61ab226fc4031"
+      "sha256": "f60d645df190c39c095bc890ddb73fa3cbc14daa0557f4539baa931801b5026d"
     },
     {
       "path": "scripts/set-pending.mjs",
@@ -247,7 +251,7 @@
     },
     {
       "path": "scripts/writes.mjs",
-      "sha256": "30d4af0ba441cdb76a3883cce3443da1eba9e7287c9c8a02aebde8cae236bcaa"
+      "sha256": "cb059b01e7a8ad89e8315ad2e870f71986407cfbfeec16d27d0ea18669520fbb"
     }
   ]
 }

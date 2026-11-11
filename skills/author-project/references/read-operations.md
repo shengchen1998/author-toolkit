@@ -1,6 +1,6 @@
 # Project initialization and inspection
 
-Use this reference for `initialize` on an existing v3.1 manifest, `read`, `validate`, `status`, and `status --digest`. For a new manifest or an operation that records or changes project state, follow [`operations.md`](operations.md) instead.
+Use this reference for `initialize` on an existing v3.1 manifest, `read`, `validate`, `status`, `status --digest`, and `check-index`. For a new manifest or an operation that records or changes project state, follow [`operations.md`](operations.md) instead.
 
 Resolve the installed `setup-author-toolkit` skill's root as `<setup-skill-root>` and read shared runtime contracts directly from its `assets/references/` payload. Use its `terminology.md` for shared terms and exact contract values. A missing setup skill, required contract, or script is an incomplete toolkit installation; stop shared work and report the failure. Shared contracts remain installed with the setup skill, not in the writing project.
 
@@ -42,7 +42,7 @@ For every `read`, run:
 node <setup-skill-root>/scripts/read.mjs --project-root <project-root>
 ```
 
-The command validates the complete manifest and any pending artifact index before returning the bounded projection: registration, resolved paths, current scope and manuscript hashes, and pending action with a truncated reason, at most two artifact pointers, an accurate artifact count, and an optional index pointer. The projection excludes no current-scope hashes; scope file descriptions and displayed artifact paths are capped at 240 characters without changing authoritative on-disk values. Use the installed validator when full schema diagnostics are needed; never dump the complete manifest, backup index, or `payload-manifest.json` for routine navigation.
+The command validates the complete manifest and any pending artifact index before returning the bounded projection: registration, resolved paths, current scope and manuscript hashes, and pending action with a truncated reason, at most two artifact pointers, an accurate artifact count, and an optional index pointer. The projection excludes no current-scope hashes; scope file descriptions and displayed artifact paths are capped at 240 characters without changing authoritative on-disk values. Validation failure returns only failed checks, at most 12 errors per check, the omitted-error count, and unverified-approval counts with first and last IDs grouped by operation. Add `--details` for complete failed checks and every unverified approval. A failed check never returns a scope projection. Never dump the complete manifest, backup index, or `payload-manifest.json` for routine navigation.
 
 Run the self-contained installed validator:
 
@@ -51,6 +51,14 @@ node <setup-skill-root>/scripts/validate.mjs --manifest <manifest-path>
 ```
 
 Report the command, exit status, and diagnostics. The bundled CLI requires Node.js 22 or newer and needs no repository checkout or project `npm install`. It checks registered paths and current manuscript hashes. Treat a `scope-currency` diagnostic as changed input: mark dependent evidence stale and reconcile the scope with the author before relying on it or writing; preserve the recorded scope rather than silently refreshing its hashes. The `#executions` check validates receipt structure and identity; a missing receipt alone is reported by `status`, not rejected as malformed state. Report validation failures, changed inputs, and missing registered paths without repairing them implicitly. Inspection operations leave project state unchanged.
+
+For a reported backup-index or execution-receipt inconsistency, run read-only backup index inspection:
+
+```bash
+node <setup-skill-root>/scripts/writes.mjs check-index --manifest <project-root>/.author-toolkit/project.json --explain
+```
+
+The JSON result identifies affected records by zero-based collection index, backup and approval IDs, backup manifest path, recorded and approved operation and scope values, field differences, validation errors, and recovery boundaries. It exits 1 for invalid state and 0 for a valid index. It does not take the write lock, modify state, infer which historical value is correct, or supply a migration. Preserve the records and reconcile their identity with the author before designing any separately approved migration. Missing execution receipts remain valid intermediate state and are not an index-inspection failure; `reconcile-executions` handles only receipts supported by preserved post-write evidence, not backup identity mismatches.
 
 ## Status
 

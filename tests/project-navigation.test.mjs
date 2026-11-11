@@ -46,6 +46,52 @@ test("read returns a bounded validated projection and leaves legacy artifacts un
   assert.equal(await readFile(manifestPath, "utf8"), legacy);
 });
 
+test("read bounds failed diagnostics by default and preserves complete details on request", async (t) => {
+  const projectRoot = await fixture(t);
+  const manifestPath = path.join(projectRoot, ".author-toolkit", "project.json");
+  const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
+  const trackerPath = path.join(projectRoot, manifest.paths.audit_tracker);
+  const approvalTable = "| Approval ID | Type | Operation | Scope ID | Paths | Status | Reason | Updated |\n|---|---|---|---|---|---|---|---|";
+  const rows = Array.from({ length: 94 }, (_, index) =>
+    `| EDIT-${String(index + 1).padStart(3, "0")} | edit | chapter-revision | ${manifest.current_scope.scope_id} | \`manuscript/chapter-01.md\` | approved | Exact test batch. | ${timestamp} |`,
+  );
+  await writeFile(trackerPath, (await readFile(trackerPath, "utf8")).replace(approvalTable, `${approvalTable}\n${rows.join("\n")}`));
+  const indexPath = path.join(projectRoot, manifest.paths.backups, "index.json");
+  const index = JSON.parse(await readFile(indexPath, "utf8"));
+  index.backups = Array.from({ length: 14 }, (_, position) => ({
+    backup_id: `backup-${position}`,
+    approval_id: `MISSING-${String(position + 1).padStart(3, "0")}`,
+    operation: "chapter-revision",
+    scope_id: manifest.current_scope.scope_id,
+    input_hashes: {},
+    manifest_path: `backups/backup-${position}/manifest.json`,
+  }));
+  await writeFile(indexPath, JSON.stringify(index));
+
+  const result = run("read.mjs", ["--project-root", projectRoot]);
+  assert.equal(result.status, 1);
+  const failed = JSON.parse(result.stderr);
+  assert.equal(failed.valid, false);
+  assert.equal(failed.current_scope, undefined);
+  assert.deepEqual(failed.checks.map((check) => check.path), ["executions"]);
+  assert.equal(failed.checks[0].errors.length, 12);
+  assert.equal(failed.checks[0].omitted_error_count, 16);
+  assert.equal(failed.checks[0].summary.unverified, undefined);
+  assert.equal(failed.checks[0].summary.unverified_count, 94);
+  assert.deepEqual(failed.checks[0].summary.unverified_by_operation, [
+    { operation: "chapter-revision", count: 94, first: "EDIT-001", last: "EDIT-094" },
+  ]);
+  assert.doesNotMatch(result.stderr, /"paths": \[/);
+
+  const detailed = run("read.mjs", ["--project-root", projectRoot, "--details"]);
+  assert.equal(detailed.status, 1);
+  const complete = JSON.parse(detailed.stderr);
+  assert.equal(complete.checks.length, 1);
+  assert.equal(complete.checks[0].errors.length, 28);
+  assert.equal(complete.checks[0].summary.unverified.length, 94);
+  assert.equal(complete.checks[0].summary.unverified.at(-1).approval_id, "EDIT-094");
+});
+
 test("set-pending indexes long lists and validates index identity and existence", async (t) => {
   const projectRoot = await fixture(t);
   const manifestPath = path.join(projectRoot, ".author-toolkit", "project.json");

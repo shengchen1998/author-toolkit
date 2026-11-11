@@ -79,6 +79,10 @@ setup 技能在 `setup-author-toolkit/scripts/` 下提供自包含的安装检�
 直接复用 preflight, 不重复实现 doctor, 项目校验或严格执行门禁.
 
 运行 `read.mjs --project-root <root>` 获取有界 manifest 投影; 通过 `set-pending.mjs --help` 查看待处理操作写入参数.
+校验失败时默认只返回失败检查, 每项最多 12 条错误和按 operation 聚合的未核对批准摘要;
+添加 `--details` 可获取完整失败检查和批准明细. 备份索引不一致时运行
+`writes.mjs check-index --manifest <manifest> --explain` 进行只读备份索引检查,
+报告准确记录位置及备份与批准身份差异, 不迁移历史记录或选择修复值.
 
 更新需要手动执行:
 
@@ -232,6 +236,7 @@ AI, 作者和混合创作使用相同门禁. 每本书只保留一个活动创�
 其他 manifest 版本会被拒绝且不会被自动转换.
 
 `author-project read` 通过 `read.mjs` 返回经过校验的有界投影, 包含解析后的路径, 完整当前范围哈希和待处理产物计数.
+失败输出默认有界; `--details` 返回完整失败检查.
 存在时先读 `PROJECT_STATE.md`; 缓存只用于导航, 不是证据或批准.
 `validate` 检查注册文件和当前哈希; `status` 报告当前范围, 待处理操作, 已记录阻塞和执行回执;
 `status --digest` 生成发现项计数, 最新指针和下一操作等导航信息. `--scope-id` 筛选未核对批准和
@@ -276,6 +281,7 @@ AI, 作者和混合创作使用相同门禁. 每本书只保留一个活动创�
   `author-project status` 按范围报告未核对批准, 不读取正文内容, 也不把历史输出与后续文本比较.
   备份本身不能证明执行; 其他批准未核对时, `record-backup` 阻止新编辑批次, 包括纯创建批次.
   `reconcile-executions` 只根据已保存写入后证据补录回执, 无法证明的批准保持未核对.
+  `check-index --explain` 为身份不一致提供只读备份索引检查, 不迁移历史记录或添加执行回执.
   恢复也需要作者批准, 并保留独立的安全备份路径.
 - `handoffs/`: 当前证据和下一操作的交接指针.
 - `paths.creation`: 创作产物路径, 默认 `.author-toolkit/creation/`, 包含
@@ -416,6 +422,7 @@ node scripts/preflight.mjs --project-root /path/to/writing-project
 node scripts/validate.mjs --manifest /path/to/.author-toolkit/project.json
 node scripts/validate.mjs --report /path/to/report.md
 node scripts/status.mjs --manifest /path/to/.author-toolkit/project.json --scope-id scope-001
+node scripts/writes.mjs check-index --manifest /path/to/.author-toolkit/project.json --explain
 node scripts/range.mjs --project-root /path/to/writing-project "manuscript/1.md:1:56-71"
 ```
 

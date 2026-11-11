@@ -10,6 +10,7 @@ export {
   validateExecutionReceiptBatch,
   validateExecutionReceipts,
 } from "./execution-receipts.mjs";
+export { explainBackupIndex } from "./backup-index-diagnostics.mjs";
 export {
   readExecutionEvidence,
   reconcileExecutions,
