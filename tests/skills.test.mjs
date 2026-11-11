@@ -240,8 +240,8 @@ test("existing-project setup uses bounded inspection references and a categorize
   assert.match(project, /For `initialize` on an existing v3\.1 manifest, `read`, `validate`, `status`, `status --digest`, and `check-index`, read \[`references\/read-operations\.md`\]/);
   assert.match(project, /For a new manifest and every record or write operation, read \[`references\/operations\.md`\]/);
   assert.doesNotMatch(project, /For every operation, read \[`references\/operations\.md`\]/);
-  assert.match(setup, /For an existing v3\.1 manifest, follow initialization with one `preflight\.mjs` call/);
-  assert.match(setup, /doctor, initialize, preflight, entry-file repair, then the final doctor/);
+  assert.match(setup, /For an existing v3\.1 manifest, perform step 5's entry-file replacement after initialization, then follow it with one `preflight\.mjs` call/);
+  assert.match(setup, /doctor, initialize, entry-file repair, preflight, then the final doctor/);
   assert.match(setup, /standalone `validate\.mjs` only when a validation failure requires its complete diagnostics/);
   assert.match(setup, /endpoints do not imply a contiguous ID range/);
   assert.match(setup, /default ordinary status uses the current scope ID/);
