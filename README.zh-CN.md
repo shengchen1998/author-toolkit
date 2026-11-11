@@ -229,6 +229,9 @@ AI, 作者和混合创作使用相同门禁. 每本书只保留一个活动创�
 增加 `--require-execution` 后, 所选范围存在未核对批准时命令退出 1; 这只检查执行证据,
 不代表当前草稿修订收敛的其他条件已满足. 不带此标志时, 未核对批准不改变成功退出状态.
 `status` 不判断特定操作的证据完整性, 可复用性或当前草稿修订收敛; 这些仍由当前策略按操作门禁评估.
+策略在每次判定或声明当前草稿修订收敛, 以及进入要求 previous/base scope 已达到该状态的策略前,
+必须运行 strict 检查. 已记录的该状态声明或 `current-scope-review` 待处理操作不能替代该检查. strict 失败时将受影响的
+待处理操作记录为 `blocked`; 不会改写批准状态或虚构执行回执.
 
 - `project.json`: 项目登记, 产物路径, 以及可选的 `current_scope` 和 `pending_action`.
   不包含 `workflow.name`, `current_stage` 或 `stages`.

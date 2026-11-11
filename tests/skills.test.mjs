@@ -219,7 +219,7 @@ test("existing-project setup uses bounded inspection references and a categorize
   assert.match(project, /For `initialize` on an existing v3\.1 manifest, `read`, `validate`, `status`, and `status --digest`, read \[`references\/read-operations\.md`\]/);
   assert.match(project, /For a new manifest and every record or write operation, read \[`references\/operations\.md`\]/);
   assert.doesNotMatch(project, /For every operation, read \[`references\/operations\.md`\]/);
-  assert.match(setup, /For an existing v3\.1 manifest, follow that invocation with `validate` and `status`/);
+  assert.match(setup, /For an existing v3\.1 manifest, follow that invocation with `validate` and ordinary `status`/);
   assert.match(setup, /pass that ID through `--scope-id`/);
   for (const heading of ["Installation payload", "Project entry files", "Manuscript scope", "Execution evidence"]) {
     assert.match(setup, new RegExp(`\\*\\*${heading}\\*\\*`));
@@ -235,6 +235,46 @@ test("existing-project setup uses bounded inspection references and a categorize
   assert.match(operations, /\[Digest\]\(read-operations\.md#digest\)/);
   assert.match(readme, /installation payload, project entry files, manuscript scope, and execution\s+evidence/);
   assert.match(zhReadme, /安装载荷、项目入口文件、稿件范围、执行证据/);
+});
+
+test("convergence gates run strict execution checks without gating ordinary inspection", async () => {
+  const [setup, project, readOperations, state, increment, request, handoff, readme, zhReadme] =
+    await Promise.all([
+      readFile(path.join(root, "skills/setup-author-toolkit/SKILL.md"), "utf8"),
+      readFile(path.join(root, "skills/author-project/SKILL.md"), "utf8"),
+      readFile(path.join(root, "skills/author-project/references/read-operations.md"), "utf8"),
+      readFile(path.join(root, "skills/revise-fiction/references/state-and-findings.md"), "utf8"),
+      readFile(path.join(root, "skills/revise-increment/SKILL.md"), "utf8"),
+      readFile(path.join(root, "skills/revise-request/SKILL.md"), "utf8"),
+      readFile(path.join(root, "skills/author-handoff/SKILL.md"), "utf8"),
+      readFile(path.join(root, "README.md"), "utf8"),
+      readFile(path.join(root, "README.zh-CN.md"), "utf8"),
+    ]);
+
+  assert.match(project, /current-draft revision convergence or previous\/base-scope execution gate, target scope ID and `--require-execution`/);
+  assert.match(setup, /follow that invocation with `validate` and ordinary `status`/);
+  assert.match(setup, /Before relying on a recorded current-draft revision convergence statement/);
+  assert.match(setup, /does not block ordinary setup, a current-scope review, or unrelated read-only work/);
+  assert.doesNotMatch(setup, /evidence-blocked|legacy-unverified/);
+
+  for (const text of [readOperations, state]) {
+    assert.match(text, /determines or claims (?:current-draft revision convergence|this state)/);
+    assert.match(text, /`blocked`/);
+    assert.match(text, /preserved post-write evidence/);
+    assert.doesNotMatch(text, /evidence-blocked|legacy-unverified/);
+  }
+  assert.match(state, /previous scope ID before entering `revise-increment`/);
+  assert.match(state, /base scope ID before entering `revise-request`/);
+  assert.match(state, /own approved edits may stale its verified previous or base scope/);
+  for (const text of [increment, request]) {
+    assert.match(text, /`--require-execution`/);
+    assert.match(text, /recorded statement of that state does not replace this check/);
+    assert.match(text, /Record the affected operation as `blocked`/i);
+  }
+  assert.match(handoff, /ordinary `status`, passing the current scope ID through `--scope-id`/);
+  assert.match(handoff, /Treat recorded statements of current-draft revision convergence as historical/);
+  assert.match(readme, /A recorded statement of that state or a\s+current-scope-review pending action does not replace that check/);
+  assert.match(zhReadme, /已记录的该状态声明或 `current-scope-review` 待处理操作不能替代该检查/);
 });
 
 test("workflow reporting pointers do not form a cycle", async () => {

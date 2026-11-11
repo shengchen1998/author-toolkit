@@ -386,7 +386,12 @@ the selected scope exit 1; this checks only execution evidence, not the other
 current-draft revision convergence conditions. Without the flag, unverified approvals leave the command
 successful. Status does not evaluate operation-specific evidence
 completeness, evidence reuse, or current-draft revision convergence; the active
-strategy retains those judgments at operation gates.
+strategy retains those judgments at operation gates. It runs strict status whenever
+it determines or claims current-draft revision convergence and before entering a
+strategy that requires that state for a previous or base scope. A recorded statement of that state or a
+current-scope-review pending action does not replace that check. A failed strict
+check records a `blocked` pending action; it does not alter approvals or manufacture
+execution receipts.
 
 - `project.json` records project registration, artifact locations, and optional
   `current_scope` and `pending_action`. It has no `workflow.name`,

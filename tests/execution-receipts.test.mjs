@@ -278,6 +278,33 @@ test("status strict execution check preserves ordinary reads and selects the tar
   assert.equal(JSON.parse(failed.stdout).execution.unverified_count, 1);
   assert.match(failed.stderr, /Execution gate failed: 1 unverified approvals in scope scope-old/);
 
+  const reviewPending = JSON.parse(await readFile(project.manifestPath, "utf8"));
+  reviewPending.pending_action = {
+    operation: "current-scope-review",
+    status: "awaiting_author",
+    scope_id: "scope-old",
+    reason: "Recorded current-draft revision convergence statement awaiting strategy verification.",
+    updated_at: timestamp,
+  };
+  await writeFile(project.manifestPath, `${JSON.stringify(reviewPending, null, 2)}\n`, "utf8");
+
+  const ordinaryReview = runCli("status.mjs", [
+    ...manifest,
+    "--scope-id",
+    "scope-old",
+  ]);
+  assert.equal(ordinaryReview.status, 0, ordinaryReview.stderr);
+  assert.match(ordinaryReview.stdout, /current-scope-review \(awaiting_author; scope-old\)/);
+
+  const strictReview = runCli("status.mjs", [
+    ...manifest,
+    "--scope-id",
+    "scope-old",
+    "--require-execution",
+  ]);
+  assert.equal(strictReview.status, 1);
+  assert.match(strictReview.stderr, /Execution gate failed: 1 unverified approvals in scope scope-old/);
+
   const unrelatedScope = runCli("status.mjs", [
     ...manifest,
     "--scope-id",
