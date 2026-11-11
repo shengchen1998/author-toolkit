@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 import { generateProjectDigest } from "./lib/digest.mjs";
 import { outputUnverifiedOperationGroups } from "./lib/execution-summary.mjs";
 import { explainBackupIndex } from "./lib/backup-index-diagnostics.mjs";
+import { inspectNavigationCache, markNavigationCacheStale } from "./lib/navigation-cache.mjs";
 import {
   inspectProjectManifest,
   inspectProjectStatus,
@@ -35,6 +36,8 @@ approvals into a failed execution gate and requires an explicit --scope-id.
 --diagnose adds a bounded recorded-unverified projection and backup-index
 explanation when validation fails. It changes no validation result or state.
 --digest also refreshes PROJECT_STATE.md after the read-only checks pass.
+The cache check recognizes the current format and marks older or failed-state
+caches stale without displaying their recorded next action or changing files.
 The text output is a bounded summary. --json preserves ordinary complete results;
 with --diagnose and failed validation, its displayed failure diagnostics are bounded.`);
 }
@@ -90,9 +93,11 @@ async function preflight(selection) {
     diagnosis: null,
     execution_gate: null,
     digest: null,
+    navigation_cache: null,
   };
   if (payload.payload_failures.length > 0) return result;
 
+  result.navigation_cache = await inspectNavigationCache(selection.projectRoot);
   const validation = await inspectProjectManifest(manifestPath);
   const displayedChecks = selection.json && !selection.diagnose
     ? validation.checks
@@ -109,6 +114,7 @@ async function preflight(selection) {
     })),
   };
   if (!validation.valid) {
+    markNavigationCacheStale(result.navigation_cache, "current project validation failed");
     if (selection.diagnose && validation.manifest) {
       const projection = await manifestProjection(validation.manifest, selection.projectRoot, { diagnostic: true });
       projection.verification = "recorded_unverified";
@@ -151,11 +157,15 @@ async function preflight(selection) {
       unverified_count: result.status.execution.unverified_count,
       valid: result.status.execution.unverified_count === 0,
     };
+    if (!result.execution_gate.valid) {
+      markNavigationCacheStale(result.navigation_cache, "strict execution gate failed");
+    }
   }
 
   if (selection.digest && result.execution_gate?.valid !== false) {
     const digest = await generateProjectDigest(selection.projectRoot);
     result.digest = { path: path.basename(digest.path), refreshed: true };
+    result.navigation_cache = await inspectNavigationCache(selection.projectRoot);
   }
   result.valid = result.execution_gate?.valid !== false;
   return result;
@@ -239,12 +249,18 @@ function outputText(result, selection) {
   if (result.execution_gate) {
     console.log(`Execution gate: ${result.execution_gate.valid ? "passed" : "failed"}`);
   }
-  const navigation = result.digest
-    ? "refreshed PROJECT_STATE.md"
-    : selection.digest
-      ? "not refreshed; earlier checks failed"
-      : "not requested";
-  console.log(`Navigation cache: ${navigation}`);
+  if (result.digest) {
+    console.log("Navigation cache: refreshed PROJECT_STATE.md; snapshot only");
+  } else if (!result.navigation_cache) {
+    console.log("Navigation cache: not checked; installed payload failed");
+  } else if (result.navigation_cache.state === "absent") {
+    console.log(`Navigation cache: absent${selection.digest ? "; not refreshed; earlier checks failed" : ""}`);
+  } else if (result.navigation_cache.reusable) {
+    console.log("Navigation cache: reusable snapshot only; recorded next action remains unevaluated");
+  } else {
+    console.log(`Navigation cache: stale (${result.navigation_cache.issues.join("; ")}); recorded next action withheld`);
+    if (selection.digest) console.log("Navigation cache refresh: not refreshed; earlier checks failed");
+  }
   console.log(`Preflight: ${result.valid ? "passed" : "failed"}`);
 }
 

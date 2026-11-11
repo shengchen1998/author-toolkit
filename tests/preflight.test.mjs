@@ -13,7 +13,7 @@ function run(args, installedTool = path.join(root, "scripts", "preflight.mjs")) 
   return spawnSync(process.execPath, [installedTool, ...args], { cwd: root, encoding: "utf8" });
 }
 
-async function fixture(t) {
+async function fixture(t, cache = null) {
   await mkdir(path.join(root, ".test-output"), { recursive: true });
   const temporary = await mkdtemp(path.join(root, ".test-output", "preflight-"));
   t.after(() => rm(temporary, { recursive: true, force: true }));
@@ -27,7 +27,7 @@ async function fixture(t) {
   );
   await rm(path.join(projectRoot, "CLAUDE.md"), { force: true });
   await symlink("AGENTS.md", path.join(projectRoot, "CLAUDE.md"));
-  await writeFile(path.join(projectRoot, "PROJECT_STATE.md"), "previous cache\n");
+  if (cache !== null) await writeFile(path.join(projectRoot, "PROJECT_STATE.md"), cache);
   return {
     setupRoot,
     projectRoot,
@@ -45,15 +45,14 @@ test("preflight combines payload, validation, and ordinary status in one bounded
   assert.match(result.stdout, new RegExp(`Scope: ${scopeId} \\(confirmed\\)`));
   assert.match(result.stdout, /Execution evidence: 0\/0 verified; 0 unverified/);
   assert.match(result.stdout, /Operation-specific evidence: not evaluated/);
-  assert.match(result.stdout, /Navigation cache: not requested/);
+  assert.match(result.stdout, /Navigation cache: absent/);
   assert.match(result.stdout, /Preflight: passed/);
   assert.ok(result.stdout.trimEnd().split("\n").length <= 14);
-  assert.equal(await readFile(path.join(projectRoot, "PROJECT_STATE.md"), "utf8"), "previous cache\n");
+  await assert.rejects(readFile(path.join(projectRoot, "PROJECT_STATE.md"), "utf8"), { code: "ENOENT" });
 });
 
 test("preflight defaults to current scope and refreshes the navigation cache only on request", async (t) => {
   const { projectRoot } = await fixture(t);
-  const previous = await readFile(path.join(projectRoot, "PROJECT_STATE.md"), "utf8");
   const result = run(["--project-root", projectRoot, "--json"]);
   assert.equal(result.status, 0, result.stderr);
   const parsed = JSON.parse(result.stdout);
@@ -61,12 +60,56 @@ test("preflight defaults to current scope and refreshes the navigation cache onl
   assert.equal(parsed.status.execution.scope_id, scopeId);
   assert.equal(parsed.execution_gate, null);
   assert.equal(parsed.digest, null);
-  assert.equal(await readFile(path.join(projectRoot, "PROJECT_STATE.md"), "utf8"), previous);
+  assert.equal(parsed.navigation_cache.state, "absent");
+  await assert.rejects(readFile(path.join(projectRoot, "PROJECT_STATE.md"), "utf8"), { code: "ENOENT" });
 
   const digest = run(["--project-root", projectRoot, "--digest"]);
   assert.equal(digest.status, 0, digest.stderr);
-  assert.match(digest.stdout, /Navigation cache: refreshed PROJECT_STATE.md/);
+  assert.match(digest.stdout, /Navigation cache: refreshed PROJECT_STATE.md; snapshot only/);
   assert.match(await readFile(path.join(projectRoot, "PROJECT_STATE.md"), "utf8"), /Generated navigation cache/);
+  const reuse = run(["--project-root", projectRoot, "--json"]);
+  assert.equal(JSON.parse(reuse.stdout).navigation_cache.reusable, true);
+  assert.match(reuse.stdout, /"next_action": "recorded_unevaluated"/);
+});
+
+test("preflight marks legacy caches stale without reproducing their recorded routes", async (t) => {
+  const legacy = "# Project State\n\n- Pending reason: 恢复 current-draft revision convergence。\n- Next action: `$revise-request`\n";
+  const { projectRoot } = await fixture(t, legacy);
+  const result = run(["--project-root", projectRoot, "--json"]);
+  assert.equal(result.status, 0, result.stderr);
+  const parsed = JSON.parse(result.stdout);
+  assert.equal(parsed.valid, true);
+  assert.equal(parsed.navigation_cache.state, "stale");
+  assert.equal(parsed.navigation_cache.format_valid, false);
+  assert.equal(parsed.navigation_cache.next_action, "withheld");
+  assert.ok(parsed.navigation_cache.issues.includes("missing or invalid UTC Generated at field"));
+  assert.ok(parsed.navigation_cache.issues.includes("missing or invalid execution-evidence field"));
+  assert.doesNotMatch(result.stdout, /revise-request/);
+  assert.equal(await readFile(path.join(projectRoot, "PROJECT_STATE.md"), "utf8"), legacy);
+
+  const text = run(["--project-root", projectRoot]);
+  assert.equal(text.status, 0, text.stderr);
+  assert.match(text.stdout, /Navigation cache: stale .*recorded next action withheld/);
+  assert.doesNotMatch(text.stdout, /revise-request/);
+});
+
+test("preflight rejects unsafe next-action fields and reports unreadable caches without reading their contents", async (t) => {
+  const unsafe = "# Project State\n- Generated at: `2026-11-11T00:00:00.000Z`\n- Validation at generation: passed (project validation only; not an execution gate or current-draft revision convergence claim).\n- Freshness: generation-time snapshot only; rerun preflight before reuse.\n- Execution evidence: 0/0 verified; 0 unverified in scope `scope-example-revision`\n- Next action: `$revise-request`\n";
+  const { projectRoot } = await fixture(t, unsafe);
+  const result = run(["--project-root", projectRoot, "--json"]);
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(JSON.parse(result.stdout).navigation_cache.state, "stale");
+  assert.ok(JSON.parse(result.stdout).navigation_cache.issues.includes("missing or unsafe next-action field"));
+  assert.doesNotMatch(result.stdout, /revise-request/);
+  assert.equal(await readFile(path.join(projectRoot, "PROJECT_STATE.md"), "utf8"), unsafe);
+
+  await rm(path.join(projectRoot, "PROJECT_STATE.md"));
+  await mkdir(path.join(projectRoot, "PROJECT_STATE.md"));
+  const unreadable = run(["--project-root", projectRoot, "--json"]);
+  assert.equal(unreadable.status, 0, unreadable.stderr);
+  const cache = JSON.parse(unreadable.stdout).navigation_cache;
+  assert.equal(cache.state, "stale");
+  assert.deepEqual(cache.issues, ["cache is unreadable"]);
 });
 
 test("preflight permits entry-file repair after initialization", async (t) => {
@@ -128,7 +171,7 @@ test("preflight rejects an incomplete installed payload before reading project s
 });
 
 test("preflight strict execution is explicit and does not change ordinary inspection", async (t) => {
-  const { projectRoot, manifestPath } = await fixture(t);
+  const { projectRoot, manifestPath } = await fixture(t, "previous cache\n");
   const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
   const trackerPath = path.join(projectRoot, manifest.paths.audit_tracker);
   const tracker = await readFile(trackerPath, "utf8");
@@ -157,6 +200,9 @@ test("preflight strict execution is explicit and does not change ordinary inspec
   assert.equal(parsed.valid, false);
   assert.equal(parsed.validation.valid, true);
   assert.deepEqual(parsed.execution_gate, { scope_id: scopeId, unverified_count: 2, valid: false });
+  assert.equal(parsed.navigation_cache.state, "stale");
+  assert.ok(parsed.navigation_cache.issues.includes("strict execution gate failed"));
+  assert.equal(parsed.navigation_cache.next_action, "withheld");
 
   const digest = run([
     "--project-root",
@@ -170,7 +216,7 @@ test("preflight strict execution is explicit and does not change ordinary inspec
   assert.match(digest.stdout, /Unverified by operation \(first\/last approval IDs\):/);
   assert.match(digest.stdout, /- chapter-revision: 1 \(EDIT-001 … EDIT-001\)/);
   assert.match(digest.stdout, /- prose: 1 \(EDIT-094 … EDIT-094\)/);
-  assert.match(digest.stdout, /Navigation cache: not refreshed; earlier checks failed/);
+  assert.match(digest.stdout, /Navigation cache refresh: not refreshed; earlier checks failed/);
   assert.equal(await readFile(path.join(projectRoot, "PROJECT_STATE.md"), "utf8"), "previous cache\n");
 
   const implicit = run(["--project-root", projectRoot, "--require-execution"]);
@@ -179,7 +225,7 @@ test("preflight strict execution is explicit and does not change ordinary inspec
 });
 
 test("preflight stops before status or digest when project validation fails", async (t) => {
-  const { projectRoot, manifestPath } = await fixture(t);
+  const { projectRoot, manifestPath } = await fixture(t, "previous cache\n");
   const previous = await readFile(path.join(projectRoot, "PROJECT_STATE.md"), "utf8");
   const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
   manifest.current_scope.files[0].sha256 = "0".repeat(64);
@@ -193,11 +239,12 @@ test("preflight stops before status or digest when project validation fails", as
   assert.equal(parsed.validation.checks.find((check) => check.path === "scope").valid, false);
   assert.equal(parsed.status, null);
   assert.equal(parsed.digest, null);
+  assert.ok(parsed.navigation_cache.issues.includes("current project validation failed"));
   assert.equal(await readFile(path.join(projectRoot, "PROJECT_STATE.md"), "utf8"), previous);
 });
 
 test("preflight diagnose returns recorded projection and backup-index differences without repairing state", async (t) => {
-  const { projectRoot, manifestPath } = await fixture(t);
+  const { projectRoot, manifestPath } = await fixture(t, "previous cache\n");
   const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
   const trackerPath = path.join(projectRoot, manifest.paths.audit_tracker);
   const tracker = await readFile(trackerPath, "utf8");
@@ -234,7 +281,7 @@ test("preflight diagnose returns recorded projection and backup-index difference
   assert.equal(ordinaryText.stderr, "");
   assert.match(ordinaryText.stdout, /- executions: \/backups\/0\/scope_id backup operation and scope must match its approval/);
   assert.match(ordinaryText.stdout, /Execution evidence: 0\/0 verified; 0 unverified/);
-  assert.match(ordinaryText.stdout, /Navigation cache: not requested/);
+  assert.match(ordinaryText.stdout, /Navigation cache: stale .*recorded next action withheld/);
   assert.match(ordinaryText.stdout, /Preflight: failed/);
   assert.doesNotMatch(ordinaryText.stdout, /Cannot read properties of undefined/);
 

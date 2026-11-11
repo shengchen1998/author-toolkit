@@ -174,7 +174,7 @@ test("setup carries self-contained preflight, validation, state, range, and inst
   );
   assert.equal(preflight.status, 0, preflight.stderr);
   assert.match(preflight.stdout, /Project validation: 5 checks, 0 failures/);
-  assert.match(preflight.stdout, /Navigation cache: refreshed PROJECT_STATE.md/);
+  assert.match(preflight.stdout, /Navigation cache: refreshed PROJECT_STATE.md; snapshot only/);
   assert.match(preflight.stdout, /Preflight: passed/);
 
   const check = spawnSync(
@@ -183,7 +183,7 @@ test("setup carries self-contained preflight, validation, state, range, and inst
     { encoding: "utf8" },
   );
   assert.equal(check.status, 0, check.stderr);
-  assert.equal(check.stdout, preflight.stdout.replace("Navigation cache: refreshed PROJECT_STATE.md", "Navigation cache: not requested"));
+  assert.equal(check.stdout, preflight.stdout.replace("Navigation cache: refreshed PROJECT_STATE.md; snapshot only", "Navigation cache: reusable snapshot only; recorded next action remains unevaluated"));
 
   const diagnosisProject = path.join(temporaryRoot, "diagnosis-project");
   await cp(project, diagnosisProject, { recursive: true });

@@ -150,6 +150,9 @@ IDs; the endpoints do not imply contiguous ID ranges.
 The current scope is selected by default. Add `--require-execution` with an
 explicit `--scope-id` only for an execution gate; add `--digest` only when the
 navigation cache should be refreshed after successful read-only checks.
+Preflight also checks the cache format read-only. Legacy or incomplete caches,
+and caches invalidated by project-validation or requested strict-gate failures,
+are marked stale and their recorded next action is withheld rather than repeated.
 `node <setup-skill-root>/scripts/check.mjs` is the stable local alias with the
 same arguments and exit statuses. It reuses preflight rather than duplicating
 doctor, validation, or strict execution logic.
@@ -414,6 +417,7 @@ execution receipts.
 The installed `preflight.mjs --project-root <root>` combines one payload and
 entry-file inspection with the same validation and ordinary-status rules. It
 does not write project state unless `--digest` is explicitly supplied.
+Its read-only cache-format check withholds routes from stale legacy caches.
 After a validation failure, `--diagnose` supplies the bounded
 recorded-unverified projection, scope paths and hashes, and index differences
 without repeating the other inspection commands or printing the complete manifest.
@@ -449,10 +453,10 @@ Use `read.mjs --project-root <root>` for its bounded manifest projection and
   cache. It points to the current scope and hashes, pending action, finding
   counts, current-scope execution evidence, active plan, latest session and
   report, and next action. Any unverified approvals in the current scope make
-  the cache state that the strict execution gate would fail. The next action
-  remains recorded rather than being rerouted, and is labeled as unevaluated by
-  strategy gates; zero unverified approvals alone does not establish
-  current-draft revision convergence. The manifest,
+  the cache state that the strict execution gate would fail and replace the
+  recorded next action with `revise-draft` for reconciliation; otherwise the
+  recorded action is labeled as unevaluated by strategy gates. Zero unverified
+  approvals alone does not establish current-draft revision convergence. The manifest,
   tracker, and current evidence remain authoritative; the cache grants no
   approval and does not replace evidence reading. Routine navigation uses its
   pointers, targeted artifact reads, or aggregate counts rather than emitting

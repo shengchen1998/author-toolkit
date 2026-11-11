@@ -142,7 +142,9 @@ export async function renderProjectDigest({ manifest, tracker, latestReport, lat
   const scope = manifest.current_scope;
   const pending = manifest.pending_action;
   const plan = relativePath(field(sessionText, "Active plan"));
-  const nextAction = concise(field(sessionText, "Next action") ?? field(tracker, "Next action") ?? (latestSession ? `read ${code(latestSession)} for the recorded next action` : "none recorded"));
+  const nextAction = execution?.unverified_count > 0
+    ? `withheld until execution evidence is reconciled; use ${code("$revise-draft")} (strict execution gate would fail)`
+    : `${concise(field(sessionText, "Next action") ?? field(tracker, "Next action") ?? (latestSession ? `read ${code(latestSession)} for the recorded next action` : "none recorded"))} (recorded; strategy gates not evaluated)`;
   const lines = [
     "# Project State",
     "",
@@ -163,7 +165,7 @@ export async function renderProjectDigest({ manifest, tracker, latestReport, lat
     `- Active plan: ${plan ? code(plan) : "none recorded"}`,
     `- Latest report: ${report ? code(report) : "none recorded"}`,
     `- Latest session: ${latestSession ? code(latestSession) : "none recorded"}`,
-    `- Next action: ${nextAction} (recorded; strategy gates not evaluated)`,
+    `- Next action: ${nextAction}`,
     "",
     "## Read next",
     "",

@@ -3,7 +3,7 @@
   "files": [
     {
       "path": "SKILL.md",
-      "sha256": "0312a6bb0089a1f728dc1a5daa5f2525c96e9607ece5e60d971842e20bfa37a9"
+      "sha256": "3dc6630b9ed81fb5e133d3a305f8b2b126f72eedd168315642f2366ae8a5fbf0"
     },
     {
       "path": "assets/AGENTS.md",
@@ -87,7 +87,7 @@
     },
     {
       "path": "assets/references/terminology.md",
-      "sha256": "fcac53412f3f610577fb50767baac327ad0cf5bf83ed41b29a7538540a77f2b6"
+      "sha256": "a42ec955cfa5b14ed5829c64cc16099b56a78aee8bb0de3af02b7d1def230c47"
     },
     {
       "path": "assets/references/workflow-reporting.md",
@@ -127,7 +127,7 @@
     },
     {
       "path": "scripts/lib/digest.mjs",
-      "sha256": "b71baaceb01d6b3ee8400e95f0128115f8073194d48e1917e57849b0017ddf0b"
+      "sha256": "1d01916974a3d217efebb2fabf06936c61051ba3bfd4a8e359e326154713599d"
     },
     {
       "path": "scripts/lib/execution-receipts.mjs",
@@ -147,7 +147,7 @@
     },
     {
       "path": "scripts/lib/index.mjs",
-      "sha256": "292b6e583e3d7357e0fe9dce45faa378e15760d011697378e54648b35b0222f2"
+      "sha256": "563096278c2335bd4e33ff630fc9ce31d3166a0b35c3d78454fa2fbd5699fd43"
     },
     {
       "path": "scripts/lib/manifest.mjs",
@@ -160,6 +160,10 @@
     {
       "path": "scripts/lib/markdown.mjs",
       "sha256": "4d91a0f5765d5c7bb8d7c64e11b55c7f6acd8a7b47a5f3c8e42347deab5f3b26"
+    },
+    {
+      "path": "scripts/lib/navigation-cache.mjs",
+      "sha256": "e11994996274fee637d8b9f1d5c2af8757a31b239bd190d431b96055eaec7ff0"
     },
     {
       "path": "scripts/lib/pending-artifacts.mjs",
@@ -239,7 +243,7 @@
     },
     {
       "path": "scripts/preflight.mjs",
-      "sha256": "bdf8747f509163759f7db0bc755b7ed21a5168de44f4b11cd32c252676846f39"
+      "sha256": "34c62eb2560259d201a9a98e797db7913cfd4ef2c182fd5ca08380c3f348a34c"
     },
     {
       "path": "scripts/project-digest.mjs",

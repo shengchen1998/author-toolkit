@@ -145,7 +145,7 @@ test("project digest uses explicit session fields and a historical report fallba
   assert.match(output, /Next action: 从 session 继续。 \(recorded; strategy gates not evaluated\)/);
 });
 
-test("project digest preserves a recorded strategy beside its failed execution gate", async (t) => {
+test("project digest withholds a dependent strategy beside its failed execution gate", async (t) => {
   const projectRoot = await projectFixture(t);
   const manifestPath = path.join(projectRoot, ".author-toolkit", "project.json");
   const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
@@ -167,7 +167,8 @@ test("project digest preserves a recorded strategy beside its failed execution g
   assert.equal(result.status, 0, result.stderr);
   const output = await readFile(path.join(projectRoot, "PROJECT_STATE.md"), "utf8");
   assert.match(output, /Execution evidence: 0\/94 verified; 94 unverified in scope `scope-request-001`; strict execution gate would fail/);
-  assert.match(output, /Next action: \\`\$revise-request\\` \(recorded; strategy gates not evaluated\)/);
+  assert.match(output, /Next action: withheld until execution evidence is reconciled; use `\$revise-draft` \(strict execution gate would fail\)/);
+  assert.doesNotMatch(output, /Next action:.*revise-request/);
   assert.ok(output.trimEnd().split("\n").length <= 30);
 
   const strict = spawnSync(process.execPath, [
