@@ -222,6 +222,11 @@ test("setup carries self-contained preflight, validation, state, range, and inst
   assert.equal(diagnosis.status, 1, diagnosis.stderr);
   const diagnosed = JSON.parse(diagnosis.stdout);
   assert.equal(diagnosed.diagnosis.projection.verification, "recorded_unverified");
+  assert.deepEqual(diagnosed.diagnosis.current_hashes, {
+    verified: true,
+    matched: projectManifest.current_scope.files.length,
+    total: projectManifest.current_scope.files.length,
+  });
   assert.deepEqual(diagnosed.diagnosis.backup_index.records[0].differences, [
     { field: "operation", backup: "draft-baseline", approval: "revision-plan" },
   ]);

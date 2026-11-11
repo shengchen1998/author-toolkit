@@ -3,7 +3,7 @@
   "files": [
     {
       "path": "SKILL.md",
-      "sha256": "a8349dcc37260617d3db9b05f3e9293a8b793cb15e986c0adf612bbbce34973f"
+      "sha256": "d482b64ea8f727b8928f59dfdd5cbd967e7ea6eb9beca8875a1f51753c83d573"
     },
     {
       "path": "assets/AGENTS.md",
@@ -243,7 +243,7 @@
     },
     {
       "path": "scripts/preflight.mjs",
-      "sha256": "34c62eb2560259d201a9a98e797db7913cfd4ef2c182fd5ca08380c3f348a34c"
+      "sha256": "e87c658d836d8eb376b077ae1472802a456fb3a9da377747ab357a9a99eac93f"
     },
     {
       "path": "scripts/project-digest.mjs",

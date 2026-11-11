@@ -159,9 +159,10 @@ doctor, validation, or strict execution logic.
 When validation fails, add `--diagnose` without `--digest` for one bounded
 read-only result containing the projection marked `recorded_unverified` and
 backup-index conflict fields. Its text displays up to 12 scope paths with their
-recorded hashes; the JSON projection retains every scope file. Recorded hashes
-are not current-file verification; the command still exits 1 and never repairs
-state. Do not repeat `check-index` for conflicts already explained by the diagnosis.
+recorded hashes; the JSON projection retains every scope file. When the `scope`
+check passes, a separate current-hash result confirms how many current files
+match those recorded hashes; the command still exits 1 and never repairs state.
+Do not repeat `check-index` for conflicts already explained by the diagnosis.
 
 `read.mjs` bounds failed validation to failed checks, 12 errors per check, and
 operation-grouped unverified-approval summaries. Add `--details` for complete
@@ -419,8 +420,9 @@ entry-file inspection with the same validation and ordinary-status rules. It
 does not write project state unless `--digest` is explicitly supplied.
 Its read-only cache-format check withholds routes from stale legacy caches.
 After a validation failure, `--diagnose` supplies the bounded
-recorded-unverified projection, scope paths and hashes, and index differences
-without repeating the other inspection commands or printing the complete manifest.
+recorded-unverified projection, scope paths and hashes, current-hash verification
+when the scope check passes, and index differences without repeating the other
+inspection commands or printing the complete manifest.
 Use `read.mjs --project-root <root>` for its bounded manifest projection and
 `set-pending.mjs --help` for validated pending-action updates.
 

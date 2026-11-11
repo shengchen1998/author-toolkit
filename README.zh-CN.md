@@ -72,7 +72,8 @@ preflight 还以只读方式检查缓存格式; 旧版或字段不完整的缓�
 直接复用 preflight, 不重复实现 doctor, 项目校验或严格执行门禁.
 校验失败后添加 `--diagnose` 且不带 `--digest`, 可在一次只读结果中获得标记为 `recorded_unverified` 的有界投影和备份索引冲突字段.
 文本最多显示 12 个范围路径及其记录哈希, JSON 投影保留全部范围文件.
-其中哈希仅为记录值, 不代表现行文件校验通过; 命令仍退出 1, 且不修复状态.
+所列哈希为记录值; `scope` 检查通过时, 单独的当前哈希结果确认多少个现行文件与记录一致.
+命令仍退出 1, 且不修复状态.
 诊断已经解释的冲突无需再运行 `check-index`.
 
 运行 `read.mjs --project-root <root>` 获取有界 manifest 投影; 通过 `set-pending.mjs --help` 查看待处理操作写入参数.
@@ -246,7 +247,7 @@ AI, 作者和混合创作使用相同门禁. 每本书只保留一个活动创�
 安装版 `preflight.mjs --project-root <root>` 将一次载荷与入口文件检查, 同一套项目校验和普通状态规则组合执行.
 只有显式提供 `--digest` 时才写入项目状态.
 其只读缓存格式检查会隐藏旧版 stale 缓存中的路由.
-校验失败后, `--diagnose` 提供有界的已记录未验证投影、范围路径与哈希和索引差异, 无需重复其他检查命令或打印完整 manifest.
+校验失败后, `--diagnose` 提供有界的已记录未验证投影、范围路径与哈希、scope 检查通过时的当前哈希验证结果和索引差异, 无需重复其他检查命令或打印完整 manifest.
 
 - `project.json`: 项目登记, 产物路径, 以及可选的 `current_scope` 和 `pending_action`.
   不包含 `workflow.name`, `current_stage` 或 `stages`.

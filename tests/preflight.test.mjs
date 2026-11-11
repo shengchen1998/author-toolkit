@@ -294,6 +294,11 @@ test("preflight diagnose returns recorded projection and backup-index difference
   assert.equal(parsed.digest, null);
   assert.equal(parsed.diagnosis.read_only, true);
   assert.equal(parsed.diagnosis.projection.verification, "recorded_unverified");
+  assert.deepEqual(parsed.diagnosis.current_hashes, {
+    verified: true,
+    matched: manifest.current_scope.files.length,
+    total: manifest.current_scope.files.length,
+  });
   assert.equal(parsed.diagnosis.projection.current_scope.scope_id, scopeId);
   assert.equal(parsed.diagnosis.projection.current_scope.files[0].sha256, manifest.current_scope.files[0].sha256);
   assert.equal(parsed.diagnosis.projection.pending_action.artifacts.length, 2);
@@ -307,12 +312,13 @@ test("preflight diagnose returns recorded projection and backup-index difference
   const text = run(["--project-root", projectRoot, "--diagnose"]);
   assert.equal(text.status, 1, text.stderr);
   assert.match(text.stdout, /Recorded projection: unverified/);
+  assert.match(text.stdout, new RegExp(`Current hashes: verified; ${manifest.current_scope.files.length}/${manifest.current_scope.files.length} current files match the recorded hashes`));
   for (const file of manifest.current_scope.files) {
     assert.match(text.stdout, new RegExp(`- ${file.path.replaceAll(".", "\\.")}: ${file.sha256}`));
   }
   assert.match(text.stdout, /Pending artifacts: 115; 2 bounded pointers shown in --json/);
   assert.match(text.stdout, /backups\[0\] backup-plan-001 \/ PLAN-001: operation: backup=draft-baseline, approval=revision-plan/);
-  assert.match(text.stdout, /Diagnosis: recorded state only; no repairs or writes performed/);
+  assert.match(text.stdout, /Diagnosis: current hashes verified; remaining projection recorded only; no repairs or writes performed/);
   assert.doesNotMatch(text.stdout, /pending-2\.md/);
   assert.ok(text.stdout.trimEnd().split("\n").length <= 24);
 
@@ -381,6 +387,9 @@ test("preflight diagnose bounds displayed scope hashes", async (t) => {
 
   const result = run(["--project-root", projectRoot, "--diagnose"]);
   assert.equal(result.status, 1, result.stderr);
+  const json = run(["--project-root", projectRoot, "--diagnose", "--json"]);
+  assert.equal(json.status, 1, json.stderr);
+  assert.deepEqual(JSON.parse(json.stdout).diagnosis.current_hashes, { verified: false });
   assert.match(result.stdout, /14 recorded file hashes/);
   assert.match(result.stdout, new RegExp(`- manuscript/chapter-12\\.md: ${"b".repeat(64)}`));
   assert.match(result.stdout, /2 more recorded file hashes; use --json for the bounded structured projection/);

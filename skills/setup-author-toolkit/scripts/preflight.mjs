@@ -118,10 +118,19 @@ async function preflight(selection) {
     if (selection.diagnose && validation.manifest) {
       const projection = await manifestProjection(validation.manifest, selection.projectRoot, { diagnostic: true });
       projection.verification = "recorded_unverified";
+      const scopeCheck = validation.checks.find((check) => check.path === "scope");
+      const currentHashes = scopeCheck?.valid && validation.manifest.current_scope
+        ? {
+            verified: true,
+            matched: validation.manifest.current_scope.files.length,
+            total: validation.manifest.current_scope.files.length,
+          }
+        : { verified: false };
       const backupIndex = await explainBackupIndex(validation.manifest, manifestPath);
       result.diagnosis = {
         read_only: true,
         projection,
+        current_hashes: currentHashes,
         backup_index: {
           valid: backupIndex.valid,
           read_only: backupIndex.read_only,
@@ -200,11 +209,14 @@ function outputText(result, selection) {
   }
 
   if (result.diagnosis?.projection) {
-    const { projection, backup_index: backupIndex } = result.diagnosis;
+    const { projection, current_hashes: currentHashes, backup_index: backupIndex } = result.diagnosis;
     const scope = projection.current_scope;
     const pending = projection.pending_action;
     console.log("Recorded projection: unverified; displayed hashes are recorded values, not current-file verification");
     console.log(`Recorded scope: ${scope ? `${scope.scope_id} (${scope.status}); ${scope.files.length} recorded file hashes` : "none recorded"}`);
+    if (currentHashes.verified) {
+      console.log(`Current hashes: verified; ${currentHashes.matched}/${currentHashes.total} current files match the recorded hashes`);
+    }
     if (scope) {
       for (const file of scope.files.slice(0, diagnosticLimit)) {
         console.log(`- ${file.path}: ${file.sha256}`);
@@ -224,7 +236,7 @@ function outputText(result, selection) {
     for (const error of backupIndex.errors) console.log(`- backup index: ${concise(`${error.instancePath || "/"} ${error.message}`)}`);
     if (backupIndex.omitted_record_count) console.log(`- ... ${backupIndex.omitted_record_count} more conflicting records; use --json for bounded structured diagnostics`);
     if (backupIndex.omitted_error_count) console.log(`- ... ${backupIndex.omitted_error_count} more backup-index errors; use --json for bounded structured diagnostics`);
-    console.log("Diagnosis: recorded state only; no repairs or writes performed");
+    console.log(`Diagnosis: ${currentHashes.verified ? "current hashes verified; remaining projection recorded only" : "recorded state only"}; no repairs or writes performed`);
   }
 
   if (result.status) {
