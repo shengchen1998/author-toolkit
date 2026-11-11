@@ -98,6 +98,23 @@ test("setup requires author-confirmed host command visibility", async () => {
   assert.match(zhReadme, /模型侧 Skill 工具列表/);
 });
 
+test("setup initialization supports hosts without a Skill tool", async () => {
+  const [setup, project] = await Promise.all([
+    readFile(path.join(root, "skills/setup-author-toolkit/SKILL.md"), "utf8"),
+    readFile(path.join(root, "skills/author-project/SKILL.md"), "utf8"),
+  ]);
+  const setupStep = setup.match(/^4\. .+$/m)?.[0];
+  assert.ok(setupStep);
+
+  assert.match(setupStep, /Resolve the registered `author-project` skill in the current host/);
+  assert.match(setupStep, /Execute its `initialize` procedure/);
+  assert.match(setupStep, /Skill tool when available; otherwise read the installed skill's `SKILL\.md` and applicable initialization references and execute the same procedure directly/);
+  assert.match(setupStep, /Stop for a missing skill, installed file, or initialization failure, not solely because the host has no Skill tool/);
+  assert.doesNotMatch(setupStep, /If neither name is registered/);
+  assert.match(project, /A caller may invoke this skill through the host's Skill tool or read this installed `SKILL\.md` and its applicable references and execute the requested procedure directly/);
+  assert.match(project, /a missing Skill tool is not a missing skill or failed operation/);
+});
+
 test("author-facing commands support Codex dollar-prefixed skill invocation", async () => {
   const [setup, instructions, ask, handoff, reviewHandoff, readme, zhReadme] = await Promise.all([
     readFile(path.join(root, "skills/setup-author-toolkit/SKILL.md"), "utf8"),
@@ -223,7 +240,7 @@ test("existing-project setup uses bounded inspection references and a categorize
   assert.match(project, /For `initialize` on an existing v3\.1 manifest, `read`, `validate`, `status`, and `status --digest`, read \[`references\/read-operations\.md`\]/);
   assert.match(project, /For a new manifest and every record or write operation, read \[`references\/operations\.md`\]/);
   assert.doesNotMatch(project, /For every operation, read \[`references\/operations\.md`\]/);
-  assert.match(setup, /For an existing v3\.1 manifest, follow that invocation with one `preflight\.mjs` call/);
+  assert.match(setup, /For an existing v3\.1 manifest, follow initialization with one `preflight\.mjs` call/);
   assert.match(setup, /default ordinary status uses the current scope ID/);
   for (const heading of ["Installation payload", "Project entry files", "Manuscript scope", "Execution evidence"]) {
     assert.match(setup, new RegExp(`\\*\\*${heading}\\*\\*`));

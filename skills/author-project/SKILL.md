@@ -32,7 +32,7 @@ For `initialize` on an existing v3.1 manifest, `read`, `validate`, `status`, and
 
 ## Invocation boundary
 
-This skill calls no other skills. Use text reads and writes for normal operation. Read shared contracts from `<setup-skill-root>/assets/references/` and run the setup skill's bundled validation scripts. These CLIs include their runtime dependencies and require no repository checkout or project `npm install`. Git is optional and is never required for state or backups.
+This skill calls no other skills. A caller may invoke this skill through the host's Skill tool or read this installed `SKILL.md` and its applicable references and execute the requested procedure directly; a missing Skill tool is not a missing skill or failed operation. Use text reads and writes for normal operation. Read shared contracts from `<setup-skill-root>/assets/references/` and run the setup skill's bundled validation scripts. These CLIs include their runtime dependencies and require no repository checkout or project `npm install`. Git is optional and is never required for state or backups.
 
 ## Completion
 
