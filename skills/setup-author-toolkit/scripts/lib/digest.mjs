@@ -5,6 +5,7 @@ import { inspectProjectManifest } from "./project-inspection.mjs";
 import { validateRelativePath } from "./schemas.mjs";
 import { splitTrackerRow, TRACKER_STATUSES } from "./tracker.mjs";
 import { readPendingArtifactIndex } from "./pending-artifacts.mjs";
+import { validateManifest } from "./manifest.mjs";
 
 function markdown(value) {
   return value.replaceAll("\\", "\\\\").replaceAll("`", "\\`").replaceAll("\r", " ").replaceAll("\n", " ").trim();
@@ -126,12 +127,22 @@ async function pendingArtifacts(pending, projectRoot) {
   return `${visible}${remainder}`;
 }
 
-export async function renderProjectDigest({ manifest, tracker, latestReport, latestSession, sessionText = "", projectRoot = "" }) {
+function executionEvidence(execution, scopeId) {
+  if (!execution) return "not evaluated; use author-project status";
+  const scope = scopeId ? ` in scope ${code(scopeId)}` : " across all scopes";
+  const evidence = `${execution.executed}/${execution.required} verified; ${execution.unverified_count} unverified${scope}`;
+  return execution.unverified_count > 0
+    ? `${evidence}; strict execution gate would fail`
+    : evidence;
+}
+
+export async function renderProjectDigest({ manifest, tracker, latestReport, latestSession, sessionText = "", projectRoot = "", execution = null }) {
   const counts = findingCounts(tracker);
   const report = latestReport ?? fallbackReport(tracker);
   const scope = manifest.current_scope;
   const pending = manifest.pending_action;
   const plan = relativePath(field(sessionText, "Active plan"));
+  const nextAction = concise(field(sessionText, "Next action") ?? field(tracker, "Next action") ?? (latestSession ? `read ${code(latestSession)} for the recorded next action` : "none recorded"));
   const lines = [
     "# Project State",
     "",
@@ -148,10 +159,11 @@ export async function renderProjectDigest({ manifest, tracker, latestReport, lat
     `- Pending reason: ${pending ? concise(pending.reason) : "none recorded"}`,
     `- Pending artifacts: ${await pendingArtifacts(pending, projectRoot)}`,
     `- Findings: ${Object.entries(counts).map(([status, count]) => `${status}=${count}`).join(", ")}`,
+    `- Execution evidence: ${executionEvidence(execution, scope?.scope_id)}`,
     `- Active plan: ${plan ? code(plan) : "none recorded"}`,
     `- Latest report: ${report ? code(report) : "none recorded"}`,
     `- Latest session: ${latestSession ? code(latestSession) : "none recorded"}`,
-    `- Next action: ${concise(field(sessionText, "Next action") ?? field(tracker, "Next action") ?? (latestSession ? `read ${code(latestSession)} for the recorded next action` : "none recorded"))}`,
+    `- Next action: ${nextAction} (recorded; strategy gates not evaluated)`,
     "",
     "## Read next",
     "",
@@ -168,7 +180,12 @@ export async function renderProjectDigest({ manifest, tracker, latestReport, lat
 
 export async function generateProjectDigest(projectRoot) {
   const manifestPath = path.join(projectRoot, ".author-toolkit", "project.json");
-  const validation = await inspectProjectManifest(manifestPath);
+  let scopeId;
+  try {
+    const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
+    if (validateManifest(manifest).valid) scopeId = manifest.current_scope?.scope_id;
+  } catch {}
+  const validation = await inspectProjectManifest(manifestPath, { scopeId });
   if (!validation.valid) {
     const details = validation.checks
       .filter((check) => !check.valid)
@@ -186,6 +203,7 @@ export async function generateProjectDigest(projectRoot) {
   const digest = await renderProjectDigest({
     manifest,
     tracker,
+    execution: validation.checks.find((check) => check.path === "executions")?.summary,
     latestReport,
     latestSession,
     sessionText: latestSession ? await readFile(path.resolve(projectRoot, latestSession), "utf8") : "",

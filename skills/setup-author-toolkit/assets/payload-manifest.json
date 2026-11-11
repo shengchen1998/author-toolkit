@@ -87,7 +87,7 @@
     },
     {
       "path": "assets/references/terminology.md",
-      "sha256": "4a80c4e5647ac8ef4ed7588b89f709aad88c71442353130e6224fbd176d3ffe3"
+      "sha256": "870f06c42220cc25d6b94541785086330e7aa17aa384c87f98054b40a2538a0a"
     },
     {
       "path": "assets/references/workflow-reporting.md",
@@ -123,7 +123,7 @@
     },
     {
       "path": "scripts/lib/digest.mjs",
-      "sha256": "17b633be3ec4c0f0184314ab0c2f9693db74258ad1a8fa73bca47fc2e404576a"
+      "sha256": "b71baaceb01d6b3ee8400e95f0128115f8073194d48e1917e57849b0017ddf0b"
     },
     {
       "path": "scripts/lib/execution-receipts.mjs",
@@ -167,7 +167,7 @@
     },
     {
       "path": "scripts/lib/project-inspection.mjs",
-      "sha256": "09f9d817e35724b01584b84ed01796399755599487ad262c0687c807299770ed"
+      "sha256": "6f312e5a9fb2c17678cf9c82e0f3e064cb4ec8bb059ce06b61a57ab9577f5746"
     },
     {
       "path": "scripts/lib/read-projection.mjs",

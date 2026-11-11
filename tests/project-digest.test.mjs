@@ -9,6 +9,7 @@ import { root } from "./helpers.mjs";
 import { validateProjectFiles, validateScopeCurrency, validateTracker } from "../scripts/lib/index.mjs";
 
 const timestamp = "2026-11-09T00:00:00Z";
+const approvalTable = "| Approval ID | Type | Operation | Scope ID | Paths | Status | Reason | Updated |\n|---|---|---|---|---|---|---|---|";
 
 async function projectFixture(t) {
   const output = path.join(root, ".test-output");
@@ -105,10 +106,11 @@ test("project digest generates a bounded navigation cache from shared state", as
   assert.match(output, /Scope hashes: `\.author-toolkit\/project\.json` -> `current_scope\.files`/);
   assert.match(output, /Pending action: `diagnostics` \(awaiting_author\)/);
   assert.match(output, /Findings: open=1, resolved=0, deferred=0, dismissed=0, stale=0/);
+  assert.match(output, /Execution evidence: 0\/0 verified; 0 unverified in scope `scope-request-001`/);
   assert.match(output, /Active plan: `\.author-toolkit\/revision-plan\/plan-001\.md`/);
   assert.match(output, /Latest report: `reports\/diagnostics\/latest\.md`/);
   assert.match(output, /Latest session: `sessions\/2026-11-09_diagnostics\.md`/);
-  assert.match(output, /Next action: 确认 DIAG-001。/);
+  assert.match(output, /Next action: 确认 DIAG-001。 \(recorded; strategy gates not evaluated\)/);
   assert.match(output, /Tracker: `audit-tracker.md` -> `## Findings`, `## Audit runs`, `## Approved decisions`/);
   assert.match(output, /Status: use `author-project status` for recorded blockers and execution evidence\./);
   assert.match(output, /Validation: use `author-project validate` for current hashes and missing paths\./);
@@ -140,7 +142,42 @@ test("project digest uses explicit session fields and a historical report fallba
   const output = await readFile(path.join(projectRoot, "PROJECT_STATE.md"), "utf8");
   assert.match(output, /Active plan: `\.author-toolkit\/revision-plan\/plan-session\.md`/);
   assert.match(output, /Latest report: `reports\/diagnostics\/legacy\.md`/);
-  assert.match(output, /Next action: 从 session 继续。/);
+  assert.match(output, /Next action: 从 session 继续。 \(recorded; strategy gates not evaluated\)/);
+});
+
+test("project digest preserves a recorded strategy beside its failed execution gate", async (t) => {
+  const projectRoot = await projectFixture(t);
+  const manifestPath = path.join(projectRoot, ".author-toolkit", "project.json");
+  const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
+  const rows = Array.from({ length: 94 }, (_, index) =>
+    `| EDIT-${String(index + 1).padStart(3, "0")} | edit | chapter-revision | ${manifest.current_scope.scope_id} | \`manuscript/chapter-001.md\` | approved | Exact test batch. | ${timestamp} |`,
+  );
+  rows.push("| EDIT-095 | edit | chapter-revision | scope-historical | `manuscript/chapter-001.md` | approved | Historical scope. | 2026-11-09T00:00:00Z |");
+  const trackerPath = path.join(projectRoot, manifest.paths.audit_tracker);
+  await writeFile(
+    trackerPath,
+    (await readFile(trackerPath, "utf8")).replace(approvalTable, `${approvalTable}\n${rows.join("\n")}`),
+  );
+  await writeFile(
+    path.join(projectRoot, "sessions/2026-11-09_diagnostics.md"),
+    "- Next action: `$revise-request`\n",
+  );
+
+  const result = digestCli(projectRoot);
+  assert.equal(result.status, 0, result.stderr);
+  const output = await readFile(path.join(projectRoot, "PROJECT_STATE.md"), "utf8");
+  assert.match(output, /Execution evidence: 0\/94 verified; 94 unverified in scope `scope-request-001`; strict execution gate would fail/);
+  assert.match(output, /Next action: \\`\$revise-request\\` \(recorded; strategy gates not evaluated\)/);
+  assert.ok(output.trimEnd().split("\n").length <= 30);
+
+  const strict = spawnSync(process.execPath, [
+    path.join(root, "scripts/status.mjs"),
+    "--manifest", manifestPath,
+    "--scope-id", manifest.current_scope.scope_id,
+    "--require-execution",
+  ], { encoding: "utf8" });
+  assert.equal(strict.status, 1);
+  assert.match(strict.stderr, /94 unverified approvals in scope scope-request-001/);
 });
 
 test("project digest selects the newest timestamp across report directories", async (t) => {

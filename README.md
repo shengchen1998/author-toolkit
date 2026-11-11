@@ -459,7 +459,12 @@ Use `read.mjs --project-root <root>` for its bounded manifest projection and
   line are a generation-time snapshot, not current health, an execution gate, or
   a current-draft revision convergence claim; rerun preflight before reusing the
   cache. It points to the current scope and hashes, pending action, finding
-  counts, active plan, latest session and report, and next action. The manifest,
+  counts, current-scope execution evidence, active plan, latest session and
+  report, and next action. Any unverified approvals in the current scope make
+  the cache state that the strict execution gate would fail. The next action
+  remains recorded rather than being rerouted, and is labeled as unevaluated by
+  strategy gates; zero unverified approvals alone does not establish
+  current-draft revision convergence. The manifest,
   tracker, and current evidence remain authoritative; the cache grants no
   approval and does not replace evidence reading. Routine navigation uses its
   pointers, targeted artifact reads, or aggregate counts rather than emitting

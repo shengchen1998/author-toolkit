@@ -212,6 +212,8 @@ test("project digest is a generated navigation cache, not another source of trut
   assert.match(readOperations, /Validation at generation: passed/);
   assert.match(readOperations, /rerunning preflight before reuse/);
   assert.match(readOperations, /not an execution gate or a current-draft revision convergence claim/);
+  assert.match(readOperations, /current-scope execution evidence/);
+  assert.match(readOperations, /preserves the recorded next action with a strategy-gates-not-evaluated label/);
   assert.match(setup, /read `PROJECT_STATE\.md` first/i);
 
   for (const skill of ["write-fiction", "revise-fiction", "revise-draft", "revise-increment", "revise-request"]) {

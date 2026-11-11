@@ -15,7 +15,7 @@ function failure(message) {
   return { valid: false, errors: [{ instancePath: "", message }] };
 }
 
-export async function inspectProjectManifest(manifestPath) {
+export async function inspectProjectManifest(manifestPath, { scopeId } = {}) {
   let manifest;
   try {
     manifest = JSON.parse(await readFile(manifestPath, "utf8"));
@@ -44,7 +44,7 @@ export async function inspectProjectManifest(manifestPath) {
     check("scope", await validateScopeCurrency(manifest, manifestPath));
   }
   if (check("tracker", await validateTracker(manifest, manifestPath))) {
-    check("executions", await inspectExecutionReceipts(manifest, manifestPath));
+    check("executions", await inspectExecutionReceipts(manifest, manifestPath, { scopeId }));
   }
   return { valid: checks.every((result) => result.valid), manifest, checks };
 }

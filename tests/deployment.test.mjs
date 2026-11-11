@@ -263,6 +263,8 @@ test("setup carries self-contained preflight, validation, state, range, and inst
   assert.match(cache, /Validation at generation: passed/);
   assert.match(cache, /rerun preflight before reuse/);
   assert.match(cache, /Latest session: `sessions\/2026-01-19_resume\.md`/);
+  assert.match(cache, /Execution evidence: 0\/0 verified; 0 unverified in scope `scope-example-revision`/);
+  assert.match(cache, /Next action: .* \(recorded; strategy gates not evaluated\)/);
   assert.match(cache, /Status: use `author-project status` for recorded blockers and execution evidence\./);
   assert.match(cache, /Validation: use `author-project validate` for current hashes and missing paths\./);
   assert.doesNotMatch(cache, /backups\/index\.json/);
