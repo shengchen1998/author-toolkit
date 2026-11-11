@@ -16,6 +16,8 @@ Read `PROJECT_STATE.md` first when present, then run the bounded `read` command 
 
 Resolve `paths.backups` and create `<paths.backups>/index.json` from `../assets/backup-index-template.json` when absent. Keep backup, restoration, and execution receipt records in this index rather than adding manifest properties. A legacy index without `executions` remains readable; its approved edits have no execution evidence until reconciled receipts are appended.
 
+Setup's entry-file repair is independent of project-state validation after the manifest-schema check accepts v3.1: repair both entry files, then report any later validation blocker. This does not validate the project or modify manuscript or historical records. Unsupported or schema-invalid manifests stop before entry repair.
+
 ## Read and validate
 
 Run the installed doctor before each `read`, `validate`, or `status` operation:

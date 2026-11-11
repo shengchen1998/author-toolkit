@@ -223,7 +223,10 @@ A quick run looks like this:
    `CLAUDE.md -> AGENTS.md` symlink. The template keeps only language,
    explicit-entry routing, and manuscript-safety invariants. Detailed strategy
    routing lives in `ask-author`; operational details remain in the installed
-   skills and references. Custom content in these two files is not preserved. Do not pass
+   skills and references. For an existing project, this repair occurs once the
+   manifest-schema check accepts v3.1 even if later project-state validation
+   fails; setup then reports the blocker without repairing manuscript or history.
+   Custom content in these two files is not preserved. Do not pass
    a workflow name or operation argument. After a toolkit update, existing v3.1
    projects use the updated installed contracts without another deployment.
    Initial `author-project` read, validation, and status calls report missing

@@ -264,7 +264,10 @@ test("existing-project setup uses bounded inspection references and a categorize
   assert.match(project, /For `initialize` on an existing v3\.1 manifest, `read`, `validate`, `status`, `status --digest`, and `check-index`, read \[`references\/read-operations\.md`\]/);
   assert.match(project, /For a new manifest and every record or write operation, read \[`references\/operations\.md`\]/);
   assert.doesNotMatch(project, /For every operation, read \[`references\/operations\.md`\]/);
-  assert.match(setup, /For an existing v3\.1 manifest, perform step 5's entry-file replacement after initialization, then follow it with one `preflight\.mjs` call/);
+  assert.match(setup, /once initialization's manifest-schema check passes, perform step 5's entry-file replacement even if later project-state validation fails/);
+  assert.match(setup, /report that validation failure as a setup blocker after the repair/);
+  assert.match(setup, /unsupported or schema-invalid manifest still stops before entry-file replacement/);
+  assert.match(setup, /backup-index inconsistency after a successful manifest-schema check, complete step 5's entry-file repair before reporting the project-state blocker/);
   assert.match(setup, /doctor, initialize, entry-file repair, preflight, then the final doctor/);
   assert.match(setup, /standalone `validate\.mjs` only when a validation failure requires its complete diagnostics/);
   assert.match(setup, /endpoints do not imply a contiguous ID range/);
@@ -280,6 +283,8 @@ test("existing-project setup uses bounded inspection references and a categorize
   assert.match(readOperations, /operation-specific evidence, evidence reuse, and current-draft revision convergence/);
   assert.match(readOperations, /shares the validation and status implementation with the individual CLIs/);
   assert.match(readOperations, /A project-entry mismatch .* does not stop validation/);
+  assert.match(readOperations, /entry-file repair is independent of project-state validation after the manifest-schema check accepts v3\.1/);
+  assert.match(readOperations, /Unsupported or schema-invalid manifests stop before entry repair/);
   assert.match(readOperations, /ordinary preflight leaves unverified approvals nonblocking/);
   assert.match(readOperations, /create `<paths\.backups>\/index\.json` .* when absent/);
   assert.doesNotMatch(readOperations, /## Backup and creation commit|## Record execution|## Restore/);
