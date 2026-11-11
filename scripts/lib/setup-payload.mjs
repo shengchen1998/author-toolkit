@@ -159,5 +159,7 @@ export async function inspectSetupPayload(setupRoot, { projectRoot } = {}) {
     clis,
     project,
     failures,
+    payload_failures: failures.filter((failure) => !failure.path.startsWith("project:")),
+    entry_failures: failures.filter((failure) => failure.path.startsWith("project:")),
   };
 }

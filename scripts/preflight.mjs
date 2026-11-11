@@ -91,7 +91,7 @@ async function preflight(selection) {
     execution_gate: null,
     digest: null,
   };
-  if (payload.failures.some((failure) => !failure.path.startsWith("project:"))) return result;
+  if (payload.payload_failures.length > 0) return result;
 
   const validation = await inspectProjectManifest(manifestPath);
   const displayedChecks = selection.json && !selection.diagnose

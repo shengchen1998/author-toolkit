@@ -135,7 +135,7 @@ test("setup carries self-contained preflight, validation, state, range, and inst
     { encoding: "utf8" },
   );
   assert.equal(doctor.status, 0, doctor.stderr);
-  assert.match(doctor.stdout, /Failures: 0/);
+  assert.match(doctor.stdout, /Payload failures: 0\nProject entry failures: 0/);
   assert.doesNotMatch(doctor.stdout, /AGENTS\.md/);
 
   const project = path.join(temporaryRoot, "writing-project");

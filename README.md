@@ -150,7 +150,8 @@ summary and only the failed paths. It verifies the skill's regular payload files
 including internal CLI modules, against `assets/payload-manifest.json`. Add
 `--project-root <root>` to verify the writing project's `AGENTS.md` and relative
 `CLAUDE.md -> AGENTS.md` link; project-state validation and host command visibility
-remain separate checks.
+remain separate checks. Its text and JSON output distinguish installed-payload
+failures from repairable project-entry failures, with an explicit exit reason.
 
 Run `node <setup-skill-root>/scripts/preflight.mjs --project-root <root>` to
 combine the payload and entry-file check with project validation and ordinary

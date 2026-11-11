@@ -23,6 +23,11 @@ historical evidence, and host command visibility are not checked. This command
 writes nothing and reports only a summary and failures.`);
 }
 
+function outputFailures(label, failures) {
+  console.log(`${label}: ${failures.length}`);
+  for (const failure of failures) console.log(`- ${failure.path}: ${failure.reason}`);
+}
+
 function options(args) {
   const result = { json: false };
   for (let index = 0; index < args.length; index += 1) {
@@ -55,9 +60,12 @@ try {
       console.log(
         `Setup payload: ${result.files} files (${result.references} references, ${result.clis} CLIs)${project}`,
       );
-      console.log(`Failures: ${result.failures.length}`);
-      for (const failure of result.failures) {
-        console.error(`- ${failure.path}: ${failure.reason}`);
+      outputFailures("Payload failures", result.payload_failures);
+      outputFailures("Project entry failures", result.entry_failures);
+      if (result.payload_failures.length > 0) {
+        console.log("Exit reason: incomplete installed payload; stop shared work");
+      } else if (result.entry_failures.length > 0) {
+        console.log("Exit reason: project entry files need repair; continue setup entry-file repair");
       }
     }
     process.exitCode = result.valid ? 0 : 1;

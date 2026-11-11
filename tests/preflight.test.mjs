@@ -77,6 +77,8 @@ test("preflight permits entry-file repair after initialization", async (t) => {
   const parsed = JSON.parse(result.stdout);
   assert.equal(parsed.valid, true);
   assert.equal(parsed.payload.valid, false);
+  assert.deepEqual(parsed.payload.payload_failures, []);
+  assert.deepEqual(parsed.payload.entry_failures, parsed.payload.failures);
   assert.deepEqual(parsed.payload.failures.map((failure) => failure.path), ["project:AGENTS.md"]);
   assert.equal(parsed.validation.valid, true);
 });
@@ -118,6 +120,8 @@ test("preflight rejects an incomplete installed payload before reading project s
   const parsed = JSON.parse(result.stdout);
   assert.equal(parsed.valid, false);
   assert.equal(parsed.payload.valid, false);
+  assert.equal(parsed.payload.payload_failures.length, 1);
+  assert.deepEqual(parsed.payload.entry_failures, []);
   assert.equal(parsed.payload.failures[0].path, "assets/references/terminology.md");
   assert.equal(parsed.validation, null);
   assert.equal(parsed.status, null);

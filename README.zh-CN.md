@@ -70,6 +70,7 @@ setup 技能在 `setup-author-toolkit/scripts/` 下提供自包含的安装检�
 它按 `assets/payload-manifest.json` 核对技能的普通载荷文件, 包括 CLI 内部模块.
 添加 `--project-root <root>` 可同时核对写作项目的 `AGENTS.md` 和相对符号链接
 `CLAUDE.md -> AGENTS.md`; 项目状态校验与宿主命令可见性仍是独立检查.
+文本和 JSON 输出分别列出安装载荷失败与可修复的项目入口失败, 并明确显示退出原因.
 
 运行 `node <setup-skill-root>/scripts/preflight.mjs --project-root <root>` 可一次完成载荷和入口文件检查,
 项目校验及普通状态汇总; 它复用相同的库实现并输出有界摘要. 默认选择当前范围. 仅在执行门禁场景添加

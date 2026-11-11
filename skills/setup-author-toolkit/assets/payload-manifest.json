@@ -99,7 +99,7 @@
     },
     {
       "path": "scripts/doctor.mjs",
-      "sha256": "9c357da0cbe23f810725709e4547a8dc2b800d4ff0f7061589601478b163b06d"
+      "sha256": "5cf7ed750f8b2dea68b5b94b58b1ea6903bd7edc579cc41dd7b2c8736c680d83"
     },
     {
       "path": "scripts/findings.mjs",
@@ -187,7 +187,7 @@
     },
     {
       "path": "scripts/lib/setup-payload.mjs",
-      "sha256": "78892e243c5abfca8d41031ae4bd8c12bef29e1824c5618b4965ced4b8ad9ed8"
+      "sha256": "8a466697c43422a7606af4b9c31bc824fb80328ba73102c580787b8e2fec78cd"
     },
     {
       "path": "scripts/lib/state-files.mjs",
@@ -227,7 +227,7 @@
     },
     {
       "path": "scripts/preflight.mjs",
-      "sha256": "1866e0657451acf0024e808a22acaa3bc45f59ba3eb473aab248c0eaea073f4b"
+      "sha256": "d3bd9eb091c80c5339becca20f8d0ca42012679a853f8527708c2b2a73f25d11"
     },
     {
       "path": "scripts/project-digest.mjs",

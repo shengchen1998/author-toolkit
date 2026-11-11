@@ -38,7 +38,7 @@ test("doctor reports a bounded summary for a complete installed payload", async 
   assert.equal(result.status, 0, result.stderr);
   assert.match(
     result.stdout,
-    /^Setup payload: \d+ files \(\d+ references, 11 CLIs\); project entry files included\nFailures: 0\n$/,
+    /^Setup payload: \d+ files \(\d+ references, 11 CLIs\); project entry files included\nPayload failures: 0\nProject entry failures: 0\n$/,
   );
   assert.equal(result.stderr, "");
 
@@ -53,12 +53,14 @@ test("doctor reports a bounded summary for a complete installed payload", async 
   assert.equal(parsed.project.agents, "ok");
   assert.equal(parsed.project.claude, "ok");
   assert.deepEqual(parsed.failures, []);
+  assert.deepEqual(parsed.payload_failures, []);
+  assert.deepEqual(parsed.entry_failures, []);
 });
 
 test("source doctor resolves the checked-in setup skill", () => {
   const result = run();
   assert.equal(result.status, 0, result.stderr);
-  assert.match(result.stdout, /Setup payload: \d+ files \(\d+ references, 11 CLIs\)\nFailures: 0/);
+  assert.match(result.stdout, /Setup payload: \d+ files \(\d+ references, 11 CLIs\)\nPayload failures: 0\nProject entry failures: 0/);
 });
 
 test("doctor reports only failed payload paths, including missing internal modules and drift", async (t) => {
@@ -69,32 +71,71 @@ test("doctor reports only failed payload paths, including missing internal modul
 
   const result = run([], { tool: path.join(setupRoot, "scripts", "doctor.mjs") });
   assert.equal(result.status, 1);
-  assert.match(result.stdout, /^Setup payload: \d+ files \(\d+ references, 11 CLIs\)\nFailures: 2\n$/);
-  assert.match(result.stderr, /scripts\/lib\/digest\.mjs: missing or unreadable/);
-  assert.match(result.stderr, /assets\/references\/terminology\.md: SHA-256 differs/);
-  assert.doesNotMatch(result.stderr, /state-and-findings/);
+  assert.match(result.stdout, /^Setup payload: \d+ files \(\d+ references, 11 CLIs\)\nPayload failures: 2\n/);
+  assert.match(result.stdout, /scripts\/lib\/digest\.mjs: missing or unreadable/);
+  assert.match(result.stdout, /assets\/references\/terminology\.md: SHA-256 differs/);
+  assert.match(result.stdout, /Project entry failures: 0\nExit reason: incomplete installed payload; stop shared work\n$/);
+  assert.equal(result.stderr, "");
+  assert.doesNotMatch(result.stdout, /state-and-findings/);
   assert.doesNotMatch(result.stdout, /AGENTS\.md|project entry files/);
 });
 
-test("doctor checks project entry files without reading project state", async (t) => {
+test("doctor distinguishes repairable project entry failures without reading project state", async (t) => {
   const { setupRoot, projectRoot } = await fixture(t);
   await writeFile(path.join(projectRoot, "AGENTS.md"), "custom\n");
   await rm(path.join(projectRoot, "CLAUDE.md"));
   await writeFile(path.join(projectRoot, "CLAUDE.md"), "custom\n");
   await mkdir(path.join(projectRoot, ".author-toolkit"));
   await writeFile(path.join(projectRoot, ".author-toolkit", "project.json"), "{ invalid\n");
-  const result = run(["--project-root", projectRoot, "--json"], {
+  const result = run(["--project-root", projectRoot], {
     tool: path.join(setupRoot, "scripts", "doctor.mjs"),
   });
   assert.equal(result.status, 1);
-  const parsed = JSON.parse(result.stdout);
+  assert.match(result.stdout, /Payload failures: 0\nProject entry failures: 2\n/);
+  assert.match(result.stdout, /- project:AGENTS\.md: different from installed template\n- project:CLAUDE\.md: not a symbolic link\n/);
+  assert.match(result.stdout, /Exit reason: project entry files need repair; continue setup entry-file repair\n$/);
+  assert.doesNotMatch(result.stdout, /incomplete installed payload|project\.json/);
+  assert.equal(result.stderr, "");
+
+  const json = run(["--project-root", projectRoot, "--json"], {
+    tool: path.join(setupRoot, "scripts", "doctor.mjs"),
+  });
+  assert.equal(json.status, 1);
+  const parsed = JSON.parse(json.stdout);
   assert.equal(parsed.files > 0, true);
   assert.equal(parsed.project.agents, "different from installed template");
   assert.equal(parsed.project.claude, "not a symbolic link");
+  assert.deepEqual(parsed.payload_failures, []);
+  assert.deepEqual(parsed.entry_failures, parsed.failures);
   assert.deepEqual(parsed.failures.map((failure) => failure.path), [
     "project:AGENTS.md",
     "project:CLAUDE.md",
   ]);
+});
+
+test("doctor reports payload and entry failures separately when both occur", async (t) => {
+  const { setupRoot, projectRoot } = await fixture(t);
+  await writeFile(path.join(setupRoot, "assets", "references", "terminology.md"), "drift\n");
+  await rm(path.join(projectRoot, "CLAUDE.md"));
+  const result = run(["--project-root", projectRoot], {
+    tool: path.join(setupRoot, "scripts", "doctor.mjs"),
+  });
+  assert.equal(result.status, 1);
+  assert.match(result.stdout, /Payload failures: 1\n- assets\/references\/terminology\.md: SHA-256 differs/);
+  assert.match(result.stdout, /Project entry failures: 1\n- project:CLAUDE\.md: missing or unreadable/);
+  assert.match(result.stdout, /Exit reason: incomplete installed payload; stop shared work\n$/);
+  assert.doesNotMatch(result.stdout, /continue setup entry-file repair/);
+  assert.equal(result.stderr, "");
+
+  const json = run(["--project-root", projectRoot, "--json"], {
+    tool: path.join(setupRoot, "scripts", "doctor.mjs"),
+  });
+  const parsed = JSON.parse(json.stdout);
+  assert.deepEqual(parsed.payload_failures.map((failure) => failure.path), [
+    "assets/references/terminology.md",
+  ]);
+  assert.deepEqual(parsed.entry_failures.map((failure) => failure.path), ["project:CLAUDE.md"]);
+  assert.deepEqual(parsed.failures, [...parsed.payload_failures, ...parsed.entry_failures]);
 });
 
 test("doctor does not guess required files from a missing or invalid manifest", async (t) => {
@@ -105,14 +146,14 @@ test("doctor does not guess required files from a missing or invalid manifest", 
   await rm(manifestPath);
   const missing = run([], { tool: installedTool });
   assert.equal(missing.status, 1);
-  assert.match(missing.stdout, /Setup payload: 0 files \(0 references, 0 CLIs\)\nFailures: 1/);
-  assert.match(missing.stderr, /payload-manifest\.json: missing or unreadable/);
-  assert.doesNotMatch(missing.stderr, /validate\.mjs|terminology\.md/);
+  assert.match(missing.stdout, /Setup payload: 0 files \(0 references, 0 CLIs\)\nPayload failures: 1/);
+  assert.match(missing.stdout, /payload-manifest\.json: missing or unreadable/);
+  assert.doesNotMatch(missing.stdout, /validate\.mjs|terminology\.md/);
 
   await writeFile(manifestPath, "{ invalid\n");
   const invalid = run([], { tool: installedTool });
   assert.equal(invalid.status, 1);
-  assert.match(invalid.stderr, /payload-manifest\.json: invalid JSON/);
+  assert.match(invalid.stdout, /payload-manifest\.json: invalid JSON/);
   await writeFile(manifestPath, original);
 });
 
