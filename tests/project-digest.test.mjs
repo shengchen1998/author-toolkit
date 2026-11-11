@@ -72,7 +72,10 @@ async function projectFixture(t) {
   await writeFile(path.join(projectRoot, "reports/diagnostics/latest.md"), "Report");
   await writeFile(path.join(projectRoot, ".author-toolkit/revision-plan/plan-001.md"), "Plan");
   await writeFile(path.join(projectRoot, "sessions/2026-11-09_diagnostics.md"), "- Active plan: `.author-toolkit/revision-plan/plan-001.md`\n");
-  await writeFile(path.join(projectRoot, ".author-toolkit/backups/index.json"), "unreadable backup index");
+  await writeFile(
+    path.join(projectRoot, ".author-toolkit/backups/index.json"),
+    JSON.stringify({ schema_version: "1.0", backups: [], restorations: [], executions: [] }),
+  );
   return projectRoot;
 }
 
@@ -95,6 +98,9 @@ test("project digest generates a bounded navigation cache from shared state", as
   assert.ok(lines.length >= 20 && lines.length <= 30, `${lines.length} lines`);
   assert.match(output, /navigation cache/i);
   assert.match(output, /manifest, tracker, and current evidence remain authoritative/i);
+  assert.match(output, /Generated at: `\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z`/);
+  assert.match(output, /Validation at generation: passed \(project validation only; not an execution gate or current-draft revision convergence claim\)/);
+  assert.match(output, /Freshness: generation-time snapshot only; rerun preflight before reuse\./);
   assert.match(output, /Scope: `scope-request-001` \(confirmed; 1 file\)/);
   assert.match(output, /Scope hashes: `\.author-toolkit\/project\.json` -> `current_scope\.files`/);
   assert.match(output, /Pending action: `diagnostics` \(awaiting_author\)/);
@@ -106,7 +112,7 @@ test("project digest generates a bounded navigation cache from shared state", as
   assert.match(output, /Tracker: `audit-tracker.md` -> `## Findings`, `## Audit runs`, `## Approved decisions`/);
   assert.match(output, /Status: use `author-project status` for recorded blockers and execution evidence\./);
   assert.match(output, /Validation: use `author-project validate` for current hashes and missing paths\./);
-  assert.doesNotMatch(output, /index\.json|unreadable backup index/);
+  assert.doesNotMatch(output, /index\.json/);
 
   const manifest = JSON.parse(await readFile(path.join(projectRoot, ".author-toolkit", "project.json"), "utf8"));
   assert.equal((await validateProjectFiles(manifest, path.join(projectRoot, ".author-toolkit", "project.json"))).valid, true);
@@ -116,6 +122,13 @@ test("project digest generates a bounded navigation cache from shared state", as
 
 test("project digest uses explicit session fields and a historical report fallback", async (t) => {
   const projectRoot = await projectFixture(t);
+  const manifestPath = path.join(projectRoot, ".author-toolkit", "project.json");
+  const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
+  manifest.pending_action.artifacts = ["story-bible.md"];
+  await writeFile(manifestPath, JSON.stringify(manifest));
+  const trackerPath = path.join(projectRoot, "audit-tracker.md");
+  const tracker = await readFile(trackerPath, "utf8");
+  await writeFile(trackerPath, tracker.replace(/^(\| DIAG-001 .*\|\n)/m, ""));
   await rm(path.join(projectRoot, "reports/diagnostics/latest.md"));
   await writeFile(
     path.join(projectRoot, "sessions/2026-11-09_diagnostics.md"),
@@ -136,7 +149,11 @@ test("project digest selects the newest timestamp across report directories", as
   const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
   manifest.paths.reports = "reports/";
   await writeFile(manifestPath, JSON.stringify(manifest), "utf8");
-  await rm(path.join(projectRoot, "reports/diagnostics/latest.md"));
+  await utimes(
+    path.join(projectRoot, "reports/diagnostics/latest.md"),
+    new Date("2026-11-08T00:00:00Z"),
+    new Date("2026-11-08T00:00:00Z"),
+  );
   await mkdir(path.join(projectRoot, "reports/intake"), { recursive: true });
   await mkdir(path.join(projectRoot, "reports/prose"), { recursive: true });
   await writeFile(
@@ -166,7 +183,11 @@ test("project digest excludes the review brief from latest report selection", as
   const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
   manifest.paths.reports = "reports/";
   await writeFile(manifestPath, JSON.stringify(manifest), "utf8");
-  await rm(path.join(projectRoot, "reports/diagnostics/latest.md"));
+  await utimes(
+    path.join(projectRoot, "reports/diagnostics/latest.md"),
+    new Date("2026-11-08T00:00:00Z"),
+    new Date("2026-11-08T00:00:00Z"),
+  );
   await mkdir(path.join(projectRoot, "reports/current-scope-review"), { recursive: true });
   const report = path.join(
     projectRoot,
@@ -210,6 +231,9 @@ test("project digest keeps long pending reasons and artifact lists bounded", asy
   manifest.pending_action.reason = "需要确认。".repeat(300);
   manifest.pending_action.artifacts = Array.from({ length: 61 }, (_, index) => `reports/diagnostics/${String(index).padStart(3, "0")}.md`);
   await writeFile(manifestPath, JSON.stringify(manifest));
+  await Promise.all(manifest.pending_action.artifacts.map((artifact) =>
+    writeFile(path.join(projectRoot, artifact), "Pending diagnostic artifact"),
+  ));
 
   const result = digestCli(projectRoot);
   assert.equal(result.status, 0, result.stderr);
@@ -224,14 +248,18 @@ test("project digest follows the pending artifact index for long current lists",
   const projectRoot = await projectFixture(t);
   const manifestPath = path.join(projectRoot, ".author-toolkit", "project.json");
   const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
-  manifest.pending_action.artifacts = Array.from({ length: 8 }, () => "reports/diagnostics/latest.md");
+  const artifacts = Array.from({ length: 115 }, (_, index) => `reports/diagnostics/indexed-${String(index).padStart(3, "0")}.md`);
+  manifest.pending_action.artifacts = artifacts.slice(0, 8);
   manifest.pending_action.artifact_index = ".author-toolkit/pending-artifacts.json";
   await writeFile(manifestPath, JSON.stringify(manifest));
+  await Promise.all(artifacts.map((artifact) =>
+    writeFile(path.join(projectRoot, artifact), "Indexed diagnostic artifact"),
+  ));
   await writeFile(path.join(projectRoot, manifest.pending_action.artifact_index), JSON.stringify({
     schema_version: "1.0.0",
     operation: manifest.pending_action.operation,
     scope_id: manifest.pending_action.scope_id,
-    artifacts: Array.from({ length: 115 }, () => "reports/diagnostics/latest.md"),
+    artifacts,
     updated_at: manifest.pending_action.updated_at,
   }));
 
@@ -271,4 +299,28 @@ test("project digest rejects missing or invalid manifests without replacing an e
 
   assert.equal(digestCli(projectRoot).status, 1);
   assert.equal(await readFile(digestPath, "utf8"), "Existing author notes\n");
+});
+
+test("project digest rejects invalid execution evidence without replacing an existing cache", async (t) => {
+  const projectRoot = await projectFixture(t);
+  const digestPath = path.join(projectRoot, "PROJECT_STATE.md");
+  await writeFile(digestPath, "Previous navigation cache\n");
+  await writeFile(path.join(projectRoot, ".author-toolkit/backups/index.json"), "unreadable backup index");
+
+  const result = digestCli(projectRoot);
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /project validation failed.*executions.*cannot read backup index/i);
+  assert.equal(await readFile(digestPath, "utf8"), "Previous navigation cache\n");
+});
+
+test("project digest rejects stale current-scope hashes without replacing an existing cache", async (t) => {
+  const projectRoot = await projectFixture(t);
+  const digestPath = path.join(projectRoot, "PROJECT_STATE.md");
+  await writeFile(digestPath, "Previous navigation cache\n");
+  await writeFile(path.join(projectRoot, "manuscript/chapter-001.md"), "已修改正文");
+
+  const result = digestCli(projectRoot);
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /project validation failed.*scope/i);
+  assert.equal(await readFile(digestPath, "utf8"), "Previous navigation cache\n");
 });

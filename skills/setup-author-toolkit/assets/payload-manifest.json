@@ -87,7 +87,7 @@
     },
     {
       "path": "assets/references/terminology.md",
-      "sha256": "816a16e39e2e8e13b530946b4fd5bb0cdf42bd969875a1e2594f66e52c0a4676"
+      "sha256": "4a80c4e5647ac8ef4ed7588b89f709aad88c71442353130e6224fbd176d3ffe3"
     },
     {
       "path": "assets/references/workflow-reporting.md",
@@ -123,7 +123,7 @@
     },
     {
       "path": "scripts/lib/digest.mjs",
-      "sha256": "b157dc18d4881f928c1bda061882fc672dd69c643851de5031795ac37836562e"
+      "sha256": "17b633be3ec4c0f0184314ab0c2f9693db74258ad1a8fa73bca47fc2e404576a"
     },
     {
       "path": "scripts/lib/execution-receipts.mjs",

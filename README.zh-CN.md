@@ -267,8 +267,12 @@ AI, 作者和混合创作使用相同门禁. 每本书只保留一个活动创�
   `record-findings` 校验并以原子方式批量更新报告对应的发现项行, 保留已有作者决定和时间戳,
   不再手工追加 Markdown 行.
 - `PROJECT_STATE.md`: 生成的导航缓存. 调用 `author-project` 的 `status --digest`, 在共享状态写入后及恢复时重新生成.
+  生成前运行与 preflight 相同的完整项目校验, 包括当前稿件哈希, tracker 和备份索引中的执行证据.
+  UTC `Generated at` 和 `Validation at generation: passed` 仅表示生成时快照, 不代表当前健康状态,
+  执行门禁或当前草稿修订收敛; 复用前重新运行 preflight.
   它指向当前范围及哈希, 待处理操作, 发现项计数, 当前计划, 最新会话与报告和下一操作.
-  manifest, tracker 和当前证据仍是权威来源; 缓存不提供批准, 也不替代证据读取, 且不读取备份索引.
+  manifest, tracker 和当前证据仍是权威来源; 缓存不提供批准, 也不替代证据读取.
+  生成时为校验读取当前稿件和备份索引, 但不复述其内容, 也不读取完整报告.
   常规导航使用缓存指针, 按需读取目标产物或计数, 不输出已登记会话或备份目录的完整文件清单.
   在最新会话中记录 `- Active plan: <project-relative-path>` 和 `- Next action: <concise action>`, 供缓存定位.
   旧 tracker 中的 `Next action` 保留为回退. 最新文件优先使用文件名开头的 UTC 时间戳,

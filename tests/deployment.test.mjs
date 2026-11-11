@@ -259,6 +259,9 @@ test("setup carries self-contained preflight, validation, state, range, and inst
   const cache = await readFile(path.join(project, "PROJECT_STATE.md"), "utf8");
   assert.ok(cache.trimEnd().split("\n").length <= 30);
   assert.match(cache, /Generated navigation cache/);
+  assert.match(cache, /Generated at: `\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z`/);
+  assert.match(cache, /Validation at generation: passed/);
+  assert.match(cache, /rerun preflight before reuse/);
   assert.match(cache, /Latest session: `sessions\/2026-01-19_resume\.md`/);
   assert.match(cache, /Status: use `author-project status` for recorded blockers and execution evidence\./);
   assert.match(cache, /Validation: use `author-project validate` for current hashes and missing paths\./);

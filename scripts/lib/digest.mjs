@@ -1,7 +1,7 @@
 import { readFile, readdir, rename, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-import { validateManifest } from "./manifest.mjs";
+import { inspectProjectManifest } from "./project-inspection.mjs";
 import { validateRelativePath } from "./schemas.mjs";
 import { splitTrackerRow, TRACKER_STATUSES } from "./tracker.mjs";
 import { readPendingArtifactIndex } from "./pending-artifacts.mjs";
@@ -137,6 +137,9 @@ export async function renderProjectDigest({ manifest, tracker, latestReport, lat
     "",
     "> Generated navigation cache. The manifest, tracker, and current evidence remain authoritative.",
     "> Regenerate with `author-project status --digest`; do not hand-maintain this file.",
+    `- Generated at: ${code(new Date().toISOString())}`,
+    "- Validation at generation: passed (project validation only; not an execution gate or current-draft revision convergence claim).",
+    "- Freshness: generation-time snapshot only; rerun preflight before reuse.",
     "",
     `- Scope: ${scope ? `${code(scope.scope_id)} (${scope.status}; ${scope.files.length} file${scope.files.length === 1 ? "" : "s"})` : "none recorded"}`,
     `- Scope hashes: ${scope ? `${code(".author-toolkit/project.json")} -> ${code("current_scope.files")}` : "none recorded"}`,
@@ -165,17 +168,15 @@ export async function renderProjectDigest({ manifest, tracker, latestReport, lat
 
 export async function generateProjectDigest(projectRoot) {
   const manifestPath = path.join(projectRoot, ".author-toolkit", "project.json");
-  let manifest;
-  try {
-    manifest = JSON.parse(await readFile(manifestPath, "utf8"));
-  } catch (error) {
-    throw new Error(`Cannot read manifest ${manifestPath}: ${error.message}`);
-  }
-  const validation = validateManifest(manifest);
+  const validation = await inspectProjectManifest(manifestPath);
   if (!validation.valid) {
-    const details = validation.errors.map((error) => `${error.instancePath || "/"} ${error.message}`).join("; ");
-    throw new Error(`Cannot generate digest: invalid v3.1 manifest. ${details}`);
+    const details = validation.checks
+      .filter((check) => !check.valid)
+      .flatMap((check) => check.errors.map((error) => `${check.path}: ${error.instancePath || "/"} ${error.message}`))
+      .join("; ");
+    throw new Error(`Cannot generate digest: project validation failed. ${details}`);
   }
+  const { manifest } = validation;
   const tracker = await readFile(path.resolve(projectRoot, manifest.paths.audit_tracker), "utf8");
   const reviewBriefPath = path.posix.join(manifest.paths.reports, "review_brief.md");
   const [latestReport, latestSession] = await Promise.all([

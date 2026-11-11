@@ -19,7 +19,7 @@ Accept one operation per invocation:
 | `read` | Project root or manifest path | Return the bounded validated manifest projection, resolved paths, scope hashes, and pending-artifact counts through `read.mjs` |
 | `validate` | Project root or manifest path | Run the installed project schema validator and report registered-file and current-scope hash diagnostics |
 | `status` | Project root or manifest path; for a current-draft revision convergence or previous/base-scope execution gate, target scope ID and `--require-execution` | Return current scope, pending action, recorded blockers, and execution evidence; do not infer operation-specific evidence completeness |
-| `status --digest` | Project root | Generate the bounded `PROJECT_STATE.md` navigation cache with finding counts, latest pointers, and next action |
+| `status --digest` | Project root | Generate the bounded `PROJECT_STATE.md` navigation cache after complete project validation, with a UTC generation-time snapshot, finding counts, latest pointers, and next action |
 | `next-finding-id` | Uppercase audit prefix and positive batch count | Return an unused consecutive ID block after all tracker and immutable-report history |
 | `record-findings` | Project root and one or more immutable report paths beneath the registered reports path | Validate and atomically insert or update finding rows while preserving author decisions |
 | `set-pending` | Operation, status, scope ID, reason, and artifacts | Write the requested pending action without stage progression |

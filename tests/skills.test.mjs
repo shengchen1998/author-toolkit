@@ -185,6 +185,10 @@ test("project digest is a generated navigation cache, not another source of trut
   assert.match(readOperations, /PROJECT_STATE\.md/);
   assert.match(readOperations, /once after each logical shared-state operation/i);
   assert.match(readOperations, /navigation cache/i);
+  assert.match(readOperations, /Generated at/);
+  assert.match(readOperations, /Validation at generation: passed/);
+  assert.match(readOperations, /rerunning preflight before reuse/);
+  assert.match(readOperations, /not an execution gate or a current-draft revision convergence claim/);
   assert.match(instructions, /read `PROJECT_STATE\.md` first/i);
   assert.match(setup, /read `PROJECT_STATE\.md` first/i);
   assert.match(instructions, /authoritative/i);
