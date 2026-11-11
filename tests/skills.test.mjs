@@ -335,6 +335,7 @@ test("convergence gates run strict execution checks without gating ordinary insp
   assert.match(project, /current-draft revision convergence or previous\/base-scope execution gate, target scope ID and `--require-execution`/);
   assert.match(setup, /default ordinary status uses the current scope ID/);
   assert.match(setup, /Before relying on a recorded current-draft revision convergence statement/);
+  assert.match(setup, /apply the other conditions in \[Current-draft revision convergence\]\(\.\.\/revise-fiction\/references\/state-and-findings\.md#current-draft-revision-convergence\)/);
   assert.match(setup, /does not block ordinary setup, a current-scope review, or unrelated read-only work/);
   assert.doesNotMatch(setup, /evidence-blocked|legacy-unverified/);
 
