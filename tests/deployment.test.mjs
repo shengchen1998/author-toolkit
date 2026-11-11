@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { cp, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, readFile, readdir, rm, symlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import test from "node:test";
 
@@ -38,7 +38,7 @@ async function markdownFiles(directory) {
   return files.filter((file) => file.endsWith(".md"));
 }
 
-test("setup carries self-contained validation, state, range, and installation CLIs", async (t) => {
+test("setup carries self-contained preflight, validation, state, range, and installation CLIs", async (t) => {
   await mkdir(path.join(root, ".test-output"), { recursive: true });
   const temporaryRoot = await mkdtemp(path.join(root, ".test-output", "setup-cli-"));
   t.after(() => rm(temporaryRoot, { recursive: true, force: true }));
@@ -79,7 +79,7 @@ test("setup carries self-contained validation, state, range, and installation CL
   );
 
   const nodeArgs = ["--no-warnings", "--experimental-loader", loader, "--require", preload];
-  for (const script of ["validate.mjs", "status.mjs", "project-digest.mjs", "findings.mjs", "range.mjs", "doctor.mjs"]) {
+  for (const script of ["preflight.mjs", "validate.mjs", "status.mjs", "project-digest.mjs", "findings.mjs", "range.mjs", "doctor.mjs"]) {
     const result = spawnSync(
       process.execPath,
       [...nodeArgs, path.join(installedSetup, "scripts", script), "--help"],
@@ -112,6 +112,25 @@ test("setup carries self-contained validation, state, range, and installation CL
 
   const project = path.join(temporaryRoot, "writing-project");
   await cp(path.join(root, "examples", "fiction-revision-zh"), project, { recursive: true });
+  await cp(path.join(installedSetup, "assets", "AGENTS.md"), path.join(project, "AGENTS.md"));
+  await rm(path.join(project, "CLAUDE.md"), { force: true });
+  await symlink("AGENTS.md", path.join(project, "CLAUDE.md"));
+
+  const preflight = spawnSync(
+    process.execPath,
+    [
+      ...nodeArgs,
+      path.join(installedSetup, "scripts", "preflight.mjs"),
+      "--project-root",
+      project,
+      "--digest",
+    ],
+    { encoding: "utf8" },
+  );
+  assert.equal(preflight.status, 0, preflight.stderr);
+  assert.match(preflight.stdout, /Project validation: 5 checks, 0 failures/);
+  assert.match(preflight.stdout, /Navigation cache: refreshed PROJECT_STATE.md/);
+  assert.match(preflight.stdout, /Preflight: passed/);
 
   const rangeProject = path.join(temporaryRoot, "range-project");
   await mkdir(path.join(rangeProject, "manuscript"), { recursive: true });

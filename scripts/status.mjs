@@ -3,13 +3,8 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 
-import {
-  inspectExecutionReceipts,
-  projectRootFromManifest,
-  trackerFindingRows,
-  validateManifest,
-  validateTracker,
-} from "./lib/index.mjs";
+import { inspectProjectStatus } from "./lib/index.mjs";
+import { validateManifest } from "./lib/manifest.mjs";
 
 function argumentError(message) {
   const error = new Error(message);
@@ -34,33 +29,6 @@ evidence completeness is not evaluated.`);
 function concise(value, limit = 240) {
   const characters = [...String(value).replace(/\s+/g, " ").trim()];
   return characters.length > limit ? `${characters.slice(0, limit - 1).join("")}…` : characters.join("");
-}
-
-function recordedBlockers(manifest, tracker, scopeId) {
-  const staleFindings = trackerFindingRows(tracker)
-    .filter((finding) => finding.status.toLowerCase() === "stale")
-    .map((finding) => ({
-      finding_id: finding.id,
-      operation: finding.stage,
-      audit: finding.audit,
-      location: finding.location,
-      current_report: finding.report,
-      updated: finding.updated,
-      reason: finding.reason,
-    }));
-  const pending = manifest.pending_action;
-  const blockedPending = pending?.status === "blocked" && (!scopeId || pending.scope_id === scopeId)
-    ? {
-        operation: pending.operation,
-        scope_id: pending.scope_id,
-        reason: pending.reason,
-      }
-    : null;
-  return {
-    stale_finding_count: staleFindings.length,
-    stale_findings: staleFindings,
-    blocked_pending_action: blockedPending,
-  };
 }
 
 function options(args) {
@@ -129,43 +97,7 @@ async function main() {
   if (!manifestValidation.valid) {
     throw new Error(`invalid v3.1 manifest: ${validationMessage(manifestValidation)}`);
   }
-  const trackerValidation = await validateTracker(manifest, selection.manifest);
-  if (!trackerValidation.valid) {
-    throw new Error(`invalid tracker: ${validationMessage(trackerValidation)}`);
-  }
-  const inspection = await inspectExecutionReceipts(manifest, selection.manifest, {
-    scopeId: selection.scopeId,
-  });
-  if (!inspection.valid) {
-    throw new Error(`invalid execution receipts: ${validationMessage(inspection)}`);
-  }
-
-  const projectRoot = projectRootFromManifest(selection.manifest);
-  const tracker = await readFile(path.resolve(projectRoot, manifest.paths.audit_tracker), "utf8");
-  const blockers = recordedBlockers(manifest, tracker, selection.scopeId);
-  const result = {
-    scope: manifest.current_scope
-      ? {
-          scope_id: manifest.current_scope.scope_id,
-          status: manifest.current_scope.status,
-        }
-      : null,
-    pending_action: manifest.pending_action
-      ? {
-          operation: manifest.pending_action.operation,
-          status: manifest.pending_action.status,
-          scope_id: manifest.pending_action.scope_id,
-        }
-      : null,
-    execution: {
-      scope_id: selection.scopeId ?? null,
-      ...inspection.summary,
-    },
-    recorded_blockers: blockers,
-    evidence: {
-      operation_specific: "not_evaluated",
-    },
-  };
+  const result = await inspectProjectStatus(manifest, selection.manifest, selection);
   if (selection.json) {
     console.log(JSON.stringify(result, null, 2));
   } else {

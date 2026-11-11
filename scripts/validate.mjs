@@ -10,16 +10,14 @@ import {
   validateCreationBatch,
   validateCreationCommit,
   validateEvidenceReport,
-  validateExecutionReceipts,
+  inspectProjectManifest,
   validateManifest,
   validateMarkdownReport,
-  validateProjectFiles,
   validateReaderState,
   validateReaderStateMarkdown,
   validateReviewJob,
   validateReviewBrief,
   validateSchemaDefinitions,
-  validateScopeCurrency,
   reportFindingIdentities,
   validateFindingBatch,
   validateStoryState,
@@ -156,31 +154,15 @@ async function main() {
   }
 
   for (const file of selection.manifests) {
-    try {
-      const manifest = await readJson(file);
-      const result = validateManifest(manifest);
-      check(path.relative(root, file), result);
-
-      if (result.valid) {
-        check(`${path.relative(root, file)}#files`, await validateProjectFiles(manifest, file));
-        if (manifest.current_scope) {
-          check(`${path.relative(root, file)}#scope`, await validateScopeCurrency(manifest, file));
-        }
-        const trackerResult = await validateTracker(manifest, file);
-        check(`${path.relative(root, file)}#tracker`, trackerResult);
-        if (trackerResult.valid) {
-          check(`${path.relative(root, file)}#executions`, await validateExecutionReceipts(manifest, file));
-        }
-      } else if (manifest?.schema_version !== "3.1.0" || manifest?.project_type !== "fiction") {
+    const inspection = await inspectProjectManifest(file);
+    for (const result of inspection.checks) {
+      const suffix = result.path === "manifest" ? "" : `#${result.path}`;
+      check(`${path.relative(root, file)}${suffix}`, result);
+      if (result.unsupported) {
         console.error(
           "  unsupported project detected; only v3.1 fiction manifests are supported",
         );
       }
-    } catch (error) {
-      check(path.relative(root, file), {
-        valid: false,
-        errors: [{ instancePath: "", message: error.message }],
-      });
     }
   }
 

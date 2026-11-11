@@ -49,6 +49,8 @@ node scripts/sync-setup-runtime.mjs --check
 Run `node scripts/doctor.mjs [--project-root DIR] [--json]` for a bounded
 installation check with only a summary and failed paths.
 
+Run `node scripts/preflight.mjs --project-root DIR [--scope-id ID] [--require-execution] [--digest] [--json]` for one combined payload, project-validation, and status check. It defaults to the current scope and ordinary status. Strict execution requires an explicit scope ID; digest generation is a separate opt-in after read-only checks pass.
+
 Validate an individual project or artifact:
 
 ```bash
@@ -98,7 +100,7 @@ The skills have three invocation modes:
 
 ### Validation boundaries
 
-`scripts/validate.mjs`, `scripts/status.mjs`, `scripts/project-digest.mjs`, and `scripts/findings.mjs` expose the implementation in `scripts/lib/`; `index.mjs` is the library export surface. `scripts/doctor.mjs` checks installed setup payload files and optional project entry files through `setup-payload.mjs` without inspecting manuscript or historical state. `scripts/range.mjs` resolves an author-supplied `path:line:start-end` character range without using the shared library or changing project state; positions are 1-based and inclusive and count Unicode code points. Ajv and ajv-formats provide strict JSON Schema draft 2020-12 validation. The main module boundaries are:
+`scripts/validate.mjs`, `scripts/status.mjs`, `scripts/project-digest.mjs`, and `scripts/findings.mjs` expose the implementation in `scripts/lib/`; `index.mjs` is the library export surface. `scripts/doctor.mjs` checks installed setup payload files and optional project entry files through `setup-payload.mjs` without inspecting manuscript or historical state. `scripts/preflight.mjs` composes that inspection with the shared project-validation and status functions; its digest and strict-execution modes are explicit options. `scripts/range.mjs` resolves an author-supplied `path:line:start-end` character range without using the shared library or changing project state; positions are 1-based and inclusive and count Unicode code points. Ajv and ajv-formats provide strict JSON Schema draft 2020-12 validation. The main module boundaries are:
 
 - `schemas.mjs` loads schemas and configures Ajv. `manifest.mjs` accepts only v3.1 validation.
 - `manuscript.mjs` inventories `.md`, `.markdown`, and `.txt` files, excluding registered operational paths and creation staging. `project-files.mjs` checks registered files, artifacts, scope hashes, and newly added manuscript files.
@@ -112,7 +114,7 @@ Use native ESM with named imports, two-space indentation, double quotes, semicol
 
 All five creation and revision strategies require the same user-invoked `setup-author-toolkit`. It registers existing paths without imposing a manuscript layout. On every setup, it overwrites the writing project's root `AGENTS.md` with `skills/setup-author-toolkit/assets/AGENTS.md` and replaces `CLAUDE.md` with a relative symlink to `AGENTS.md`. That template routes work inside a writing project; this repository-root file documents toolkit development.
 
-Shared runtime contracts live in the installed setup skill's `assets/references/` and its self-contained installation, validation, status, project-digest, finding-state, and character-range CLIs live in its `scripts/`. `assets/payload-manifest.json` is their authoritative inventory and hash manifest. `author-project` resolves these files from `<setup-skill-root>` for shared `read`, `validate`, `status`, and `status --digest` operations. Missing required files indicate an incomplete installation and stop shared work. Setup never copies shared contracts into the writing project or relies on project-side copies.
+Shared runtime contracts live in the installed setup skill's `assets/references/` and its self-contained installation, preflight, validation, status, project-digest, finding-state, and character-range CLIs live in its `scripts/`. `assets/payload-manifest.json` is their authoritative inventory and hash manifest. `author-project` resolves these files from `<setup-skill-root>` for shared `read`, `validate`, `status`, and `status --digest` operations. Missing required files indicate an incomplete installation and stop shared work. Setup never copies shared contracts into the writing project or relies on project-side copies.
 
 The canonical manifest is `<project-root>/.author-toolkit/project.json`. A v3.1 manifest records registration, `manuscript_root`, seven operational paths, and optional `current_scope` and `pending_action`. It has no `workflow.name`, `current_stage`, `stages`, or shared-reference path. Only schema 3.1.0 is accepted; other manifest versions are rejected without conversion.
 

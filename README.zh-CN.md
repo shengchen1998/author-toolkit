@@ -63,13 +63,17 @@ npx skills@latest add shengchen1998/author-toolkit -a codex -a claude-code -a ki
 npx skills@latest add shengchen1998/author-toolkit -a codex -a claude-code -a kimi-code-cli -g
 ```
 
-setup 技能在 `setup-author-toolkit/scripts/` 下提供自包含的安装检查, 校验, 状态, 项目导航, 发现项状态和行内字符区间 CLI, 包括运行依赖.
+setup 技能在 `setup-author-toolkit/scripts/` 下提供自包含的安装检查, 预检, 校验, 状态, 项目导航, 发现项状态和行内字符区间 CLI, 包括运行依赖.
 共享工作流直接解析该技能的安装目录, 无需仓库检出, 也无需在写作项目中运行 `npm install`.
 
 运行 `node <setup-skill-root>/scripts/doctor.mjs` 可获得有界安装摘要和失败路径.
 它按 `assets/payload-manifest.json` 核对技能的普通载荷文件, 包括 CLI 内部模块.
 添加 `--project-root <root>` 可同时核对写作项目的 `AGENTS.md` 和相对符号链接
 `CLAUDE.md -> AGENTS.md`; 项目状态校验与宿主命令可见性仍是独立检查.
+
+运行 `node <setup-skill-root>/scripts/preflight.mjs --project-root <root>` 可一次完成载荷和入口文件检查,
+项目校验及普通状态汇总; 它复用相同的库实现并输出有界摘要. 默认选择当前范围. 仅在执行门禁场景添加
+`--require-execution` 和显式 `--scope-id`; 仅在只读检查通过后需要刷新导航缓存时添加 `--digest`.
 
 更新需要手动执行:
 
@@ -233,6 +237,9 @@ AI, 作者和混合创作使用相同门禁. 每本书只保留一个活动创�
 必须运行 strict 检查. 已记录的该状态声明或 `current-scope-review` 待处理操作不能替代该检查. strict 失败时将受影响的
 待处理操作记录为 `blocked`; 不会改写批准状态或虚构执行回执.
 
+安装版 `preflight.mjs --project-root <root>` 将一次载荷与入口文件检查, 同一套项目校验和普通状态规则组合执行.
+只有显式提供 `--digest` 时才写入项目状态.
+
 - `project.json`: 项目登记, 产物路径, 以及可选的 `current_scope` 和 `pending_action`.
   不包含 `workflow.name`, `current_stage` 或 `stages`.
 - 共享运行时契约: 保留在已安装 setup 技能的 `assets/references/` 中并直接读取,
@@ -394,6 +401,7 @@ npm run validate
 ```bash
 node scripts/validate.mjs --help
 node scripts/doctor.mjs --project-root /path/to/writing-project
+node scripts/preflight.mjs --project-root /path/to/writing-project
 node scripts/validate.mjs --manifest /path/to/.author-toolkit/project.json
 node scripts/validate.mjs --report /path/to/report.md
 node scripts/status.mjs --manifest /path/to/.author-toolkit/project.json --scope-id scope-001

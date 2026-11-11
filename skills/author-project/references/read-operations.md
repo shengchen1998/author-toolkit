@@ -26,6 +26,14 @@ node <setup-skill-root>/scripts/doctor.mjs
 
 This checks the installed setup payload against `assets/payload-manifest.json`. Setup separately supplies `--project-root` when checking project entry files. Stop on an installed-payload failure.
 
+To combine that payload check, project validation, and ordinary status after initialization, run:
+
+```bash
+node <setup-skill-root>/scripts/preflight.mjs --project-root <project-root>
+```
+
+It checks the installed payload once, includes project entry files, and shares the validation and status implementation with the individual CLIs. Its default status selects the manifest's current scope ID when present; an explicit `--scope-id` takes precedence. The bounded text output summarizes each stage; `--json` returns complete results. A project-entry mismatch is reported for setup's repair procedure and does not stop validation or set the final exit status by itself. An installed-payload or project-validation failure exits 1 and stops later stages; a digest generation error also exits 1. `--digest` refreshes `PROJECT_STATE.md` only after the read-only checks pass; without it, preflight writes nothing. Add `--require-execution` with an explicit `--scope-id` for an execution gate; ordinary preflight leaves unverified approvals nonblocking and does not establish operation-specific evidence completeness. Argument errors exit 2.
+
 For every `read`, use normal text reads for the complete manifest and resolved paths. Check its schema version and v3.1 required fields, additional-property restrictions, current scope, pending action, timestamps, safe relative paths, and creation registration against `project-schema-v3.1.json`. Return the full parsed manifest and resolved paths; there is no `read.mjs` and no second copy through a wrapper CLI.
 
 Run the self-contained installed validator:

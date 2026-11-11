@@ -3,7 +3,7 @@
   "files": [
     {
       "path": "SKILL.md",
-      "sha256": "b4e298982925bbe915423255b78b69b0d531afc44624ac1b0b8245e28ed6a239"
+      "sha256": "54e8e3e19ff6605a130098afe531fd4ac198a8871abfe0ef58eec198379cfde0"
     },
     {
       "path": "assets/AGENTS.md",
@@ -115,7 +115,7 @@
     },
     {
       "path": "scripts/lib/index.mjs",
-      "sha256": "2c2d1d345baf92f457eb8d1b59afc294fafc4f6e4d210c4a006f463b5f4d268f"
+      "sha256": "ba3d39fc091b7c50e8f05f2ccaca2483438cc56c87edc011d25c2ec77ea13e70"
     },
     {
       "path": "scripts/lib/manifest.mjs",
@@ -132,6 +132,10 @@
     {
       "path": "scripts/lib/project-files.mjs",
       "sha256": "e8d7df9eaee9ca7386754b7395e4e8b66a56dd1f32f5f01b63ee3d4ba1632f65"
+    },
+    {
+      "path": "scripts/lib/project-inspection.mjs",
+      "sha256": "cd31802247d4bf0afa5120e0f4cdf020b3542a86dba851e4c01bfe6a541b39a1"
     },
     {
       "path": "scripts/lib/review-brief.mjs",
@@ -178,6 +182,10 @@
       "sha256": "6ee0feb1f6ef996ff5a68600f8cf98909cf412d39ef3cdceaefd87d636fa1b7f"
     },
     {
+      "path": "scripts/preflight.mjs",
+      "sha256": "655c8adec8ae13701251ddee2ca8e0b51354f65314e5f0c867b0c05bf3fda632"
+    },
+    {
       "path": "scripts/project-digest.mjs",
       "sha256": "b42dbf45ae6ee88b59c06c54bda544ce5f7fede1d32ee10ed3687485b9ff65d2"
     },
@@ -187,11 +195,11 @@
     },
     {
       "path": "scripts/status.mjs",
-      "sha256": "5bcbe2ab08231d8df544906dd64047ce16390b07f93e82eaa54f001923667e96"
+      "sha256": "466772350288898f251843055e4dc3bf76762bb95704b9f510241fe36fd236ba"
     },
     {
       "path": "scripts/validate.mjs",
-      "sha256": "c37f44ba08b35e463608baf876693ba9b74f5490e559a5f53c770336b4f227ab"
+      "sha256": "0db01c933eb47141e8790e0605b7ae964dbcdbba6c28006dfe619ee27222dfff"
     }
   ]
 }

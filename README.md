@@ -140,7 +140,7 @@ Add `-g` to install at user level instead:
 npx skills@latest add shengchen1998/author-toolkit -a codex -a claude-code -a kimi-code-cli -g
 ```
 
-The setup skill includes self-contained installation, validation, status, project-digest, finding-state, and character-range CLIs under
+The setup skill includes self-contained installation, preflight, validation, status, project-digest, finding-state, and character-range CLIs under
 `setup-author-toolkit/scripts/`. Shared workflows resolve that installed skill
 directory directly; no repository checkout or writing-project `npm install` is
 required.
@@ -151,6 +151,13 @@ including internal CLI modules, against `assets/payload-manifest.json`. Add
 `--project-root <root>` to verify the writing project's `AGENTS.md` and relative
 `CLAUDE.md -> AGENTS.md` link; project-state validation and host command visibility
 remain separate checks.
+
+Run `node <setup-skill-root>/scripts/preflight.mjs --project-root <root>` to
+combine the payload and entry-file check with project validation and ordinary
+status. It shares their library implementation and prints a bounded summary.
+The current scope is selected by default. Add `--require-execution` with an
+explicit `--scope-id` only for an execution gate; add `--digest` only when the
+navigation cache should be refreshed after successful read-only checks.
 
 Updates are manual. Check and apply them with:
 
@@ -393,6 +400,10 @@ current-scope-review pending action does not replace that check. A failed strict
 check records a `blocked` pending action; it does not alter approvals or manufacture
 execution receipts.
 
+The installed `preflight.mjs --project-root <root>` combines one payload and
+entry-file inspection with the same validation and ordinary-status rules. It
+does not write project state unless `--digest` is explicitly supplied.
+
 - `project.json` records project registration, artifact locations, and optional
   `current_scope` and `pending_action`. It has no `workflow.name`,
   `current_stage`, or `stages` state.
@@ -595,6 +606,7 @@ for their exact names:
 ```bash
 node scripts/validate.mjs --help
 node scripts/doctor.mjs --project-root /path/to/writing-project
+node scripts/preflight.mjs --project-root /path/to/writing-project
 node scripts/validate.mjs --manifest /path/to/.author-toolkit/project.json
 node scripts/validate.mjs --report /path/to/report.md
 node scripts/status.mjs --manifest /path/to/.author-toolkit/project.json --scope-id scope-001

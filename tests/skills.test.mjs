@@ -219,17 +219,20 @@ test("existing-project setup uses bounded inspection references and a categorize
   assert.match(project, /For `initialize` on an existing v3\.1 manifest, `read`, `validate`, `status`, and `status --digest`, read \[`references\/read-operations\.md`\]/);
   assert.match(project, /For a new manifest and every record or write operation, read \[`references\/operations\.md`\]/);
   assert.doesNotMatch(project, /For every operation, read \[`references\/operations\.md`\]/);
-  assert.match(setup, /For an existing v3\.1 manifest, follow that invocation with `validate` and ordinary `status`/);
-  assert.match(setup, /pass that ID through `--scope-id`/);
+  assert.match(setup, /For an existing v3\.1 manifest, follow that invocation with one `preflight\.mjs` call/);
+  assert.match(setup, /default ordinary status uses the current scope ID/);
   for (const heading of ["Installation payload", "Project entry files", "Manuscript scope", "Execution evidence"]) {
     assert.match(setup, new RegExp(`\\*\\*${heading}\\*\\*`));
   }
   assert.match(setup, /Distinguish mechanical execution evidence from operation-specific evidence/);
 
-  for (const command of ["doctor\\.mjs", "validate\\.mjs --manifest", "status\\.mjs --manifest", "--scope-id", "--require-execution", "project-digest\\.mjs --project-root"]) {
+  for (const command of ["doctor\\.mjs", "preflight\\.mjs --project-root", "validate\\.mjs --manifest", "status\\.mjs --manifest", "--scope-id", "--require-execution", "--digest", "project-digest\\.mjs --project-root"]) {
     assert.match(readOperations, new RegExp(command));
   }
   assert.match(readOperations, /operation-specific evidence, evidence reuse, and current-draft revision convergence/);
+  assert.match(readOperations, /shares the validation and status implementation with the individual CLIs/);
+  assert.match(readOperations, /A project-entry mismatch .* does not stop validation/);
+  assert.match(readOperations, /ordinary preflight leaves unverified approvals nonblocking/);
   assert.match(readOperations, /create `<paths\.backups>\/index\.json` .* when absent/);
   assert.doesNotMatch(readOperations, /## Backup and creation commit|## Record execution|## Restore/);
   assert.match(operations, /\[Digest\]\(read-operations\.md#digest\)/);
@@ -252,7 +255,7 @@ test("convergence gates run strict execution checks without gating ordinary insp
     ]);
 
   assert.match(project, /current-draft revision convergence or previous\/base-scope execution gate, target scope ID and `--require-execution`/);
-  assert.match(setup, /follow that invocation with `validate` and ordinary `status`/);
+  assert.match(setup, /default ordinary status uses the current scope ID/);
   assert.match(setup, /Before relying on a recorded current-draft revision convergence statement/);
   assert.match(setup, /does not block ordinary setup, a current-scope review, or unrelated read-only work/);
   assert.doesNotMatch(setup, /evidence-blocked|legacy-unverified/);

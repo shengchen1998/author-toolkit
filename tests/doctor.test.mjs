@@ -38,7 +38,7 @@ test("doctor reports a bounded summary for a complete installed payload", async 
   assert.equal(result.status, 0, result.stderr);
   assert.match(
     result.stdout,
-    /^Setup payload: \d+ files \(\d+ references, 6 CLIs\); project entry files included\nFailures: 0\n$/,
+    /^Setup payload: \d+ files \(\d+ references, 7 CLIs\); project entry files included\nFailures: 0\n$/,
   );
   assert.equal(result.stderr, "");
 
@@ -49,7 +49,7 @@ test("doctor reports a bounded summary for a complete installed payload", async 
   const parsed = JSON.parse(json.stdout);
   assert.equal(parsed.valid, true);
   assert.equal(parsed.payload_manifest, "payload-manifest.json");
-  assert.equal(parsed.clis, 6);
+  assert.equal(parsed.clis, 7);
   assert.equal(parsed.project.agents, "ok");
   assert.equal(parsed.project.claude, "ok");
   assert.deepEqual(parsed.failures, []);
@@ -58,7 +58,7 @@ test("doctor reports a bounded summary for a complete installed payload", async 
 test("source doctor resolves the checked-in setup skill", () => {
   const result = run();
   assert.equal(result.status, 0, result.stderr);
-  assert.match(result.stdout, /Setup payload: \d+ files \(\d+ references, 6 CLIs\)\nFailures: 0/);
+  assert.match(result.stdout, /Setup payload: \d+ files \(\d+ references, 7 CLIs\)\nFailures: 0/);
 });
 
 test("doctor reports only failed payload paths, including missing internal modules and drift", async (t) => {
@@ -69,7 +69,7 @@ test("doctor reports only failed payload paths, including missing internal modul
 
   const result = run([], { tool: path.join(setupRoot, "scripts", "doctor.mjs") });
   assert.equal(result.status, 1);
-  assert.match(result.stdout, /^Setup payload: \d+ files \(\d+ references, 6 CLIs\)\nFailures: 2\n$/);
+  assert.match(result.stdout, /^Setup payload: \d+ files \(\d+ references, 7 CLIs\)\nFailures: 2\n$/);
   assert.match(result.stderr, /scripts\/lib\/digest\.mjs: missing or unreadable/);
   assert.match(result.stderr, /assets\/references\/terminology\.md: SHA-256 differs/);
   assert.doesNotMatch(result.stderr, /state-and-findings/);
