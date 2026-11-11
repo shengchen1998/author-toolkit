@@ -3,15 +3,15 @@
   "files": [
     {
       "path": "SKILL.md",
-      "sha256": "4b2bca2fed7dc49db5fda21ecb902520f7c499771ffb533aa526b58bc9a2ddea"
+      "sha256": "0312a6bb0089a1f728dc1a5daa5f2525c96e9607ece5e60d971842e20bfa37a9"
     },
     {
       "path": "assets/AGENTS.md",
-      "sha256": "c7291dce681a2c99eb1714d19e7eafb1dea97316fe92fbbd735c37c1aa0178f7"
+      "sha256": "e55dcc2c8424c9ae7a58a0f10cc44f67ee90c4282bbdc78cc1547e00efc401de"
     },
     {
       "path": "assets/references/avoid-ai-writing-adapter.md",
-      "sha256": "1d7bc6d39ddf8d249467f8e4cc17627548b01eaf07f75be907d644ddf5f165a0"
+      "sha256": "9c5ae0b1b205fd216ea8eefe4734456843a26ab75c5ffca840017c564e214858"
     },
     {
       "path": "assets/references/avoid-ai-writing-zh-CN.md",
@@ -87,7 +87,7 @@
     },
     {
       "path": "assets/references/terminology.md",
-      "sha256": "870f06c42220cc25d6b94541785086330e7aa17aa384c87f98054b40a2538a0a"
+      "sha256": "fcac53412f3f610577fb50767baac327ad0cf5bf83ed41b29a7538540a77f2b6"
     },
     {
       "path": "assets/references/workflow-reporting.md",
@@ -104,6 +104,10 @@
     {
       "path": "scripts/findings.mjs",
       "sha256": "8e4a5a9d16e6e269d76ca1d7271e00d065265b50b4945eedcd3e013324c44228"
+    },
+    {
+      "path": "scripts/initialize.mjs",
+      "sha256": "eaaf6df2d8f91aa1af9e8ae46fb4e1b000faebc495517511d94366a9f7f1abb4"
     },
     {
       "path": "scripts/lib/approval-paths.mjs",
@@ -143,7 +147,7 @@
     },
     {
       "path": "scripts/lib/index.mjs",
-      "sha256": "9ce6ee3bf954df60d4d245f7b079c52923f75112137f37263b20799ff7fe161c"
+      "sha256": "292b6e583e3d7357e0fe9dce45faa378e15760d011697378e54648b35b0222f2"
     },
     {
       "path": "scripts/lib/manifest.mjs",
@@ -164,6 +168,10 @@
     {
       "path": "scripts/lib/project-files.mjs",
       "sha256": "4c34fccd74bebb73799e10d6e3db3847e0b1d0f8e4788c811251bf5ca236bd23"
+    },
+    {
+      "path": "scripts/lib/project-initialization.mjs",
+      "sha256": "c291da2c420a67d9906b47f9594dcbc3435ca1a06474da2cbac46debcf0ca8cd"
     },
     {
       "path": "scripts/lib/project-inspection.mjs",
@@ -196,6 +204,10 @@
     {
       "path": "scripts/lib/tracker.mjs",
       "sha256": "45492c2ae77147635828bb496404680a6217301c5bbaa9bb481e3ad86b22abec"
+    },
+    {
+      "path": "scripts/lib/write-lock.mjs",
+      "sha256": "7523212095e0d31a12ed022a5bea211aa35f163d3fa3db2504522b165455ad7c"
     },
     {
       "path": "scripts/lib/write-operations.mjs",
@@ -255,7 +267,7 @@
     },
     {
       "path": "scripts/writes.mjs",
-      "sha256": "cb059b01e7a8ad89e8315ad2e870f71986407cfbfeec16d27d0ea18669520fbb"
+      "sha256": "d30e74e43070eacd4a9acf77345c488a341fd38623105e833f9dcfc4a1ac1ff8"
     }
   ]
 }

@@ -1,8 +1,7 @@
 # Author Toolkit
 
 Incremental fiction creation and four fiction revision strategies sharing one
-project evidence model, plus six independent writing skills for Codex, Claude
-Code, and Kimi Code.
+project evidence model, plus six independent writing skills for Codex.
 
 [Chinese quick start](README.zh-CN.md) | [Controlled terminology](references/terminology.md) |
 [Validation status](docs/VALIDATION.md)
@@ -76,8 +75,8 @@ affected passages; an explicit full-scope review is required to reverify
 current-draft revision convergence for the full-manuscript target scope.
 
 Narrative nonfiction remains a direct `narrative-nonfiction` task. Multi-book
-projects and integrations with hosts other than Codex, Claude Code, and Kimi
-Code are outside the supported 3.1 workflows.
+projects and integrations with hosts other than Codex are outside the supported
+3.1 workflows.
 
 English and Chinese are the core workflow languages. Chinese prose audits use
 `skills/prose-mechanics/references/chinese-rules.md`, with Chinese sentence
@@ -99,25 +98,6 @@ language and exact contract values.
 
 ## Installation
 
-### Claude Code plugin
-
-Add the marketplace, then install the plugin:
-
-```bash
-claude plugin marketplace add shengchen1998/author-toolkit
-claude plugin install author-toolkit@author-toolkit
-```
-
-### Kimi Code plugin
-
-Run:
-
-```text
-/plugins install https://github.com/shengchen1998/author-toolkit
-```
-
-Then run `/reload` or start a new session with `/new`.
-
 ### Codex
 
 Use the generic installation below. Codex discovers project skills from
@@ -128,19 +108,19 @@ Use the generic installation below. Codex discovers project skills from
 ### Generic project or user installation
 
 The generic installer requires Node.js >= 22.20. Install into the current
-project for all three supported hosts:
+project for Codex:
 
 ```bash
-npx skills@latest add shengchen1998/author-toolkit -a codex -a claude-code -a kimi-code-cli
+npx skills@latest add shengchen1998/author-toolkit -a codex
 ```
 
 Add `-g` to install at user level instead:
 
 ```bash
-npx skills@latest add shengchen1998/author-toolkit -a codex -a claude-code -a kimi-code-cli -g
+npx skills@latest add shengchen1998/author-toolkit -a codex -g
 ```
 
-The setup skill includes self-contained installation, preflight, manifest-projection, pending-action, validation, status, project-digest, finding-state, manuscript-write, and character-range CLIs under
+The setup skill includes self-contained installation, existing-project initialization, preflight, manifest-projection, pending-action, validation, status, project-digest, finding-state, manuscript-write, and character-range CLIs under
 `setup-author-toolkit/scripts/`. Shared workflows resolve that installed skill
 directory directly; no repository checkout or writing-project `npm install` is
 required.
@@ -152,6 +132,15 @@ including internal CLI modules, against `assets/payload-manifest.json`. Add
 `CLAUDE.md -> AGENTS.md` link; project-state validation and host command visibility
 remain separate checks. Its text and JSON output distinguish installed-payload
 failures from repairable project-entry failures, with an explicit exit reason.
+
+Run `node <setup-skill-root>/scripts/initialize.mjs --project-root <root> --json`
+as setup's sole existing-project initialization implementation. It creates only
+a missing backup index and returns the bounded projection, registered paths,
+current scope, pending action, backup-index status, and validation result.
+Schema-valid state failures return a `recorded_unverified` projection and
+backup-index diagnosis without requiring ad hoc manifest parsing. Unsupported or
+schema-invalid manifests create nothing. It does not replace preflight or the
+later strict execution gate.
 
 Run `node <setup-skill-root>/scripts/preflight.mjs --project-root <root>` to
 combine the payload and entry-file check with project validation and ordinary
@@ -191,25 +180,21 @@ installation path.
 
 ## Set up a project and choose a strategy
 
-Use the command forms that match the installation method:
+Use these Codex commands after generic skill installation:
 
-| Installation | Host | Setup | Creation | Whole-book revision | Current-draft revision | Incremental revision | Request revision |
+| Setup | Creation | Whole-book revision | Current-draft revision | Incremental revision | Request revision |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| Bare skills | Codex | `$setup-author-toolkit` | `$write-fiction` | `$revise-fiction` | `$revise-draft` | `$revise-increment` | `$revise-request` |
-| Plugin | Claude Code | `/author-toolkit:setup-author-toolkit` | `/author-toolkit:write-fiction` | `/author-toolkit:revise-fiction` | `/author-toolkit:revise-draft` | `/author-toolkit:revise-increment` | `/author-toolkit:revise-request` |
-| Plugin | Kimi Code | `/skill:author-toolkit:setup-author-toolkit` | `/skill:author-toolkit:write-fiction` | `/skill:author-toolkit:revise-fiction` | `/skill:author-toolkit:revise-draft` | `/skill:author-toolkit:revise-increment` | `/skill:author-toolkit:revise-request` |
-| Bare skills | Claude Code | `/setup-author-toolkit` | `/write-fiction` | `/revise-fiction` | `/revise-draft` | `/revise-increment` | `/revise-request` |
-| Bare skills | Kimi Code | `/skill:setup-author-toolkit` | `/skill:write-fiction` | `/skill:revise-fiction` | `/skill:revise-draft` | `/skill:revise-increment` | `/skill:revise-request` |
+| `$setup-author-toolkit` | `$write-fiction` | `$revise-fiction` | `$revise-draft` | `$revise-increment` | `$revise-request` |
 
 For `ask-author`, use the same command form with that skill name.
 
-The five strategies are user entries and are not required in the model-facing
-Skill tool list. Setup reports ready only after your confirmation of host
+The five strategies are user entries; model-facing registry metadata does not
+establish their author-facing availability. Setup reports ready only after your confirmation of host
 command visibility: all five exact strategy commands appear in the current
 host's command palette or autocomplete (the `$` autocomplete in Codex). On a host without skill commands,
 confirm all five exact registered names in its skill picker instead. Without
 that confirmation, setup reports host command visibility as unverified.
-Displayed command strings and plugin or skill `enabled` metadata do not
+Displayed command strings and registry metadata do not
 establish it.
 
 A quick run looks like this:
@@ -235,7 +220,7 @@ A quick run looks like this:
    Initial `author-project` read, validation, and status calls report missing
    installed contracts or scripts as an incomplete toolkit installation rather
    than relying on project-local reference copies. Existing projects use the
-   bounded initialize, validation, and status reference instead of loading the
+   installed initialization CLI and bounded inspection reference instead of loading the
    backup, restore, and creation-commit procedures. Setup summarizes the
    installation payload, project entry files, manuscript scope, and execution
    evidence separately.
@@ -596,15 +581,7 @@ handwritten reports and resume sessions as validation fixtures.
 
 ## Invoke an independent skill directly
 
-Use the same installation-specific command form and replace the skill name:
-
-| Installation | Command pattern |
-| --- | --- |
-| Codex | `$<skill-name>` |
-| Claude Code plugin | `/author-toolkit:<skill-name>` |
-| Kimi Code plugin | `/skill:author-toolkit:<skill-name>` |
-| Claude Code bare skills | `/<skill-name>` |
-| Kimi Code bare skills | `/skill:<skill-name>` |
+Use `$` followed by the exact unqualified skill name:
 
 For example, run `prose-mechanics`, then ask for one audit such as "Run a
 frequency audit on chapter 4." Run prose audits one at a time and review the

@@ -12,7 +12,7 @@ Route the author to an explicit next command. This is a router, not an orchestra
 
 1. Establish whether the author wants shared fiction creation from scratch, continuation of an existing creation project, revision of an existing manuscript, revision after incremental creation, a new request-driven revision from a full-manuscript base scope that has reached current-draft revision convergence, standalone fiction work, or narrative nonfiction. Select the project root when one exists. For revision, establish whether the goal is whole-book work, scoped revision of an unfinished draft, current-draft revision convergence after scope growth, or revision of existing content with request review by default.
 2. Look for `<project-root>/.author-toolkit/project.json`. If it is missing, recommend setup first. Display the `setup-author-toolkit` host command and explain that setup registers existing paths without moving files. After setup, show the creation and revision commands that fit the author's goals. If the manifest has any schema version other than `3.1.0`, report that it is unsupported and stop shared work. Do not route a missing or unsupported manifest directly into shared creation or revision work.
-3. For a v3.1 manifest, resolve `author-project` in the current skill listing and invoke its exact registered name in separate calls with `read`, `validate`, and `status`. Bare and `author-toolkit:` qualified names are valid when listed. These calls use the shared contracts and validator installed with setup. If they report an incomplete toolkit installation, stop and report the missing installed files; do not deploy contracts into the project. Display:
+3. For a v3.1 manifest, read `../author-project/SKILL.md` and `../author-project/references/read-operations.md`, then run its `read`, `validate`, and `status` procedures separately. These use the shared contracts and validator installed with setup. If they report an incomplete toolkit installation, stop and report the missing installed files; do not deploy contracts into the project. Display:
    - current scope ID and confirmation status;
    - pending action, status, scope ID, reason, and artifacts, or its absence;
    - every shared stale or blocked evidence item with its reason;
@@ -31,24 +31,24 @@ Route the author to an explicit next command. This is a router, not an orchestra
 | Sentence-level diagnostics or Chinese AI-associated writing patterns | `prose-mechanics` |
 | English AI writing patterns through the upstream catalog | `avoid-ai-writing` |
 
-Show only the routes matching the author's situation and wait for the author to choose. Do not call `setup-author-toolkit`, `write-fiction`, `revise-fiction`, `revise-draft`, `revise-increment`, `revise-request`, or another routed entry through the Skill tool from this router. `author-project` is permitted only for reading and validating existing v3.1 state.
+Show only the routes matching the author's situation and wait for the author to choose. Do not start `setup-author-toolkit`, `write-fiction`, `revise-fiction`, `revise-draft`, `revise-increment`, `revise-request`, or another routed entry internally. `author-project` is permitted only for reading and validating existing v3.1 state.
 
 ## Author-facing commands
 
-Use the host's actual documented syntax, not a syntax inferred from the model's name or identity. Codex uses `$name` with the exact unqualified registered skill name. The table shows qualified plugin commands for the other hosts. Bare installations use `/name` in Claude Code and `/skill:name` in Kimi Code. On another host, show its skill picker and exact registered name instead of inventing a command.
+Codex uses `$name` with the exact unqualified registered skill name.
 
-| Need | Codex | Claude Code | Kimi Code |
-|---|---|---|---|
-| Set up or register a manuscript project | `$setup-author-toolkit` | `/author-toolkit:setup-author-toolkit` | `/skill:author-toolkit:setup-author-toolkit` |
-| Create fiction from scratch or continue shared creation | `$write-fiction` | `/author-toolkit:write-fiction` | `/skill:author-toolkit:write-fiction` |
-| Revise a whole-book baseline, structure, or final review | `$revise-fiction` | `/author-toolkit:revise-fiction` | `/skill:author-toolkit:revise-fiction` |
-| Revise an unfinished draft within a confirmed scope | `$revise-draft` | `/author-toolkit:revise-draft` | `/skill:author-toolkit:revise-draft` |
-| Revise added or affected chapters after the previous scope has reached current-draft revision convergence and the manuscript grows | `$revise-increment` | `/author-toolkit:revise-increment` | `/skill:author-toolkit:revise-increment` |
-| Revise existing content after the full-manuscript base scope has reached current-draft revision convergence | `$revise-request` | `/author-toolkit:revise-request` | `/skill:author-toolkit:revise-request` |
-| Create or restore a session handoff | `$author-handoff` | `/author-toolkit:author-handoff` | `/skill:author-toolkit:author-handoff` |
-| Use standalone fiction writing or editing | `$fiction-workshop` | `/author-toolkit:fiction-workshop` | `/skill:author-toolkit:fiction-workshop` |
-| Work on narrative nonfiction | `$narrative-nonfiction` | `/author-toolkit:narrative-nonfiction` | `/skill:author-toolkit:narrative-nonfiction` |
-| Run sentence-level audits or Chinese AI-Isms detection | `$prose-mechanics` | `/author-toolkit:prose-mechanics` | `/skill:author-toolkit:prose-mechanics` |
-| Run the upstream English AI-writing catalog | `$avoid-ai-writing` | `/author-toolkit:avoid-ai-writing` | `/skill:author-toolkit:avoid-ai-writing` |
+| Need | Codex command |
+|---|---|
+| Set up or register a manuscript project | `$setup-author-toolkit` |
+| Create fiction from scratch or continue shared creation | `$write-fiction` |
+| Revise a whole-book baseline, structure, or final review | `$revise-fiction` |
+| Revise an unfinished draft within a confirmed scope | `$revise-draft` |
+| Revise added or affected chapters after the previous scope has reached current-draft revision convergence and the manuscript grows | `$revise-increment` |
+| Revise existing content after the full-manuscript base scope has reached current-draft revision convergence | `$revise-request` |
+| Create or restore a session handoff | `$author-handoff` |
+| Use standalone fiction writing or editing | `$fiction-workshop` |
+| Work on narrative nonfiction | `$narrative-nonfiction` |
+| Run sentence-level audits or Chinese AI-Isms detection | `$prose-mechanics` |
+| Run the upstream English AI-writing catalog | `$avoid-ai-writing` |
 
 Routing is complete when the author can see the current or missing shared state and the exact next command. The author, not this skill, starts the selected route.

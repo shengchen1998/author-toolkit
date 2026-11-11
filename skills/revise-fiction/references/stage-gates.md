@@ -18,7 +18,7 @@ At a stable operation gate, the author may switch to `write-fiction`, `revise-dr
 
 **Inputs:** Intake inventory, manuscript, and any existing Story Bible or current-draft baseline.
 
-**Work:** Invoke `fiction-workshop` in Story Bible Building mode. Establish or correct the full-book baseline against the actual manuscript and the author's decisions. Preserve approved content and surface contradictions as questions. Obtain author confirmation before writing changed creative content.
+**Work:** Run `fiction-workshop` in Story Bible Building mode. Establish or correct the full-book baseline against the actual manuscript and the author's decisions. Preserve approved content and surface contradictions as questions. Obtain author confirmation before writing changed creative content.
 
 **Gate:** The baseline identifies premise, target reader, major plot turns and ending, principal characters and arcs, world rules, timeline constraints, and open questions. The author confirms the baseline. An undecided foundation field keeps dependent full-book operations from starting until it is resolved. A draft-baseline with unknown foundation fields does not satisfy this gate.
 
@@ -26,7 +26,7 @@ At a stable operation gate, the author may switch to `write-fiction`, `revise-dr
 
 **Inputs:** Current manuscript, confirmed Story Bible baseline, and intake scope.
 
-**Work:** Invoke `story-structure` in Audit mode over the full selected manuscript scope. Keep its landmark and signpost rules upstream. For an incomplete manuscript, follow its requirement to ask whether to audit what exists with rougher percentages or wait; never treat the current last chapter as the book ending by default. Convert flagged beats to finding v2. Do not rewrite beats or chapters here.
+**Work:** Run `story-structure` in Audit mode over the full selected manuscript scope. Keep its landmark and signpost rules upstream. For an incomplete manuscript, follow its requirement to ask whether to audit what exists with rougher percentages or wait; never treat the current last chapter as the book ending by default. Convert flagged beats to finding v2. Do not rewrite beats or chapters here.
 
 **Gate:** Every in-scope structural section has full-book landmark coverage, all findings have tracker decisions, and the author has identified which accepted findings require revision. Structural stability means no `open` findings and no deferred or dismissed item still implies a planned major cut, reorder, or arc change. Local `diagnostics` evidence alone does not satisfy this gate.
 
@@ -34,7 +34,7 @@ At a stable operation gate, the author may switch to `write-fiction`, `revise-dr
 
 **Inputs:** Current manuscript, Story Bible, structure findings, and any saved archetype profiles.
 
-**Work:** Use `character-archetypes` Conformance for established profiles and Ensemble when the main cast is ready. Use Analyzer only for a character who lacks a profile and needs one. Separately invoke `fiction-workshop` as Character Consultant for motivation, voice, and arc consistency, then as Continuity Tracker for timeline, relationships, knowledge states, and world facts. Record the actual subchecks and coverage in every report.
+**Work:** Use `character-archetypes` Conformance for established profiles and Ensemble when the main cast is ready. Use Analyzer only for a character who lacks a profile and needs one. Separately run `fiction-workshop` as Character Consultant for motivation, voice, and arc consistency, then as Continuity Tracker for timeline, relationships, knowledge states, and world facts. Record the actual subchecks and coverage in every report.
 
 **Gate:** The main cast and requested supporting cast have continuity coverage across the selected manuscript, required profile and full-arc checks are covered, no finding remains `open`, approved Story Bible changes are written, and unresolved character-fact instability is explicit for later gates. Current-arc-only evidence remains partial for this gate.
 
@@ -50,7 +50,7 @@ At a stable operation gate, the author may switch to `write-fiction`, `revise-dr
 
 **Inputs:** Approved revision plan, relevant baselines, manuscript, and tracker.
 
-**Work:** For one approved batch at a time, invoke `fiction-workshop` first for diagnosis. Read `<setup-skill-root>/assets/references/context-fit.md` and complete its check before presenting an edit proposal. Propose edits without writing. Show the exact files and changes, obtain and record approval, back up every file through `author-project`, and then implement that batch. Verify output hashes and invoke `author-project` with `record-execution` after the exact batch completes. Recheck affected continuity and update current-scope file hashes after the writes. Update plan batch status and finding decisions.
+**Work:** For one approved batch at a time, run `fiction-workshop` first for diagnosis. Read `<setup-skill-root>/assets/references/context-fit.md` and complete its check before presenting an edit proposal. Propose edits without writing. Show the exact files and changes, obtain and record approval, back up every file through `author-project`, and then implement that batch. Verify output hashes and run `author-project` with `record-execution` after the exact batch completes. Recheck affected continuity and update current-scope file hashes after the writes. Update plan batch status and finding decisions.
 
 **Gate:** Every planned batch is completed and accepted, or explicitly deferred with its downstream effect recorded. Each modified file has a successful backup record linked to its approval and a completed execution receipt. No requested batch remains unapproved, unverified, or partially edited. Approved structural or character-fact changes trigger stale propagation.
 
@@ -58,7 +58,7 @@ At a stable operation gate, the author may switch to `write-fiction`, `revise-dr
 
 **Inputs:** Structurally stable chapter revisions, current Story Bible, tracker, and an audit scope.
 
-**Work:** Before starting, verify the structure gate and character-fact stability for this exact scope. If unstable, stop and display the required earlier operation. Before presenting an edit proposal for concrete fixes, read `<setup-skill-root>/assets/references/context-fit.md` and complete its check. The author may instead approve a `prose-override` in the shared tracker; bind it to the current scope and structural evidence. Invoke `prose-mechanics` for author-selected audits among audits 1-18, one at a time and in upstream order. Produce report v2, wait for author decisions, and back up before applying approved fixes.
+**Work:** Before starting, verify the structure gate and character-fact stability for this exact scope. If unstable, stop and display the required earlier operation. Before presenting an edit proposal for concrete fixes, read `<setup-skill-root>/assets/references/context-fit.md` and complete its check. The author may instead approve a `prose-override` in the shared tracker; bind it to the current scope and structural evidence. Run `prose-mechanics` for author-selected audits among audits 1-18, one at a time and in upstream order. Produce report v2, wait for author decisions, and back up before applying approved fixes.
 
 **Gate:** Every selected audit has a current report for every in-scope file, all findings have tracker decisions, and approved fixes have approvals, backups, and execution receipts. The structure remains stable or a current override covers the exact scope. When the author selects only some audits, name the uncovered audits and record limited operation coverage.
 
@@ -74,6 +74,6 @@ At a stable operation gate, the author may switch to `write-fiction`, `revise-dr
 
 **Inputs:** Current manuscript, Story Bible, approved revision plan, target reader, and review checklists.
 
-**Work:** Invoke `author-review` with `review_mode=final`. Keep intent and consistency, writing standards, and fresh reader independent through its chunk -> volume/phase -> book protocol. Intent and standards chunks may run in parallel; fresh remains sequential with one logical reviewer and only its own reader-state. Without subagents, use resumable separate-session handoffs. This operation produces findings only.
+**Work:** Run `author-review` with `review_mode=final`. Keep intent and consistency, writing standards, and fresh reader independent through its chunk -> volume/phase -> book protocol. Intent and standards chunks may run in parallel; fresh remains sequential with one logical reviewer and only its own reader-state. Without subagents, use resumable separate-session handoffs. This operation produces findings only.
 
 **Gate:** For each perspective, every required chunk report and applicable synthesis report validates for the same current `scope_id`, all required final-review checks are covered, and findings are linked in the tracker. Any missing unit or synthesis leaves coverage partial or skipped. Record dissent without merging it away. Later manuscript or baseline changes make the affected final review stale. Return findings for author decisions; do not edit the manuscript. A `current-scope-review` cannot satisfy this gate.

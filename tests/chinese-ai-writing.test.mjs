@@ -55,7 +55,7 @@ test("mixed text keeps language paths separate when upstream is unavailable", ()
     adapter,
     /Mixed English and Chinese \| Run upstream on English spans and the local catalog on Chinese spans/,
   );
-  assert.match(adapter, /Pure Chinese detection and rewriting do not resolve or invoke upstream/);
+  assert.match(adapter, /Pure Chinese detection and rewriting do not read upstream/);
   assert.match(adapter, /English-only requested operation is blocked with `skipped` coverage/);
   assert.match(adapter, /still complete the local Chinese spans/);
   assert.match(adapter, /whole requested operation as `partial` and degraded/);

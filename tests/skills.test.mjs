@@ -79,40 +79,62 @@ test("setup requires author-confirmed host command visibility", async () => {
   assert.match(setupStep, /all five exact registered names in its skill picker on a host without skill commands/);
   assert.match(setupStep, /Wait for that confirmation and the author's strategy choice/);
   assert.match(readyRule, /author has confirmed host command visibility for all five strategies/);
-  assert.match(readyRule, /model-facing Skill tool list, displayed command strings, or plugin or skill `enabled` metadata/);
+  assert.match(readyRule, /model-facing registry metadata or displayed command strings/);
   assert.match(readyRule, /report host command visibility as unverified and do not report setup as ready/);
-  assert.match(readyRule, /Do not invoke .+ or another writing skill from setup/);
+  assert.match(readyRule, /Do not start .+ or another writing skill from setup/);
   for (const skill of ["write-fiction", "revise-fiction", "revise-draft", "revise-increment", "revise-request"]) {
     assert.match(setupStep, new RegExp(`\`${skill}\``));
     assert.match(readyRule, new RegExp(`\`${skill}\``));
   }
-  assert.match(instructions, /each skill that the agent will invoke through the Skill tool/);
-  assert.match(instructions, /Do not use that listing to check the explicit author entry points/);
+  assert.match(instructions, /Read each semantic skill's installed `SKILL\.md` and applicable references, then execute its procedure directly/);
+  assert.match(instructions, /Deterministic shared-state transactions have one installed CLI implementation and no model-executed counterpart/);
+  assert.match(instructions, /Do not use model-facing registry metadata to check the explicit author entry points/);
   assert.match(instructions, /setup checks the five strategies' host command visibility with the author/);
-  assert.match(instructions, /display its exact host command and wait for the author; do not invoke it through the Skill tool/);
+  assert.match(instructions, /display its exact host command and wait for the author; do not start it as an internal callee/);
   assert.match(instructions, /never start a strategy automatically/);
   assert.match(terminology, /`host command visibility` \| 宿主命令可见性/);
   assert.match(readme, /confirmation of host\s+command visibility/);
-  assert.match(readme, /model-facing\s+Skill tool list/);
+  assert.match(readme, /model-facing registry metadata/);
   assert.match(zhReadme, /宿主命令可见性/);
-  assert.match(zhReadme, /模型侧 Skill 工具列表/);
+  assert.match(zhReadme, /模型侧注册元数据/);
 });
 
-test("setup initialization supports hosts without a Skill tool", async () => {
-  const [setup, project] = await Promise.all([
+test("deterministic initialization and semantic skills have one implementation each", async () => {
+  const [setup, project, operations, instructions, development] = await Promise.all([
     readFile(path.join(root, "skills/setup-author-toolkit/SKILL.md"), "utf8"),
     readFile(path.join(root, "skills/author-project/SKILL.md"), "utf8"),
+    readFile(path.join(root, "skills/author-project/references/operations.md"), "utf8"),
+    readFile(path.join(root, "skills/setup-author-toolkit/assets/AGENTS.md"), "utf8"),
+    readFile(path.join(root, "AGENTS.md"), "utf8"),
   ]);
   const setupStep = setup.match(/^4\. .+$/m)?.[0];
   assert.ok(setupStep);
 
-  assert.match(setupStep, /Resolve the registered `author-project` skill in the current host/);
-  assert.match(setupStep, /Execute its `initialize` procedure/);
-  assert.match(setupStep, /Skill tool when available; otherwise read the installed skill's `SKILL\.md` and applicable initialization references and execute the same procedure directly/);
-  assert.match(setupStep, /Stop for a missing skill, installed file, or initialization failure, not solely because the host has no Skill tool/);
-  assert.doesNotMatch(setupStep, /If neither name is registered/);
-  assert.match(project, /A caller may invoke this skill through the host's Skill tool or read this installed `SKILL\.md` and its applicable references and execute the requested procedure directly/);
-  assert.match(project, /a missing Skill tool is not a missing skill or failed operation/);
+  assert.match(setupStep, /scripts\/initialize\.mjs --project-root <project-root> --json/);
+  assert.match(setupStep, /only existing-project initialization implementation/);
+  assert.match(setupStep, /do not read `author-project`'s initialization references/);
+  assert.doesNotMatch(project, /\| `initialize` \|/);
+  assert.match(project, /this skill has no `initialize` operation/);
+  assert.match(operations, /That CLI is the only initialization implementation/);
+  assert.match(development, /### Implementation and host independence/);
+  assert.match(development, /one authoritative implementation/);
+  assert.match(development, /remove the equivalent model-executed procedure and its skill-operation entry/);
+  assert.match(development, /no host-specific tool invocation is part of the runtime contract/);
+  assert.match(instructions, /Read each semantic skill's installed `SKILL\.md` and applicable references, then execute its procedure directly/);
+  assert.match(instructions, /no model-executed counterpart/);
+  for (const skill of ["write-fiction", "revise-fiction", "revise-draft", "revise-increment", "revise-request"]) {
+    const text = await readFile(path.join(root, "skills", skill, "SKILL.md"), "utf8");
+    assert.match(text, /Read each needed callee's installed `SKILL\.md` and applicable references/, skill);
+    assert.match(text, /Execute its procedure directly/, skill);
+  }
+});
+
+test("skill procedure bodies contain no host-specific tool invocation", async () => {
+  for (const skill of expectedSkills.filter((name) => name !== "avoid-ai-writing")) {
+    const text = await readFile(path.join(root, "skills", skill, "SKILL.md"), "utf8");
+    assert.doesNotMatch(text, /Skill tool/i, skill);
+    assert.doesNotMatch(text, /current skill listing|listed registered name|listed registered names/i, skill);
+  }
 });
 
 test("author-facing commands support Codex dollar-prefixed skill invocation", async () => {
@@ -129,23 +151,19 @@ test("author-facing commands support Codex dollar-prefixed skill invocation", as
   for (const text of [setup, ask, handoff, readme, zhReadme]) {
     for (const skill of strategies) assert.match(text, new RegExp(`\\$${skill}\\b`), skill);
   }
-  assert.match(setup, /Codex uses `\$write-fiction`/);
+  assert.match(setup, /Use `\$write-fiction`/);
   assert.match(setup, /the `\$` autocomplete/);
-  assert.match(setup, /Do not add a Claude Code plugin qualifier or the Kimi Code `\/skill:` prefix in Codex/);
-  assert.doesNotMatch(setup, /On another host, show its skill picker/);
-  assert.match(ask, /\| Need \| Codex \| Claude Code \| Kimi Code \|/);
+  assert.match(setup, /Do not add a qualifier to these unqualified registered skill names/);
+  assert.match(ask, /\| Need \| Codex command \|/);
   assert.match(instructions, /`\$write-fiction`/);
   assert.match(instructions, /`\$` autocomplete/);
-  assert.match(instructions, /Do not display `\/skill:` or a Claude Code plugin qualifier as a Codex command/);
+  assert.match(instructions, /check visibility in the `\$` autocomplete/);
   assert.match(handoff, /`\$author-handoff`/);
-  assert.match(reviewHandoff, /Codex form: `\$author-review`/);
-  for (const text of [setup, ask, handoff]) {
-    assert.match(text, /not (?:select|a syntax inferred from|inferring).*model's name or identity/);
-  }
+  assert.match(reviewHandoff, /Use `\$author-review`/);
   for (const file of ["write-fiction", "revise-fiction", "revise-draft", "revise-increment", "revise-request"]) {
     const text = await readFile(path.join(root, "skills", file, "SKILL.md"), "utf8");
     if (["write-fiction", "revise-fiction"].includes(file)) {
-      assert.match(text, /Use `\$setup-author-toolkit` in Codex/);
+      assert.match(text, /display `\$setup-author-toolkit` and stop/);
     } else {
       assert.match(text, /Use the same setup command forms as `revise-fiction`/);
     }
@@ -234,7 +252,7 @@ test("setup and routine navigation keep operational history listings bounded", a
 
   assert.match(setup, /^1\. Inspect the project root with shallow listings and targeted existence or type checks\./m);
   assert.match(setup, /For an existing v3\.1 manifest, read `PROJECT_STATE\.md` first when present/);
-  assert.match(setup, /use `read\.mjs --project-root <project-root>` for the bounded validated projection/);
+  assert.match(setup, /use `initialize\.mjs --project-root <project-root> --json` for the bounded projection/);
   assert.match(setup, /do not print `payload-manifest\.json`, the complete manifest, or the full backup index/);
   assert.match(setup, /Without a manifest, limit discovery to the candidate component directories and manuscript paths needed for registration/);
   assert.match(setup, /use presence checks or counts that do not emit session or backup filenames/);
@@ -263,10 +281,10 @@ test("existing-project setup uses bounded inspection references and a categorize
     readFile(path.join(root, "README.zh-CN.md"), "utf8"),
   ]);
 
-  assert.match(project, /For `initialize` on an existing v3\.1 manifest, `read`, `validate`, `status`, `status --digest`, and `check-index`, read \[`references\/read-operations\.md`\]/);
+  assert.match(project, /For `read`, `validate`, `status`, `status --digest`, and `check-index`, read \[`references\/read-operations\.md`\]/);
   assert.match(project, /For a new manifest and every record or write operation, read \[`references\/operations\.md`\]/);
   assert.doesNotMatch(project, /For every operation, read \[`references\/operations\.md`\]/);
-  assert.match(setup, /once initialization's manifest-schema check passes, perform step 5's entry-file replacement even if later project-state validation fails/);
+  assert.match(setup, /Once initialization's manifest-schema check passes, perform step 5's entry-file replacement even if later project-state validation fails/);
   assert.match(setup, /report that validation failure as a setup blocker after the repair/);
   assert.match(setup, /unsupported or schema-invalid manifest still stops before entry-file replacement/);
   assert.match(setup, /backup-index inconsistency after a successful manifest-schema check, complete step 5's entry-file repair before reporting the project-state blocker/);
@@ -279,16 +297,16 @@ test("existing-project setup uses bounded inspection references and a categorize
   }
   assert.match(setup, /Distinguish mechanical execution evidence from operation-specific evidence/);
 
-  for (const command of ["doctor\\.mjs", "read\\.mjs --project-root", "preflight\\.mjs --project-root", "validate\\.mjs --manifest", "status\\.mjs --manifest", "writes\\.mjs check-index --manifest", "--explain", "--scope-id", "--require-execution", "--digest", "--diagnose", "project-digest\\.mjs --project-root"]) {
+  for (const command of ["initialize\\.mjs --project-root", "doctor\\.mjs", "read\\.mjs --project-root", "preflight\\.mjs --project-root", "validate\\.mjs --manifest", "status\\.mjs --manifest", "writes\\.mjs check-index --manifest", "--explain", "--scope-id", "--require-execution", "--digest", "--diagnose", "project-digest\\.mjs --project-root"]) {
     assert.match(readOperations, new RegExp(command));
   }
   assert.match(readOperations, /operation-specific evidence, evidence reuse, and current-draft revision convergence/);
   assert.match(readOperations, /shares the validation and status implementation with the individual CLIs/);
   assert.match(readOperations, /A project-entry mismatch .* does not stop validation/);
-  assert.match(readOperations, /entry-file repair is independent of project-state validation after the manifest-schema check accepts v3\.1/);
-  assert.match(readOperations, /Unsupported or schema-invalid manifests stop before entry repair/);
+  assert.match(readOperations, /entry-file repair follows an accepted v3\.1 schema even when later project-state validation fails/);
+  assert.match(readOperations, /Unsupported or schema-invalid manifests create nothing/);
   assert.match(readOperations, /ordinary preflight leaves unverified approvals nonblocking/);
-  assert.match(readOperations, /create `<paths\.backups>\/index\.json` .* when absent/);
+  assert.match(readOperations, /creates only a missing `<paths\.backups>\/index\.json`/);
   assert.doesNotMatch(readOperations, /## Backup and creation commit|## Record execution|## Restore/);
   assert.match(operations, /\[Digest\]\(read-operations\.md#digest\)/);
   assert.match(operations, /reconcile-executions/);

@@ -1,7 +1,7 @@
 # Author Toolkit 中文快速上手
 
 Author Toolkit 3.1.0 提供增量小说创作, 四个小说修订策略和六个独立写作技能. 创作与修订共享
-同一项目证据模型, 支持 Codex, Claude Code 与 Kimi Code. 完整说明见 [英文 README](README.md),
+同一项目证据模型, 支持 Codex. 完整说明见 [英文 README](README.md),
 共享用语见 [受控术语表](references/terminology.md).
 
 ## 包含的 16 个技能
@@ -28,21 +28,6 @@ Author Toolkit 3.1.0 提供增量小说创作, 四个小说修订策略和六个
 
 ## 安装
 
-### Claude Code 插件
-
-```bash
-claude plugin marketplace add shengchen1998/author-toolkit
-claude plugin install author-toolkit@author-toolkit
-```
-
-### Kimi Code 插件
-
-```text
-/plugins install https://github.com/shengchen1998/author-toolkit
-```
-
-然后执行 `/reload`, 或用 `/new` 开始新会话.
-
 ### Codex
 
 使用下面的通用安装方式. Codex 从项目的 `.agents/skills/` 发现项目级技能, 从
@@ -54,16 +39,16 @@ claude plugin install author-toolkit@author-toolkit
 通用安装器需要 Node.js >= 22.20. 默认安装到当前项目:
 
 ```bash
-npx skills@latest add shengchen1998/author-toolkit -a codex -a claude-code -a kimi-code-cli
+npx skills@latest add shengchen1998/author-toolkit -a codex
 ```
 
 在命令末尾添加 `-g` 可安装到用户级目录:
 
 ```bash
-npx skills@latest add shengchen1998/author-toolkit -a codex -a claude-code -a kimi-code-cli -g
+npx skills@latest add shengchen1998/author-toolkit -a codex -g
 ```
 
-setup 技能在 `setup-author-toolkit/scripts/` 下提供自包含的安装检查, 预检, manifest 投影, 待处理操作写入, 校验, 状态, 项目导航, 发现项状态, 正文写入和行内字符区间 CLI, 包括运行依赖.
+setup 技能在 `setup-author-toolkit/scripts/` 下提供自包含的安装检查, 现有项目初始化, 预检, manifest 投影, 待处理操作写入, 校验, 状态, 项目导航, 发现项状态, 正文写入和行内字符区间 CLI, 包括运行依赖.
 共享工作流直接解析该技能的安装目录, 无需仓库检出, 也无需在写作项目中运行 `npm install`.
 
 运行 `node <setup-skill-root>/scripts/doctor.mjs` 可获得有界安装摘要和失败路径.
@@ -71,6 +56,11 @@ setup 技能在 `setup-author-toolkit/scripts/` 下提供自包含的安装检�
 添加 `--project-root <root>` 可同时核对写作项目的 `AGENTS.md` 和相对符号链接
 `CLAUDE.md -> AGENTS.md`; 项目状态校验与宿主命令可见性仍是独立检查.
 文本和 JSON 输出分别列出安装载荷失败与可修复的项目入口失败, 并明确显示退出原因.
+
+运行 `node <setup-skill-root>/scripts/initialize.mjs --project-root <root> --json` 执行现有项目唯一的初始化实现.
+它仅在缺失时创建备份索引, 并返回有界投影、注册路径、当前范围、待处理操作、备份索引状态和校验结果.
+schema 有效但后续状态校验失败时返回 `recorded_unverified` 投影和备份索引诊断, 无需临时解析 manifest.
+不支持或 schema 无效的 manifest 不会触发创建. 它不替代 preflight 或后续严格执行门禁.
 
 运行 `node <setup-skill-root>/scripts/preflight.mjs --project-root <root>` 可一次完成载荷和入口文件检查,
 项目校验及普通状态汇总; 它复用相同的库实现并输出有界摘要. 默认选择当前范围. 仅在执行门禁场景添加
@@ -98,22 +88,18 @@ npx skills update
 
 ## 先 setup, 再选择创作或修订入口
 
-根据安装方式选择命令:
+通用技能安装后使用以下 Codex 命令:
 
-| 安装方式 | 宿主 | Setup | 创作 | 全书修订 | 当前草稿修订 | 增量修订 | 请求修订 |
+| Setup | 创作 | 全书修订 | 当前草稿修订 | 增量修订 | 请求修订 |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| 裸技能 | Codex | `$setup-author-toolkit` | `$write-fiction` | `$revise-fiction` | `$revise-draft` | `$revise-increment` | `$revise-request` |
-| 插件 | Claude Code | `/author-toolkit:setup-author-toolkit` | `/author-toolkit:write-fiction` | `/author-toolkit:revise-fiction` | `/author-toolkit:revise-draft` | `/author-toolkit:revise-increment` | `/author-toolkit:revise-request` |
-| 插件 | Kimi Code | `/skill:author-toolkit:setup-author-toolkit` | `/skill:author-toolkit:write-fiction` | `/skill:author-toolkit:revise-fiction` | `/skill:author-toolkit:revise-draft` | `/skill:author-toolkit:revise-increment` | `/skill:author-toolkit:revise-request` |
-| 裸技能 | Claude Code | `/setup-author-toolkit` | `/write-fiction` | `/revise-fiction` | `/revise-draft` | `/revise-increment` | `/revise-request` |
-| 裸技能 | Kimi Code | `/skill:setup-author-toolkit` | `/skill:write-fiction` | `/skill:revise-fiction` | `/skill:revise-draft` | `/skill:revise-increment` | `/skill:revise-request` |
+| `$setup-author-toolkit` | `$write-fiction` | `$revise-fiction` | `$revise-draft` | `$revise-increment` | `$revise-request` |
 
 `ask-author` 使用相同的命令形式替换技能名.
 
-五个策略都是用户入口, 不要求出现在模型侧 Skill 工具列表中. 只有你确认宿主命令可见性后,
+五个策略都是用户入口, 模型侧注册元数据不能确立作者侧可用性. 只有你确认宿主命令可见性后,
 setup 才报告 ready: 在当前宿主的命令面板或自动补全中, 五个策略的准确命令都必须可见;
 Codex 使用 `$` 自动补全. 没有技能命令的宿主, 则在技能选择器中确认五个准确注册名. 未确认时, setup 将宿主命令可见性
-报告为未验证. 仅展示命令字符串或读取插件/技能的 `enabled` 元数据, 都不能确立宿主命令可见性.
+报告为未验证. 仅展示命令字符串或读取注册元数据, 都不能确立宿主命令可见性.
 
 快速流程:
 
@@ -127,7 +113,7 @@ Codex 使用 `$` 自动补全. 没有技能命令的宿主, 则在技能选择�
    这两个文件中的自定义内容不会保留.
    不指定工作流或操作参数. 工具包更新后, 已有 v3.1 项目直接使用更新后的安装契约, 无需再次部署.
    初始 `author-project` 读取, 校验和状态调用会将缺失的安装契约或脚本报告为工具包安装不完整,
-   不依赖项目内的共享引用副本. 已有项目使用有界的初始化, 校验和状态参考, 不加载备份,
+   不依赖项目内的共享引用副本. 已有项目使用安装的初始化 CLI 和有界检查参考, 不加载备份,
    恢复和创作提交规则. setup 分别汇总安装载荷、项目入口文件、稿件范围、执行证据.
 3. setup 验证共享 manifest 后, 根据目标选择 `write-fiction`, `revise-fiction`,
    `revise-draft`, `revise-increment` 或 `revise-request`. 增量修订用于复用未变章节的可复用证据,
@@ -375,15 +361,7 @@ tracker, 故事圣经, 报告, session notes, 备份, handoff 和适用的创作
 | `prose-mechanics` | "对第 7 章运行 echoes 审计." 共 19 项独立审计, 中文 AI-Isms 也走这里. |
 | `avoid-ai-writing` | "仅检测这一章英文文本的 AI 写作模式, 不改写." 上游独立目录保留英文规则. |
 
-独立技能的命令模式:
-
-| 安装方式 | 命令模式 |
-| --- | --- |
-| Codex | `$<skill-name>` |
-| Claude Code 插件 | `/author-toolkit:<skill-name>` |
-| Kimi Code 插件 | `/skill:author-toolkit:<skill-name>` |
-| Claude Code 裸技能 | `/<skill-name>` |
-| Kimi Code 裸技能 | `/skill:<skill-name>` |
+独立技能使用 `$` 加准确且不带命名空间的技能名调用.
 
 中文 AI 写作检测或改写请调用 `prose-mechanics` 的 AI-Isms 审计. 它使用本地中文目录;
 独立上游 `avoid-ai-writing` 保持英文专用. 共享 `ai-cleanup` 会按实际中英文片段选择对应程序.
@@ -403,12 +381,11 @@ AI 关联发现只描述文本模式, 不能证明文本由 AI 生成.
 
 ## 验证状态
 
-3.1.0 工作树的仓库检查已通过: 176 项协议测试和 13 项默认校验, 详见
+3.1.0 工作树的仓库检查已通过: 214 项协议测试和 13 项默认校验, 详见
 [docs/VALIDATION.md](docs/VALIDATION.md). 新增的宿主命令可见性以及有界盘点与导航检查仅为静态契约验证,
 不代表新的宿主 setup 运行, 实际宿主命令可见性观察或上下文降噪实测. 通用本地源安装已发现全部 16 个技能, setup 共享载荷,
-自包含安装检查与校验 CLI, 项目内 schema 和独立技能本地契约均已验证. Kimi Code 已完成有限范围的创作提交和双向切换验证;
-完整宿主流程, `revise-increment` 与 `revise-request` 端到端运行和百万字稿件的创作质量仍未验证.
-历史结果单独保留, 不能作为当前版本已通过宿主或质量验证的证据.
+自包含安装检查与校验 CLI, 项目内 schema 和独立技能本地契约均已验证. 完整宿主流程,
+`revise-increment` 与 `revise-request` 端到端运行和百万字稿件的创作质量仍未验证.
 
 ## 开发与产物校验
 

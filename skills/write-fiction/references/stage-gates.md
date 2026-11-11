@@ -24,7 +24,7 @@ Construct the context package from relevant Story Bible entries, chapter records
 
 **Inputs:** Approved plan, context package, and empty staging directory for the batch.
 
-**Work:** Invoke `fiction-workshop` for AI or mixed drafting. Write new chapters and proposed continuity patches only beneath `staging/<batch-id>/`. For author-supplied text, stage the exact proposed version. Keep rejected and superseded drafts outside the manuscript inventory. Do not run full prose, AI cleanup, or whole-book diagnosis automatically.
+**Work:** Run `fiction-workshop` for AI or mixed drafting. Write new chapters and proposed continuity patches only beneath `staging/<batch-id>/`. For author-supplied text, stage the exact proposed version. Keep rejected and superseded drafts outside the manuscript inventory. Do not run full prose, AI cleanup, or whole-book diagnosis automatically.
 
 **Gate:** Staged content, proposed story-state differences, and output hashes are complete. Every create target was absent when planned; every existing target retains its original input hash.
 

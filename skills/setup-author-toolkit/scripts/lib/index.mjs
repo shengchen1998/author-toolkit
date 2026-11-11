@@ -26,6 +26,7 @@ export {
 } from "./artifacts.mjs";
 export { validateManifest } from "./manifest.mjs";
 export { inspectProjectManifest, inspectProjectStatus } from "./project-inspection.mjs";
+export { initializeExistingProject } from "./project-initialization.mjs";
 export {
   checkReviewCoverage,
   validateReaderState,

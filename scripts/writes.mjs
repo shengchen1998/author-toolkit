@@ -1,11 +1,10 @@
 #!/usr/bin/env node
 
-import { mkdir, open, rm } from "node:fs/promises";
 import path from "node:path";
 
 import { explainBackupIndex, reconcileExecutions, recordBackup, recordExecution } from "./lib/index.mjs";
-import { projectRootFromManifest } from "./lib/project-files.mjs";
 import { readJson } from "./lib/state-files.mjs";
+import { withProjectWriteLock } from "./lib/write-lock.mjs";
 
 function argumentError(message) {
   const error = new Error(message);
@@ -45,28 +44,6 @@ function options(args) {
     } else throw argumentError(`Unknown or incomplete argument: ${argument}`);
   }
   return result;
-}
-
-async function withWriteLock(manifestPath, operation) {
-  const manifest = await readJson(manifestPath);
-  const backupRoot = path.resolve(projectRootFromManifest(manifestPath), manifest.paths.backups);
-  await mkdir(backupRoot, { recursive: true });
-  const lockPath = path.join(backupRoot, ".writes.lock");
-  const lock = await open(lockPath, "wx").catch((error) => {
-    if (error.code === "EEXIST") {
-      const locked = new Error("another project write is active or left a lock; reconcile it before continuing");
-      locked.code = "ERR_WRITE_GATE";
-      throw locked;
-    }
-    throw error;
-  });
-  try {
-    await lock.writeFile(`${process.pid}\n`);
-    return await operation();
-  } finally {
-    await lock.close();
-    await rm(lockPath, { force: true });
-  }
 }
 
 async function execute(operation, selection) {
@@ -113,7 +90,7 @@ try {
     if (!Number.isFinite(Date.parse(selection.recordedAt))) throw argumentError("--recorded-at must be a valid timestamp");
     const result = operation === "check-index"
       ? await execute(operation, selection)
-      : await withWriteLock(selection.manifest, () => execute(operation, selection));
+      : await withProjectWriteLock(selection.manifest, await readJson(selection.manifest), () => execute(operation, selection));
     console.log(JSON.stringify(result, null, 2));
     if (operation === "check-index" && !result.valid) process.exitCode = 1;
   }

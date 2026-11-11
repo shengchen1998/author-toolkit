@@ -10,7 +10,7 @@ For a shared `ai-cleanup` operation, use the confirmed `current_scope` and its i
 
 For a direct standalone AI-Isms request, use `prose-mechanics` audit 19. Its Chinese path loads this adapter and the local Chinese catalog, retains finding v1, and preserves the standalone state boundary below. In particular, route a standalone Chinese AI-writing audit to `prose-mechanics` AI-Isms rather than asking the English upstream skill to handle Chinese. An independent upstream `avoid-ai-writing` invocation remains English-only and unchanged.
 
-When English prose is in scope, resolve the current skill listing and copy the registered upstream name exactly. Supported registrations are `avoid-ai-writing` and `author-toolkit:avoid-ai-writing`. Invoke that name directly through the Skill tool. Pure Chinese detection and rewriting do not resolve or invoke upstream and do not depend on its availability.
+When English prose is in scope, read the installed upstream `SKILL.md` and applicable references, then execute its procedure directly. Pure Chinese detection and rewriting do not read upstream and do not depend on its availability.
 
 Use the confirmed files and input versions. Partition each file into actual English, Chinese, other-language, and non-prose spans before detection; a file-level language guess is not enough for mixed text. Record span boundaries by real line or character ranges. Do not translate or transliterate text to make another language's catalog appear applicable.
 
@@ -39,7 +39,7 @@ If upstream is unavailable or fails, an English-only requested operation is bloc
 
 ## Detect
 
-1. Create the file/span coverage ledger before scanning. For Chinese spans, work through the local catalog's execution protocol and scan every category `ZH-01` through `ZH-12`, including categories that produce no findings. For English spans, invoke upstream in explicit `detect` mode with the selected profile and full P0/P1/P2 scope.
+1. Create the file/span coverage ledger before scanning. For Chinese spans, work through the local catalog's execution protocol and scan every category `ZH-01` through `ZH-12`, including categories that produce no findings. For English spans, run the upstream procedure in explicit `detect` mode with the selected profile and full P0/P1/P2 scope.
 2. When `scriptorium` is available for English, run `scriptorium prose prepare ai-isms <chapter>` only on the English input it supports, judge the candidates against the complete upstream catalog, and submit the judged findings through the engine. Without it, perform the complete conversational upstream audit. The fallback is the full catalog, not a shortened word scan. Chinese findings always come from the local Chinese catalog, never from relabeling Scriptorium's English matches.
 3. Treat matches as candidates until their context and exceptions have been assessed. Each retained finding needs the narrowest truthful location, a short verbatim excerpt from the manuscript, the catalog category, a specific `reason` explaining the problem in context, and an actionable `recommendation`. Do not use "sounds like AI" as the reason or "make it more specific" as the entire recommendation. Never invent facts, sources, or replacements to complete a rewrite.
 4. Map severity exactly: P0 to `warning`, P1 to `suggestion`, P2 to `note`. Preserve the original P-tier and Chinese `ZH` identifier in the finding's existing `technique` text or tracker note. Add no extra finding property. P0/P1/P2 express revision priority, not AI probability.

@@ -11,7 +11,7 @@ This skill does not revise prose, update Story Bible creative content, or apply 
 
 ## Prepare
 
-1. Resolve the project root from the supplied project root, review job, or review handoff. Resolve the installed `setup-author-toolkit` skill's root as `<setup-skill-root>`. Resolve `author-project` in the current skill listing and invoke its exact registered name in separate calls with `read` and `status`. Bare and `author-toolkit:` qualified names are supported when listed. If `author-project` reports an incomplete toolkit installation, stop and report the missing installed files; do not deploy contracts into the project. These are the only Skill calls this skill may make. Do not call other skills from a reviewer or subagent.
+1. Resolve the project root from the supplied project root, review job, or review handoff. Resolve the installed `setup-author-toolkit` skill's root as `<setup-skill-root>`. Read `../author-project/SKILL.md` and `../author-project/references/read-operations.md`, then run its `read` and `status` procedures separately. If it reports an incomplete toolkit installation, stop and report the missing installed files; do not deploy contracts into the project. These are the only skill procedures this skill may run. Do not run other skills from a reviewer or subagent.
 2. Read the controlled workflow terminology in `<setup-skill-root>/assets/references/terminology.md`, [`references/checklists.md`](references/checklists.md) including its review-mode applicability rules, and [`references/chunked-review.md`](references/chunked-review.md) before planning, resuming, or collecting a review. Read the report envelope and finding identity sections of `../revise-fiction/references/state-and-findings.md`; its state-write instructions remain the caller's responsibility.
 3. Select the review mode and its output identity:
 
@@ -56,7 +56,7 @@ For a consolidated report containing all perspectives, use `subchecks=intent,sta
 
 Resolve `paths.handoffs` and create resumable handoffs from [`assets/review-handoff-template.md`](assets/review-handoff-template.md) beneath the mode-specific `<paths.handoffs>/<review-mode-directory>/<review-id>/`. Use the registered custom directory when present. Give each handoff only its permitted inputs, review-job path, next unfinished unit, report destination, and resume command. Only the fresh handoff names its own reader-state path.
 
-Stop while work is pending. Resume the named perspective in a separate session, write the completed chunk or synthesis report, update the review job and handoff to the next unfinished unit, and stop again when no further work fits. Fresh sessions continue the same logical reviewer only through that reviewer's own reader-state. Once all required evidence exists, the author can invoke `author-review` with `collect` and the same review mode or return to the calling strategy's review operation.
+Stop while work is pending. Resume the named perspective in a separate session, write the completed chunk or synthesis report, update the review job and handoff to the next unfinished unit, and stop again when no further work fits. Fresh sessions continue the same logical reviewer only through that reviewer's own reader-state. Once all required evidence exists, the author can start `author-review` with `collect` and the same review mode or return to the calling strategy's review operation.
 
 ## Findings and completion
 

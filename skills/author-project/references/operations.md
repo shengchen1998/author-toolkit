@@ -65,9 +65,9 @@ For explicit report validation, `--report` may be repeated. `node <setup-skill-r
 
 ## Initialize
 
-1. For a new project, start with `../assets/project-template.json`. Replace sentinel timestamps with the current UTC timestamp and `und` with the detected or author-supplied BCP 47 language. Register supplied project metadata and paths, retaining template defaults for omitted paths, including `paths.creation`. Do not add a workflow, entry operation, or strategy owner.
-2. For an existing v3.1 manifest, validate and return it without resetting current scope, pending action, paths, artifacts, decisions, or external backup records. For any other schema version, report that it is unsupported and stop without changing it.
-3. Resolve `paths.backups` and create `<paths.backups>/index.json` from `../assets/backup-index-template.json` when absent. Keep backup, restoration, and execution receipt records in this index rather than adding undeclared manifest properties. A legacy index without `executions` remains readable; its approved edits have no execution evidence until reconciled receipts are appended.
+For a new project, start with `../assets/project-template.json`. Replace sentinel timestamps with the current UTC timestamp and `und` with the detected or author-supplied BCP 47 language. Register supplied project metadata and paths, retaining template defaults for omitted paths, including `paths.creation`. Do not add a workflow, entry operation, or strategy owner. Resolve `paths.backups` and create `<paths.backups>/index.json` from `../assets/backup-index-template.json` when absent.
+
+For an existing manifest, run the installed `initialize.mjs --project-root <project-root> --json` directly as described under [Existing-project initialization](read-operations.md#existing-project-initialization). That CLI is the only initialization implementation; do not manually validate, create its index, or construct a replacement projection. Keep backup, restoration, and execution receipt records in this index rather than adding undeclared manifest properties. A legacy index without `executions` remains readable; its approved edits have no execution evidence until reconciled receipts are appended.
 
 The caller creates directories and empty creative templates. Initialization does not populate manuscript or Story Bible creative content, establish an entry operation, or invoke a strategy.
 

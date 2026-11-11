@@ -1,6 +1,6 @@
-# Project initialization and inspection
+# Project inspection
 
-Use this reference for `initialize` on an existing v3.1 manifest, `read`, `validate`, `status`, `status --digest`, and `check-index`. For a new manifest or an operation that records or changes project state, follow [`operations.md`](operations.md) instead.
+Use this reference for `read`, `validate`, `status`, `status --digest`, and `check-index`. For a new manifest or an operation that records or changes project state, follow [`operations.md`](operations.md) instead.
 
 Resolve the installed `setup-author-toolkit` skill's root as `<setup-skill-root>` and read shared runtime contracts directly from its `assets/references/` payload. Use its `terminology.md` for shared terms and exact contract values. A missing setup skill, required contract, or script is an incomplete toolkit installation; stop shared work and report the failure. Shared contracts remain installed with the setup skill, not in the writing project.
 
@@ -10,13 +10,17 @@ The canonical manifest is `<project-root>/.author-toolkit/project.json`. Accept 
 
 Stored paths are project-relative with forward slashes. Reject absolute paths, backslashes, URI schemes, home paths, and `..` segments. Resolve every registered path against the project root and exclude `paths.creation` from manuscript inventory. One manifest represents one book.
 
-## Existing-project initialize
+## Existing-project initialization
 
-Read `PROJECT_STATE.md` first when present, then run the bounded `read` command below. Treat the cache as navigation, not evidence or approval. Preserve the current scope, pending action, paths, artifacts, decisions, and external backup records. Do not establish an entry operation or invoke a strategy.
+Setup runs the installed initialization CLI directly; no skill invocation or manual initialization procedure is involved:
 
-Resolve `paths.backups` and create `<paths.backups>/index.json` from `../assets/backup-index-template.json` when absent. Keep backup, restoration, and execution receipt records in this index rather than adding manifest properties. A legacy index without `executions` remains readable; its approved edits have no execution evidence until reconciled receipts are appended.
+```bash
+node <setup-skill-root>/scripts/initialize.mjs --project-root <project-root> --json
+```
 
-Setup's entry-file repair is independent of project-state validation after the manifest-schema check accepts v3.1: repair both entry files, then report any later validation blocker. This does not validate the project or modify manuscript or historical records. Unsupported or schema-invalid manifests stop before entry repair.
+Read `PROJECT_STATE.md` first when present. Treat the cache as navigation, not evidence or approval. The command validates the v3.1 schema and complete project state, preserves the manifest and historical records, and creates only a missing `<paths.backups>/index.json` through the shared write lock and a verified atomic write. It returns the bounded projection, registered paths, current scope, pending action, backup-index status, and validation result. When later project-state validation fails, its projection is `recorded_unverified` and its bounded diagnosis supplies backup-index differences without requiring a separate `read` or `check-index` call. Unsupported or schema-invalid manifests create nothing. Argument errors exit 2; other failures exit 1.
+
+Setup's entry-file repair follows an accepted v3.1 schema even when later project-state validation fails. Initialization does not refresh the navigation cache, establish an entry operation, or invoke a strategy. A legacy index without `executions` remains readable; its approved edits have no execution evidence until reconciled receipts are appended.
 
 ## Read and validate
 

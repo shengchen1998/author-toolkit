@@ -32,7 +32,7 @@ Delete the two lines that do not apply. State the fresh target reader inline in 
 ## Review task
 
 1. Start or resume a session with no earlier review or self-assessment context. For fresh, restore only the named reader-state so the same logical reviewer continues in strict manuscript order.
-2. Invoke the exact registered `author-review` skill with the named perspective, review mode, scope ID, and this handoff path.
+2. Start the `author-review` procedure with the named perspective, review mode, scope ID, and this handoff path.
 3. Read `skills/author-review/references/chunked-review.md`, only the assigned checklist section, the Chinese standards reference when permitted, and the other permitted inputs. Validate the review job, source hashes, next unit, and applicable parent synthesis before reviewing.
 4. Review actual manuscript text within the context budget. Produce finding v2 with the narrowest truthful location, a recommendation, and judgment confidence. Use only IDs in the allocated block for different issues; read the report envelope and finding identity sections at the named shared reference path without reading prior reports. Link related cross-file findings without inventing one location.
 5. Write the assigned immutable chunk or synthesis report with human-readable scope, `Language coverage` and `Review coverage` sections, and exactly one report v2 JSON envelope at the report destination. Use the handoff's report stage and disclose every `partial` or `skipped` unit and check.
@@ -42,4 +42,4 @@ Delete the two lines that do not apply. State the fresh target reader inline in 
 
 ## Resume command
 
-Use the host's documented author command with `review_mode=<named mode>`, `perspective=<named perspective>`, `scope_id=<scope ID>`, and `handoff=<this path>`. Codex form: `$author-review`. Claude Code plugin form: `/author-toolkit:author-review`. Kimi Code plugin form: `/skill:author-toolkit:author-review`. Bare forms are `/author-review` in Claude Code and `/skill:author-review` in Kimi Code. If the host has no skill commands, use its skill picker and the exact registered skill name.
+Use `$author-review` with `review_mode=<named mode>`, `perspective=<named perspective>`, `scope_id=<scope ID>`, and `handoff=<this path>`.

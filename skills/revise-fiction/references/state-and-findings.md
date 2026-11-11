@@ -27,7 +27,7 @@ Historical reports are immutable. Author decisions, stale marks, later locations
 
 ## Finding identity across reruns
 
-Read the latest prior reports for the same operation, audit, and scope before assigning IDs. Reuse an existing ID for the same underlying issue. Match by upstream stable ID, then by the same audit, technique, file, normalized quotation and issue, then by clearly overlapping location after nearby text changed. Allocate a fresh ID for a different issue and link any possible predecessor in tracker notes. Before dispatching new findings, invoke `author-project` with `next-finding-id` for the complete planned batch and supply its returned ID block to the callee; do not restart each reviewer or chunk at `001` or use fixed review-pass number blocks.
+Read the latest prior reports for the same operation, audit, and scope before assigning IDs. Reuse an existing ID for the same underlying issue. Match by upstream stable ID, then by the same audit, technique, file, normalized quotation and issue, then by clearly overlapping location after nearby text changed. Allocate a fresh ID for a different issue and link any possible predecessor in tracker notes. Before dispatching new findings, run `author-project` with `next-finding-id` for the complete planned batch and supply its returned ID block to the callee; do not restart each reviewer or chunk at `001` or use fixed review-pass number blocks.
 
 A finding absent from an equivalent complete rerun becomes `stale`, not `resolved`, unless the author confirmed and the new text verifies the fix. New findings enter as `open`.
 
@@ -60,7 +60,7 @@ Reopen the finding as `open` only when the relevant quoted passage or location, 
 
 ## Living tracker
 
-After reconciling new observations with prior findings and decisions, invoke `author-project` with `record-findings` and the complete report set to batch upsert finding rows through the installed CLI. Do not hand-write batches of tracker rows. New IDs enter as `open`; a reused ID retains its status, author reason, and updated timestamp while its location and current report pointer change. Preserve historical reports and refresh the review brief when applicable. The CLI rejects duplicate report IDs and conflicting identities but does not replace semantic identity reconciliation.
+After reconciling new observations with prior findings and decisions, run `author-project` with `record-findings` and the complete report set to batch upsert finding rows through the installed CLI. Do not hand-write batches of tracker rows. New IDs enter as `open`; a reused ID retains its status, author reason, and updated timestamp while its location and current report pointer change. Preserve historical reports and refresh the review brief when applicable. The CLI rejects duplicate report IDs and conflicting identities but does not replace semantic identity reconciliation.
 
 Use only these finding statuses:
 
@@ -94,7 +94,7 @@ Use the shared `## Approvals` table for edit, restore, baseline, scope, prose-ov
 
 An approval applies only to its named operation, paths, scope, and input versions. Link manuscript backup records to the approval ID. A structural or input change supersedes an affected override; record the supersession rather than deleting history. Legacy v2 overrides remain `deferred` until the author confirms them on resume.
 
-After a completed edit batch, invoke `author-project` with `record-execution` to link the approval to verified output hashes. Keep the approval status `approved`; the execution receipt proves completion. A completed restoration record supplies the corresponding evidence for a restore approval. A backup or safety backup alone proves only pre-write preservation.
+After a completed edit batch, run `author-project` with `record-execution` to link the approval to verified output hashes. Keep the approval status `approved`; the execution receipt proves completion. A completed restoration record supplies the corresponding evidence for a restore approval. A backup or safety backup alone proves only pre-write preservation.
 
 ## Scope and input currency
 

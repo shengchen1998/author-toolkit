@@ -79,7 +79,7 @@ test("setup carries self-contained preflight, validation, state, range, and inst
   );
 
   const nodeArgs = ["--no-warnings", "--experimental-loader", loader, "--require", preload];
-  for (const script of ["preflight.mjs", "check.mjs", "read.mjs", "set-pending.mjs", "validate.mjs", "status.mjs", "project-digest.mjs", "findings.mjs", "range.mjs", "doctor.mjs", "writes.mjs"]) {
+  for (const script of ["initialize.mjs", "preflight.mjs", "check.mjs", "read.mjs", "set-pending.mjs", "validate.mjs", "status.mjs", "project-digest.mjs", "findings.mjs", "range.mjs", "doctor.mjs", "writes.mjs"]) {
     const result = spawnSync(
       process.execPath,
       [...nodeArgs, path.join(installedSetup, "scripts", script), "--help"],
@@ -143,6 +143,23 @@ test("setup carries self-contained preflight, validation, state, range, and inst
   await cp(path.join(installedSetup, "assets", "AGENTS.md"), path.join(project, "AGENTS.md"));
   await rm(path.join(project, "CLAUDE.md"), { force: true });
   await symlink("AGENTS.md", path.join(project, "CLAUDE.md"));
+
+  const initialization = spawnSync(
+    process.execPath,
+    [
+      ...nodeArgs,
+      path.join(installedSetup, "scripts", "initialize.mjs"),
+      "--project-root",
+      project,
+      "--json",
+    ],
+    { encoding: "utf8" },
+  );
+  assert.equal(initialization.status, 0, initialization.stderr);
+  const initialized = JSON.parse(initialization.stdout);
+  assert.equal(initialized.schema_valid, true);
+  assert.equal(initialized.projection.verification, "validated");
+  assert.equal(initialized.backup_index.status, "preserved");
 
   const preflight = spawnSync(
     process.execPath,
