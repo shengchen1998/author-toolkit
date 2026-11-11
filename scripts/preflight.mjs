@@ -5,6 +5,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { generateProjectDigest } from "./lib/digest.mjs";
+import { outputUnverifiedOperationGroups } from "./lib/execution-summary.mjs";
 import {
   inspectProjectManifest,
   inspectProjectStatus,
@@ -137,6 +138,7 @@ function outputText(result, selection) {
     console.log(
       `Execution evidence: ${status.execution.executed}/${status.execution.required} verified; ${status.execution.unverified_count} unverified`,
     );
+    outputUnverifiedOperationGroups(status.execution.unverified);
     console.log(`Recorded stale findings (all scopes): ${status.recorded_blockers.stale_finding_count}`);
     console.log(
       `Blocked pending action: ${status.recorded_blockers.blocked_pending_action ? "recorded in selected scope" : "none recorded"}`,

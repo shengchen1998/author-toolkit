@@ -212,13 +212,13 @@ test("duplicate and orphan execution records are rejected", async (t) => {
   assert.ok(result.errors.some((error) => error.message.includes("unknown approval ID: RESTORE-999")));
 });
 
-test("status text is bounded while scoped JSON retains the complete execution result", async (t) => {
+test("status text groups unverified approvals while scoped JSON retains complete details", async (t) => {
   const project = await fixture(t);
   const extraRows = Array.from({ length: 10 }, (_, index) =>
     approvalRow(
       `EXTRA-${String(index + 1).padStart(3, "0")}`,
       "edit",
-      "prose",
+      `operation-${index}`,
       "scope-old",
       "manuscript/chapter-02.md",
     ),
@@ -233,8 +233,18 @@ test("status text is bounded while scoped JSON retains the complete execution re
   const text = runCli("status.mjs", ["--manifest", project.manifestPath]);
   assert.equal(text.status, 0, text.stderr);
   assert.match(text.stdout, /Unverified approvals: 11/);
-  assert.match(text.stdout, /3 more; use --json/);
-  assert.equal(text.stdout.trimEnd().split("\n").length, 17);
+  assert.match(text.stdout, /Unverified by operation \(first\/last approval IDs\):/);
+  assert.match(text.stdout, /- operation-0: 1 \(EXTRA-001 … EXTRA-001\)/);
+  assert.match(text.stdout, /- operation-7: 1 \(EXTRA-008 … EXTRA-008\)/);
+  assert.doesNotMatch(text.stdout, /prose:/);
+  assert.doesNotMatch(text.stdout, /operation-8:/);
+  assert.match(text.stdout, /3 more operation groups; use --json/);
+  assert.equal(text.stdout.trimEnd().split("\n").length, 18);
+
+  const global = JSON.parse(runCli("status.mjs", ["--manifest", project.manifestPath, "--json"]).stdout);
+  assert.equal(global.execution.unverified.length, 11);
+  assert.equal(global.execution.unverified.at(-1).approval_id, "EDIT-002");
+  assert.equal(global.execution.unverified_by_operation, undefined);
 
   const scoped = runCli("status.mjs", [
     "--manifest",
@@ -252,6 +262,24 @@ test("status text is bounded while scoped JSON retains the complete execution re
   assert.equal(result.recorded_blockers.stale_finding_count, 0);
   assert.equal(result.recorded_blockers.blocked_pending_action, null);
   assert.equal(result.evidence.operation_specific, "not_evaluated");
+});
+
+test("status operation summaries preserve interleaved first and last approval IDs", async (t) => {
+  const project = await fixture(t);
+  const groupedRows = [
+    approvalRow("EDIT-094", "edit", "interleaved-test", targetScope, "manuscript/chapter-01.md"),
+    approvalRow("EDIT-095", "edit", "single-test", targetScope, "manuscript/chapter-01.md"),
+    approvalRow("EDIT-096", "edit", "interleaved-test", targetScope, "manuscript/chapter-01.md"),
+  ];
+  const groupedTracker = await readFile(project.trackerPath, "utf8");
+  await writeFile(
+    project.trackerPath,
+    groupedTracker.replace(approvalTable, `${approvalTable}\n${groupedRows.join("\n")}`),
+    "utf8",
+  );
+  const groupedText = runCli("status.mjs", ["--manifest", project.manifestPath]);
+  assert.match(groupedText.stdout, /- interleaved-test: 2 \(EDIT-094 … EDIT-096\)/);
+  assert.match(groupedText.stdout, /- single-test: 1 \(EDIT-095 … EDIT-095\)/);
 });
 
 test("status strict execution check preserves ordinary reads and selects the target scope", async (t) => {

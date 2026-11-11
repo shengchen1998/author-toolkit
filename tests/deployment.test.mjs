@@ -356,6 +356,8 @@ test("setup uses the authoritative payload inventory and bounded doctor", async 
   }
   assert.match(setup, /If an installed-payload check fails, report an incomplete toolkit installation and stop/);
   assert.match(setup, /Rerun the same doctor command/);
+  assert.match(operations, /at most eight operation groups/);
+  assert.match(operations, /Use standalone `validate\.mjs` to diagnose a validation failure/);
   assert.match(readme, /--project-root <root>/);
   assert.match(readme, /internal CLI modules/);
   assert.match(zhReadme, /--project-root <root>/);

@@ -241,6 +241,9 @@ test("existing-project setup uses bounded inspection references and a categorize
   assert.match(project, /For a new manifest and every record or write operation, read \[`references\/operations\.md`\]/);
   assert.doesNotMatch(project, /For every operation, read \[`references\/operations\.md`\]/);
   assert.match(setup, /For an existing v3\.1 manifest, follow initialization with one `preflight\.mjs` call/);
+  assert.match(setup, /doctor, initialize, preflight, entry-file repair, then the final doctor/);
+  assert.match(setup, /standalone `validate\.mjs` only when a validation failure requires its complete diagnostics/);
+  assert.match(setup, /endpoints do not imply a contiguous ID range/);
   assert.match(setup, /default ordinary status uses the current scope ID/);
   for (const heading of ["Installation payload", "Project entry files", "Manuscript scope", "Execution evidence"]) {
     assert.match(setup, new RegExp(`\\*\\*${heading}\\*\\*`));

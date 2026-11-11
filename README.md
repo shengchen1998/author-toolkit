@@ -155,6 +155,8 @@ remain separate checks.
 Run `node <setup-skill-root>/scripts/preflight.mjs --project-root <root>` to
 combine the payload and entry-file check with project validation and ordinary
 status. It shares their library implementation and prints a bounded summary.
+Unverified approvals are grouped by operation with counts and first/last approval
+IDs; the endpoints do not imply contiguous ID ranges.
 The current scope is selected by default. Add `--require-execution` with an
 explicit `--scope-id` only for an execution gate; add `--digest` only when the
 navigation cache should be refreshed after successful read-only checks.

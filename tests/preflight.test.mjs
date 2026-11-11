@@ -121,13 +121,13 @@ test("preflight strict execution is explicit and does not change ordinary inspec
     trackerPath,
     tracker.replace(
       "| Approval ID | Type | Operation | Scope ID | Paths | Status | Reason | Updated |\n|---|---|---|---|---|---|---|---|",
-      `| Approval ID | Type | Operation | Scope ID | Paths | Status | Reason | Updated |\n|---|---|---|---|---|---|---|---|\n| EDIT-001 | edit | chapter-revision | ${scopeId} | \`manuscript/chapter-01.md\` | approved | Exact test batch. | ${timestamp} |`,
+      `| Approval ID | Type | Operation | Scope ID | Paths | Status | Reason | Updated |\n|---|---|---|---|---|---|---|---|\n| EDIT-001 | edit | chapter-revision | ${scopeId} | \`manuscript/chapter-01.md\` | approved | Exact test batch. | ${timestamp} |\n| EDIT-094 | edit | prose | ${scopeId} | \`manuscript/chapter-01.md\` | approved | Exact test batch. | ${timestamp} |`,
     ),
   );
 
   const ordinary = run(["--project-root", projectRoot, "--json"]);
   assert.equal(ordinary.status, 0, ordinary.stderr);
-  assert.equal(JSON.parse(ordinary.stdout).status.execution.unverified_count, 1);
+  assert.equal(JSON.parse(ordinary.stdout).status.execution.unverified_count, 2);
 
   const strict = run([
     "--project-root",
@@ -141,7 +141,7 @@ test("preflight strict execution is explicit and does not change ordinary inspec
   const parsed = JSON.parse(strict.stdout);
   assert.equal(parsed.valid, false);
   assert.equal(parsed.validation.valid, true);
-  assert.deepEqual(parsed.execution_gate, { scope_id: scopeId, unverified_count: 1, valid: false });
+  assert.deepEqual(parsed.execution_gate, { scope_id: scopeId, unverified_count: 2, valid: false });
 
   const digest = run([
     "--project-root",
@@ -152,6 +152,9 @@ test("preflight strict execution is explicit and does not change ordinary inspec
     "--digest",
   ]);
   assert.equal(digest.status, 1);
+  assert.match(digest.stdout, /Unverified by operation \(first\/last approval IDs\):/);
+  assert.match(digest.stdout, /- chapter-revision: 1 \(EDIT-001 … EDIT-001\)/);
+  assert.match(digest.stdout, /- prose: 1 \(EDIT-094 … EDIT-094\)/);
   assert.match(digest.stdout, /Navigation cache: not refreshed; earlier checks failed/);
   assert.equal(await readFile(path.join(projectRoot, "PROJECT_STATE.md"), "utf8"), "previous cache\n");
 

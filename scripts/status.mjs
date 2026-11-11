@@ -3,6 +3,7 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 
+import { outputUnverifiedOperationGroups } from "./lib/execution-summary.mjs";
 import { inspectProjectStatus } from "./lib/index.mjs";
 import { validateManifest } from "./lib/manifest.mjs";
 
@@ -57,12 +58,7 @@ function outputText(result) {
     `Execution evidence: ${execution.executed}/${execution.required} approved edit or restore batches verified`,
   );
   console.log(`Unverified approvals: ${execution.unverified_count}`);
-  for (const approval of execution.unverified.slice(0, 8)) {
-    console.log(`- ${approval.approval_id} (${approval.type}; ${approval.operation}; ${approval.scope_id})`);
-  }
-  if (execution.unverified_count > 8) {
-    console.log(`- ... ${execution.unverified_count - 8} more; use --json for the complete list`);
-  }
+  outputUnverifiedOperationGroups(execution.unverified);
   const blockers = result.recorded_blockers;
   console.log(`Recorded stale findings (all scopes): ${blockers.stale_finding_count}`);
   for (const finding of blockers.stale_findings.slice(0, 8)) {
