@@ -94,12 +94,12 @@ async function preflight(selection) {
   if (payload.failures.some((failure) => !failure.path.startsWith("project:"))) return result;
 
   const validation = await inspectProjectManifest(manifestPath);
-  const diagnosticChecks = selection.diagnose
-    ? validation.checks.map((check) => check.valid ? { path: check.path, valid: true, errors: [] } : failedCheck(check, false))
-    : null;
+  const displayedChecks = selection.json && !selection.diagnose
+    ? validation.checks
+    : validation.checks.map((check) => check.valid ? { path: check.path, valid: true, errors: [] } : failedCheck(check, false));
   result.validation = {
     valid: validation.valid,
-    checks: (diagnosticChecks ?? validation.checks).map((check) => ({
+    checks: displayedChecks.map((check) => ({
       path: check.path,
       valid: check.valid,
       errors: check.errors,

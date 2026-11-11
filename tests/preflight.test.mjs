@@ -223,6 +223,16 @@ test("preflight diagnose returns recorded projection and backup-index difference
   assert.equal(ordinary.status, 1);
   assert.equal(JSON.parse(ordinary.stdout).diagnosis, null);
   assert.ok(JSON.parse(ordinary.stdout).validation.checks.every((check) => check.valid || !Object.hasOwn(check, "omitted_error_count")));
+  assert.deepEqual(JSON.parse(ordinary.stdout).validation.checks.find((check) => check.path === "executions").summary.unverified, []);
+
+  const ordinaryText = run(["--project-root", projectRoot]);
+  assert.equal(ordinaryText.status, 1, ordinaryText.stderr);
+  assert.equal(ordinaryText.stderr, "");
+  assert.match(ordinaryText.stdout, /- executions: \/backups\/0\/scope_id backup operation and scope must match its approval/);
+  assert.match(ordinaryText.stdout, /Execution evidence: 0\/0 verified; 0 unverified/);
+  assert.match(ordinaryText.stdout, /Navigation cache: not requested/);
+  assert.match(ordinaryText.stdout, /Preflight: failed/);
+  assert.doesNotMatch(ordinaryText.stdout, /Cannot read properties of undefined/);
 
   const result = run(["--project-root", projectRoot, "--diagnose", "--json"]);
   assert.equal(result.status, 1, result.stderr);

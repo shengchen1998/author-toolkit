@@ -227,7 +227,7 @@
     },
     {
       "path": "scripts/preflight.mjs",
-      "sha256": "ecf61171bcad31d71e09f88801cc51a6b4f420dd25b4b61b81ed851394bbe9ef"
+      "sha256": "1866e0657451acf0024e808a22acaa3bc45f59ba3eb473aab248c0eaea073f4b"
     },
     {
       "path": "scripts/project-digest.mjs",
