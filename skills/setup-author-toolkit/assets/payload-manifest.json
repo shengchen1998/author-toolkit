@@ -3,11 +3,11 @@
   "files": [
     {
       "path": "SKILL.md",
-      "sha256": "a7dddd3de9965da20397355ab8753eb48c7046c05078fae0f21f2a0dedd47a06"
+      "sha256": "6b17d18f443cd8bf3fcdc945d485b7a149cc3250767d50011ed5417b47d06236"
     },
     {
       "path": "assets/AGENTS.md",
-      "sha256": "a7d4dfbf15e68ce40506101c8df5be391b6037d91e8831aa4029f749824085ae"
+      "sha256": "c7291dce681a2c99eb1714d19e7eafb1dea97316fe92fbbd735c37c1aa0178f7"
     },
     {
       "path": "assets/references/avoid-ai-writing-adapter.md",

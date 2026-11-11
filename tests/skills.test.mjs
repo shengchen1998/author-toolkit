@@ -152,6 +152,30 @@ test("author-facing commands support Codex dollar-prefixed skill invocation", as
   }
 });
 
+test("project instructions defer detailed routing and write procedures", async () => {
+  const [instructions, ask, operations] = await Promise.all([
+    readFile(path.join(root, "skills/setup-author-toolkit/assets/AGENTS.md"), "utf8"),
+    readFile(path.join(root, "skills/ask-author/SKILL.md"), "utf8"),
+    readFile(path.join(root, "skills/author-project/references/operations.md"), "utf8"),
+  ]);
+
+  assert.match(instructions, /Match the author's language/);
+  assert.match(instructions, /Read the installed `ask-author` skill's `SKILL\.md` before selecting among shared strategies or independent skills/);
+  assert.match(instructions, /Manuscript edits require explicit approval of the exact operation, scope, paths, actions, and input versions/);
+  assert.match(instructions, /Follow the active strategy and `author-project` for complete-batch backups, execution receipts, staged draft acceptance, commit journals, and separately approved restores/);
+  assert.doesNotMatch(instructions, /\| Request \| Skill \||record-backup|range\.mjs|workflow-reporting\.md|Finish with the current operation/);
+
+  assert.match(ask, /\| Request \| Skill \|/);
+  for (const skill of ["fiction-workshop", "story-structure", "character-archetypes", "narrative-nonfiction", "prose-mechanics", "avoid-ai-writing"]) {
+    assert.match(ask, new RegExp(`\\| \`${skill}\` \\|`), skill);
+  }
+  assert.match(ask, /no outline, ending, or whole-book structure audit is required/);
+  assert.match(operations, /## Backup and creation commit/);
+  assert.match(operations, /an unverified approval from another batch/);
+  assert.match(operations, /## Record execution/);
+  assert.match(operations, /## Restore/);
+});
+
 test("the upstream AI-writing skill has no local integration section", async () => {
   const text = await readFile(path.join(root, "skills/avoid-ai-writing/SKILL.md"), "utf8");
   assert.doesNotMatch(text, /Cross-listed as a prose-mechanics audit/);
@@ -174,10 +198,9 @@ test("backup and handoff writes resolve registered project paths", async () => {
 });
 
 test("project digest is a generated navigation cache, not another source of truth", async () => {
-  const [project, readOperations, instructions, setup] = await Promise.all([
+  const [project, readOperations, setup] = await Promise.all([
     readFile(path.join(root, "skills/author-project/SKILL.md"), "utf8"),
     readFile(path.join(root, "skills/author-project/references/read-operations.md"), "utf8"),
-    readFile(path.join(root, "skills/setup-author-toolkit/assets/AGENTS.md"), "utf8"),
     readFile(path.join(root, "skills/setup-author-toolkit/SKILL.md"), "utf8"),
   ]);
   assert.match(project, /`status --digest`/);
@@ -189,10 +212,7 @@ test("project digest is a generated navigation cache, not another source of trut
   assert.match(readOperations, /Validation at generation: passed/);
   assert.match(readOperations, /rerunning preflight before reuse/);
   assert.match(readOperations, /not an execution gate or a current-draft revision convergence claim/);
-  assert.match(instructions, /read `PROJECT_STATE\.md` first/i);
   assert.match(setup, /read `PROJECT_STATE\.md` first/i);
-  assert.match(instructions, /authoritative/i);
-  assert.match(instructions, /only the tracker sections, sessions, plans, and evidence needed/i);
 
   for (const skill of ["write-fiction", "revise-fiction", "revise-draft", "revise-increment", "revise-request"]) {
     const text = await readFile(path.join(root, "skills", skill, "SKILL.md"), "utf8");

@@ -1,6 +1,6 @@
 # Author Toolkit writing project
 
-Match the author's language. Use these instructions to route work and protect shared project state; the active skill's `SKILL.md` and its references supply the full procedure. Resolve the installed `setup-author-toolkit` skill's root as `<setup-skill-root>` and read shared runtime contracts directly from `<setup-skill-root>/assets/references/`; use `<setup-skill-root>/assets/references/terminology.md` for shared terms and exact contract values. Do not copy contracts into the writing project.
+Match the author's language. The active skill's `SKILL.md` and its references supply the full procedure. Resolve the installed `setup-author-toolkit` skill's root as `<setup-skill-root>` and read shared runtime contracts directly from `<setup-skill-root>/assets/references/`; use `<setup-skill-root>/assets/references/terminology.md` for shared terms and exact contract values. Do not copy contracts into the writing project.
 
 ## Resolve and route skills
 
@@ -8,30 +8,13 @@ Resolve each skill that the agent will invoke through the Skill tool in the curr
 
 For author-facing commands in Codex, use `$` followed by the exact unqualified registered skill name, such as `$write-fiction`, and check visibility in the `$` autocomplete. Do not display `/skill:` or a Claude Code plugin qualifier as a Codex command. On other hosts, use their documented syntax rather than inferring it from the model's name or identity.
 
-`ask-author`, `setup-author-toolkit`, `write-fiction`, `revise-fiction`, `revise-draft`, `revise-increment`, and `revise-request` are explicit author entry points. When one is needed, display its exact host command and wait for the author; do not invoke it through the Skill tool. Setup, routing, validation, and handoff restoration never start a strategy automatically.
+`ask-author`, `setup-author-toolkit`, `write-fiction`, `revise-fiction`, `revise-draft`, `revise-increment`, and `revise-request` are explicit author entry points. When one is needed, display its exact host command and wait for the author; do not invoke it through the Skill tool. Setup, routing, validation, and handoff restoration never start a strategy automatically. Read the installed `ask-author` skill's `SKILL.md` before selecting among shared strategies or independent skills; when the route is unclear, show its host command and the relevant choices.
 
 For shared fiction creation or revision, locate `.author-toolkit/project.json`:
 
 - Missing manifest: show the `setup-author-toolkit` command and stop shared work.
 - Non-v3.1 manifest: report the unsupported schema version and stop without converting it.
 - Incomplete installation: stop shared work and report failures from `node <setup-skill-root>/scripts/doctor.mjs`.
-- Create fiction or continue shared creation: show `write-fiction`.
-- Work on whole-book Story Bible, macro-structure, complete character arcs, or final review: show `revise-fiction`.
-- Diagnose, revise, or review the available draft within a confirmed scope: show `revise-draft`; no outline, ending, or whole-book structure audit is required.
-- Revise added or affected paths after incremental creation or import with reusable unchanged-chapter evidence: show `revise-increment`.
-- Revise existing content after a full-manuscript scope reaches current-draft revision convergence: show `revise-request`, with request review by default.
-- Unclear route: show `ask-author` and the relevant choices.
-
-Use the independent skills directly when their standalone scope matches the request:
-
-| Request | Skill |
-| --- | --- |
-| Fiction drafting, editing, Story Bible, or brainstorming outside shared creation | `fiction-workshop` |
-| Macro plot structure | `story-structure` |
-| Character archetypes | `character-archetypes` |
-| Narrative nonfiction | `narrative-nonfiction` |
-| Sentence-level diagnostics or Chinese AI-associated writing patterns | `prose-mechanics` |
-| English AI writing patterns through the upstream catalog | `avoid-ai-writing` |
 
 `author-project`, `author-handoff`, and `author-review` serve shared orchestration and do not replace an author-selected strategy. Standalone work leaves shared project state unchanged unless the author explicitly requests incorporation.
 
@@ -41,12 +24,6 @@ Use one manifest per book. Resolve registered artifacts through its `paths`; `au
 
 ## Keep author decisions explicit
 
-Manuscript edits require explicit approval of the exact operation, scope, paths, actions, and input versions, recorded in the shared tracker. Discussing or accepting a finding does not approve an edit. Before writing, invoke `author-project record-backup` for the complete batch, including create targets; its project-wide gate stops while another approval lacks execution evidence. Follow the active skill for post-write execution receipts, staged draft acceptance and commit journals, and separately approved restores. Story Bible creative changes require author confirmation.
+Manuscript edits require explicit approval of the exact operation, scope, paths, actions, and input versions, recorded in the shared tracker. Discussing or accepting a finding does not approve an edit. Story Bible creative changes require author confirmation. Follow the active strategy and `author-project` for complete-batch backups, execution receipts, staged draft acceptance, commit journals, and separately approved restores.
 
-## Preserve truthful evidence
-
-Resolve an author-supplied inline character range with `node <setup-skill-root>/scripts/range.mjs --project-root <project-root> "<location>"`; positions are 1-based and inclusive and count Unicode code points.
-
-For shared reports, findings, approvals, evidence reuse, and session writes, read the active strategy's pointers to `state-and-findings.md` and `<setup-skill-root>/assets/references/workflow-reporting.md`. For navigation, read `PROJECT_STATE.md` first, then use `author-project read` for the bounded manifest projection and only the tracker sections, sessions, plans, and evidence needed for the requested work. Long current artifact lists live in the linked pending artifact index; leave legacy inline lists unchanged. The generated cache is disposable and the manifest, tracker, and current evidence remain authoritative. Use `author-handoff` for session transfer after shared project state is current.
-
-Finish with the current operation and scope, actual or stale coverage, artifact paths, approvals and backups used, unresolved questions, and the exact next author action.
+For shared reports, findings, approvals, evidence reuse, navigation, and session transfer, follow the active strategy and `author-project`; the manifest, tracker, and current evidence remain authoritative.
