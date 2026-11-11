@@ -79,7 +79,7 @@ test("setup carries self-contained preflight, validation, state, range, and inst
   );
 
   const nodeArgs = ["--no-warnings", "--experimental-loader", loader, "--require", preload];
-  for (const script of ["initialize.mjs", "preflight.mjs", "check.mjs", "read.mjs", "set-pending.mjs", "validate.mjs", "status.mjs", "project-digest.mjs", "findings.mjs", "range.mjs", "doctor.mjs", "writes.mjs"]) {
+  for (const script of ["initialize.mjs", "install-entry-files.mjs", "preflight.mjs", "check.mjs", "read.mjs", "set-pending.mjs", "validate.mjs", "status.mjs", "project-digest.mjs", "findings.mjs", "range.mjs", "doctor.mjs", "writes.mjs"]) {
     const result = spawnSync(
       process.execPath,
       [...nodeArgs, path.join(installedSetup, "scripts", script), "--help"],
@@ -408,11 +408,14 @@ test("setup overwrites AGENTS.md and links CLAUDE.md to it", async () => {
     "utf8",
   );
 
-  assert.match(setup, /On every setup, replace `<project-root>\/AGENTS\.md` with a regular file containing `assets\/AGENTS\.md`/);
-  assert.match(setup, /replace any existing `CLAUDE\.md` file or symlink/);
-  assert.match(setup, /remove any existing regular files or symlinks with `rm -f AGENTS\.md CLAUDE\.md`/);
-  assert.match(setup, /run `ln -s AGENTS\.md CLAUDE\.md`/);
-  assert.match(setup, /If either target is a directory, or any operation fails, stop/);
+  assert.match(setup, /replaces `<project-root>\/AGENTS\.md` with a regular file containing `assets\/AGENTS\.md`/);
+  assert.match(setup, /replaces any existing `CLAUDE\.md` file or symlink/);
+  assert.match(setup, /scripts\/install-entry-files\.mjs --project-root <project-root> --json/);
+  assert.match(setup, /checks both targets before writing/);
+  assert.match(setup, /leaves correct entries unchanged/);
+  assert.match(setup, /atomically replaces other regular files or symlinks/);
+  assert.match(setup, /If either target is a directory or special file, or any operation fails, stop/);
+  assert.doesNotMatch(setup, /rm -f AGENTS\.md|ln -s AGENTS\.md/);
   assert.match(setup, /applies to new projects and existing v3\.1 projects/);
   assert.match(setup, /perform step 5's entry-file replacement even if later project-state validation fails/);
   assert.match(setup, /report that validation failure as a setup blocker after the repair/);

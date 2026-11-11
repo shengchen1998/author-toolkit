@@ -3,7 +3,7 @@
   "files": [
     {
       "path": "SKILL.md",
-      "sha256": "d482b64ea8f727b8928f59dfdd5cbd967e7ea6eb9beca8875a1f51753c83d573"
+      "sha256": "46068d387b97be02f8abf5d835fd26e7c892121d8e52bb75202f5727db07fab2"
     },
     {
       "path": "assets/AGENTS.md",
@@ -99,7 +99,7 @@
     },
     {
       "path": "scripts/doctor.mjs",
-      "sha256": "5cf7ed750f8b2dea68b5b94b58b1ea6903bd7edc579cc41dd7b2c8736c680d83"
+      "sha256": "606f9c76f74a14d691fde32bffdcd3370bd6adf508f4d159479f4ab9552a90a8"
     },
     {
       "path": "scripts/findings.mjs",
@@ -108,6 +108,10 @@
     {
       "path": "scripts/initialize.mjs",
       "sha256": "eaaf6df2d8f91aa1af9e8ae46fb4e1b000faebc495517511d94366a9f7f1abb4"
+    },
+    {
+      "path": "scripts/install-entry-files.mjs",
+      "sha256": "be16ab940908bdf8c78704080081aa7349aecb7644038ac83b1bd1c3ebeceed1"
     },
     {
       "path": "scripts/lib/approval-paths.mjs",
@@ -198,8 +202,12 @@
       "sha256": "4afabb72fec11db9e8de8b977f348988b47a785dfb96869200a6fe2c337e1233"
     },
     {
+      "path": "scripts/lib/setup-entry-files.mjs",
+      "sha256": "f764d16b324cf2c19a3e0c54a144088db6b82208806c700daee0a5eb06f40906"
+    },
+    {
       "path": "scripts/lib/setup-payload.mjs",
-      "sha256": "8a466697c43422a7606af4b9c31bc824fb80328ba73102c580787b8e2fec78cd"
+      "sha256": "a9ecc4bbc26d08f020644366442d00fd25b0162ec35ab0e1119042eb61e4b658"
     },
     {
       "path": "scripts/lib/state-files.mjs",

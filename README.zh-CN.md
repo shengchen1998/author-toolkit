@@ -48,7 +48,7 @@ npx skills@latest add shengchen1998/author-toolkit -a codex
 npx skills@latest add shengchen1998/author-toolkit -a codex -g
 ```
 
-setup 技能在 `setup-author-toolkit/scripts/` 下提供自包含的安装检查, 现有项目初始化, 预检, manifest 投影, 待处理操作写入, 校验, 状态, 项目导航, 发现项状态, 正文写入和行内字符区间 CLI, 包括运行依赖.
+setup 技能在 `setup-author-toolkit/scripts/` 下提供自包含的安装检查, 入口文件安装, 现有项目初始化, 预检, manifest 投影, 待处理操作写入, 校验, 状态, 项目导航, 发现项状态, 正文写入和行内字符区间 CLI, 包括运行依赖.
 共享工作流直接解析该技能的安装目录, 无需仓库检出, 也无需在写作项目中运行 `npm install`.
 
 运行 `node <setup-skill-root>/scripts/doctor.mjs` 可获得有界安装摘要和失败路径.
@@ -56,6 +56,12 @@ setup 技能在 `setup-author-toolkit/scripts/` 下提供自包含的安装检�
 添加 `--project-root <root>` 可同时核对写作项目的 `AGENTS.md` 和相对符号链接
 `CLAUDE.md -> AGENTS.md`; 项目状态校验与宿主命令可见性仍是独立检查.
 文本和 JSON 输出分别列出安装载荷失败与可修复的项目入口失败, 并明确显示退出原因.
+
+运行 `node <setup-skill-root>/scripts/install-entry-files.mjs --project-root <root> --json`,
+在载荷检查通过后仅修复两个项目入口文件.
+命令先检查两个目标再写入, 保留正确文件, 并原子替换其他普通文件或符号链接.
+目标是目录或特殊文件时不写入任何内容; 重复 setup 幂等执行.
+最终仍由 `doctor` 独立核对安装载荷和两个入口文件.
 
 运行 `node <setup-skill-root>/scripts/initialize.mjs --project-root <root> --json` 执行现有项目唯一的初始化实现.
 它仅在缺失时创建备份索引, 并返回有界投影、注册路径、当前范围、待处理操作、备份索引状态和校验结果.

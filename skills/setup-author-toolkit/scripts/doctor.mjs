@@ -1,10 +1,9 @@
 #!/usr/bin/env node
 
-import { existsSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { inspectSetupPayload } from "./lib/setup-payload.mjs";
+import { inspectSetupPayload, resolveSetupRoot } from "./lib/setup-payload.mjs";
 
 function argumentError(message) {
   const error = new Error(message);
@@ -49,10 +48,7 @@ try {
   } else {
     const selection = options(args);
     const scriptRoot = fileURLToPath(new URL("../", import.meta.url));
-    const setupRoot = existsSync(path.join(scriptRoot, "assets", "payload-manifest.json"))
-      ? scriptRoot
-      : path.join(scriptRoot, "skills", "setup-author-toolkit");
-    const result = await inspectSetupPayload(setupRoot, selection);
+    const result = await inspectSetupPayload(resolveSetupRoot(scriptRoot), selection);
     if (selection.json) {
       console.log(JSON.stringify(result, null, 2));
     } else {

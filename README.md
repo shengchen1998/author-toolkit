@@ -120,7 +120,7 @@ Add `-g` to install at user level instead:
 npx skills@latest add shengchen1998/author-toolkit -a codex -g
 ```
 
-The setup skill includes self-contained installation, existing-project initialization, preflight, manifest-projection, pending-action, validation, status, project-digest, finding-state, manuscript-write, and character-range CLIs under
+The setup skill includes self-contained installation, entry-file installation, existing-project initialization, preflight, manifest-projection, pending-action, validation, status, project-digest, finding-state, manuscript-write, and character-range CLIs under
 `setup-author-toolkit/scripts/`. Shared workflows resolve that installed skill
 directory directly; no repository checkout or writing-project `npm install` is
 required.
@@ -132,6 +132,13 @@ including internal CLI modules, against `assets/payload-manifest.json`. Add
 `CLAUDE.md -> AGENTS.md` link; project-state validation and host command visibility
 remain separate checks. Its text and JSON output distinguish installed-payload
 failures from repairable project-entry failures, with an explicit exit reason.
+
+Run `node <setup-skill-root>/scripts/install-entry-files.mjs --project-root <root> --json`
+to repair only the two project entry files after a successful payload check. It
+checks both targets before writing, preserves correct entries, and atomically
+replaces other regular files or symlinks. Directories and special files are
+rejected without writing. Repeat setup is idempotent; a final `doctor` verifies
+the installed payload and both entries independently.
 
 Run `node <setup-skill-root>/scripts/initialize.mjs --project-root <root> --json`
 as setup's sole existing-project initialization implementation. It creates only

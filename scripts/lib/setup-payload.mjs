@@ -1,8 +1,15 @@
 import { createHash } from "node:crypto";
+import { existsSync } from "node:fs";
 import { lstat, readFile, readlink } from "node:fs/promises";
 import path from "node:path";
 
 const PAYLOAD_MANIFEST = "assets/payload-manifest.json";
+
+export function resolveSetupRoot(scriptRoot) {
+  return existsSync(path.join(scriptRoot, PAYLOAD_MANIFEST))
+    ? scriptRoot
+    : path.join(scriptRoot, "skills", "setup-author-toolkit");
+}
 
 function portablePath(value) {
   return typeof value === "string" &&

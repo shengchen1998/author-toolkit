@@ -38,7 +38,7 @@ test("doctor reports a bounded summary for a complete installed payload", async 
   assert.equal(result.status, 0, result.stderr);
   assert.match(
     result.stdout,
-    /^Setup payload: \d+ files \(\d+ references, 12 CLIs\); project entry files included\nPayload failures: 0\nProject entry failures: 0\n$/,
+    /^Setup payload: \d+ files \(\d+ references, 13 CLIs\); project entry files included\nPayload failures: 0\nProject entry failures: 0\n$/,
   );
   assert.equal(result.stderr, "");
 
@@ -49,7 +49,7 @@ test("doctor reports a bounded summary for a complete installed payload", async 
   const parsed = JSON.parse(json.stdout);
   assert.equal(parsed.valid, true);
   assert.equal(parsed.payload_manifest, "payload-manifest.json");
-  assert.equal(parsed.clis, 12);
+  assert.equal(parsed.clis, 13);
   assert.equal(parsed.project.agents, "ok");
   assert.equal(parsed.project.claude, "ok");
   assert.deepEqual(parsed.failures, []);
@@ -60,7 +60,7 @@ test("doctor reports a bounded summary for a complete installed payload", async 
 test("source doctor resolves the checked-in setup skill", () => {
   const result = run();
   assert.equal(result.status, 0, result.stderr);
-  assert.match(result.stdout, /Setup payload: \d+ files \(\d+ references, 12 CLIs\)\nPayload failures: 0\nProject entry failures: 0/);
+  assert.match(result.stdout, /Setup payload: \d+ files \(\d+ references, 13 CLIs\)\nPayload failures: 0\nProject entry failures: 0/);
 });
 
 test("doctor reports only failed payload paths, including missing internal modules and drift", async (t) => {
@@ -71,7 +71,7 @@ test("doctor reports only failed payload paths, including missing internal modul
 
   const result = run([], { tool: path.join(setupRoot, "scripts", "doctor.mjs") });
   assert.equal(result.status, 1);
-  assert.match(result.stdout, /^Setup payload: \d+ files \(\d+ references, 12 CLIs\)\nPayload failures: 2\n/);
+  assert.match(result.stdout, /^Setup payload: \d+ files \(\d+ references, 13 CLIs\)\nPayload failures: 2\n/);
   assert.match(result.stdout, /scripts\/lib\/digest\.mjs: missing or unreadable/);
   assert.match(result.stdout, /assets\/references\/terminology\.md: SHA-256 differs/);
   assert.match(result.stdout, /Project entry failures: 0\nExit reason: incomplete installed payload; stop shared work\n$/);
