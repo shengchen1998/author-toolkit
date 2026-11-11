@@ -260,6 +260,9 @@ test("preflight diagnose returns recorded projection and backup-index difference
   const text = run(["--project-root", projectRoot, "--diagnose"]);
   assert.equal(text.status, 1, text.stderr);
   assert.match(text.stdout, /Recorded projection: unverified/);
+  for (const file of manifest.current_scope.files) {
+    assert.match(text.stdout, new RegExp(`- ${file.path.replaceAll(".", "\\.")}: ${file.sha256}`));
+  }
   assert.match(text.stdout, /Pending artifacts: 115; 2 bounded pointers shown in --json/);
   assert.match(text.stdout, /backups\[0\] backup-plan-001 \/ PLAN-001: operation: backup=draft-baseline, approval=revision-plan/);
   assert.match(text.stdout, /Diagnosis: recorded state only; no repairs or writes performed/);
@@ -318,6 +321,25 @@ test("preflight diagnose bounds repeated errors and reports an unreadable pendin
   assert.match(text.stdout, /Pending artifacts: unavailable; 1 bounded pointers shown in --json/);
   assert.match(text.stdout, /2 more conflicting records/);
   assert.ok(text.stdout.trimEnd().split("\n").length <= 40);
+});
+
+test("preflight diagnose bounds displayed scope hashes", async (t) => {
+  const { projectRoot, manifestPath } = await fixture(t);
+  const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
+  manifest.current_scope.files = Array.from({ length: 14 }, (_, position) => ({
+    path: `manuscript/chapter-${String(position + 1).padStart(2, "0")}.md`,
+    sha256: position.toString(16).repeat(64),
+  }));
+  await writeFile(manifestPath, JSON.stringify(manifest));
+
+  const result = run(["--project-root", projectRoot, "--diagnose"]);
+  assert.equal(result.status, 1, result.stderr);
+  assert.match(result.stdout, /14 recorded file hashes/);
+  assert.match(result.stdout, new RegExp(`- manuscript/chapter-12\\.md: ${"b".repeat(64)}`));
+  assert.match(result.stdout, /2 more recorded file hashes; use --json for the bounded structured projection/);
+  assert.doesNotMatch(result.stdout, /chapter-13\.md/);
+  assert.doesNotMatch(result.stdout, /chapter-14\.md/);
+  assert.equal(result.stdout.trimEnd().split("\n").filter((line) => /^- manuscript\//.test(line)).length, 12);
 });
 
 test("preflight reports malformed manifests and argument errors", async (t) => {

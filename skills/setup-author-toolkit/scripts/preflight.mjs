@@ -195,6 +195,12 @@ function outputText(result, selection) {
     const pending = projection.pending_action;
     console.log("Recorded projection: unverified; displayed hashes are recorded values, not current-file verification");
     console.log(`Recorded scope: ${scope ? `${scope.scope_id} (${scope.status}); ${scope.files.length} recorded file hashes` : "none recorded"}`);
+    if (scope) {
+      for (const file of scope.files.slice(0, diagnosticLimit)) {
+        console.log(`- ${file.path}: ${file.sha256}`);
+      }
+      if (scope.files.length > diagnosticLimit) console.log(`- ... ${scope.files.length - diagnosticLimit} more recorded file hashes; use --json for the bounded structured projection`);
+    }
     console.log(`Recorded pending action: ${pending ? `${pending.operation} (${pending.status}; ${pending.scope_id})` : "none recorded"}`);
     if (pending) {
       console.log(`Pending artifacts: ${pending.artifact_count ?? "unavailable"}; ${pending.artifacts.length} bounded pointers shown in --json`);

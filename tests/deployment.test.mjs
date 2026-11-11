@@ -394,7 +394,7 @@ test("setup overwrites AGENTS.md and links CLAUDE.md to it", async () => {
   assert.match(setup, /applies to new projects and existing v3\.1 projects/);
   assert.match(setup, /perform step 5's entry-file replacement even if later project-state validation fails/);
   assert.match(setup, /report that validation failure as a setup blocker after the repair/);
-  assert.match(setup, /without repairing history or inferring a migration/);
+  assert.match(setup, /without repeating backup index inspection, repairing history, or inferring a migration/);
   assert.match(setup, /Except for the two project-root agent entry files described above/);
 });
 
@@ -433,6 +433,8 @@ test("setup uses the authoritative payload inventory and bounded doctor", async 
   assert.match(operations, /--diagnose/);
   assert.match(operations, /recorded_unverified/);
   assert.match(setup, /rerun that command once with `--diagnose`/);
+  assert.match(setup, /without repeating backup index inspection/);
+  assert.match(setup, /--explain` only when the reported inconsistency was not already diagnosed/);
   assert.match(readme, /--project-root <root>/);
   assert.match(readme, /internal CLI modules/);
   assert.match(zhReadme, /--project-root <root>/);
