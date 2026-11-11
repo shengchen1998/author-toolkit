@@ -131,7 +131,7 @@
     },
     {
       "path": "scripts/lib/execution-receipts.mjs",
-      "sha256": "57af2407f51b7f2c695dafccd31500b52cbd5678b5c2328c05b063732d496927"
+      "sha256": "9f3beed828ec540d04aeadc90bcc968ad08cce998433121bee14df7a7abfe850"
     },
     {
       "path": "scripts/lib/execution-summary.mjs",

@@ -183,8 +183,11 @@ export async function inspectExecutionReceipts(manifest, manifestPath, { scopeId
     }
     backups.set(record.backup_id, record);
     const approval = approvals.get(record.approval_id);
-    if (approval && record.operation !== undefined && record.scope_id !== undefined && (record.operation !== approval.operation || record.scope_id !== approval.scopeId)) {
-      errors.push(executionError(`${recordPath}/scope_id`, "backup operation and scope must match its approval"));
+    if (approval && record.operation !== undefined && record.operation !== approval.operation) {
+      errors.push(executionError(`${recordPath}/operation`, "backup operation does not match its approval"));
+    }
+    if (approval && record.scope_id !== undefined && record.scope_id !== approval.scopeId) {
+      errors.push(executionError(`${recordPath}/scope_id`, "backup scope does not match its approval"));
     }
     if (record.manifest_path && record.input_hashes) {
       try {
@@ -213,8 +216,11 @@ export async function inspectExecutionReceipts(manifest, manifestPath, { scopeId
     }
     backups.set(record.backup_id, record);
     const approval = approvals.get(record.approval_id);
-    if (approval && (record.operation !== approval.operation || record.scope_id !== approval.scopeId)) {
-      errors.push(executionError(`/pending_backups/${recordIndex}/scope_id`, "backup operation and scope must match its approval"));
+    if (approval && record.operation !== approval.operation) {
+      errors.push(executionError(`/pending_backups/${recordIndex}/operation`, "backup operation does not match its approval"));
+    }
+    if (approval && record.scope_id !== approval.scopeId) {
+      errors.push(executionError(`/pending_backups/${recordIndex}/scope_id`, "backup scope does not match its approval"));
     }
     if (index.backups.some((backup) => backup.approval_id === record.approval_id)) {
       errors.push(executionError(`/pending_backups/${recordIndex}/approval_id`, "an approval cannot have both a backup and a pending backup"));

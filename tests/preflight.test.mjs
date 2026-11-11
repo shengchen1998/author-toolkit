@@ -279,7 +279,7 @@ test("preflight diagnose returns recorded projection and backup-index difference
   const ordinaryText = run(["--project-root", projectRoot]);
   assert.equal(ordinaryText.status, 1, ordinaryText.stderr);
   assert.equal(ordinaryText.stderr, "");
-  assert.match(ordinaryText.stdout, /- executions: \/backups\/0\/scope_id backup operation and scope must match its approval/);
+  assert.match(ordinaryText.stdout, /- executions: \/backups\/0\/operation backup operation does not match its approval/);
   assert.match(ordinaryText.stdout, /Execution evidence: 0\/0 verified; 0 unverified/);
   assert.match(ordinaryText.stdout, /Navigation cache: stale .*recorded next action withheld/);
   assert.match(ordinaryText.stdout, /Preflight: failed/);

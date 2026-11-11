@@ -193,6 +193,45 @@ test("check-index succeeds for valid legacy and current indexes without a write 
   }
 });
 
+test("backup identity errors identify only the mismatched field", async (t) => {
+  for (const collection of ["backups", "pending_backups"]) {
+    for (const field of ["operation", "scope_id"]) {
+      const project = await fixture(t);
+      const record = {
+        schema_version: "1.0.0",
+        backup_id: "backup-plan-002",
+        approval_id: "PLAN-001",
+        operation: "revision-plan",
+        scope_id: targetScope,
+        approval_summary: "Exact test batch.",
+        input_hashes: { "manuscript/chapter-01.md": inputHash },
+        files: [{ source_path: "manuscript/chapter-01.md", backup_path: null }],
+        recorded_at: timestamp,
+        manifest_path: "backups/backup-plan-002/manifest.json",
+        [field]: field === "operation" ? "draft-baseline" : "scope-other",
+      };
+      project.index[collection] = [record];
+      await project.saveIndex();
+      if (collection === "pending_backups") {
+        const { manifest_path: manifestPath, ...preserved } = record;
+        const preservedPath = path.join(path.dirname(project.manifestPath), "..", manifestPath);
+        await mkdir(path.dirname(preservedPath), { recursive: true });
+        await writeFile(preservedPath, JSON.stringify(preserved), "utf8");
+      } else {
+        delete record.manifest_path;
+        await project.saveIndex();
+      }
+
+      const result = await inspectExecutionReceipts(project.manifest, project.manifestPath);
+      const identityErrors = result.errors.filter((error) => error.instancePath.startsWith(`/${collection}/0/`));
+      assert.deepEqual(
+        identityErrors.map((error) => error.instancePath),
+        [`/${collection}/0/${field}`],
+      );
+    }
+  }
+});
+
 test("receipt identity and backup references must match the approval", async (t) => {
   const project = await fixture(t);
   project.index.executions[0] = receipt({
