@@ -3,7 +3,7 @@
   "files": [
     {
       "path": "SKILL.md",
-      "sha256": "675d853ce490ee05492f0dd2fe48eb3cfe99b0ba0f4866f05ec06fb57f27b700"
+      "sha256": "eb14e697c2d3be3885a28fbb9800d8fd90a64f11f3e206cc8a785ea24250cb6e"
     },
     {
       "path": "assets/AGENTS.md",
@@ -92,6 +92,14 @@
     {
       "path": "assets/references/workflow-reporting.md",
       "sha256": "12c66b2c869e3811d2a1b8463e1a56ac767cdc40035de38f82fb3e286d080d94"
+    },
+    {
+      "path": "assets/setup/existing-project.md",
+      "sha256": "7ed74acfac4676cb35611dec275d79a252e1a5b9cac643b1bb518d914da10f9f"
+    },
+    {
+      "path": "assets/setup/new-project.md",
+      "sha256": "e41f727bbbee70b72b0d608fae6893b11b5feb3c4ebf388cefa153b43e304620"
     },
     {
       "path": "scripts/check.mjs",

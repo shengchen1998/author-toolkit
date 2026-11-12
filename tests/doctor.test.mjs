@@ -80,6 +80,15 @@ test("doctor reports only failed payload paths, including missing internal modul
   assert.doesNotMatch(result.stdout, /AGENTS\.md|project entry files/);
 });
 
+test("doctor detects a missing setup branch reference", async (t) => {
+  const { setupRoot } = await fixture(t);
+  await rm(path.join(setupRoot, "assets", "setup", "existing-project.md"));
+  const result = run([], { tool: path.join(setupRoot, "scripts", "doctor.mjs") });
+  assert.equal(result.status, 1);
+  assert.match(result.stdout, /Payload failures: 1/);
+  assert.match(result.stdout, /assets\/setup\/existing-project\.md: missing or unreadable/);
+});
+
 test("doctor distinguishes repairable project entry failures without reading project state", async (t) => {
   const { setupRoot, projectRoot } = await fixture(t);
   await writeFile(path.join(projectRoot, "AGENTS.md"), "custom\n");

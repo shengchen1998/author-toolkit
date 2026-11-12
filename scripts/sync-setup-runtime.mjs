@@ -73,6 +73,7 @@ async function writePayloadManifest(generated) {
   const files = (await Promise.all([
     filesUnder(generated, "scripts/"),
     filesUnder(path.join(setupRoot, "assets", "references"), "assets/references/"),
+    filesUnder(path.join(setupRoot, "assets", "setup"), "assets/setup/"),
     ["assets/AGENTS.md", "SKILL.md"],
   ])).flat().sort();
   const entries = await Promise.all(files.map(async (file) => {

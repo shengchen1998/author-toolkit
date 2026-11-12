@@ -69,7 +69,7 @@ test("setup requires author-confirmed host command visibility", async () => {
     readFile(path.join(root, "README.md"), "utf8"),
     readFile(path.join(root, "README.zh-CN.md"), "utf8"),
   ]);
-  const setupStep = setup.match(/^8\. .+$/m)?.[0];
+  const setupStep = setup.match(/^4\. .+$/m)?.[0];
   const readyRule = setup.match(/^Report setup as ready only when .+$/m)?.[0];
   assert.ok(setupStep);
   assert.ok(readyRule);
@@ -112,19 +112,17 @@ test("setup reads terminology by section from the single installed source", asyn
 });
 
 test("deterministic initialization and semantic skills have one implementation each", async () => {
-  const [setup, project, operations, instructions, development] = await Promise.all([
+  const [setup, existingSetup, project, operations, instructions, development] = await Promise.all([
     readFile(path.join(root, "skills/setup-author-toolkit/SKILL.md"), "utf8"),
+    readFile(path.join(root, "skills/setup-author-toolkit/assets/setup/existing-project.md"), "utf8"),
     readFile(path.join(root, "skills/author-project/SKILL.md"), "utf8"),
     readFile(path.join(root, "skills/author-project/references/operations.md"), "utf8"),
     readFile(path.join(root, "skills/setup-author-toolkit/assets/AGENTS.md"), "utf8"),
     readFile(path.join(root, "AGENTS.md"), "utf8"),
   ]);
-  const setupStep = setup.match(/^4\. .+$/m)?.[0];
-  assert.ok(setupStep);
-
-  assert.match(setupStep, /scripts\/initialize\.mjs --project-root <project-root> --json/);
-  assert.match(setupStep, /only existing-project initialization implementation/);
-  assert.match(setupStep, /do not read `author-project`'s initialization references/);
+  assert.match(existingSetup, /scripts\/initialize\.mjs --project-root <project-root> --json/);
+  assert.match(existingSetup, /only existing-project initialization implementation/);
+  assert.match(existingSetup, /do not read `author-project`'s initialization references/);
   assert.doesNotMatch(project, /\| `initialize` \|/);
   assert.match(project, /this skill has no `initialize` operation/);
   assert.match(operations, /That CLI is the only initialization implementation/);
@@ -230,10 +228,10 @@ test("backup and handoff writes resolve registered project paths", async () => {
 });
 
 test("project digest is a generated navigation cache, not another source of truth", async () => {
-  const [project, readOperations, setup] = await Promise.all([
+  const [project, readOperations, existingSetup] = await Promise.all([
     readFile(path.join(root, "skills/author-project/SKILL.md"), "utf8"),
     readFile(path.join(root, "skills/author-project/references/read-operations.md"), "utf8"),
-    readFile(path.join(root, "skills/setup-author-toolkit/SKILL.md"), "utf8"),
+    readFile(path.join(root, "skills/setup-author-toolkit/assets/setup/existing-project.md"), "utf8"),
   ]);
   assert.match(project, /`status --digest`/);
   assert.match(readOperations, /project-digest\.mjs --project-root/);
@@ -248,7 +246,7 @@ test("project digest is a generated navigation cache, not another source of trut
   assert.match(readOperations, /withholds the recorded next action and shows `revise-draft`/);
   assert.match(readOperations, /older cache, unreadable cache, or unsafe recorded route makes the cache `stale`/);
   assert.match(readOperations, /without reproducing it or rewriting the file/);
-  assert.match(setup, /read `PROJECT_STATE\.md` first/i);
+  assert.match(existingSetup, /read `PROJECT_STATE\.md` first/i);
 
   for (const skill of ["write-fiction", "revise-fiction", "revise-draft", "revise-increment", "revise-request"]) {
     const text = await readFile(path.join(root, "skills", skill, "SKILL.md"), "utf8");
@@ -259,19 +257,20 @@ test("project digest is a generated navigation cache, not another source of trut
 });
 
 test("setup and routine navigation keep operational history listings bounded", async () => {
-  const [setup, readOperations, readme, zhReadme] = await Promise.all([
+  const [setup, existingSetup, newSetup, readOperations, readme, zhReadme] = await Promise.all([
     readFile(path.join(root, "skills/setup-author-toolkit/SKILL.md"), "utf8"),
+    readFile(path.join(root, "skills/setup-author-toolkit/assets/setup/existing-project.md"), "utf8"),
+    readFile(path.join(root, "skills/setup-author-toolkit/assets/setup/new-project.md"), "utf8"),
     readFile(path.join(root, "skills/author-project/references/read-operations.md"), "utf8"),
     readFile(path.join(root, "README.md"), "utf8"),
     readFile(path.join(root, "README.zh-CN.md"), "utf8"),
   ]);
 
   assert.match(setup, /^1\. Inspect the project root with shallow listings and targeted existence or type checks\./m);
-  assert.match(setup, /For an existing v3\.1 manifest, read `PROJECT_STATE\.md` first when present/);
-  assert.match(setup, /use `initialize\.mjs --project-root <project-root> --json` for the bounded projection/);
-  assert.match(setup, /do not print `payload-manifest\.json`, the complete manifest, or the full backup index/);
-  assert.match(setup, /Without a manifest, limit discovery to the candidate component directories and manuscript paths needed for registration/);
-  assert.match(setup, /use presence checks or counts that do not emit session or backup filenames/);
+  assert.match(existingSetup, /For an existing v3\.1 manifest, run `node <setup-skill-root>\/scripts\/initialize\.mjs --project-root <project-root> --json` directly for the bounded projection/);
+  assert.match(setup, /print `payload-manifest\.json` or the complete manifest, or emit complete session or backup listings/);
+  assert.match(newSetup, /Limit discovery to the candidate component directories and manuscript paths needed for registration/);
+  assert.match(newSetup, /use presence checks or counts that do not emit session or backup filenames/);
 
   const navigationRule = /For routine navigation, use `PROJECT_STATE\.md` pointers, targeted artifact reads, or aggregate counts rather than emitting complete file listings of the registered session or backup directories\./;
   assert.match(readOperations, navigationRule);
@@ -288,9 +287,10 @@ test("setup and routine navigation keep operational history listings bounded", a
 });
 
 test("existing-project setup uses bounded inspection references and a categorized summary", async () => {
-  const [project, setup, readOperations, operations, readme, zhReadme] = await Promise.all([
+  const [project, setup, existingSetup, readOperations, operations, readme, zhReadme] = await Promise.all([
     readFile(path.join(root, "skills/author-project/SKILL.md"), "utf8"),
     readFile(path.join(root, "skills/setup-author-toolkit/SKILL.md"), "utf8"),
+    readFile(path.join(root, "skills/setup-author-toolkit/assets/setup/existing-project.md"), "utf8"),
     readFile(path.join(root, "skills/author-project/references/read-operations.md"), "utf8"),
     readFile(path.join(root, "skills/author-project/references/operations.md"), "utf8"),
     readFile(path.join(root, "README.md"), "utf8"),
@@ -300,18 +300,18 @@ test("existing-project setup uses bounded inspection references and a categorize
   assert.match(project, /For `read`, `validate`, `status`, `status --digest`, and `check-index`, read \[`references\/read-operations\.md`\]/);
   assert.match(project, /For a new manifest and every record or write operation, read \[`references\/operations\.md`\]/);
   assert.doesNotMatch(project, /For every operation, read \[`references\/operations\.md`\]/);
-  assert.match(setup, /Once initialization's manifest-schema check passes, perform step 5's entry-file replacement even if later project-state validation fails/);
-  assert.match(setup, /report that validation failure as a setup blocker after the repair/);
-  assert.match(setup, /unsupported or schema-invalid manifest still stops before entry-file replacement/);
-  assert.match(setup, /backup-index inconsistency after a successful manifest-schema check, complete step 5's entry-file repair before reporting the project-state blocker/);
-  assert.match(setup, /doctor, initialize, entry-file repair, one diagnostic check\./);
+  assert.match(existingSetup, /Once initialization's manifest-schema check passes, perform step 3's entry-file replacement even if later project-state validation fails/);
+  assert.match(existingSetup, /report that validation failure as a setup blocker after the repair/);
+  assert.match(existingSetup, /unsupported or schema-invalid manifest still stops before entry-file replacement/);
+  assert.match(existingSetup, /perform step 3's entry-file replacement even if later project-state validation fails/);
+  assert.match(existingSetup, /doctor`, initialize, entry-file repair, and one diagnostic check/);
   assert.match(setup, /final installation and project-state verification/);
   assert.doesNotMatch(setup, /then the final doctor|Rerun the same doctor command/);
   assert.match(setup, /check\.mjs --project-root <project-root> --diagnose/);
-  assert.match(setup, /without rerunning ordinary preflight/);
-  assert.match(setup, /standalone `validate\.mjs` only when a validation failure requires its complete diagnostics/);
-  assert.match(setup, /endpoints do not imply a contiguous ID range/);
-  assert.match(setup, /default ordinary status uses the current scope ID/);
+  assert.match(existingSetup, /without rerunning ordinary preflight/);
+  assert.match(existingSetup, /standalone `validate\.mjs` only when a validation failure requires its complete diagnostics/);
+  assert.match(existingSetup, /endpoints do not imply a contiguous ID range/);
+  assert.match(existingSetup, /default ordinary status uses the current scope ID/);
   for (const heading of ["Installation payload", "Project entry files", "Manuscript scope", "Execution evidence"]) {
     assert.match(setup, new RegExp(`\\*\\*${heading}\\*\\*`));
   }
@@ -336,10 +336,27 @@ test("existing-project setup uses bounded inspection references and a categorize
   assert.match(zhReadme, /安装载荷、项目入口文件、稿件范围、执行证据/);
 });
 
+test("setup discloses only the selected project branch", async () => {
+  const [setup, existingSetup, newSetup] = await Promise.all([
+    readFile(path.join(root, "skills/setup-author-toolkit/SKILL.md"), "utf8"),
+    readFile(path.join(root, "skills/setup-author-toolkit/assets/setup/existing-project.md"), "utf8"),
+    readFile(path.join(root, "skills/setup-author-toolkit/assets/setup/new-project.md"), "utf8"),
+  ]);
+  const setupSteps = setup.match(/^\d+\. .+$/gm) ?? [];
+  assert.equal(setupSteps.length, 4);
+  assert.match(setup, /when `\.author-toolkit\/project\.json` exists, read only \[Existing project\]\(assets\/setup\/existing-project\.md\); otherwise read only \[New project\]\(assets\/setup\/new-project\.md\)/);
+  assert.doesNotMatch(setup, /author-project\/references\/operations\.md|read-operations\.md/);
+  assert.doesNotMatch(existingSetup, /author-project\/SKILL\.md|author-project\/references\/|read-operations\.md/);
+  assert.match(newSetup, /\.\.\/\.\.\/\.\.\/author-project\/SKILL\.md/);
+  assert.match(newSetup, /\.\.\/\.\.\/\.\.\/author-project\/references\/operations\.md/);
+  assert.doesNotMatch(newSetup, /existing-project\.md|read-operations\.md/);
+});
+
 test("convergence gates run strict execution checks without gating ordinary inspection", async () => {
-  const [setup, project, readOperations, state, increment, request, handoff, readme, zhReadme] =
+  const [setup, existingSetup, project, readOperations, state, increment, request, handoff, readme, zhReadme] =
     await Promise.all([
       readFile(path.join(root, "skills/setup-author-toolkit/SKILL.md"), "utf8"),
+      readFile(path.join(root, "skills/setup-author-toolkit/assets/setup/existing-project.md"), "utf8"),
       readFile(path.join(root, "skills/author-project/SKILL.md"), "utf8"),
       readFile(path.join(root, "skills/author-project/references/read-operations.md"), "utf8"),
       readFile(path.join(root, "skills/revise-fiction/references/state-and-findings.md"), "utf8"),
@@ -351,10 +368,10 @@ test("convergence gates run strict execution checks without gating ordinary insp
     ]);
 
   assert.match(project, /current-draft revision convergence or previous\/base-scope execution gate, target scope ID and `--require-execution`/);
-  assert.match(setup, /default ordinary status uses the current scope ID/);
-  assert.match(setup, /Before relying on a recorded current-draft revision convergence statement/);
-  assert.match(setup, /apply the other conditions in \[Current-draft revision convergence\]\(\.\.\/revise-fiction\/references\/state-and-findings\.md#current-draft-revision-convergence\)/);
-  assert.match(setup, /does not block ordinary setup, a current-scope review, or unrelated read-only work/);
+  assert.match(existingSetup, /default ordinary status uses the current scope ID/);
+  assert.match(existingSetup, /Before relying on a recorded current-draft revision convergence statement/);
+  assert.match(existingSetup, /apply the other conditions in \[Current-draft revision convergence\]\(\.\.\/\.\.\/\.\.\/revise-fiction\/references\/state-and-findings\.md#current-draft-revision-convergence\)/);
+  assert.match(existingSetup, /does not block ordinary setup, a current-scope review, or unrelated read-only work/);
   assert.doesNotMatch(setup, /evidence-blocked|legacy-unverified/);
 
   for (const text of [readOperations, state]) {
@@ -383,12 +400,12 @@ test("convergence gates run strict execution checks without gating ordinary insp
 });
 
 test("unrecoverable execution evidence ends at an author decision without waiving gates", async () => {
-  const [draft, state, readOperations, operations, setup] = await Promise.all([
+  const [draft, state, readOperations, operations, existingSetup] = await Promise.all([
     readFile(path.join(root, "skills/revise-draft/SKILL.md"), "utf8"),
     readFile(path.join(root, "skills/revise-fiction/references/state-and-findings.md"), "utf8"),
     readFile(path.join(root, "skills/author-project/references/read-operations.md"), "utf8"),
     readFile(path.join(root, "skills/author-project/references/operations.md"), "utf8"),
-    readFile(path.join(root, "skills/setup-author-toolkit/SKILL.md"), "utf8"),
+    readFile(path.join(root, "skills/setup-author-toolkit/assets/setup/existing-project.md"), "utf8"),
   ]);
   for (const text of [draft, state]) {
     assert.match(text, /zero reconcilable approvals|it is zero and unverified approvals remain/i);
@@ -398,7 +415,7 @@ test("unrecoverable execution evidence ends at an author decision without waivin
   }
   assert.match(readOperations, /never appends receipts, changes approvals, opens the backup gate, or writes files/);
   assert.match(operations, /do not loop reconciliation or bypass the backup gate/);
-  assert.match(setup, /not as a promise that rerunning revision will repair missing evidence/);
+  assert.match(existingSetup, /not as a promise that rerunning revision will repair missing evidence/);
 });
 
 test("workflow reporting pointers do not form a cycle", async () => {

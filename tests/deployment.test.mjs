@@ -458,10 +458,10 @@ test("every installed shared reference named by a skill exists in the setup payl
 });
 
 test("setup overwrites AGENTS.md and links CLAUDE.md to it", async () => {
-  const setup = await readFile(
-    path.join(root, "skills", "setup-author-toolkit", "SKILL.md"),
-    "utf8",
-  );
+  const [setup, existingSetup] = await Promise.all([
+    readFile(path.join(root, "skills", "setup-author-toolkit", "SKILL.md"), "utf8"),
+    readFile(path.join(root, "skills", "setup-author-toolkit", "assets", "setup", "existing-project.md"), "utf8"),
+  ]);
 
   assert.match(setup, /replaces `<project-root>\/AGENTS\.md` with a regular file containing `assets\/AGENTS\.md`/);
   assert.match(setup, /replaces any existing `CLAUDE\.md` file or symlink/);
@@ -472,9 +472,9 @@ test("setup overwrites AGENTS.md and links CLAUDE.md to it", async () => {
   assert.match(setup, /If either target is a directory or special file, or any operation fails, stop/);
   assert.doesNotMatch(setup, /rm -f AGENTS\.md|ln -s AGENTS\.md/);
   assert.match(setup, /applies to new projects and existing v3\.1 projects/);
-  assert.match(setup, /perform step 5's entry-file replacement even if later project-state validation fails/);
-  assert.match(setup, /report that validation failure as a setup blocker after the repair/);
-  assert.match(setup, /without repeating backup index inspection, repairing history, or inferring a migration/);
+  assert.match(existingSetup, /perform step 3's entry-file replacement even if later project-state validation fails/);
+  assert.match(existingSetup, /report that validation failure as a setup blocker after the repair/);
+  assert.match(existingSetup, /without repeating backup index inspection, repairing history, or inferring a migration/);
   assert.match(setup, /Except for the two project-root agent entry files described above/);
 });
 
@@ -484,7 +484,7 @@ test("setup reads shared references without deploying them into project state", 
     readFile(path.join(root, "skills", "setup-author-toolkit", "assets", "AGENTS.md"), "utf8"),
   ]);
   assert.match(setup, /Keep every shared runtime contract in this installed skill's `assets\/references\/` payload/);
-  assert.match(setup, /Do not copy shared contracts into the writing project/);
+  assert.match(setup, /copy shared contracts into the writing project/);
   assert.match(setup, /incomplete toolkit installation/);
   assert.doesNotMatch(setup, /Deploy every file|reference-version-conflict|reference-updates/);
   assert.match(setup, /independent skills do not require setup for standalone use/i);
@@ -493,8 +493,9 @@ test("setup reads shared references without deploying them into project state", 
 });
 
 test("setup uses the authoritative payload inventory and bounded doctor", async () => {
-  const [setup, operations, instructions, readme, zhReadme] = await Promise.all([
+  const [setup, existingSetup, operations, instructions, readme, zhReadme] = await Promise.all([
     readFile(path.join(root, "skills", "setup-author-toolkit", "SKILL.md"), "utf8"),
+    readFile(path.join(root, "skills", "setup-author-toolkit", "assets", "setup", "existing-project.md"), "utf8"),
     readFile(path.join(root, "skills", "author-project", "references", "read-operations.md"), "utf8"),
     readFile(path.join(root, "skills", "setup-author-toolkit", "assets", "AGENTS.md"), "utf8"),
     readFile(path.join(root, "README.md"), "utf8"),
@@ -507,7 +508,7 @@ test("setup uses the authoritative payload inventory and bounded doctor", async 
     assert.match(text, /assets\/payload-manifest\.json/);
   }
   assert.match(setup, /If an installed-payload check fails, report an incomplete toolkit installation and stop/);
-  assert.match(setup, /Step 3's diagnostic check verifies the installed payload and both entry files afterward/);
+  assert.match(setup, /final installation and project-state verification/);
   assert.match(instructions, /scripts\/check\.mjs --project-root <project-root>/);
   assert.match(instructions, /rerun it with `--diagnose`/);
   assert.match(instructions, /stop at the active strategy's author gate/);
@@ -516,13 +517,23 @@ test("setup uses the authoritative payload inventory and bounded doctor", async 
   assert.match(operations, /--diagnose/);
   assert.match(operations, /recorded_unverified/);
   assert.match(setup, /check\.mjs --project-root <project-root> --diagnose/);
-  assert.match(setup, /without rerunning ordinary preflight/);
-  assert.match(setup, /without repeating backup index inspection/);
-  assert.match(setup, /--explain` only when the reported inconsistency was not already diagnosed/);
+  assert.match(existingSetup, /without rerunning ordinary preflight/);
+  assert.match(existingSetup, /without repeating backup index inspection/);
+  assert.match(existingSetup, /--explain` only when the reported inconsistency was not already diagnosed/);
   assert.match(readme, /--project-root <root>/);
   assert.match(readme, /internal CLI modules/);
   assert.match(zhReadme, /--project-root <root>/);
   assert.match(zhReadme, /CLI 内部模块/);
+});
+
+test("setup branch references are included in the authoritative payload manifest", async () => {
+  const payload = JSON.parse(await readFile(
+    path.join(root, "skills", "setup-author-toolkit", "assets", "payload-manifest.json"),
+    "utf8",
+  ));
+  const paths = new Set(payload.files.map((entry) => entry.path));
+  assert.ok(paths.has("assets/setup/existing-project.md"));
+  assert.ok(paths.has("assets/setup/new-project.md"));
 });
 
 test("shared workflows resolve installed setup references without project deployment", async () => {
