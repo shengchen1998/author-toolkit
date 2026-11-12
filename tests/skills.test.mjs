@@ -355,6 +355,9 @@ test("convergence gates run strict execution checks without gating ordinary insp
     assert.match(text, /determines or claims (?:current-draft revision convergence|this state)/);
     assert.match(text, /`blocked`/);
     assert.match(text, /preserved post-write evidence/);
+    assert.match(text, /execution_recovery|execution recovery audit/);
+    assert.match(text, /reconcilable_count|Zero reconcilable approvals/);
+    assert.match(text, /end recovery/);
     assert.doesNotMatch(text, /evidence-blocked|legacy-unverified/);
   }
   assert.match(state, /previous scope ID before entering `revise-increment`/);
@@ -369,6 +372,27 @@ test("convergence gates run strict execution checks without gating ordinary insp
   assert.match(handoff, /Treat recorded statements of current-draft revision convergence as historical/);
   assert.match(readme, /A recorded statement of that state or a\s+current-scope-review pending action does not replace that check/);
   assert.match(zhReadme, /已记录的该状态声明或 `current-scope-review` 待处理操作不能替代该检查/);
+  assert.match(readme, /unsupported unverified approvals/);
+  assert.match(zhReadme, /无可用证据的未核对批准数/);
+});
+
+test("unrecoverable execution evidence ends at an author decision without waiving gates", async () => {
+  const [draft, state, readOperations, operations, setup] = await Promise.all([
+    readFile(path.join(root, "skills/revise-draft/SKILL.md"), "utf8"),
+    readFile(path.join(root, "skills/revise-fiction/references/state-and-findings.md"), "utf8"),
+    readFile(path.join(root, "skills/author-project/references/read-operations.md"), "utf8"),
+    readFile(path.join(root, "skills/author-project/references/operations.md"), "utf8"),
+    readFile(path.join(root, "skills/setup-author-toolkit/SKILL.md"), "utf8"),
+  ]);
+  for (const text of [draft, state]) {
+    assert.match(text, /zero reconcilable approvals|it is zero and unverified approvals remain/i);
+    assert.match(text, /end recovery/);
+    assert.match(text, /not established/);
+    assert.match(text, /new scope|A new scope/);
+  }
+  assert.match(readOperations, /never appends receipts, changes approvals, opens the backup gate, or writes files/);
+  assert.match(operations, /do not loop reconciliation or bypass the backup gate/);
+  assert.match(setup, /not as a promise that rerunning revision will repair missing evidence/);
 });
 
 test("workflow reporting pointers do not form a cycle", async () => {

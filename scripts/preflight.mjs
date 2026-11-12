@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 
 import { generateProjectDigest } from "./lib/digest.mjs";
 import { outputUnverifiedOperationGroups } from "./lib/execution-summary.mjs";
+import { auditExecutionRecovery } from "./lib/execution-recovery.mjs";
 import { explainBackupIndex } from "./lib/backup-index-diagnostics.mjs";
 import { inspectNavigationCache, markNavigationCacheStale } from "./lib/navigation-cache.mjs";
 import {
@@ -33,8 +34,9 @@ manuscript hashes, tracker, execution receipts, and recorded blockers. Without
 --scope-id, use the manifest's current scope ID when present. Ordinary status
 reports unverified approvals without failing. --require-execution turns those
 approvals into a failed execution gate and requires an explicit --scope-id.
---diagnose adds a bounded recorded-unverified projection and backup-index
-explanation when validation fails. It changes no validation result or state.
+--diagnose adds a read-only execution-recovery audit and, when validation fails,
+a bounded recorded-unverified projection and backup-index explanation. It
+previews evidence reconciliation without changing validation results or state.
 --digest also refreshes PROJECT_STATE.md after the read-only checks pass.
 The cache check recognizes the current format and marks older or failed-state
 caches stale without displaying their recorded next action or changing files.
@@ -116,6 +118,7 @@ async function preflight(selection) {
   if (!validation.valid) {
     markNavigationCacheStale(result.navigation_cache, "current project validation failed");
     if (selection.diagnose && validation.manifest) {
+      const diagnosisScopeId = selection.scopeId ?? validation.manifest.current_scope?.scope_id;
       const projection = await manifestProjection(validation.manifest, selection.projectRoot, { diagnostic: true });
       projection.verification = "recorded_unverified";
       const scopeCheck = validation.checks.find((check) => check.path === "scope");
@@ -129,6 +132,7 @@ async function preflight(selection) {
       const backupIndex = await explainBackupIndex(validation.manifest, manifestPath);
       result.diagnosis = {
         read_only: true,
+        execution_recovery: await auditExecutionRecovery(validation.manifest, manifestPath, { scopeId: diagnosisScopeId }),
         projection,
         current_hashes: currentHashes,
         backup_index: {
@@ -152,8 +156,10 @@ async function preflight(selection) {
   }
 
   if (selection.diagnose) {
+    const scopeId = selection.scopeId ?? validation.manifest.current_scope?.scope_id;
     result.diagnosis = {
       read_only: true,
+      execution_recovery: await auditExecutionRecovery(validation.manifest, manifestPath, { scopeId }),
       backup_index: await explainBackupIndex(validation.manifest, manifestPath),
     };
   }
@@ -237,6 +243,30 @@ function outputText(result, selection) {
     if (backupIndex.omitted_record_count) console.log(`- ... ${backupIndex.omitted_record_count} more conflicting records; use --json for bounded structured diagnostics`);
     if (backupIndex.omitted_error_count) console.log(`- ... ${backupIndex.omitted_error_count} more backup-index errors; use --json for bounded structured diagnostics`);
     console.log(`Diagnosis: ${currentHashes.verified ? "current hashes verified; remaining projection recorded only" : "recorded state only"}; no repairs or writes performed`);
+  }
+
+  if (result.diagnosis?.execution_recovery) {
+    const recovery = result.diagnosis.execution_recovery;
+    if (recovery.status === "available") {
+      console.log(
+        `Execution recovery: ${recovery.reconcilable_count} reconcilable; ${recovery.unsupported_count} of ${recovery.unverified_count} unverified approvals lack usable evidence`,
+      );
+      console.log(
+        `Recovery audit: ${recovery.evidence_file_count} valid evidence files in ${recovery.scanned_file_count} JSON files; ${recovery.candidate_file_count} candidates for the selected scope`,
+      );
+      for (const candidate of recovery.candidates) {
+        console.log(`- ${candidate.path}: ${candidate.approval_id} (${candidate.status})${candidate.reason ? `: ${concise(candidate.reason)}` : ""}`);
+      }
+      if (recovery.omitted_candidate_count) console.log(`- ... ${recovery.omitted_candidate_count} more evidence candidates; use --json for bounded structured diagnostics`);
+      console.log("Current-draft revision convergence: not established by this execution-only audit");
+      console.log(
+        recovery.reconcilable_count > 0
+          ? "Next action: preview and reconcile usable evidence, then rerun the strict gate and remaining strategy checks"
+          : "Next action: stop repeating reconciliation; ask the author to locate new evidence or end recovery without establishing current-draft revision convergence",
+      );
+    } else if (recovery.status === "unavailable") {
+      console.log(`Execution recovery: unavailable; ${recovery.errors.join("; ")}`);
+    }
   }
 
   if (result.status) {

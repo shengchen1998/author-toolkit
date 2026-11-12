@@ -230,6 +230,9 @@ test("setup carries self-contained preflight, validation, state, range, and inst
   assert.deepEqual(diagnosed.diagnosis.backup_index.records[0].differences, [
     { field: "operation", backup: "draft-baseline", approval: "revision-plan" },
   ]);
+  assert.equal(diagnosed.diagnosis.execution_recovery.read_only, true);
+  assert.equal(diagnosed.diagnosis.execution_recovery.status, "unavailable");
+  assert.equal(diagnosed.diagnosis.execution_recovery.current_draft_revision_convergence, "not_established");
 
   const rangeProject = path.join(temporaryRoot, "range-project");
   await mkdir(path.join(rangeProject, "manuscript"), { recursive: true });

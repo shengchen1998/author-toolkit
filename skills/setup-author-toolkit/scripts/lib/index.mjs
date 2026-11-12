@@ -11,6 +11,7 @@ export {
   validateExecutionReceipts,
 } from "./execution-receipts.mjs";
 export { explainBackupIndex } from "./backup-index-diagnostics.mjs";
+export { auditExecutionRecovery } from "./execution-recovery.mjs";
 export {
   readExecutionEvidence,
   reconcileExecutions,

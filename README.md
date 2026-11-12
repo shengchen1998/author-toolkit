@@ -170,6 +170,14 @@ recorded hashes; the JSON projection retains every scope file. When the `scope`
 check passes, a separate current-hash result confirms how many current files
 match those recorded hashes; the command still exits 1 and never repairs state.
 Do not repeat `check-index` for conflicts already explained by the diagnosis.
+For unverified approvals, `--diagnose` also runs a read-only execution recovery
+audit, even when project validation succeeds. It discovers project-local JSON
+evidence, previews reconciliation without writing, and reports reconcilable and
+unsupported unverified approvals separately. Zero reconcilable approvals means
+the current evidence set cannot repair the strict execution gate. The active
+strategy must ask the author to locate new evidence or end recovery with the
+current-draft revision convergence not established, rather than presenting a revision rerun, new scope, or new
+baseline as a substitute for execution evidence.
 
 `read.mjs` bounds failed validation to failed checks, 12 errors per check, and
 operation-grouped unverified-approval summaries. Add `--details` for complete
@@ -430,6 +438,8 @@ After a validation failure, `--diagnose` supplies the bounded
 recorded-unverified projection, scope paths and hashes, current-hash verification
 when the scope check passes, and index differences without repeating the other
 inspection commands or printing the complete manifest.
+Its execution recovery audit is read-only and never establishes current-draft
+revision convergence by itself.
 Use `read.mjs --project-root <root>` for its bounded manifest projection and
 `set-pending.mjs --help` for validated pending-action updates.
 
@@ -496,6 +506,8 @@ Use `read.mjs --project-root <root>` for its bounded manifest projection and
   `record-backup` refuses new edit batches while another approval is unverified,
   including create-only batches. `reconcile-executions` adds only receipts backed
   by preserved post-write evidence; unsupported approvals remain unverified.
+  `preflight --diagnose` audits their recoverability before reconciliation and
+  exposes the author decision required when no usable evidence remains.
   `check-index --explain` provides read-only backup index inspection for identity
   mismatches without migrating historical records or adding execution receipts.
   Restoration also requires author approval and retains its separate safety path.

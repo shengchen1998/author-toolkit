@@ -204,6 +204,28 @@ test("preflight strict execution is explicit and does not change ordinary inspec
   assert.ok(parsed.navigation_cache.issues.includes("strict execution gate failed"));
   assert.equal(parsed.navigation_cache.next_action, "withheld");
 
+  const diagnosed = run([
+    "--project-root",
+    projectRoot,
+    "--scope-id",
+    scopeId,
+    "--require-execution",
+    "--diagnose",
+    "--json",
+  ]);
+  assert.equal(diagnosed.status, 1, diagnosed.stderr);
+  const recovery = JSON.parse(diagnosed.stdout).diagnosis.execution_recovery;
+  assert.equal(recovery.read_only, true);
+  assert.equal(recovery.unverified_count, 2);
+  assert.equal(recovery.reconcilable_count, 0);
+  assert.equal(recovery.unsupported_count, 2);
+  assert.equal(recovery.evidence_file_count, 0);
+  assert.equal(recovery.current_draft_revision_convergence, "not_established");
+  assert.equal(recovery.next_action, "author_decision_required");
+  const diagnosisText = run(["--project-root", projectRoot, "--scope-id", scopeId, "--diagnose"]);
+  assert.match(diagnosisText.stdout, /Execution recovery: 0 reconcilable; 2 of 2 unverified approvals lack usable evidence/);
+  assert.match(diagnosisText.stdout, /stop repeating reconciliation; ask the author to locate new evidence or end recovery without establishing current-draft revision convergence/);
+
   const digest = run([
     "--project-root",
     projectRoot,
@@ -222,6 +244,57 @@ test("preflight strict execution is explicit and does not change ordinary inspec
   const implicit = run(["--project-root", projectRoot, "--require-execution"]);
   assert.equal(implicit.status, 2);
   assert.match(implicit.stderr, /--require-execution requires --scope-id ID/);
+});
+
+test("preflight diagnosis discovers usable evidence without writing receipts", async (t) => {
+  const { projectRoot, manifestPath } = await fixture(t);
+  const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
+  const trackerPath = path.join(projectRoot, manifest.paths.audit_tracker);
+  const approvalTable = "| Approval ID | Type | Operation | Scope ID | Paths | Status | Reason | Updated |\n|---|---|---|---|---|---|---|---|";
+  const rows = [
+    `| EDIT-001 | edit | chapter-revision | ${scopeId} | \`manuscript/chapter-01.md\` | approved | Exact test batch. | ${timestamp} |`,
+    `| EDIT-002 | edit | chapter-revision | ${scopeId} | \`manuscript/chapter-02.md\` | approved | Exact test batch. | ${timestamp} |`,
+    "| EDIT-003 | edit | prose | scope-historical | `manuscript/chapter-03.md` | approved | Historical test batch. | 2026-11-09T00:00:00Z |",
+  ];
+  await writeFile(trackerPath, (await readFile(trackerPath, "utf8")).replace(approvalTable, `${approvalTable}\n${rows.join("\n")}`));
+  const inputHash = manifest.current_scope.files[0].sha256;
+  const indexPath = path.join(projectRoot, manifest.paths.backups, "index.json");
+  const index = JSON.parse(await readFile(indexPath, "utf8"));
+  delete index.executions;
+  index.backups.push({ backup_id: "backup-edit-001", approval_id: "EDIT-001", input_hashes: { "manuscript/chapter-01.md": inputHash } });
+  await writeFile(indexPath, JSON.stringify(index));
+  await mkdir(path.join(projectRoot, "evidence"), { recursive: true });
+  const evidencePath = path.join(projectRoot, "evidence", "edit-001.json");
+  await writeFile(evidencePath, JSON.stringify({
+    schema_version: "1.0.0",
+    approval_id: "EDIT-001",
+    operation: "chapter-revision",
+    scope_id: scopeId,
+    backup_ids: ["backup-edit-001"],
+    files: [{ path: "manuscript/chapter-01.md", action: "modify", input_sha256: inputHash, output_sha256: "b".repeat(64) }],
+    completed_at: timestamp,
+  }));
+  const before = await readFile(indexPath, "utf8");
+
+  const result = run(["--project-root", projectRoot, "--scope-id", scopeId, "--diagnose", "--json"]);
+  assert.equal(result.status, 0, result.stderr);
+  const recovery = JSON.parse(result.stdout).diagnosis.execution_recovery;
+  assert.equal(recovery.reconcilable_count, 1);
+  assert.equal(recovery.unsupported_count, 1);
+  assert.equal(recovery.evidence_file_count, 1);
+  assert.equal(recovery.candidate_file_count, 1);
+  assert.deepEqual(recovery.candidates, [{ path: "evidence/edit-001.json", approval_id: "EDIT-001", status: "reconcilable" }]);
+  assert.equal(recovery.next_action, "preview_reconciliation_then_rerun_strict_gate");
+  assert.equal(recovery.current_draft_revision_convergence, "not_established");
+  assert.equal(await readFile(indexPath, "utf8"), before);
+
+  const historical = run(["--project-root", projectRoot, "--scope-id", "scope-historical", "--diagnose", "--json"]);
+  assert.equal(historical.status, 0, historical.stderr);
+  const historicalRecovery = JSON.parse(historical.stdout).diagnosis.execution_recovery;
+  assert.equal(historicalRecovery.unverified_count, 1);
+  assert.equal(historicalRecovery.reconcilable_count, 0);
+  assert.equal(historicalRecovery.unsupported_count, 1);
+  assert.equal(historicalRecovery.candidate_file_count, 0);
 });
 
 test("preflight stops before status or digest when project validation fails", async (t) => {
@@ -366,6 +439,8 @@ test("preflight diagnose bounds repeated errors and reports an unreadable pendin
   assert.equal(diagnosis.projection.pending_action.artifacts.length, 1);
   assert.equal(diagnosis.backup_index.records.length, 12);
   assert.equal(diagnosis.backup_index.omitted_record_count, 2);
+  assert.equal(diagnosis.execution_recovery.status, "unavailable");
+  assert.equal(diagnosis.execution_recovery.unsupported_count, null);
 
   const text = run(["--project-root", projectRoot, "--diagnose"]);
   assert.equal(text.status, 1, text.stderr);
