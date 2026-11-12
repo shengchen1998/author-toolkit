@@ -77,6 +77,8 @@ schema 有效但后续状态校验失败时返回 `recorded_unverified` 投影�
 preflight 还以只读方式检查缓存格式; 旧版或字段不完整的缓存, 以及项目校验或请求的严格门禁失败后的缓存,
 均标记为 stale, 且隐藏而非复述其中记录的下一操作.
 文本摘要按 operation 聚合未核对批准, 显示数量与首末批准 ID; 首末端点不代表 ID 连续.
+状态门禁优先使用文本摘要; 需要结构化结果时添加 `--json`,
+仅在需要完整失败检查或逐项未核对批准时添加 `--details`.
 JSON 默认同样使用按 operation 聚合的批准摘要和有界失败诊断;
 添加 `--details` 可获取完整失败检查和逐项未核对批准.
 `node <setup-skill-root>/scripts/check.mjs` 是参数和退出状态相同的稳定本地检查入口,
@@ -291,7 +293,8 @@ AI, 作者和混合创作使用相同门禁. 每本书只保留一个活动创�
   旧 tracker 中的 `Next action` 保留为回退. 最新文件优先使用文件名开头的 UTC 时间戳,
   无时间戳文件使用修改时间. 最新报告扫描排除可丢弃的 `review_brief.md` 决定摘要.
   Read next 部分指向 `author-project status` 以查看已记录阻塞和执行证据,
-  并指向 `validate` 以检查当前哈希和缺失路径; `status` 不把缓存作为数据源.
+  并指向 `validate` 以检查当前哈希和缺失路径. 未由缓存链接的注册报告和会话是按需读取的历史记录,
+  不是废弃产物; 报告仍可能是可复用证据. `status` 不把缓存作为数据源.
 - `reports/`: 诊断上下文和机器可读结果. 重新审计生成新报告, 不覆盖已交付报告. 可复用
   覆盖单元和持续更新的覆盖索引也保存在登记的 reports 路径下. `review_brief.md` 是从 tracker 的
   resolved 和 dismissed 发现项派生的可丢弃摘要, 用于复用决定, 不作为 reviewer 输入或权威决定记录.

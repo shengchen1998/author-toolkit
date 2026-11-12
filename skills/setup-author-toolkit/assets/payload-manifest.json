@@ -95,7 +95,7 @@
     },
     {
       "path": "assets/setup/existing-project.md",
-      "sha256": "7ed74acfac4676cb35611dec275d79a252e1a5b9cac643b1bb518d914da10f9f"
+      "sha256": "88cc00d6f4fdb6efe63429b7edaae1bae0045e449870c5be6aa70571ae2f63e9"
     },
     {
       "path": "assets/setup/new-project.md",
@@ -139,7 +139,7 @@
     },
     {
       "path": "scripts/lib/digest.mjs",
-      "sha256": "1d01916974a3d217efebb2fabf06936c61051ba3bfd4a8e359e326154713599d"
+      "sha256": "141a9cec5a4da83676578b57448ef7fb5e1c9376314b9224d157ad81a935649d"
     },
     {
       "path": "scripts/lib/execution-receipts.mjs",

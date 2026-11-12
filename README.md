@@ -158,6 +158,9 @@ both entries independently of project validation. An entry mismatch still
 allows project inspection, but exits 1 and prevents digest generation.
 Unverified approvals are grouped by operation with counts and first/last approval
 IDs; the endpoints do not imply contiguous ID ranges.
+Prefer the text summary for status gates. Add `--json` for structured results;
+add `--details` only when complete failed checks or individual unverified
+approvals are needed.
 JSON uses the same grouped approval summaries and bounded failed-check
 diagnostics by default; add `--details` for complete failed checks and every
 unverified approval.
@@ -499,7 +502,9 @@ Use `read.mjs --project-root <root>` for its bounded manifest projection and
   undated files. The report scan excludes the disposable `review_brief.md`
   decision summary. Its Read next section points to `author-project status` for
   recorded blockers and execution evidence, and to `validate` for current hashes
-  and missing paths; status does not use the cache as a data source.
+  and missing paths. It identifies unlinked registered reports and sessions as
+  historical records for targeted reading, not obsolete artifacts; reports may
+  remain reusable evidence. Status does not use the cache as a data source.
 - `reports/` preserves diagnostic context and machine-readable results. A rerun
   creates a new report instead of rewriting a delivered report. Reusable
   coverage units and the living coverage index also belong under this

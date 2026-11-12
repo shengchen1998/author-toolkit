@@ -312,6 +312,8 @@ test("existing-project setup uses bounded inspection references and a categorize
   assert.match(existingSetup, /standalone `validate\.mjs` only when a validation failure requires its complete diagnostics/);
   assert.match(existingSetup, /endpoints do not imply a contiguous ID range/);
   assert.match(existingSetup, /default ordinary status uses the current scope ID/);
+  assert.match(existingSetup, /Prefer its text summary for status gates\. Add `--json` only for structured results, and add `--details` only when individual unverified approvals are needed\./);
+  assert.match(readOperations, /Prefer the bounded text output for status gates; add `--json` for structured results and `--details` only when complete failed checks or individual unverified approvals are needed\./);
   for (const heading of ["Installation payload", "Project entry files", "Manuscript scope", "Execution evidence"]) {
     assert.match(setup, new RegExp(`\\*\\*${heading}\\*\\*`));
   }

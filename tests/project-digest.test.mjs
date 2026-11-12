@@ -114,6 +114,7 @@ test("project digest generates a bounded navigation cache from shared state", as
   assert.match(output, /Tracker: `audit-tracker.md` -> `## Findings`, `## Audit runs`, `## Approved decisions`/);
   assert.match(output, /Status: use `author-project status` for recorded blockers and execution evidence\./);
   assert.match(output, /Validation: use `author-project validate` for current hashes and missing paths\./);
+  assert.match(output, /History: unlinked registered reports and sessions are historical records; read them only as needed\. Reports may remain reusable evidence\./);
   assert.doesNotMatch(output, /index\.json/);
 
   const manifest = JSON.parse(await readFile(path.join(projectRoot, ".author-toolkit", "project.json"), "utf8"));

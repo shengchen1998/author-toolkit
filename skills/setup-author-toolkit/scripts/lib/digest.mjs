@@ -172,6 +172,7 @@ export async function renderProjectDigest({ manifest, tracker, latestReport, lat
     "- Manifest: use `author-project read` for the bounded manifest projection and scope hashes.",
     "- Status: use `author-project status` for recorded blockers and execution evidence.",
     "- Validation: use `author-project validate` for current hashes and missing paths.",
+    "- History: unlinked registered reports and sessions are historical records; read them only as needed. Reports may remain reusable evidence.",
     `- Tracker: ${code(manifest.paths.audit_tracker)} -> ${code("## Findings")}, ${code("## Audit runs")}, ${code("## Approved decisions")}`,
     "- Read the plan, latest session, and evidence linked above only as needed for the requested operation.",
     "- Regenerate after each shared-state operation; revalidate evidence before reuse. This cache grants no approval.",
