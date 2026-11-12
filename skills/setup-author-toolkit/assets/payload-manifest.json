@@ -7,7 +7,7 @@
     },
     {
       "path": "assets/AGENTS.md",
-      "sha256": "e55dcc2c8424c9ae7a58a0f10cc44f67ee90c4282bbdc78cc1547e00efc401de"
+      "sha256": "d1f5f0e409897d4131bd0595fd67caf30d00929e1dd6a91ce3dadd803dda0de7"
     },
     {
       "path": "assets/references/avoid-ai-writing-adapter.md",
@@ -99,7 +99,7 @@
     },
     {
       "path": "scripts/doctor.mjs",
-      "sha256": "606f9c76f74a14d691fde32bffdcd3370bd6adf508f4d159479f4ab9552a90a8"
+      "sha256": "11663f2f9f22189dd1c2f892f55a8c1cd7c1a73dd801c647eb4ff38621db4513"
     },
     {
       "path": "scripts/findings.mjs",

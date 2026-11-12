@@ -20,6 +20,8 @@ For shared fiction creation or revision, locate `.author-toolkit/project.json`:
 
 ## Run creation or revision from shared state
 
+Before shared-state work, run `node <setup-skill-root>/scripts/check.mjs --project-root <project-root>`. If it fails, rerun it with `--diagnose`, report the failure, and stop at the active strategy's author gate.
+
 Use one manifest per book. Resolve registered artifacts through its `paths`; `author-project` owns state operations and writing skills own creative content. All five strategies use the same state. Run one evidence-gated operation and stop at its author gate. Strategy switches occur only at a stable operation gate and never resume a write or commit automatically. A pending action does not authorize a manuscript write or publication.
 
 ## Keep author decisions explicit

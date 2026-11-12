@@ -58,6 +58,7 @@ try {
       );
       outputFailures("Payload failures", result.payload_failures);
       outputFailures("Project entry failures", result.entry_failures);
+      console.log("Project state: not checked");
       if (result.payload_failures.length > 0) {
         console.log("Exit reason: incomplete installed payload; stop shared work");
       } else if (result.entry_failures.length > 0) {
