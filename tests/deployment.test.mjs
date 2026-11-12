@@ -318,6 +318,57 @@ test("setup carries self-contained preflight, validation, state, range, and inst
   assert.equal(statusResult.recorded_blockers.stale_finding_count, 0);
   assert.equal(statusResult.recorded_blockers.blocked_pending_action, null);
   assert.equal(statusResult.evidence.operation_specific, "not_evaluated");
+
+  await writeFile(
+    path.join(project, projectManifest.paths.audit_tracker),
+    (await readFile(path.join(project, projectManifest.paths.audit_tracker), "utf8")).replace(
+      "| Approval ID | Type | Operation | Scope ID | Paths | Status | Reason | Updated |\n|---|---|---|---|---|---|---|---|",
+      "| Approval ID | Type | Operation | Scope ID | Paths | Status | Reason | Updated |\n|---|---|---|---|---|---|---|---|\n| EDIT-001 | edit | chapter-revision | scope-example-revision | `manuscript/chapter-01.md` | approved | Exact test batch. | 2026-11-11T00:00:00Z |",
+    ),
+  );
+  const strictArguments = [
+    "--scope-id",
+    "scope-example-revision",
+    "--require-execution",
+    "--json",
+  ];
+  const strictStatus = spawnSync(
+    process.execPath,
+    [
+      ...nodeArgs,
+      path.join(installedSetup, "scripts", "status.mjs"),
+      "--manifest",
+      path.join(project, ".author-toolkit", "project.json"),
+      ...strictArguments,
+    ],
+    { encoding: "utf8" },
+  );
+  assert.equal(strictStatus.status, 1);
+  assert.equal(JSON.parse(strictStatus.stdout).execution.unverified_count, 1);
+  assert.match(strictStatus.stderr, /Execution gate failed: 1 unverified approvals/);
+
+  const ordinaryCheck = spawnSync(
+    process.execPath,
+    [...nodeArgs, path.join(installedSetup, "scripts", "check.mjs"), "--project-root", project, "--json"],
+    { encoding: "utf8" },
+  );
+  assert.equal(ordinaryCheck.status, 0, ordinaryCheck.stderr);
+  assert.equal(JSON.parse(ordinaryCheck.stdout).status.execution.unverified_count, 1);
+
+  const strictCheck = spawnSync(
+    process.execPath,
+    [...nodeArgs, path.join(installedSetup, "scripts", "check.mjs"), "--project-root", project, ...strictArguments],
+    { encoding: "utf8" },
+  );
+  assert.equal(strictCheck.status, 1, strictCheck.stderr);
+  const strictCheckResult = JSON.parse(strictCheck.stdout);
+  assert.deepEqual(strictCheckResult.execution_gate, {
+    scope_id: "scope-example-revision",
+    unverified_count: 1,
+    valid: false,
+  });
+  assert.equal(strictCheckResult.navigation_cache.state, "stale");
+  assert.equal(strictCheckResult.navigation_cache.next_action, "withheld");
 });
 
 test("workflow commands resolve the installed setup CLIs", async () => {

@@ -127,6 +127,32 @@ test("backup rejects mismatched current hashes before writing a backup", async (
   assert.equal(index.backups.length, 0);
 });
 
+test("backup rejects approval operation, scope, and path mismatches without writing state", async (t) => {
+  for (const mismatch of ["operation", "scope", "paths"]) {
+    await t.test(mismatch, async (t) => {
+      const project = await fixture(t, { approvals: false });
+      const trackerPath = path.join(project.projectRoot, project.manifest.paths.audit_tracker);
+      const tracker = await readFile(trackerPath, "utf8");
+      await writeFile(trackerPath, tracker.replace(approvalTable, `${approvalTable}\n| EDIT-001 | edit | chapter-revision | ${scopeId} | \`manuscript/chapter-01.md\` | approved | Exact batch. | ${timestamp} |`));
+      const batchPath = path.join(project.projectRoot, "batch.json");
+      const batchPathInProject = mismatch === "paths" ? "manuscript/chapter-02.md" : "manuscript/chapter-01.md";
+      await writeFile(batchPath, JSON.stringify({ files: [{ path: batchPathInProject, action: "modify", input_sha256: project.inputHash }] }));
+      const indexPath = path.join(project.projectRoot, project.manifest.paths.backups, "index.json");
+      const before = await readFile(indexPath, "utf8");
+      const result = run([
+        "record-backup", "--manifest", project.manifestPath,
+        "--operation", mismatch === "operation" ? "prose" : "chapter-revision",
+        "--scope-id", mismatch === "scope" ? "scope-other" : scopeId,
+        "--approval-id", "EDIT-001", "--batch", batchPath,
+        "--recorded-at", timestamp,
+      ]);
+      assert.equal(result.status, 1);
+      assert.match(result.stderr, mismatch === "paths" ? /approval paths must exactly match/ : /approval operation and scope must match/);
+      assert.equal(await readFile(indexPath, "utf8"), before);
+    });
+  }
+});
+
 test("reconciliation previews valid evidence, preserves rejected approvals, and is idempotent", async (t) => {
   const project = await fixture(t);
   const indexPath = path.join(project.projectRoot, project.manifest.paths.backups, "index.json");
