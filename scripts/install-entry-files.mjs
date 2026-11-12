@@ -19,11 +19,13 @@ function usage() {
 Install AGENTS.md from the verified setup payload and link CLAUDE.md to the
 relative target AGENTS.md. Both targets are checked before writing. Correct
 entries remain unchanged; other regular files and symlinks are atomically
-replaced. Directories and special files are rejected without writing. Project
-manifests, manuscript, history, and Git state are not inspected or changed.
-During setup, check.mjs --project-root DIR --diagnose verifies the payload,
-both entry files, and project state afterward without another doctor call.
-Argument errors exit 2; other failures exit 1.`);
+replaced. Directories and special files are rejected without writing.
+START_HERE.md is created only when absent; every existing path with that name
+is preserved without inspection or replacement. Project manifests, manuscript,
+history, and Git state are not inspected or changed. During setup,
+check.mjs --project-root DIR --diagnose verifies the payload, both agent entry
+files, and project state afterward without another doctor call; it does not
+require START_HERE.md. Argument errors exit 2; other failures exit 1.`);
 }
 
 function options(args) {
@@ -54,6 +56,7 @@ try {
     } else {
       console.log(`AGENTS.md: ${result.agents.status}`);
       console.log(`CLAUDE.md -> AGENTS.md: ${result.claude.status}`);
+      console.log(`START_HERE.md: ${result.start_here.status}`);
       const statuses = [result.agents.status, result.claude.status];
       console.log(`Entry files: ${statuses.every((status) => status === "unchanged") ? "unchanged" : "updated"}`);
     }

@@ -3,11 +3,15 @@
   "files": [
     {
       "path": "SKILL.md",
-      "sha256": "eb14e697c2d3be3885a28fbb9800d8fd90a64f11f3e206cc8a785ea24250cb6e"
+      "sha256": "bdbeaa2d7066c054c5a7520fa18b0f12e1573bfb49e7da13977906f6f4d71fb3"
     },
     {
       "path": "assets/AGENTS.md",
       "sha256": "d1f5f0e409897d4131bd0595fd67caf30d00929e1dd6a91ce3dadd803dda0de7"
+    },
+    {
+      "path": "assets/START_HERE.md",
+      "sha256": "bb3435f0cacac06288debbba98bb98f4d17ade719fa82de48c7a64fc8a36e470"
     },
     {
       "path": "assets/references/avoid-ai-writing-adapter.md",
@@ -119,7 +123,7 @@
     },
     {
       "path": "scripts/install-entry-files.mjs",
-      "sha256": "f242a011e92b82a4c8394f3058ba4afa6d89430626d3ef8abe5242ded35feccc"
+      "sha256": "a74f29cbd5cc22147a3032bd1e925e5d7d6ed17816af9bb897aaa9f27d4e31f1"
     },
     {
       "path": "scripts/lib/approval-paths.mjs",
@@ -171,7 +175,7 @@
     },
     {
       "path": "scripts/lib/manuscript.mjs",
-      "sha256": "bb56fc8b7565f8bb5e11a1e950e2576bc9c243e21345a2f58bb00e849682185b"
+      "sha256": "734d6069852f732a3d9028e11525bbe8ad5f2fa81d823ced42ffdea3b3d804e7"
     },
     {
       "path": "scripts/lib/markdown.mjs",
@@ -215,7 +219,7 @@
     },
     {
       "path": "scripts/lib/setup-entry-files.mjs",
-      "sha256": "f764d16b324cf2c19a3e0c54a144088db6b82208806c700daee0a5eb06f40906"
+      "sha256": "c25718e8174e5eeeda20198f82716bcd7d3d574f98d753c7f0e69f6b7aaee456"
     },
     {
       "path": "scripts/lib/setup-payload.mjs",

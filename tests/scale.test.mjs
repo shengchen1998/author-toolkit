@@ -32,6 +32,7 @@ test("a million Chinese characters scale without importing creation state as man
   const creationState = path.join(temporary, ".author-toolkit", "creation", "state", "current.md");
   await mkdir(path.dirname(creationState), { recursive: true });
   await writeFile(creationState, "# Current story state\n", "utf8");
+  await writeFile(path.join(temporary, "START_HERE.md"), "# Start here\n", "utf8");
   const manifestPath = path.join(temporary, ".author-toolkit", "project.json");
   const manifest = {
     schema_version: "3.1.0",

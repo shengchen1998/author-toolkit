@@ -41,6 +41,7 @@ export async function installEntryFiles(setupRoot, projectRoot) {
   const template = await readFile(path.join(setupRoot, "assets", "AGENTS.md"));
   const agentsPath = path.join(projectRoot, "AGENTS.md");
   const claudePath = path.join(projectRoot, "CLAUDE.md");
+  const startHerePath = path.join(projectRoot, "START_HERE.md");
   const [agents, claude] = await Promise.all([
     targetStatus(agentsPath, "AGENTS.md", template),
     targetStatus(claudePath, "CLAUDE.md"),
@@ -65,10 +66,22 @@ export async function installEntryFiles(setupRoot, projectRoot) {
       rm(temporaryClaude, { force: true }),
     ]);
   }
+  let startHere = "preserved";
+  try {
+    await writeFile(
+      startHerePath,
+      await readFile(path.join(setupRoot, "assets", "START_HERE.md")),
+      { flag: "wx" },
+    );
+    startHere = "created";
+  } catch (error) {
+    if (error.code !== "EEXIST") throw error;
+  }
   return {
     valid: true,
     project_root: projectRoot,
     agents: { path: "AGENTS.md", status: agents },
     claude: { path: "CLAUDE.md", target: "AGENTS.md", status: claude },
+    start_here: { path: "START_HERE.md", status: startHere },
   };
 }

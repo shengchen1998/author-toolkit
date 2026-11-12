@@ -461,7 +461,7 @@ test("every installed shared reference named by a skill exists in the setup payl
   assert.deepEqual([...missing].sort(), []);
 });
 
-test("setup overwrites AGENTS.md and links CLAUDE.md to it", async () => {
+test("setup repairs agent entries and only creates missing navigation", async () => {
   const [setup, existingSetup] = await Promise.all([
     readFile(path.join(root, "skills", "setup-author-toolkit", "SKILL.md"), "utf8"),
     readFile(path.join(root, "skills", "setup-author-toolkit", "assets", "setup", "existing-project.md"), "utf8"),
@@ -470,16 +470,24 @@ test("setup overwrites AGENTS.md and links CLAUDE.md to it", async () => {
   assert.match(setup, /replaces `<project-root>\/AGENTS\.md` with a regular file containing `assets\/AGENTS\.md`/);
   assert.match(setup, /replaces any existing `CLAUDE\.md` file or symlink/);
   assert.match(setup, /scripts\/install-entry-files\.mjs --project-root <project-root> --json/);
-  assert.match(setup, /checks both targets before writing/);
+  assert.match(setup, /checks both agent targets before writing/);
   assert.match(setup, /leaves correct entries unchanged/);
   assert.match(setup, /atomically replaces other regular files or symlinks/);
-  assert.match(setup, /If either target is a directory or special file, or any operation fails, stop/);
+  assert.match(setup, /If either agent target is a directory or special file, or any operation fails, stop/);
   assert.doesNotMatch(setup, /rm -f AGENTS\.md|ln -s AGENTS\.md/);
   assert.match(setup, /applies to new projects and existing v3\.1 projects/);
   assert.match(existingSetup, /perform step 3's entry-file replacement even if later project-state validation fails/);
   assert.match(existingSetup, /report that validation failure as a setup blocker after the repair/);
   assert.match(existingSetup, /without repeating backup index inspection, repairing history, or inferring a migration/);
-  assert.match(setup, /Except for the two project-root agent entry files described above/);
+  assert.match(setup, /except for the two project-root agent entry files described above/);
+  assert.match(setup, /creates `<project-root>\/START_HERE\.md` from `assets\/START_HERE\.md` only when that path is absent/);
+  assert.match(setup, /preserving every existing file, symlink, or directory with that name/);
+  assert.match(setup, /these results do not require `START_HERE\.md` to exist or match the installed template/);
+  assert.match(setup, /`START_HERE\.md` is create-only and never replaces existing content/);
+  const navigation = await readFile(path.join(root, "skills", "setup-author-toolkit", "assets", "START_HERE.md"), "utf8");
+  assert.match(navigation, /`PROJECT_STATE\.md`/);
+  assert.match(navigation, /`\.author-toolkit\/project\.json`/);
+  assert.match(navigation, /check\.mjs --project-root <project-root>/);
 });
 
 test("setup reads shared references without deploying them into project state", async () => {

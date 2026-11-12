@@ -2,7 +2,7 @@ import { readdir, stat } from "node:fs/promises";
 import path from "node:path";
 
 const MANUSCRIPT_EXTENSIONS = new Set([".md", ".markdown", ".txt"]);
-const ALWAYS_OPERATIONAL = [".author-toolkit", "draft-baseline.md", "PROJECT_STATE.md"];
+const ALWAYS_OPERATIONAL = [".author-toolkit", "draft-baseline.md", "PROJECT_STATE.md", "START_HERE.md"];
 
 function portablePath(value) {
   return value.split(path.sep).join("/");

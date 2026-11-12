@@ -58,10 +58,14 @@ setup 技能在 `setup-author-toolkit/scripts/` 下提供自包含的安装检�
 文本和 JSON 输出分别列出安装载荷失败与可修复的项目入口失败, 并明确显示退出原因.
 
 运行 `node <setup-skill-root>/scripts/install-entry-files.mjs --project-root <root> --json`,
-在载荷检查通过后仅修复两个项目入口文件.
+在载荷检查通过后修复两个项目代理入口文件.
 命令先检查两个目标再写入, 保留正确文件, 并原子替换其他普通文件或符号链接.
-目标是目录或特殊文件时不写入任何内容; 重复 setup 幂等执行.
-随后由 setup 的 `check --diagnose` 核对安装载荷和两个入口文件, 无需再次运行 doctor.
+这两个目标是目录或特殊文件时不写入任何内容.
+同一调用仅在 `START_HERE.md` 路径缺失时创建简短导航文件, 指向 manifest、可选的
+`PROJECT_STATE.md` 缓存和状态检查命令; 同名普通文件、符号链接或目录均保持不动.
+重复 setup 幂等执行.
+随后由 setup 的 `check --diagnose` 核对安装载荷和两个代理入口文件, 无需再次运行 doctor;
+该检查不要求 `START_HERE.md` 存在或与模板一致.
 
 运行 `node <setup-skill-root>/scripts/initialize.mjs --project-root <root> --json` 执行现有项目唯一的初始化实现.
 它仅在缺失时创建备份索引, 并返回有界投影、注册路径、当前范围、待处理操作、备份索引状态和校验结果.
@@ -129,6 +133,7 @@ Codex 使用 `$` 自动补全. 没有技能命令的宿主, 则在技能选择�
    详细策略路由由 `ask-author` 承担, 操作细节留在安装的技能与 references 中. 对已有项目, manifest schema
    检查接受 v3.1 后即修复入口文件, 即使后续项目状态校验失败也不例外; setup 随后报告阻塞, 不修复正文或历史记录.
    这两个文件中的自定义内容不会保留.
+   setup 仅在 `START_HERE.md` 缺失时创建固定导航指针, 不替换已有导航内容.
    不指定工作流或操作参数. 工具包更新后, 已有 v3.1 项目直接使用更新后的安装契约, 无需再次部署.
    初始 `author-project` 读取, 校验和状态调用会将缺失的安装契约或脚本报告为工具包安装不完整,
    不依赖项目内的共享引用副本. 已有项目使用安装的初始化 CLI 和有界检查参考, 不加载备份,
@@ -248,7 +253,7 @@ AI, 作者和混合创作使用相同门禁. 每本书只保留一个活动创�
 
 `author-project read` 通过 `read.mjs` 返回经过校验的有界投影, 包含解析后的路径, 完整当前范围哈希和待处理产物计数.
 失败输出默认有界; `--details` 返回完整失败检查.
-存在时先读 `PROJECT_STATE.md`; 缓存只用于导航, 不是证据或批准.
+固定根目录导航见 `START_HERE.md`; 存在时再读 `PROJECT_STATE.md`. 缓存只用于导航, 不是证据或批准.
 `validate` 检查注册文件和当前哈希; `status` 报告当前范围, 待处理操作, 已记录阻塞和执行回执;
 `status --digest` 生成发现项计数, 最新指针和下一操作等导航信息. `--scope-id` 筛选未核对批准和
 `blocked` 待处理操作, 但 stale 发现项始终覆盖全项目, 因为 tracker 发现项行没有 scope ID.
@@ -268,6 +273,8 @@ AI, 作者和混合创作使用相同门禁. 每本书只保留一个活动创�
 当前策略必须请作者选择继续寻找证据, 或结束恢复并明确该范围未达到当前草稿修订收敛; 不能把重跑修订、新范围或新基线当作执行证据的替代品.
 
 - `project.json`: 项目登记, 产物路径, 以及可选的 `current_scope` 和 `pending_action`.
+- `START_HERE.md`: setup 仅在缺失时创建的导航文件, 指向 manifest、可选导航缓存和状态命令.
+  已有内容保持不动; preflight 和项目校验均不要求它存在.
   不包含 `workflow.name`, `current_stage` 或 `stages`.
 - 新待处理操作最多内联 8 个产物路径. 更长的完整列表保存在 `.author-toolkit/pending-artifacts.json`,
   由 `pending_action.artifact_index` 指向, 并通过 `set-pending.mjs` 校验和写入.

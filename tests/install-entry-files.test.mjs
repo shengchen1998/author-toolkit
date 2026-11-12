@@ -34,10 +34,14 @@ async function validEntries(setupRoot, projectRoot) {
   );
   assert.equal((await lstat(path.join(projectRoot, "AGENTS.md"))).isFile(), true);
   assert.equal(await readlink(path.join(projectRoot, "CLAUDE.md")), "AGENTS.md");
-  assert.deepEqual((await readdir(projectRoot)).sort(), ["AGENTS.md", "CLAUDE.md"]);
+  assert.equal(
+    await readFile(path.join(projectRoot, "START_HERE.md"), "utf8"),
+    await readFile(path.join(setupRoot, "assets", "START_HERE.md"), "utf8"),
+  );
+  assert.deepEqual((await readdir(projectRoot)).sort(), ["AGENTS.md", "CLAUDE.md", "START_HERE.md"]);
 }
 
-test("install-entry-files creates both entries from an unrelated cwd and is idempotent", async (t) => {
+test("install-entry-files creates both agent entries and navigation from an unrelated cwd and is idempotent", async (t) => {
   const { setupRoot, projectRoot } = await fixture(t);
   const created = run(["--project-root", projectRoot, "--json"], { cwd: setupRoot });
   assert.equal(created.status, 0, created.stderr);
@@ -47,6 +51,7 @@ test("install-entry-files creates both entries from an unrelated cwd and is idem
     project_root: projectRoot,
     agents: { path: "AGENTS.md", status: "created" },
     claude: { path: "CLAUDE.md", target: "AGENTS.md", status: "missing" },
+    start_here: { path: "START_HERE.md", status: "created" },
   });
   await validEntries(setupRoot, projectRoot);
   const agentsStats = await lstat(path.join(projectRoot, "AGENTS.md"));
@@ -56,10 +61,44 @@ test("install-entry-files creates both entries from an unrelated cwd and is idem
   assert.equal(unchanged.status, 0, unchanged.stderr);
   assert.equal(
     unchanged.stdout,
-    "AGENTS.md: unchanged\nCLAUDE.md -> AGENTS.md: unchanged\nEntry files: unchanged\n",
+    "AGENTS.md: unchanged\nCLAUDE.md -> AGENTS.md: unchanged\nSTART_HERE.md: preserved\nEntry files: unchanged\n",
   );
   assert.equal((await lstat(path.join(projectRoot, "AGENTS.md"))).ino, agentsStats.ino);
   assert.equal((await lstat(path.join(projectRoot, "CLAUDE.md"))).ino, claudeStats.ino);
+});
+
+test("install-entry-files preserves existing navigation files and directories", async (t) => {
+  const { setupRoot, projectRoot } = await fixture(t);
+  const startHere = path.join(projectRoot, "START_HERE.md");
+  await writeFile(startHere, "author navigation\n");
+  await writeFile(path.join(projectRoot, "README.md"), "author readme\n");
+
+  const preserved = run(["--project-root", projectRoot, "--json"]);
+  assert.equal(preserved.status, 0, preserved.stderr);
+  assert.equal(JSON.parse(preserved.stdout).start_here.status, "preserved");
+  assert.equal(await readFile(startHere, "utf8"), "author navigation\n");
+  assert.equal(await readFile(path.join(projectRoot, "README.md"), "utf8"), "author readme\n");
+
+  await rm(startHere);
+  await symlink("README.md", startHere);
+  const linked = run(["--project-root", projectRoot]);
+  assert.equal(linked.status, 0, linked.stderr);
+  assert.match(linked.stdout, /START_HERE\.md: preserved/);
+  assert.equal(await readlink(startHere), "README.md");
+
+  await rm(startHere);
+  await mkdir(startHere);
+  await writeFile(path.join(startHere, "own.md"), "preserve\n");
+  const directory = run(["--project-root", projectRoot]);
+  assert.equal(directory.status, 0, directory.stderr);
+  assert.match(directory.stdout, /START_HERE\.md: preserved/);
+  assert.equal((await lstat(startHere)).isDirectory(), true);
+  await rm(startHere, { recursive: true });
+  await rm(path.join(projectRoot, "README.md"));
+  const recreated = run(["--project-root", projectRoot]);
+  assert.equal(recreated.status, 0, recreated.stderr);
+  assert.match(recreated.stdout, /START_HERE\.md: created/);
+  await validEntries(setupRoot, projectRoot);
 });
 
 test("install-entry-files replaces regular files, symlinks, and dangling links", async (t) => {
@@ -73,7 +112,7 @@ test("install-entry-files replaces regular files, symlinks, and dangling links",
   assert.equal(replaced.status, 0, replaced.stderr);
   assert.equal(
     replaced.stdout,
-    "AGENTS.md: replaced\nCLAUDE.md -> AGENTS.md: replaced\nEntry files: updated\n",
+    "AGENTS.md: replaced\nCLAUDE.md -> AGENTS.md: replaced\nSTART_HERE.md: created\nEntry files: updated\n",
   );
   assert.equal(await readFile(sentinel, "utf8"), "preserve\n");
   await writeFile(path.join(projectRoot, "AGENTS.md"), "custom again\n");
@@ -109,6 +148,7 @@ test("install-entry-files rejects a directory before changing either target", as
   assert.match(agentsBlocked.stderr, /AGENTS\.md: is a directory/);
   assert.equal(await readFile(path.join(projectRoot, "CLAUDE.md"), "utf8"), "preserve link\n");
   assert.equal((await lstat(path.join(projectRoot, "AGENTS.md"))).isDirectory(), true);
+  await assert.rejects(readFile(path.join(projectRoot, "START_HERE.md"), "utf8"), { code: "ENOENT" });
 });
 
 test("install-entry-files verifies the installed copy and reports argument errors", async (t) => {
@@ -121,6 +161,7 @@ test("install-entry-files verifies the installed copy and reports argument error
   const help = run(["--help"], { tool: installedTool });
   assert.equal(help.status, 0, help.stderr);
   assert.match(help.stdout, /check\.mjs --project-root DIR --diagnose/);
+  assert.match(help.stdout, /START_HERE\.md is created only when absent/);
   assert.doesNotMatch(help.stdout, /Run doctor\.mjs/);
   for (const args of [[], ["--project-root"], ["--unknown"], ["--project-root", projectRoot, "extra"]]) {
     const invalid = run(args);

@@ -134,12 +134,15 @@ remain separate checks. Its text and JSON output distinguish installed-payload
 failures from repairable project-entry failures, with an explicit exit reason.
 
 Run `node <setup-skill-root>/scripts/install-entry-files.mjs --project-root <root> --json`
-to repair only the two project entry files after a successful payload check. It
+to repair the two project agent entry files after a successful payload check. It
 checks both targets before writing, preserves correct entries, and atomically
-replaces other regular files or symlinks. Directories and special files are
-rejected without writing. Repeat setup is idempotent; setup's following
-`check --diagnose` verifies the installed payload and both entries without a
-second doctor call.
+replaces other regular files or symlinks. Directories and special files at those
+targets are rejected without writing. The same invocation creates a short
+`START_HERE.md` pointing to the manifest, optional `PROJECT_STATE.md` cache, and
+status check only when that path is absent. Any existing file, symlink, or
+directory with that name is preserved. Repeat setup is idempotent; setup's
+following `check --diagnose` verifies the installed payload and both agent
+entries without a second doctor call, but does not require `START_HERE.md`.
 
 Run `node <setup-skill-root>/scripts/initialize.mjs --project-root <root> --json`
 as setup's sole existing-project initialization implementation. It creates only
@@ -247,7 +250,9 @@ A quick run looks like this:
    skills and references. For an existing project, this repair occurs once the
    manifest-schema check accepts v3.1 even if later project-state validation
    fails; setup then reports the blocker without repairing manuscript or history.
-   Custom content in these two files is not preserved. Do not pass
+   Custom content in these two files is not preserved. Setup creates
+   `START_HERE.md` only when absent as a fixed navigation pointer; existing
+   navigation content is never replaced. Do not pass
    a workflow name or operation argument. After a toolkit update, existing v3.1
    projects use the updated installed contracts without another deployment.
    Initial `author-project` read, validation, and status calls report missing
@@ -426,8 +431,8 @@ rejected and are not converted automatically.
 `author-project read` uses `read.mjs` for a bounded validated projection with
 resolved paths, complete current-scope hashes, and pending-artifact counts. Its
 failure output is bounded by default; `--details` returns complete failed checks.
-Read
-`PROJECT_STATE.md` first when present; use `validate` for registered files
+Read `START_HERE.md` for the fixed root navigation pointer, then
+`PROJECT_STATE.md` when present; use `validate` for registered files
 and current hashes, `status` for current scope, pending action, recorded blockers,
 and execution receipts, and `status --digest` for navigation counts, latest
 pointers, and next action. `--scope-id` filters unverified approvals and a blocked
@@ -460,6 +465,9 @@ Use `read.mjs --project-root <root>` for its bounded manifest projection and
 - `project.json` records project registration, artifact locations, and optional
   `current_scope` and `pending_action`. It has no `workflow.name`,
   `current_stage`, or `stages` state.
+- `START_HERE.md` is a create-only setup navigation file pointing to the
+  manifest, optional navigation cache, and status command. Existing content is
+  preserved, and neither preflight nor validation requires it.
 - New pending actions retain at most eight inline artifacts. Longer complete
   lists live in `.author-toolkit/pending-artifacts.json`, linked by
   `pending_action.artifact_index`; `set-pending.mjs` validates and writes the
