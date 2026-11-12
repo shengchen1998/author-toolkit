@@ -463,7 +463,8 @@ test("setup uses the authoritative payload inventory and bounded doctor", async 
   assert.match(operations, /Use standalone `validate\.mjs` to diagnose a validation failure/);
   assert.match(operations, /--diagnose/);
   assert.match(operations, /recorded_unverified/);
-  assert.match(setup, /rerun that command once with `--diagnose`/);
+  assert.match(setup, /check\.mjs --project-root <project-root> --diagnose/);
+  assert.match(setup, /without rerunning ordinary preflight/);
   assert.match(setup, /without repeating backup index inspection/);
   assert.match(setup, /--explain` only when the reported inconsistency was not already diagnosed/);
   assert.match(readme, /--project-root <root>/);

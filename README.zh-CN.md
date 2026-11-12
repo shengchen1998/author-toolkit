@@ -76,6 +76,8 @@ preflight 还以只读方式检查缓存格式; 旧版或字段不完整的缓�
 文本摘要按 operation 聚合未核对批准, 显示数量与首末批准 ID; 首末端点不代表 ID 连续.
 `node <setup-skill-root>/scripts/check.mjs` 是参数和退出状态相同的稳定本地检查入口,
 直接复用 preflight, 不重复实现 doctor, 项目校验或严格执行门禁.
+setup 在初始化和入口文件修复后只运行一次 `check.mjs --project-root <root> --diagnose`,
+在同一次只读调用中包含诊断, 不在普通预检失败后再完整重跑; 严格执行门禁仍是独立检查.
 校验失败后添加 `--diagnose` 且不带 `--digest`, 可在一次只读结果中获得标记为 `recorded_unverified` 的有界投影和备份索引冲突字段.
 文本最多显示 12 个范围路径及其记录哈希, JSON 投影保留全部范围文件.
 所列哈希为记录值; `scope` 检查通过时, 单独的当前哈希结果确认多少个现行文件与记录一致.

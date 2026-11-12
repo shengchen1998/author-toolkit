@@ -304,7 +304,9 @@ test("existing-project setup uses bounded inspection references and a categorize
   assert.match(setup, /report that validation failure as a setup blocker after the repair/);
   assert.match(setup, /unsupported or schema-invalid manifest still stops before entry-file replacement/);
   assert.match(setup, /backup-index inconsistency after a successful manifest-schema check, complete step 5's entry-file repair before reporting the project-state blocker/);
-  assert.match(setup, /doctor, initialize, entry-file repair, preflight, then the final doctor/);
+  assert.match(setup, /doctor, initialize, entry-file repair, one diagnostic check, then the final doctor/);
+  assert.match(setup, /check\.mjs --project-root <project-root> --diagnose/);
+  assert.match(setup, /without rerunning ordinary preflight/);
   assert.match(setup, /standalone `validate\.mjs` only when a validation failure requires its complete diagnostics/);
   assert.match(setup, /endpoints do not imply a contiguous ID range/);
   assert.match(setup, /default ordinary status uses the current scope ID/);

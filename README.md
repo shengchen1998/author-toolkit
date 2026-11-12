@@ -163,6 +163,9 @@ are marked stale and their recorded next action is withheld rather than repeated
 `node <setup-skill-root>/scripts/check.mjs` is the stable local alias with the
 same arguments and exit statuses. It reuses preflight rather than duplicating
 doctor, validation, or strict execution logic.
+Setup runs `check.mjs --project-root <root> --diagnose` once after initialization
+and entry-file repair, including its read-only diagnosis without repeating a
+failed ordinary preflight. The strict execution gate remains a separate check.
 When validation fails, add `--diagnose` without `--digest` for one bounded
 read-only result containing the projection marked `recorded_unverified` and
 backup-index conflict fields. Its text displays up to 12 scope paths with their
