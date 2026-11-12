@@ -137,8 +137,9 @@ Run `node <setup-skill-root>/scripts/install-entry-files.mjs --project-root <roo
 to repair only the two project entry files after a successful payload check. It
 checks both targets before writing, preserves correct entries, and atomically
 replaces other regular files or symlinks. Directories and special files are
-rejected without writing. Repeat setup is idempotent; a final `doctor` verifies
-the installed payload and both entries independently.
+rejected without writing. Repeat setup is idempotent; setup's following
+`check --diagnose` verifies the installed payload and both entries without a
+second doctor call.
 
 Run `node <setup-skill-root>/scripts/initialize.mjs --project-root <root> --json`
 as setup's sole existing-project initialization implementation. It creates only
@@ -152,6 +153,9 @@ later strict execution gate.
 Run `node <setup-skill-root>/scripts/preflight.mjs --project-root <root>` to
 combine the payload and entry-file check with project validation and ordinary
 status. It shares their library implementation and prints a bounded summary.
+`Payload failures` excludes project-entry failures; `Entry files: pass` confirms
+both entries independently of project validation. An entry mismatch still
+allows project inspection, but exits 1 and prevents digest generation.
 Unverified approvals are grouped by operation with counts and first/last approval
 IDs; the endpoints do not imply contiguous ID ranges.
 The current scope is selected by default. Add `--require-execution` with an
@@ -164,8 +168,9 @@ are marked stale and their recorded next action is withheld rather than repeated
 same arguments and exit statuses. It reuses preflight rather than duplicating
 doctor, validation, or strict execution logic.
 Setup runs `check.mjs --project-root <root> --diagnose` once after initialization
-and entry-file repair, including its read-only diagnosis without repeating a
-failed ordinary preflight. The strict execution gate remains a separate check.
+and entry-file repair as its final installation and project-state verification,
+without a following doctor call or a repeated ordinary preflight. The strict
+execution gate remains a separate check.
 When validation fails, add `--diagnose` without `--digest` for one bounded
 read-only result containing the projection marked `recorded_unverified` and
 backup-index conflict fields. Its text displays up to 12 scope paths with their

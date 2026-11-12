@@ -41,6 +41,7 @@ test("preflight combines payload, validation, and ordinary status in one bounded
   assert.equal(result.status, 0, result.stderr);
   assert.equal(result.stderr, "");
   assert.match(result.stdout, /Payload failures: 0/);
+  assert.match(result.stdout, /Entry files: pass/);
   assert.match(result.stdout, /Project validation: 5 checks, 0 failures/);
   assert.match(result.stdout, new RegExp(`Scope: ${scopeId} \\(confirmed\\)`));
   assert.match(result.stdout, /Execution evidence: 0\/0 verified; 0 unverified/);
@@ -112,31 +113,45 @@ test("preflight rejects unsafe next-action fields and reports unreadable caches 
   assert.deepEqual(cache.issues, ["cache is unreadable"]);
 });
 
-test("preflight permits entry-file repair after initialization", async (t) => {
-  const { projectRoot } = await fixture(t);
+test("preflight inspects project state but fails and preserves the cache for entry-file repair", async (t) => {
+  const { projectRoot } = await fixture(t, "previous cache\n");
   await writeFile(path.join(projectRoot, "AGENTS.md"), "custom\n");
   const result = run(["--project-root", projectRoot, "--json"]);
-  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.status, 1, result.stderr);
   const parsed = JSON.parse(result.stdout);
-  assert.equal(parsed.valid, true);
+  assert.equal(parsed.valid, false);
   assert.equal(parsed.payload.valid, false);
   assert.deepEqual(parsed.payload.payload_failures, []);
   assert.deepEqual(parsed.payload.entry_failures, parsed.payload.failures);
   assert.deepEqual(parsed.payload.failures.map((failure) => failure.path), ["project:AGENTS.md"]);
   assert.equal(parsed.validation.valid, true);
+  assert.equal(parsed.status.scope.scope_id, scopeId);
+  assert.equal(parsed.digest, null);
+  assert.equal(await readFile(path.join(projectRoot, "PROJECT_STATE.md"), "utf8"), "previous cache\n");
+
+  const digest = run(["--project-root", projectRoot, "--digest"]);
+  assert.equal(digest.status, 1, digest.stderr);
+  assert.match(digest.stdout, /Entry files: fail/);
+  assert.match(digest.stdout, /Project validation: 5 checks, 0 failures/);
+  assert.match(digest.stdout, /Navigation cache: stale .*recorded next action withheld/);
+  assert.match(digest.stdout, /Navigation cache refresh: not refreshed; earlier checks failed/);
+  assert.match(digest.stdout, /Preflight: failed/);
+  assert.equal(await readFile(path.join(projectRoot, "PROJECT_STATE.md"), "utf8"), "previous cache\n");
 });
 
 test("preflight reports only project-entry mismatches as repairable setup failures", async (t) => {
   const { projectRoot } = await fixture(t);
   await rm(path.join(projectRoot, "CLAUDE.md"));
   const result = run(["--project-root", projectRoot]);
-  assert.equal(result.status, 0, result.stderr);
-  assert.match(result.stdout, /Payload failures: 1/);
+  assert.equal(result.status, 1, result.stderr);
+  assert.match(result.stdout, /Payload failures: 0/);
+  assert.match(result.stdout, /Entry files: fail/);
   assert.match(result.stdout, /project:CLAUDE\.md: missing or unreadable/);
-  assert.match(result.stdout, /Preflight: passed/);
+  assert.match(result.stdout, /Preflight: failed/);
 
   const json = run(["--project-root", projectRoot, "--json"]);
   const parsed = JSON.parse(json.stdout);
+  assert.equal(parsed.valid, false);
   assert.equal(parsed.payload.clis, 13);
   assert.equal(parsed.payload.project.agents, "ok");
 });

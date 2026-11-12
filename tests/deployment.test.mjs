@@ -173,6 +173,7 @@ test("setup carries self-contained preflight, validation, state, range, and inst
     { encoding: "utf8" },
   );
   assert.equal(preflight.status, 0, preflight.stderr);
+  assert.match(preflight.stdout, /Payload failures: 0\nEntry files: pass/);
   assert.match(preflight.stdout, /Project validation: 5 checks, 0 failures/);
   assert.match(preflight.stdout, /Navigation cache: refreshed PROJECT_STATE.md; snapshot only/);
   assert.match(preflight.stdout, /Preflight: passed/);
@@ -455,7 +456,7 @@ test("setup uses the authoritative payload inventory and bounded doctor", async 
     assert.match(text, /assets\/payload-manifest\.json/);
   }
   assert.match(setup, /If an installed-payload check fails, report an incomplete toolkit installation and stop/);
-  assert.match(setup, /Rerun the same doctor command/);
+  assert.match(setup, /Step 3's diagnostic check verifies the installed payload and both entry files afterward/);
   assert.match(instructions, /scripts\/check\.mjs --project-root <project-root>/);
   assert.match(instructions, /rerun it with `--diagnose`/);
   assert.match(instructions, /stop at the active strategy's author gate/);

@@ -3,7 +3,7 @@
   "files": [
     {
       "path": "SKILL.md",
-      "sha256": "5640122f8ef838a3604bdf2ed4ae716b98d302c5e9c9b414fdd1b2cec62793e8"
+      "sha256": "675d853ce490ee05492f0dd2fe48eb3cfe99b0ba0f4866f05ec06fb57f27b700"
     },
     {
       "path": "assets/AGENTS.md",
@@ -111,7 +111,7 @@
     },
     {
       "path": "scripts/install-entry-files.mjs",
-      "sha256": "be16ab940908bdf8c78704080081aa7349aecb7644038ac83b1bd1c3ebeceed1"
+      "sha256": "f242a011e92b82a4c8394f3058ba4afa6d89430626d3ef8abe5242ded35feccc"
     },
     {
       "path": "scripts/lib/approval-paths.mjs",
@@ -259,7 +259,7 @@
     },
     {
       "path": "scripts/preflight.mjs",
-      "sha256": "ad054de7e1046e9c091ecaa6949b7e6cbc6536ec430db593be9492cfbe5a79a0"
+      "sha256": "1c66aa079c2a7c2f8f5c2e83b81c23de5208458e039109f08bfd4198f5e7de35"
     },
     {
       "path": "scripts/project-digest.mjs",

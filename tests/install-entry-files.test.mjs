@@ -120,7 +120,8 @@ test("install-entry-files verifies the installed copy and reports argument error
 
   const help = run(["--help"], { tool: installedTool });
   assert.equal(help.status, 0, help.stderr);
-  assert.match(help.stdout, /doctor\.mjs --project-root DIR/);
+  assert.match(help.stdout, /check\.mjs --project-root DIR --diagnose/);
+  assert.doesNotMatch(help.stdout, /Run doctor\.mjs/);
   for (const args of [[], ["--project-root"], ["--unknown"], ["--project-root", projectRoot, "extra"]]) {
     const invalid = run(args);
     assert.equal(invalid.status, 2);

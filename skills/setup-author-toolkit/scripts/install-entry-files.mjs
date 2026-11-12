@@ -21,7 +21,8 @@ relative target AGENTS.md. Both targets are checked before writing. Correct
 entries remain unchanged; other regular files and symlinks are atomically
 replaced. Directories and special files are rejected without writing. Project
 manifests, manuscript, history, and Git state are not inspected or changed.
-Run doctor.mjs --project-root DIR afterward for independent verification.
+During setup, check.mjs --project-root DIR --diagnose verifies the payload,
+both entry files, and project state afterward without another doctor call.
 Argument errors exit 2; other failures exit 1.`);
 }
 

@@ -34,6 +34,8 @@ manuscript hashes, tracker, execution receipts, and recorded blockers. Without
 --scope-id, use the manifest's current scope ID when present. Ordinary status
 reports unverified approvals without failing. --require-execution turns those
 approvals into a failed execution gate and requires an explicit --scope-id.
+Project entry failures do not stop project inspection, but fail preflight and
+prevent digest generation.
 --diagnose adds a read-only execution-recovery audit and, when validation fails,
 a bounded recorded-unverified projection and backup-index explanation. It
 previews evidence reconciliation without changing validation results or state.
@@ -177,12 +179,12 @@ async function preflight(selection) {
     }
   }
 
-  if (selection.digest && result.execution_gate?.valid !== false) {
+  if (selection.digest && payload.entry_failures.length === 0 && result.execution_gate?.valid !== false) {
     const digest = await generateProjectDigest(selection.projectRoot);
     result.digest = { path: path.basename(digest.path), refreshed: true };
     result.navigation_cache = await inspectNavigationCache(selection.projectRoot);
   }
-  result.valid = result.execution_gate?.valid !== false;
+  result.valid = payload.entry_failures.length === 0 && result.execution_gate?.valid !== false;
   return result;
 }
 
@@ -191,8 +193,10 @@ function outputText(result, selection) {
   console.log(
     `Setup payload: ${payload.files} files (${payload.references} references, ${payload.clis} CLIs); project entry files included`,
   );
-  console.log(`Payload failures: ${payload.failures.length}`);
-  for (const failure of payload.failures) console.log(`- ${failure.path}: ${failure.reason}`);
+  console.log(`Payload failures: ${payload.payload_failures.length}`);
+  for (const failure of payload.payload_failures) console.log(`- ${failure.path}: ${failure.reason}`);
+  console.log(`Entry files: ${payload.entry_failures.length === 0 ? "pass" : "fail"}`);
+  for (const failure of payload.entry_failures) console.log(`- ${failure.path}: ${failure.reason}`);
 
   if (result.validation) {
     const checks = result.validation.checks;

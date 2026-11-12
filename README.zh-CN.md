@@ -61,7 +61,7 @@ setup 技能在 `setup-author-toolkit/scripts/` 下提供自包含的安装检�
 在载荷检查通过后仅修复两个项目入口文件.
 命令先检查两个目标再写入, 保留正确文件, 并原子替换其他普通文件或符号链接.
 目标是目录或特殊文件时不写入任何内容; 重复 setup 幂等执行.
-最终仍由 `doctor` 独立核对安装载荷和两个入口文件.
+随后由 setup 的 `check --diagnose` 核对安装载荷和两个入口文件, 无需再次运行 doctor.
 
 运行 `node <setup-skill-root>/scripts/initialize.mjs --project-root <root> --json` 执行现有项目唯一的初始化实现.
 它仅在缺失时创建备份索引, 并返回有界投影、注册路径、当前范围、待处理操作、备份索引状态和校验结果.
@@ -69,7 +69,10 @@ schema 有效但后续状态校验失败时返回 `recorded_unverified` 投影�
 不支持或 schema 无效的 manifest 不会触发创建. 它不替代 preflight 或后续严格执行门禁.
 
 运行 `node <setup-skill-root>/scripts/preflight.mjs --project-root <root>` 可一次完成载荷和入口文件检查,
-项目校验及普通状态汇总; 它复用相同的库实现并输出有界摘要. 默认选择当前范围. 仅在执行门禁场景添加
+项目校验及普通状态汇总; 它复用相同的库实现并输出有界摘要.
+`Payload failures` 仅统计安装载荷失败; `Entry files: pass` 独立确认两个入口文件均通过.
+入口不匹配不阻断项目检查, 但使命令退出 1 并禁止生成导航缓存.
+默认选择当前范围. 仅在执行门禁场景添加
 `--require-execution` 和显式 `--scope-id`; 仅在只读检查通过后需要刷新导航缓存时添加 `--digest`.
 preflight 还以只读方式检查缓存格式; 旧版或字段不完整的缓存, 以及项目校验或请求的严格门禁失败后的缓存,
 均标记为 stale, 且隐藏而非复述其中记录的下一操作.
@@ -77,7 +80,7 @@ preflight 还以只读方式检查缓存格式; 旧版或字段不完整的缓�
 `node <setup-skill-root>/scripts/check.mjs` 是参数和退出状态相同的稳定本地检查入口,
 直接复用 preflight, 不重复实现 doctor, 项目校验或严格执行门禁.
 setup 在初始化和入口文件修复后只运行一次 `check.mjs --project-root <root> --diagnose`,
-在同一次只读调用中包含诊断, 不在普通预检失败后再完整重跑; 严格执行门禁仍是独立检查.
+作为最终安装与项目状态核验, 不再运行 doctor 或重复普通预检; 严格执行门禁仍是独立检查.
 校验失败后添加 `--diagnose` 且不带 `--digest`, 可在一次只读结果中获得标记为 `recorded_unverified` 的有界投影和备份索引冲突字段.
 文本最多显示 12 个范围路径及其记录哈希, JSON 投影保留全部范围文件.
 所列哈希为记录值; `scope` 检查通过时, 单独的当前哈希结果确认多少个现行文件与记录一致.
