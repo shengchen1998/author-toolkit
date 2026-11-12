@@ -12,6 +12,14 @@ export function unverifiedOperationGroups(approvals) {
   }));
 }
 
+export function summarizeExecution(execution) {
+  const { unverified, ...summary } = execution;
+  return {
+    ...summary,
+    unverified_by_operation: unverifiedOperationGroups(unverified),
+  };
+}
+
 export function outputUnverifiedOperationGroups(approvals) {
   if (approvals.length === 0) return;
   console.log("Unverified by operation (first/last approval IDs):");

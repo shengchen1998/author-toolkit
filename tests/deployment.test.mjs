@@ -362,6 +362,10 @@ test("setup carries self-contained preflight, validation, state, range, and inst
   );
   assert.equal(strictCheck.status, 1, strictCheck.stderr);
   const strictCheckResult = JSON.parse(strictCheck.stdout);
+  assert.equal(strictCheckResult.status.execution.unverified, undefined);
+  assert.deepEqual(strictCheckResult.status.execution.unverified_by_operation, [
+    { operation: "chapter-revision", count: 1, first: "EDIT-001", last: "EDIT-001" },
+  ]);
   assert.deepEqual(strictCheckResult.execution_gate, {
     scope_id: "scope-example-revision",
     unverified_count: 1,

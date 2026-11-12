@@ -5,7 +5,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { generateProjectDigest } from "./lib/digest.mjs";
-import { outputUnverifiedOperationGroups } from "./lib/execution-summary.mjs";
+import { outputUnverifiedOperationGroups, summarizeExecution } from "./lib/execution-summary.mjs";
 import { auditExecutionRecovery } from "./lib/execution-recovery.mjs";
 import { explainBackupIndex } from "./lib/backup-index-diagnostics.mjs";
 import { inspectNavigationCache, markNavigationCacheStale } from "./lib/navigation-cache.mjs";
@@ -27,7 +27,8 @@ function argumentError(message) {
 function usage() {
   console.log(`Usage:
   node scripts/preflight.mjs --project-root DIR [--scope-id ID]
-                             [--require-execution] [--digest] [--diagnose] [--json]
+                             [--require-execution] [--digest] [--diagnose]
+                             [--json] [--details]
 
 Check the installed payload, project entry files, registered paths, current
 manuscript hashes, tracker, execution receipts, and recorded blockers. Without
@@ -42,12 +43,13 @@ previews evidence reconciliation without changing validation results or state.
 --digest also refreshes PROJECT_STATE.md after the read-only checks pass.
 The cache check recognizes the current format and marks older or failed-state
 caches stale without displaying their recorded next action or changing files.
-The text output is a bounded summary. --json preserves ordinary complete results;
-with --diagnose and failed validation, its displayed failure diagnostics are bounded.`);
+The text output is a bounded summary. --json also groups unverified approvals
+by operation and bounds failed-check diagnostics. --details restores complete
+failed checks and every unverified approval in JSON without changing text output.`);
 }
 
 function options(args) {
-  const result = { digest: false, diagnose: false, json: false, requireExecution: false };
+  const result = { details: false, digest: false, diagnose: false, json: false, requireExecution: false };
   for (let index = 0; index < args.length; index += 1) {
     if (args[index] === "--project-root" && args[index + 1]) {
       result.projectRoot = path.resolve(args[++index]);
@@ -61,6 +63,8 @@ function options(args) {
       result.diagnose = true;
     } else if (args[index] === "--json") {
       result.json = true;
+    } else if (args[index] === "--details") {
+      result.details = true;
     } else {
       throw argumentError(`Unknown or incomplete argument: ${args[index]}`);
     }
@@ -103,7 +107,7 @@ async function preflight(selection) {
 
   result.navigation_cache = await inspectNavigationCache(selection.projectRoot);
   const validation = await inspectProjectManifest(manifestPath);
-  const displayedChecks = selection.json && !selection.diagnose
+  const displayedChecks = selection.json && selection.details
     ? validation.checks
     : validation.checks.map((check) => check.valid ? { path: check.path, valid: true, errors: [] } : failedCheck(check, false));
   result.validation = {
@@ -168,6 +172,9 @@ async function preflight(selection) {
 
   const scopeId = selection.scopeId ?? validation.manifest.current_scope?.scope_id;
   result.status = await inspectProjectStatus(validation.manifest, manifestPath, { scopeId });
+  if (selection.json && !selection.details) {
+    result.status.execution = summarizeExecution(result.status.execution);
+  }
   if (selection.requireExecution) {
     result.execution_gate = {
       scope_id: scopeId,

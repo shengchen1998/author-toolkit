@@ -151,7 +151,7 @@
     },
     {
       "path": "scripts/lib/execution-summary.mjs",
-      "sha256": "80b0aa8a767b46bf49b774a22c4f581f65e697f1e1c72a8dda9cea588461376f"
+      "sha256": "4f899ade1ec8b0beb1123263857d6a0e68d4c552fa8008092f3d096f683f9157"
     },
     {
       "path": "scripts/lib/finding-identity.mjs",
@@ -199,7 +199,7 @@
     },
     {
       "path": "scripts/lib/read-projection.mjs",
-      "sha256": "9f24f19136819ae62132f3005b4f1a46f3c4cbf9872c3e97fc814696fcf37a88"
+      "sha256": "0a3e9c3ba038a0bf082d4ac92509cf1c9fcb24c65a2c68c52fd981edf9d9855f"
     },
     {
       "path": "scripts/lib/review-brief.mjs",
@@ -267,7 +267,7 @@
     },
     {
       "path": "scripts/preflight.mjs",
-      "sha256": "1c66aa079c2a7c2f8f5c2e83b81c23de5208458e039109f08bfd4198f5e7de35"
+      "sha256": "dd0da95f06eaa6d0bce1f897fcf1a73499a75a27bd510999b4eef0510e320240"
     },
     {
       "path": "scripts/project-digest.mjs",

@@ -77,6 +77,8 @@ schema 有效但后续状态校验失败时返回 `recorded_unverified` 投影�
 preflight 还以只读方式检查缓存格式; 旧版或字段不完整的缓存, 以及项目校验或请求的严格门禁失败后的缓存,
 均标记为 stale, 且隐藏而非复述其中记录的下一操作.
 文本摘要按 operation 聚合未核对批准, 显示数量与首末批准 ID; 首末端点不代表 ID 连续.
+JSON 默认同样使用按 operation 聚合的批准摘要和有界失败诊断;
+添加 `--details` 可获取完整失败检查和逐项未核对批准.
 `node <setup-skill-root>/scripts/check.mjs` 是参数和退出状态相同的稳定本地检查入口,
 直接复用 preflight, 不重复实现 doctor, 项目校验或严格执行门禁.
 setup 在初始化和入口文件修复后只运行一次 `check.mjs --project-root <root> --diagnose`,

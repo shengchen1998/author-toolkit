@@ -1,4 +1,4 @@
-import { unverifiedOperationGroups } from "./execution-summary.mjs";
+import { summarizeExecution } from "./execution-summary.mjs";
 import { readPendingArtifactIndex } from "./pending-artifacts.mjs";
 
 const errorLimit = 12;
@@ -21,11 +21,7 @@ export function failedCheck(check, details) {
   if (check.unsupported) result.unsupported = true;
   if (check.errors.length > errorLimit) result.omitted_error_count = check.errors.length - errorLimit;
   if (check.summary) {
-    const { unverified, ...summary } = check.summary;
-    result.summary = {
-      ...summary,
-      unverified_by_operation: unverifiedOperationGroups(unverified),
-    };
+    result.summary = summarizeExecution(check.summary);
   }
   return result;
 }

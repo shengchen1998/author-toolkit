@@ -215,9 +215,27 @@ test("preflight strict execution is explicit and does not change ordinary inspec
   assert.equal(parsed.valid, false);
   assert.equal(parsed.validation.valid, true);
   assert.deepEqual(parsed.execution_gate, { scope_id: scopeId, unverified_count: 2, valid: false });
+  assert.equal(parsed.status.execution.unverified, undefined);
+  assert.deepEqual(parsed.status.execution.unverified_by_operation, [
+    { operation: "chapter-revision", count: 1, first: "EDIT-001", last: "EDIT-001" },
+    { operation: "prose", count: 1, first: "EDIT-094", last: "EDIT-094" },
+  ]);
   assert.equal(parsed.navigation_cache.state, "stale");
   assert.ok(parsed.navigation_cache.issues.includes("strict execution gate failed"));
   assert.equal(parsed.navigation_cache.next_action, "withheld");
+
+  const detailed = run([
+    "--project-root",
+    projectRoot,
+    "--scope-id",
+    scopeId,
+    "--require-execution",
+    "--json",
+    "--details",
+  ]);
+  assert.equal(detailed.status, 1, detailed.stderr);
+  assert.equal(JSON.parse(detailed.stdout).status.execution.unverified.length, 2);
+  assert.equal(JSON.parse(detailed.stdout).status.execution.unverified_by_operation, undefined);
 
   const diagnosed = run([
     "--project-root",
@@ -361,8 +379,14 @@ test("preflight diagnose returns recorded projection and backup-index difference
   const ordinary = run(["--project-root", projectRoot, "--json"]);
   assert.equal(ordinary.status, 1);
   assert.equal(JSON.parse(ordinary.stdout).diagnosis, null);
-  assert.ok(JSON.parse(ordinary.stdout).validation.checks.every((check) => check.valid || !Object.hasOwn(check, "omitted_error_count")));
-  assert.deepEqual(JSON.parse(ordinary.stdout).validation.checks.find((check) => check.path === "executions").summary.unverified, []);
+  const ordinaryExecutions = JSON.parse(ordinary.stdout).validation.checks.find((check) => check.path === "executions");
+  assert.ok(ordinaryExecutions.errors.length > 0);
+  assert.equal(ordinaryExecutions.omitted_error_count, undefined);
+  assert.equal(ordinaryExecutions.summary.unverified, undefined);
+
+  const detailed = run(["--project-root", projectRoot, "--json", "--details"]);
+  assert.equal(detailed.status, 1, detailed.stderr);
+  assert.deepEqual(JSON.parse(detailed.stdout).validation.checks.find((check) => check.path === "executions").summary.unverified, []);
 
   const ordinaryText = run(["--project-root", projectRoot]);
   assert.equal(ordinaryText.status, 1, ordinaryText.stderr);
@@ -456,6 +480,23 @@ test("preflight diagnose bounds repeated errors and reports an unreadable pendin
   assert.equal(diagnosis.backup_index.omitted_record_count, 2);
   assert.equal(diagnosis.execution_recovery.status, "unavailable");
   assert.equal(diagnosis.execution_recovery.unsupported_count, null);
+
+  const strict = run(["--project-root", projectRoot, "--scope-id", scopeId, "--require-execution", "--json"]);
+  const strictExecutions = JSON.parse(strict.stdout).validation.checks.find((check) => check.path === "executions");
+  assert.equal(strict.status, 1, strict.stderr);
+  assert.equal(strictExecutions.errors.length, 12);
+  assert.equal(strictExecutions.omitted_error_count, 16);
+  assert.equal(strictExecutions.summary.unverified, undefined);
+  assert.deepEqual(strictExecutions.summary.unverified_by_operation, [
+    { operation: "chapter-revision", count: 94, first: "EDIT-001", last: "EDIT-094" },
+  ]);
+
+  const detailed = run(["--project-root", projectRoot, "--scope-id", scopeId, "--require-execution", "--json", "--details"]);
+  const detailedExecutions = JSON.parse(detailed.stdout).validation.checks.find((check) => check.path === "executions");
+  assert.equal(detailed.status, 1, detailed.stderr);
+  assert.equal(detailedExecutions.errors.length, 28);
+  assert.equal(detailedExecutions.summary.unverified.length, 94);
+  assert.equal(detailedExecutions.summary.unverified_by_operation, undefined);
 
   const text = run(["--project-root", projectRoot, "--diagnose"]);
   assert.equal(text.status, 1, text.stderr);

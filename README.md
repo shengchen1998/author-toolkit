@@ -158,6 +158,9 @@ both entries independently of project validation. An entry mismatch still
 allows project inspection, but exits 1 and prevents digest generation.
 Unverified approvals are grouped by operation with counts and first/last approval
 IDs; the endpoints do not imply contiguous ID ranges.
+JSON uses the same grouped approval summaries and bounded failed-check
+diagnostics by default; add `--details` for complete failed checks and every
+unverified approval.
 The current scope is selected by default. Add `--require-execution` with an
 explicit `--scope-id` only for an execution gate; add `--digest` only when the
 navigation cache should be refreshed after successful read-only checks.
