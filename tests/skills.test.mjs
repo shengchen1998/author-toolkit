@@ -202,7 +202,9 @@ test("project instructions defer detailed routing and write procedures", async (
   assert.match(ask, /no outline, ending, or whole-book structure audit is required/);
   assert.match(operations, /## Backup and creation commit/);
   assert.match(operations, /an unverified approval from another batch/);
-  assert.match(operations, /## Record execution/);
+  assert.match(operations, /## Complete write/);
+  assert.match(operations, /complete-write --manifest/);
+  assert.match(operations, /interrupted or historical work/);
   assert.match(operations, /## Restore/);
 });
 
@@ -404,6 +406,27 @@ test("workflow reporting pointers do not form a cycle", async () => {
 
   assert.match(reporting, /state-and-findings\.md/);
   assert.doesNotMatch(state, /workflow-reporting\.md/);
+});
+
+test("manuscript publication generates evidence and receipts in one transaction", async () => {
+  const [project, operations, reporting, creation, ...strategies] = await Promise.all([
+    readFile(path.join(root, "skills/author-project/SKILL.md"), "utf8"),
+    readFile(path.join(root, "skills/author-project/references/operations.md"), "utf8"),
+    readFile(path.join(root, "references/workflow-reporting.md"), "utf8"),
+    readFile(path.join(root, "skills/write-fiction/references/creation-state.md"), "utf8"),
+    ...["revise-fiction", "revise-draft", "revise-increment", "revise-request"].map((skill) => readFile(path.join(root, "skills", skill, "SKILL.md"), "utf8")),
+  ]);
+  assert.match(project, /`complete-write`/);
+  assert.match(project, /`record-execution`.*interrupted or historical recovery/);
+  assert.match(operations, /The writing skill supplies decided content but performs no manuscript-write counterpart/);
+  assert.match(operations, /not one filesystem transaction/);
+  assert.match(reporting, /the diagnostic skill does not write manuscript/);
+  assert.match(reporting, /`complete-write` publishes the supplied content/);
+  assert.match(creation, /Run `author-project` with `complete-write` and the journal path/);
+  for (const text of strategies) {
+    assert.match(text, /`complete-write`/);
+    assert.doesNotMatch(text, /run `author-project` with `record-execution`/);
+  }
 });
 
 test("revision strategies share one project and keep distinct evidence gates", async () => {

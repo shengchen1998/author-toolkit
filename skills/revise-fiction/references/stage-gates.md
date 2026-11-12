@@ -50,7 +50,7 @@ At a stable operation gate, the author may switch to `write-fiction`, `revise-dr
 
 **Inputs:** Approved revision plan, relevant baselines, manuscript, and tracker.
 
-**Work:** For one approved batch at a time, run `fiction-workshop` first for diagnosis. Read `<setup-skill-root>/assets/references/context-fit.md` and complete its check before presenting an edit proposal. Propose edits without writing. Show the exact files and changes, obtain and record approval, back up every file through `author-project`, and then implement that batch. Verify output hashes and run `author-project` with `record-execution` after the exact batch completes. Recheck affected continuity and update current-scope file hashes after the writes. Update plan batch status and finding decisions.
+**Work:** For one approved batch at a time, run `fiction-workshop` first for diagnosis. Read `<setup-skill-root>/assets/references/context-fit.md` and complete its check before presenting an edit proposal. Propose edits without writing. Show the exact files and changes, obtain and record approval, back up every file through `author-project`, and then run `complete-write` to publish that exact content, preserve evidence, and record its execution receipt. Recheck affected continuity and update current-scope file hashes after the writes. Update plan batch status and finding decisions.
 
 **Gate:** Every planned batch is completed and accepted, or explicitly deferred with its downstream effect recorded. Each modified file has a successful backup record linked to its approval and a completed execution receipt. No requested batch remains unapproved, unverified, or partially edited. Approved structural or character-fact changes trigger stale propagation.
 

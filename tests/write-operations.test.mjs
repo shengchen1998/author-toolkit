@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { cp, lstat, mkdir, mkdtemp, readFile, readdir, rm, symlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import test from "node:test";
 
@@ -14,6 +14,7 @@ function run(args) {
   return spawnSync(process.execPath, [path.join(root, "scripts", "writes.mjs"), ...args], {
     cwd: root,
     encoding: "utf8",
+    env: { ...process.env, AUTHOR_TOOLKIT_TEST_FAILURE: undefined },
   });
 }
 
@@ -191,4 +192,225 @@ test("a create-only batch remains gated until its execution receipt clears its p
   const index = JSON.parse(await readFile(indexPath, "utf8"));
   assert.equal(index.pending_backups.length, 0);
   assert.equal(index.executions[0].approval_id, "CREATE-001");
+});
+
+async function publicationFixture(t, { creation = false } = {}) {
+  const project = await fixture(t, { approvals: false });
+  const operation = creation ? "creation-commit" : "chapter-revision";
+  const approvalId = creation ? "CREATE-001" : "EDIT-001";
+  const tracker = await readFile(path.join(project.projectRoot, project.manifest.paths.audit_tracker), "utf8");
+  await writeFile(
+    path.join(project.projectRoot, project.manifest.paths.audit_tracker),
+    tracker.replace(approvalTable, `${approvalTable}\n| ${approvalId} | edit | ${operation} | ${scopeId} | \`manuscript/chapter-01.md\`, \`manuscript/new.md\`, \`manuscript/chapter-02.md\` | approved | Exact publication batch. | ${timestamp} |`),
+  );
+  const input2 = await readFile(path.join(project.projectRoot, "manuscript/chapter-02.md"));
+  const { createHash } = await import("node:crypto");
+  const files = [
+    { path: "manuscript/chapter-01.md", action: "modify", input_sha256: project.inputHash, output_sha256: project.outputHash, content: project.output },
+    { path: "manuscript/new.md", action: "create", input_sha256: null, output_sha256: project.outputHash, content: project.output },
+    { path: "manuscript/chapter-02.md", action: "delete", input_sha256: createHash("sha256").update(input2).digest("hex"), output_sha256: null, content: null },
+  ];
+  const backupPath = path.join(project.projectRoot, "backup-batch.json");
+  await writeFile(backupPath, JSON.stringify({ files: files.map(({ path, action, input_sha256 }) => ({ path, action, input_sha256 })) }));
+  const batchPath = path.join(project.projectRoot, "publication-batch.json");
+  await writeFile(batchPath, `${JSON.stringify({ files }, null, 2)}\n`);
+  const backupResult = run([
+    "record-backup", "--manifest", project.manifestPath, "--operation", operation,
+    "--scope-id", scopeId, "--approval-id", approvalId, "--batch", backupPath, "--recorded-at", timestamp,
+  ]);
+  assert.equal(backupResult.status, 0, backupResult.stderr);
+  const backupId = JSON.parse(backupResult.stdout).backup_id;
+  let commitPath;
+  if (creation) {
+    commitPath = path.join(project.projectRoot, ".author-toolkit/creation/batches/commit-001.json");
+    await mkdir(path.dirname(commitPath), { recursive: true });
+    await writeFile(commitPath, JSON.stringify({
+      schema_version: "1.0.0",
+      batch_id: "batch-001",
+      commit_id: "commit-001",
+      status: "in_progress",
+      scope_before_id: scopeId,
+      scope_after_id: "scope-after",
+      files: files.map(({ path, action, input_sha256, output_sha256 }) => ({ path, action, input_sha256, output_sha256, backup_id: action === "create" ? null : backupId, status: "pending" })),
+      created_at: timestamp,
+      updated_at: timestamp,
+    }));
+  }
+  return { ...project, operation, approvalId, files, batchPath, backupId, commitPath };
+}
+
+function complete(project, args = []) {
+  return run([
+    "complete-write", "--manifest", project.manifestPath, "--operation", project.operation,
+    "--scope-id", scopeId, "--approval-id", project.approvalId, "--batch", project.batchPath,
+    ...(project.commitPath ? ["--commit", project.commitPath] : []),
+    "--recorded-at", timestamp, ...args,
+  ]);
+}
+
+function completeWithFailure(project, failure) {
+  return spawnSync(process.execPath, [
+    path.join(root, "scripts", "writes.mjs"), "complete-write", "--manifest", project.manifestPath,
+    "--operation", project.operation, "--scope-id", scopeId, "--approval-id", project.approvalId,
+    "--batch", project.batchPath, ...(project.commitPath ? ["--commit", project.commitPath] : []), "--recorded-at", timestamp,
+  ], { cwd: root, encoding: "utf8", env: { ...process.env, AUTHOR_TOOLKIT_TEST_FAILURE: failure } });
+}
+
+test("complete-write publishes exact content and generates immutable evidence and its receipt", async (t) => {
+  const project = await publicationFixture(t);
+  const result = complete(project);
+  assert.equal(result.status, 0, result.stderr);
+  const completed = JSON.parse(result.stdout);
+  assert.equal(completed.already_recorded, false);
+  assert.equal(completed.unverified_count, 0);
+  assert.equal(await readFile(path.join(project.projectRoot, "manuscript/chapter-01.md"), "utf8"), project.output);
+  assert.equal(await readFile(path.join(project.projectRoot, "manuscript/new.md"), "utf8"), project.output);
+  assert.equal(await lstat(path.join(project.projectRoot, "manuscript/chapter-02.md")).then(() => true).catch(() => false), false);
+  project.manifest.current_scope = {
+    ...project.manifest.current_scope,
+    files: [{ path: "manuscript/chapter-03.md", sha256: project.manifest.current_scope.files[2].sha256 }],
+  };
+  await writeFile(project.manifestPath, JSON.stringify(project.manifest));
+  const evidence = JSON.parse(await readFile(path.join(project.projectRoot, completed.evidence_path), "utf8"));
+  assert.deepEqual(evidence.backup_ids, [project.backupId]);
+  assert.equal(evidence.completed_at, timestamp);
+  assert.deepEqual(evidence.files, project.files.map(({ path, action, input_sha256, output_sha256 }) => ({ path, action, input_sha256, output_sha256 })));
+  const index = JSON.parse(await readFile(path.join(project.projectRoot, project.manifest.paths.backups, "index.json")));
+  assert.equal(index.pending_backups.length, 0);
+  assert.equal(index.executions[0].evidence.sha256, completed.receipt.evidence.sha256);
+  const repeated = complete(project);
+  assert.equal(repeated.status, 0, repeated.stderr);
+  assert.equal(JSON.parse(repeated.stdout).already_recorded, true);
+  assert.equal(JSON.parse(await readFile(path.join(project.projectRoot, project.manifest.paths.backups, "index.json"))).executions.length, 1);
+});
+
+test("complete-write rejects hash, content, backup, and path-boundary failures before publication", async (t) => {
+  for (const failure of ["input", "output", "backup", "boundary", "argument"]) {
+    await t.test(failure, async (t) => {
+      const project = await publicationFixture(t);
+      const before = await readFile(path.join(project.projectRoot, project.manifest.paths.backups, "index.json"), "utf8");
+      if (failure === "input") await writeFile(path.join(project.projectRoot, "manuscript/chapter-01.md"), "External edit\n");
+      if (failure === "output") {
+        const batch = JSON.parse(await readFile(project.batchPath, "utf8"));
+        batch.files[0].content = "Hash mismatch\n";
+        await writeFile(project.batchPath, JSON.stringify(batch));
+      }
+      if (failure === "backup") {
+        const batch = JSON.parse(await readFile(project.batchPath, "utf8"));
+        batch.files.pop();
+        await writeFile(project.batchPath, JSON.stringify(batch));
+      }
+      if (failure === "boundary") {
+        const batch = JSON.parse(await readFile(project.batchPath, "utf8"));
+        batch.files[0].path = "manuscript/escape.md";
+        await writeFile(project.batchPath, JSON.stringify(batch));
+        await symlink(temporaryOutside(project), path.join(project.projectRoot, "manuscript/escape.md"));
+      }
+      const result = complete(project, failure === "argument" ? ["--evidence", project.evidencePath] : []);
+      assert.notEqual(result.status, 0);
+      assert.equal(await readFile(path.join(project.projectRoot, "manuscript/chapter-01.md"), "utf8"), failure === "input" ? "External edit\n" : await readFile(path.join(project.projectRoot, project.manifest.paths.backups, project.backupId, "manuscript/chapter-01.md"), "utf8"));
+      assert.equal(await readFile(path.join(project.projectRoot, project.manifest.paths.backups, "index.json"), "utf8"), before);
+      assert.equal(await lstat(path.join(project.projectRoot, "manuscript/new.md")).then(() => true).catch(() => false), false);
+    });
+  }
+});
+
+function temporaryOutside(project) {
+  return path.join(project.projectRoot, "..", "outside.md");
+}
+
+test("complete-write advances a creation journal and resumes after receipt interruption", async (t) => {
+  const project = await publicationFixture(t, { creation: true });
+  const result = complete(project);
+  assert.equal(result.status, 0, result.stderr);
+  const journal = JSON.parse(await readFile(project.commitPath, "utf8"));
+  assert.equal(journal.status, "in_progress");
+  assert.ok(journal.files.every((file) => file.status === "verified"));
+  assert.equal(JSON.parse(result.stdout).commit_journal, ".author-toolkit/creation/batches/commit-001.json");
+  assert.equal((await readdir(path.join(project.projectRoot, project.manifest.paths.backups, "executions"))).length, 1);
+
+  const indexPath = path.join(project.projectRoot, project.manifest.paths.backups, "index.json");
+  const index = JSON.parse(await readFile(indexPath, "utf8"));
+  index.executions = [];
+  index.pending_backups = index.backups;
+  index.backups = [];
+  await writeFile(indexPath, JSON.stringify(index));
+  journal.status = "interrupted";
+  await writeFile(project.commitPath, JSON.stringify(journal));
+  const resumed = complete(project);
+  assert.equal(resumed.status, 0, resumed.stderr);
+  assert.equal(JSON.parse(resumed.stdout).receipt.evidence.path, JSON.parse(result.stdout).receipt.evidence.path);
+  assert.equal(JSON.parse(await readFile(indexPath, "utf8")).executions.length, 1);
+});
+
+test("complete-write requires an in_progress creation journal with exact file identities", async (t) => {
+  const project = await publicationFixture(t, { creation: true });
+  const journal = JSON.parse(await readFile(project.commitPath, "utf8"));
+  journal.files[0].output_sha256 = "0".repeat(64);
+  await writeFile(project.commitPath, JSON.stringify(journal));
+  const before = await readFile(path.join(project.projectRoot, "manuscript/chapter-01.md"), "utf8");
+  const result = complete(project);
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /commit journal entry does not match/);
+  assert.equal(await readFile(path.join(project.projectRoot, "manuscript/chapter-01.md"), "utf8"), before);
+});
+
+test("complete-write resumes evidence and receipt interruptions without republishing", async (t) => {
+  for (const failure of ["complete-write-evidence", "complete-write-index"]) {
+    await t.test(failure, async (t) => {
+      const project = await publicationFixture(t, { creation: true });
+      const interrupted = completeWithFailure(project, failure);
+      assert.equal(interrupted.status, 1);
+      assert.match(interrupted.stderr, /interrupted/);
+      const journal = JSON.parse(await readFile(project.commitPath, "utf8"));
+      assert.equal(journal.status, "interrupted");
+      assert.ok(journal.files.every((file) => file.status === "verified"));
+      const evidencePath = path.join(project.projectRoot, project.manifest.paths.backups, "executions", `${project.approvalId}.json`);
+      assert.equal(await lstat(evidencePath).then(() => true).catch(() => false), failure === "complete-write-index");
+      const resumed = complete(project);
+      assert.equal(resumed.status, 0, resumed.stderr);
+      assert.equal(JSON.parse(resumed.stdout).unverified_count, 0);
+      const completedJournal = JSON.parse(await readFile(project.commitPath, "utf8"));
+      assert.equal(completedJournal.status, "in_progress");
+  project.manifest.current_scope = { ...project.manifest.current_scope, files: [{ path: "manuscript/chapter-03.md", sha256: project.manifest.current_scope.files[2].sha256 }] };
+  await writeFile(project.manifestPath, JSON.stringify(project.manifest));
+      const index = JSON.parse(await readFile(path.join(project.projectRoot, project.manifest.paths.backups, "index.json")));
+      assert.equal(index.executions.length, 1);
+    });
+  }
+});
+
+test("complete-write resumes a verified partial publication without changing completed files", async (t) => {
+  const project = await publicationFixture(t, { creation: true });
+  const journal = JSON.parse(await readFile(project.commitPath, "utf8"));
+  journal.status = "interrupted";
+  journal.files[0].status = "verified";
+  await writeFile(project.commitPath, JSON.stringify(journal));
+  await writeFile(path.join(project.projectRoot, "manuscript/chapter-01.md"), project.output);
+  const result = complete(project);
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(JSON.parse(await readFile(project.commitPath, "utf8")).status, "in_progress");
+  const index = JSON.parse(await readFile(path.join(project.projectRoot, project.manifest.paths.backups, "index.json")));
+  assert.equal(index.executions.length, 1);
+});
+
+test("complete-write resumes create-only evidence interruption", async (t) => {
+  const project = await fixture(t, { approvals: false });
+  const trackerPath = path.join(project.projectRoot, project.manifest.paths.audit_tracker);
+  const tracker = await readFile(trackerPath, "utf8");
+  await writeFile(trackerPath, tracker.replace(approvalTable, `${approvalTable}\n| CREATE-001 | edit | creation-commit | ${scopeId} | \`manuscript/new.md\` | approved | Exact create batch. | ${timestamp} |`));
+  const backupPath = path.join(project.projectRoot, "create-backup.json");
+  const batchPath = path.join(project.projectRoot, "create-publication.json");
+  await writeFile(backupPath, JSON.stringify({ files: [{ path: "manuscript/new.md", action: "create", input_sha256: null }] }));
+  await writeFile(batchPath, JSON.stringify({ files: [{ path: "manuscript/new.md", action: "create", input_sha256: null, output_sha256: project.outputHash, content: project.output }] }));
+  const recorded = run(["record-backup", "--manifest", project.manifestPath, "--operation", "creation-commit", "--scope-id", scopeId, "--approval-id", "CREATE-001", "--batch", backupPath, "--recorded-at", timestamp]);
+  assert.equal(recorded.status, 0, recorded.stderr);
+  const commitPath = path.join(project.projectRoot, ".author-toolkit/creation/batches/commit-create.json");
+  await mkdir(path.dirname(commitPath), { recursive: true });
+  await writeFile(commitPath, JSON.stringify({ schema_version: "1.0.0", batch_id: "batch-create", commit_id: "commit-create", status: "in_progress", scope_before_id: scopeId, scope_after_id: "scope-after", files: [{ path: "manuscript/new.md", action: "create", input_sha256: null, output_sha256: project.outputHash, backup_id: null, status: "pending" }], created_at: timestamp, updated_at: timestamp }));
+  const interrupted = spawnSync(process.execPath, [path.join(root, "scripts", "writes.mjs"), "complete-write", "--manifest", project.manifestPath, "--operation", "creation-commit", "--scope-id", scopeId, "--approval-id", "CREATE-001", "--batch", batchPath, "--commit", commitPath, "--recorded-at", timestamp], { encoding: "utf8", env: { ...process.env, AUTHOR_TOOLKIT_TEST_FAILURE: "complete-write-evidence" } });
+  assert.equal(interrupted.status, 1);
+  const resumed = run(["complete-write", "--manifest", project.manifestPath, "--operation", "creation-commit", "--scope-id", scopeId, "--approval-id", "CREATE-001", "--batch", batchPath, "--commit", commitPath, "--recorded-at", timestamp]);
+  assert.equal(resumed.status, 0, resumed.stderr);
+  assert.equal(JSON.parse(resumed.stdout).unverified_count, 0);
 });

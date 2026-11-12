@@ -52,7 +52,7 @@ async function checkExists(root, instancePath, relativePath) {
   }
 }
 
-export async function validateProjectFiles(manifest, manifestPath, { skipPendingArtifacts = false } = {}) {
+export async function validateProjectFiles(manifest, manifestPath, { skipPendingArtifacts = false, currentScope = true } = {}) {
   const projectRoot = projectRootFromManifest(manifestPath);
   if (isUninitializedProjectTemplate(manifest)) {
     return { valid: true, errors: [], projectRoot };
@@ -68,9 +68,11 @@ export async function validateProjectFiles(manifest, manifestPath, { skipPending
       checks.push([`/pending_action/artifacts/${artifactIndex}`, artifact]);
     });
   }
-  manifest.current_scope?.files?.forEach((file, fileIndex) => {
-    checks.push([`/current_scope/files/${fileIndex}/path`, file.path]);
-  });
+  if (currentScope) {
+    manifest.current_scope?.files?.forEach((file, fileIndex) => {
+      checks.push([`/current_scope/files/${fileIndex}/path`, file.path]);
+    });
+  }
 
   const errors = [];
   for (const [instancePath, relativePath] of checks) {

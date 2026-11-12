@@ -506,6 +506,9 @@ Use `read.mjs --project-root <root>` for its bounded manifest projection and
   `record-backup` refuses new edit batches while another approval is unverified,
   including create-only batches. `reconcile-executions` adds only receipts backed
   by preserved post-write evidence; unsupported approvals remain unverified.
+  `complete-write` publishes exact approved content, verifies each output, and
+  generates preserved evidence and its linked receipt in one invocation;
+  `record-execution` is reserved for interrupted or historical evidence recovery.
   `preflight --diagnose` audits their recoverability before reconciliation and
   exposes the author decision required when no usable evidence remains.
   `check-index --explain` provides read-only backup index inspection for identity
@@ -552,10 +555,11 @@ and mixed batches follow the same staging and acceptance rules. At commit time,
 every new file must still be absent, every existing target must match its
 accepted input hash, and every existing target must have a backup.
 
-The commit journal is written before manuscript publication. Each file is
-published through a verified temporary sibling and atomic rename, with journal
-updates after each transition. The journal coordinates a multi-file batch; it
-does not claim that the filesystem provides one transaction across all files.
+The commit journal is written before manuscript publication. `complete-write`
+publishes each file through a verified temporary sibling and atomic rename,
+updates the journal after each transition, and generates its evidence-linked
+execution receipt. The journal coordinates a multi-file batch; it does not
+claim that the filesystem provides one transaction across all files.
 An interrupted commit records completed and pending actions and stops automatic
 publication.
 

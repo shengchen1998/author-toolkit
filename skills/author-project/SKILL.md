@@ -24,7 +24,8 @@ Accept one operation per invocation:
 | `set-pending` | Operation, status, scope ID, reason, and artifacts | Write the requested pending action without stage progression |
 | `record-scope` | Scope ID, description, ordered files with SHA-256 hashes, excluded files, and `proposed` or `confirmed` status | Record the current scope after the required author confirmation |
 | `record-backup` | Operation, scope ID, approval ID, exact batch file, and optional backup ID | Refuse a new batch while another unverified approval remains; otherwise back up existing files and record expected absence for create targets |
-| `record-execution` | One preserved post-write evidence file and receipt timestamp | Append one evidence-linked post-write execution receipt and report any remaining unverified approvals |
+| `complete-write` | Operation, scope ID, approval ID, exact publication batch, and optional creation commit journal | Publish approved content through verified temporary siblings, preserve execution evidence, and append its linked receipt in one invocation |
+| `record-execution` | One preserved post-write evidence file and receipt timestamp from interrupted or historical recovery | Append one evidence-linked post-write execution receipt and report any remaining unverified approvals |
 | `reconcile-executions` | One or more preserved post-write evidence files; explicit `--write` after preview | Add only provable missing receipts, preserve unsupported approvals as unverified, and report rejected evidence |
 | `check-index` | Manifest path and `--explain` | Run read-only backup index inspection, including exact backup and approval identity differences, without repairing history |
 | `record-restore` | Operation, scope ID, backup or commit ID, files, independent restore approval ID, and safety backup ID | Record an approved restore, including safe removal of batch-created files, and propagate dependency invalidation |
@@ -33,7 +34,7 @@ For `read`, `validate`, `status`, `status --digest`, and `check-index`, read [`r
 
 ## Invocation boundary
 
-This skill calls no other skills. Its `SKILL.md` and applicable references are the procedure, which the agent executes directly. Use the installed CLIs for their operations and `writes.mjs` for backups, execution receipts, execution reconciliation, and backup index inspection rather than manually changing their index. Read shared contracts from `<setup-skill-root>/assets/references/`. These CLIs include their runtime dependencies and require no repository checkout or project `npm install`. Git is optional and is never required for state or backups.
+This skill calls no other skills. Its `SKILL.md` and applicable references are the procedure, which the agent executes directly. Use the installed CLIs for their operations and `writes.mjs` for backups, manuscript publication, execution receipts, execution reconciliation, and backup index inspection rather than manually changing their index. Read shared contracts from `<setup-skill-root>/assets/references/`. These CLIs include their runtime dependencies and require no repository checkout or project `npm install`. Git is optional and is never required for state or backups.
 
 ## Completion
 

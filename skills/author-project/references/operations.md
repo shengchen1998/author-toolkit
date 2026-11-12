@@ -103,24 +103,32 @@ For each create target, record that the file is expected absent with a null inpu
 
 For `creation-commit`, follow [`../../write-fiction/references/creation-state.md`](../../write-fiction/references/creation-state.md). Write `<paths.creation>/batches/<commit-id>.json` before touching manuscript text, record every planned action and its pending state, and update the journal after every write and verification transition. An interrupted journal records exact completed and pending actions and stops publication pending an explicit author decision. Record backup IDs, approvals, scope IDs, commit ID, and paths in the session note. Backups and journals are text records; Git is not a substitute.
 
-## Record execution
+## Complete write
 
-After every completed approved edit batch, verify its output hashes and preserve one immutable project-local record conforming to `<setup-skill-root>/assets/references/execution-evidence-schema.json`. Its `completed_at` records when the exact batch was completed. Then run:
+After `record-backup`, place the complete approved publication batch in a project-local JSON file. Its `files` entries contain `path`, `action`, `input_sha256`, `output_sha256`, and `content`. Non-delete content is the exact UTF-8 file body; delete uses null content and output hash. Then run:
 
 ```bash
-node <setup-skill-root>/scripts/writes.mjs record-execution --manifest <project-root>/.author-toolkit/project.json --evidence <project-relative-evidence-path>
+node <setup-skill-root>/scripts/writes.mjs complete-write --manifest <project-root>/.author-toolkit/project.json --operation <operation> --scope-id <scope-id> --approval-id <approval-id> --batch <publication-batch-file> [--commit <creation-commit-journal>]
 ```
 
-The command derives and atomically appends one receipt to `executions` in `<paths.backups>/index.json`, linked to the evidence's project-relative path and SHA-256. It does not require current manuscript hashes to equal historical outputs; those outputs must come from the preserved post-write evidence. The receipt retains:
+The command validates every approved path, action, input and output hash, content, pending backup, and optional journal before publication. It rechecks the current input, publishes each non-delete file through a verified temporary sibling and atomic rename, verifies every resulting output, preserves one immutable `execution-evidence-schema.json` record under `<paths.backups>/executions/`, and atomically appends its linked receipt to `executions` in `<paths.backups>/index.json`. The writing skill supplies decided content but performs no manuscript-write counterpart. The receipt retains:
 
 - `schema_version: "1.0.0"`, the exact edit `approval_id`, operation, and scope ID;
 - every `backup_id` used by the batch; a create-only batch can have an empty list;
 - one entry for every approved path with its `create`, `modify`, `delete`, or `reorder` action and verified input and output SHA-256 hashes. A create has a null input hash, a delete has a null output hash, and every other action has both hashes;
 - `recorded_at`, the UTC time this receipt is recorded.
 
-Recompute output hashes immediately after writing and verifying the exact batch. Do not compare historical receipt outputs with the current manuscript after later edits. An incomplete or interrupted batch has no execution receipt; preserve its interrupted state for explicit reconciliation.
+The command generates evidence and its receipt in the same invocation, with `completed_at` from its completion timestamp. It does not compare historical receipt outputs with current manuscript after later edits. A failed preflight leaves manuscript unchanged. Per-file publication is atomic; the batch is not one filesystem transaction. Preserve an interrupted batch for explicit reconciliation. For creation, `--commit` verifies the journal and records written and verified transitions; it remains `in_progress` while story state and scope are published. After all targets are verified, evidence and receipt are retained even if scope publication is interrupted.
 
 Only one receipt is allowed per approval, and it must cite every backup belonging to that approval. Preserve all existing records. On receipt, existing-file records move from `pending_backups` to `backups`; create-only absence evidence is removed after its linked receipt is preserved. Run the installed manifest validator and `status.mjs`; the approval remains `approved`, while the receipt supplies execution evidence.
+
+Retry `complete-write` with the same exact batch after interruption. It verifies preserved evidence and journal state instead of republishing them; unchanged input targets still require the approved input hash. Ordinary revision retries reconcile scope currency before continuing. A `written` but unverified journal entry requires explicit reconciliation. For other preserved post-write evidence from interrupted or historical work, run:
+
+```bash
+node <setup-skill-root>/scripts/writes.mjs record-execution --manifest <project-root>/.author-toolkit/project.json --evidence <project-relative-evidence-path>
+```
+
+This recovery command appends a receipt from existing evidence; it is not the routine manuscript publication procedure.
 
 For a legacy project, preview reconciliation with one or more `--evidence` arguments, then repeat with `--write` to append the accepted candidates:
 

@@ -94,7 +94,7 @@ Use the shared `## Approvals` table for edit, restore, baseline, scope, prose-ov
 
 An approval applies only to its named operation, paths, scope, and input versions. Link manuscript backup records to the approval ID. A structural or input change supersedes an affected override; record the supersession rather than deleting history. Legacy v2 overrides remain `deferred` until the author confirms them on resume.
 
-After a completed edit batch, run `author-project` with `record-execution` to link the approval to verified output hashes. Keep the approval status `approved`; the execution receipt proves completion. A completed restoration record supplies the corresponding evidence for a restore approval. A backup or safety backup alone proves only pre-write preservation.
+After approval and backup, run `author-project` with `complete-write` to publish exact approved content and generate its evidence-linked execution receipt in one invocation. Keep the approval status `approved`; the execution receipt proves completion. A completed restoration record supplies the corresponding evidence for a restore approval. A backup or safety backup alone proves only pre-write preservation.
 
 ## Scope and input currency
 

@@ -48,7 +48,7 @@ At a stable operation gate, the author may switch to `write-fiction`, `revise-fi
 
 **Inputs:** Approved plan, draft-baseline, manuscript, and tracker.
 
-**Work:** Diagnose one batch. Read `<setup-skill-root>/assets/references/context-fit.md` and complete its check before presenting an edit proposal. Show the exact changes and checked local context before writing. Local chapter splits, merges, reordering, cuts, and scene rewrites require the same explicit approval and backups as other edits. Implement only the approved batch, verify output hashes and run `author-project` with `record-execution`, update current-scope hashes, and recheck affected continuity and baseline differences.
+**Work:** Diagnose one batch. Read `<setup-skill-root>/assets/references/context-fit.md` and complete its check before presenting an edit proposal. Show the exact changes and checked local context before writing. Local chapter splits, merges, reordering, cuts, and scene rewrites require the same explicit approval and backups as other edits. Run `author-project` with `complete-write` to publish the exact approved content, preserve evidence, and record its execution receipt; update current-scope hashes and recheck affected continuity and baseline differences.
 
 **Gate:** Every planned batch is accepted or explicitly deferred, each modified file has a backup linked to its approval and a completed execution receipt, no requested batch is unverified or partially edited, and affected evidence is marked stale by dependency.
 

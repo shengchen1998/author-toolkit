@@ -13,6 +13,7 @@ export {
 export { explainBackupIndex } from "./backup-index-diagnostics.mjs";
 export { auditExecutionRecovery } from "./execution-recovery.mjs";
 export {
+  completeWrite,
   readExecutionEvidence,
   reconcileExecutions,
   recordBackup,
