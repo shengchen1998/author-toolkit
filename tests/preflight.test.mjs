@@ -457,8 +457,8 @@ test("preflight diagnose returns recorded projection and backup-index difference
 
   const text = run(["--project-root", projectRoot, "--diagnose"]);
   assert.equal(text.status, 1, text.stderr);
-  assert.match(text.stdout, /Recorded projection: unverified/);
-  assert.match(text.stdout, new RegExp(`Current hashes: verified; ${manifest.current_scope.files.length}/${manifest.current_scope.files.length} current files match the recorded hashes`));
+  assert.match(text.stdout, /Recorded projection: recorded only; overall project validation failed/);
+  assert.match(text.stdout, new RegExp(`Current hashes: independently verified; ${manifest.current_scope.files.length}/${manifest.current_scope.files.length} current files match the recorded hashes`));
   for (const file of manifest.current_scope.files) {
     assert.match(text.stdout, new RegExp(`- ${file.path.replaceAll(".", "\\.")}: ${file.sha256}`));
   }

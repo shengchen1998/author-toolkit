@@ -251,10 +251,10 @@ function outputText(result, selection) {
     const { projection, current_hashes: currentHashes, backup_index: backupIndex } = result.diagnosis;
     const scope = projection.current_scope;
     const pending = projection.pending_action;
-    console.log("Recorded projection: unverified; displayed hashes are recorded values, not current-file verification");
+    console.log("Recorded projection: recorded only; overall project validation failed");
     console.log(`Recorded scope: ${scope ? `${scope.scope_id} (${scope.status}); ${scope.files.length} recorded file hashes` : "none recorded"}`);
     if (currentHashes.verified) {
-      console.log(`Current hashes: verified; ${currentHashes.matched}/${currentHashes.total} current files match the recorded hashes`);
+      console.log(`Current hashes: independently verified; ${currentHashes.matched}/${currentHashes.total} current files match the recorded hashes`);
     }
     if (scope) {
       for (const file of scope.files.slice(0, diagnosticLimit)) {
