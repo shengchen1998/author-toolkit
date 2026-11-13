@@ -511,7 +511,7 @@ test("setup repairs agent entries and only creates missing navigation", async ()
   assert.doesNotMatch(setup, /rm -f AGENTS\.md|ln -s AGENTS\.md/);
   assert.match(setup, /applies to new projects and existing v3\.1 projects/);
   assert.match(existingSetup, /perform step 3's entry-file replacement even if later project-state validation fails/);
-  assert.match(existingSetup, /report that validation failure as a setup blocker after the repair/);
+  assert.match(existingSetup, /Report any validation or requested execution-gate failure as a setup blocker after the repair/);
   assert.match(existingSetup, /without repeating backup index inspection, repairing history, or inferring a migration/);
   assert.match(setup, /except for the two project-root agent entry files described above/);
   assert.match(setup, /creates `<project-root>\/START_HERE\.md` from `assets\/START_HERE\.md` only when that path is absent/);
@@ -563,7 +563,9 @@ test("setup uses the authoritative payload inventory and bounded doctor", async 
   assert.match(operations, /--diagnose/);
   assert.match(operations, /recorded_unverified/);
   assert.match(setup, /check\.mjs --project-root <project-root> --diagnose/);
-  assert.match(existingSetup, /without rerunning ordinary preflight/);
+  assert.match(existingSetup, /without rerunning preflight/);
+  assert.match(existingSetup, /add `--scope-id <current-scope-id> --require-execution` to that same final diagnostic call/);
+  assert.match(setup, /without repeating doctor or preflight/);
   assert.match(existingSetup, /without repeating backup index inspection/);
   assert.match(existingSetup, /--explain` only when the reported inconsistency was not already diagnosed/);
   assert.match(readme, /--project-root <root>/);

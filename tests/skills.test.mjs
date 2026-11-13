@@ -305,14 +305,20 @@ test("existing-project setup uses bounded inspection references and a categorize
   assert.match(existingSetup, /Initialization exits 3 for this schema-valid project-validation failure/);
   assert.match(existingSetup, /exit 3 does not make project validation successful/);
   assert.match(setup, /existing-project branch explicitly handles exit 3 after an accepted v3\.1 schema/);
-  assert.match(existingSetup, /report that validation failure as a setup blocker after the repair/);
+  assert.match(existingSetup, /Report any validation or requested execution-gate failure as a setup blocker after the repair/);
   assert.match(existingSetup, /unsupported or schema-invalid manifest still stops before entry-file replacement/);
   assert.match(existingSetup, /perform step 3's entry-file replacement even if later project-state validation fails/);
   assert.match(existingSetup, /doctor`, initialize, entry-file repair, and one diagnostic check/);
   assert.match(setup, /final installation and project-state verification/);
   assert.doesNotMatch(setup, /then the final doctor|Rerun the same doctor command/);
   assert.match(setup, /check\.mjs --project-root <project-root> --diagnose/);
-  assert.match(existingSetup, /without rerunning ordinary preflight/);
+  assert.match(existingSetup, /without rerunning preflight/);
+  assert.doesNotMatch(existingSetup, /run preflight again/);
+  assert.match(existingSetup, /add `--scope-id <current-scope-id> --require-execution` to that same final diagnostic call/);
+  assert.match(existingSetup, /otherwise retain the ordinary form/);
+  assert.match(existingSetup, /final diagnostic check in step 2 has already requested the strict execution gate/);
+  assert.match(setup, /adding the selected branch's strict-execution options to this same call when applicable/);
+  assert.match(setup, /without repeating doctor or preflight/);
   assert.match(existingSetup, /standalone `validate\.mjs` only when a validation failure requires its complete diagnostics/);
   assert.match(existingSetup, /endpoints do not imply a contiguous ID range/);
   assert.match(existingSetup, /default ordinary status uses the current scope ID/);
@@ -376,7 +382,8 @@ test("convergence gates run strict execution checks without gating ordinary insp
   assert.match(project, /current-draft revision convergence or previous\/base-scope execution gate, target scope ID and `--require-execution`/);
   assert.match(existingSetup, /default ordinary status uses the current scope ID/);
   assert.match(existingSetup, /Before relying on a recorded current-draft revision convergence statement/);
-  assert.match(existingSetup, /apply the other conditions in \[Current-draft revision convergence\]\(\.\.\/\.\.\/\.\.\/revise-fiction\/references\/state-and-findings\.md#current-draft-revision-convergence\)/);
+  assert.match(existingSetup, /a project-validation failure prevents the later status and execution-gate stages/);
+  assert.match(existingSetup, /Apply the other conditions in \[Current-draft revision convergence\]\(\.\.\/\.\.\/\.\.\/revise-fiction\/references\/state-and-findings\.md#current-draft-revision-convergence\)/);
   assert.match(existingSetup, /does not block ordinary setup, a current-scope review, or unrelated read-only work/);
   assert.doesNotMatch(setup, /evidence-blocked|legacy-unverified/);
 
