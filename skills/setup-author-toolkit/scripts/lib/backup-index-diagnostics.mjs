@@ -41,6 +41,15 @@ function approvalExplanation(approval) {
   };
 }
 
+function nonWriteApprovalExplanation(approval) {
+  if (!approval || ["edit", "restore"].includes(approval.type)) return null;
+  return {
+    code: "non_write_approval",
+    approval_type: approval.type,
+    message: `A ${approval.type} approval records a decision and cannot authorize a write or supply a write backup identity; check whether the actual write lacked its own edit approval.`,
+  };
+}
+
 export async function explainBackupIndex(manifest, manifestPath) {
   const result = {
     valid: false,
@@ -100,6 +109,7 @@ export async function explainBackupIndex(manifest, manifestPath) {
         ? { operation: backup.operation ?? null, scope_id: backup.scope_id ?? null }
         : null,
       approval: approvalExplanation(approval),
+      diagnosis: nonWriteApprovalExplanation(approval),
       differences,
       errors: record.errors,
     });
@@ -109,6 +119,9 @@ export async function explainBackupIndex(manifest, manifestPath) {
   if (!result.valid) {
     result.next_actions.push("Preserve the backup index, tracker, backup manifests, and preserved execution evidence; this command does not modify them.");
     result.next_actions.push("Reconcile the cited backup and approval identity with the author before any historical-index migration; do not infer which recorded operation or scope is correct from a field mismatch alone.");
+    if (result.records.some((record) => record.diagnosis?.code === "non_write_approval")) {
+      result.next_actions.push("For a cited plan or other non-write approval, check the plan, session, and tracker for a separately recorded edit approval for the actual operation, exact paths, actions, and input versions; its absence does not establish which historical value to change.");
+    }
     result.next_actions.push("Use writes.mjs reconcile-executions only with preserved post-write evidence for missing execution receipts; it does not repair backup identity mismatches.");
   }
   return result;

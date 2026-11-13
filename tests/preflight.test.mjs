@@ -418,6 +418,8 @@ test("preflight diagnose returns recorded projection and backup-index difference
   assert.deepEqual(parsed.diagnosis.backup_index.records[0].differences, [
     { field: "operation", backup: "draft-baseline", approval: "revision-plan" },
   ]);
+  assert.equal(parsed.diagnosis.backup_index.records[0].diagnosis.code, "non_write_approval");
+  assert.match(parsed.diagnosis.backup_index.next_actions.join("\n"), /separately recorded edit approval/);
   assert.equal(await readFile(path.join(projectRoot, "PROJECT_STATE.md"), "utf8"), before);
   assert.equal(JSON.parse(await readFile(indexPath, "utf8")).backups.at(-1).operation, "draft-baseline");
 

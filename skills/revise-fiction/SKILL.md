@@ -46,7 +46,7 @@ For manuscript changes, first obtain a diagnosis without editing. Read `<setup-s
 
 A restore requires separate explicit approval naming the backup ID and files. Run `author-project` with `record-restore`, which preserves the current text in a safety backup before restoring. Never treat an earlier edit approval as restore approval.
 
-Story Bible changes require author confirmation and remain consistent with the approved plan. `author-project` handles state and backups only; it never supplies creative content.
+Story Bible changes require author confirmation and remain consistent with the approved plan. Their writes use a separate `edit` approval with operation `story-bible`; plan or Story Bible decisions do not authorize the write. `author-project` handles state and backups only; it never supplies creative content.
 
 ## Reports and shared state
 

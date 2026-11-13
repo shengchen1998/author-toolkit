@@ -158,7 +158,13 @@ test("check-index explains backup and approval differences without writing state
     { field: "operation", backup: "draft-baseline", approval: "revision-plan" },
   ]);
   assert.equal(explanation.records[0].approval.type, "plan");
+  assert.deepEqual(explanation.records[0].diagnosis, {
+    code: "non_write_approval",
+    approval_type: "plan",
+    message: "A plan approval records a decision and cannot authorize a write or supply a write backup identity; check whether the actual write lacked its own edit approval.",
+  });
   assert.match(explanation.next_actions.join("\n"), /do not infer which recorded operation or scope is correct/);
+  assert.match(explanation.next_actions.join("\n"), /separately recorded edit approval for the actual operation, exact paths, actions, and input versions/);
   assert.match(explanation.next_actions.join("\n"), /does not repair backup identity mismatches/);
   assert.equal(await readFile(project.indexPath, "utf8"), before);
   assert.equal(await readFile(project.trackerPath, "utf8"), trackerBefore);
@@ -189,8 +195,23 @@ test("check-index succeeds for valid legacy and current indexes without a write 
     assert.equal(explanation.valid, true);
     assert.deepEqual(explanation.records, []);
     assert.deepEqual(explanation.errors, []);
+    assert.deepEqual(explanation.next_actions, []);
     assert.equal(await readFile(project.indexPath, "utf8"), before);
   }
+});
+
+test("check-index keeps edit-backup differences distinct from non-write approval misuse", async (t) => {
+  const project = await fixture(t);
+  project.index.backups[0].operation = "prose";
+  project.index.backups[0].scope_id = targetScope;
+  await project.saveIndex();
+
+  const result = runCli("writes.mjs", ["check-index", "--manifest", project.manifestPath, "--explain"]);
+  assert.equal(result.status, 1, result.stderr);
+  const explanation = JSON.parse(result.stdout);
+  assert.equal(explanation.records[0].approval.type, "edit");
+  assert.equal(explanation.records[0].diagnosis, null);
+  assert.doesNotMatch(explanation.next_actions.join("\n"), /non-write approval/);
 });
 
 test("backup identity errors identify only the mismatched field", async (t) => {

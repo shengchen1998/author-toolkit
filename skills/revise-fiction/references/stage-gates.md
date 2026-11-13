@@ -44,7 +44,7 @@ At a stable operation gate, the author may switch to `write-fiction`, `revise-dr
 
 **Work:** Copy `assets/revision-plan-template.md` to `.author-toolkit/revision-plan/<plan-id>.md`. Link every accepted finding ID to a concrete action, file, order, `scope_id`, and baseline impact. Group edits into reviewable chapter batches. Keep deferred and dismissed decisions visible with their reasons.
 
-**Gate:** Every accepted structure and character finding is mapped to a batch or an explicit deferral, conflicting actions are resolved with the author, and the author approves the plan and intended file scope. The approved plan is the baseline for chapter revision.
+**Gate:** Every accepted structure and character finding is mapped to a batch or an explicit deferral, conflicting actions are resolved with the author, and the author approves the plan and intended file scope. The approved plan is the baseline for chapter revision. Plan approval does not supply the separate `edit` approval required for a manuscript, baseline, or Story Bible write.
 
 ## 6. Chapter revision
 

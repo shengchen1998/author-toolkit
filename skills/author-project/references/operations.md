@@ -89,7 +89,7 @@ Before a later manuscript write, repeat the read, presence, and hash comparison.
 
 ## Backup and creation commit
 
-Before a manuscript edit, resolve the backup root from `paths.backups`. The calling orchestrator supplies an approved file list and approval ID. Verify that the approval is current and matches the operation, scope ID, paths, and actions. For every existing modify, delete, or reorder target:
+Before a manuscript, baseline, or Story Bible edit, resolve the backup root from `paths.backups`. The calling orchestrator supplies an approved file list and an `edit` approval ID for the write's actual operation. A plan, baseline, story-bible, scope, or override decision is not a write approval. Verify that the approval is current and matches the operation, scope ID, paths, and actions. For every existing modify, delete, or reorder target:
 
 Write a batch JSON containing only `files`, with `path`, `action`, and `input_sha256` for every approved path, then run:
 

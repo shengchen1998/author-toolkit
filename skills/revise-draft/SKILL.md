@@ -54,6 +54,8 @@ For manuscript changes, first diagnose without editing. Read `<setup-skill-root>
 
 Baseline writes distinguish text-established facts, interpretations, and unknowns. Interpretations remain labeled until the author turns them into creative decisions. Only affected baseline differences are presented after an edit; unknowns never become automatic blockers.
 
+A baseline or Story Bible write uses its own `edit` approval with operation `draft-baseline` or `story-bible`; a plan or baseline decision does not authorize that write. Split batches when their operations differ, and give each its own backup and execution receipt.
+
 ## Strategy switching and evidence reuse
 
 `write-fiction`, `revise-fiction`, `revise-increment`, and `revise-request` use this same manifest and state. At any stable operation gate, show the exact command for the author's selected strategy and wait; do not switch automatically or require the other strategy's sequence to finish. Preserve scope, evidence, approvals, staged drafts, and backups. Reconcile an interrupted write or commit before dependent work. After shared creation adds or affects chapters, offer `revise-increment` when the author wants to preserve reusable unchanged-chapter evidence and bring the expanded target scope to current-draft revision convergence. When the current scope is a full-manuscript scope that has reached current-draft revision convergence and the author requests another revision of existing content, offer `revise-request`.

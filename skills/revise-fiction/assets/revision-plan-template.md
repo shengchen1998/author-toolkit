@@ -16,8 +16,15 @@
 
 ## Chapter batches
 
-| Batch | Files | Intended changes | Approval ID | Backup ID | Revision status | Result or follow-up |
-|---|---|---|---|---|---|---|
+| Batch | Operation | Files | Intended changes | Plan approval ID | Edit approval ID | Backup ID | Revision status | Result or follow-up |
+|---|---|---|---|---|---|---|---|---|
+
+## Baseline and Story Bible batches
+
+| Batch | Operation | Files | Intended changes | Plan approval ID | Edit approval ID | Backup ID | Revision status | Result or follow-up |
+|---|---|---|---|---|---|---|---|---|
+
+Plan approval selects the intended batches. Before writing, record a separate `edit` approval for each batch's actual operation, exact paths, actions, and input versions. Use `chapter-revision`, `draft-baseline`, or `story-bible` as applicable, never the plan's `revision-plan` operation or `plan` approval type. Group baseline and Story Bible writes only when they share the same operation and exact approved batch; otherwise approve them separately. Do not enter an edit approval or backup ID before it exists.
 
 Use revision statuses `proposed`, `approved`, `in_progress`, `done`, and `deferred`. Finding and approval statuses remain in the shared audit tracker.
 

@@ -91,7 +91,7 @@
     },
     {
       "path": "assets/references/terminology.md",
-      "sha256": "08481eb6eed15ab83dba97228687a705a84abcdb723d214b4525ace732709276"
+      "sha256": "5e489f44de32daf5ac8185e3cea5f5eeffe5fcabbae7f1006c14d94cd997c38e"
     },
     {
       "path": "assets/references/workflow-reporting.md",
@@ -139,7 +139,7 @@
     },
     {
       "path": "scripts/lib/backup-index-diagnostics.mjs",
-      "sha256": "147816ca860abf71d049496b0882397147bece1199b4fd0214392d472f32529b"
+      "sha256": "81ec9734ab61afbb032180c72e0e459c5698a00a878965490c3d6ce6fdd661ae"
     },
     {
       "path": "scripts/lib/digest.mjs",

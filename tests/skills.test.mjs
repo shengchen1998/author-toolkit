@@ -503,6 +503,25 @@ test("revision strategies share one project and keep distinct evidence gates", a
   assert.match(draft, /normally confirmation of the proposed scope/);
 });
 
+test("revision plans separate decisions from exact write approvals", async () => {
+  const [state, template, fictionGates, draftGates, operations] = await Promise.all([
+    readFile(path.join(root, "skills/revise-fiction/references/state-and-findings.md"), "utf8"),
+    readFile(path.join(root, "skills/revise-fiction/assets/revision-plan-template.md"), "utf8"),
+    readFile(path.join(root, "skills/revise-fiction/references/stage-gates.md"), "utf8"),
+    readFile(path.join(root, "skills/revise-draft/references/stage-gates.md"), "utf8"),
+    readFile(path.join(root, "skills/author-project/references/operations.md"), "utf8"),
+  ]);
+  assert.match(state, /Only `edit` and `restore` approvals authorize writes/);
+  assert.match(state, /actual operation, exact paths, actions, and input versions/);
+  assert.match(template, /\| Batch \| Operation \| Files \| Intended changes \| Plan approval ID \| Edit approval ID \| Backup ID \|/);
+  assert.match(template, /## Baseline and Story Bible batches/);
+  assert.match(template, /never the plan's `revision-plan` operation or `plan` approval type/);
+  for (const text of [fictionGates, draftGates]) {
+    assert.match(text, /Plan approval does not supply the separate `edit` approval/);
+  }
+  assert.match(operations, /an `edit` approval ID for the write's actual operation/);
+});
+
 test("creation and revision strategies share state and stable switching gates", async () => {
   const [setup, instructions, ask, fiction, draft, increment, write, state] = await Promise.all([
     readFile(path.join(root, "skills/setup-author-toolkit/SKILL.md"), "utf8"),

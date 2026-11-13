@@ -42,7 +42,7 @@ At a stable operation gate, the author may switch to `write-fiction`, `revise-fi
 
 **Work:** Copy `../../revise-fiction/assets/revision-plan-template.md` to `.author-toolkit/revision-plan/<plan-id>.md`. Link every accepted finding to a concrete local action, file, order, scope, baseline impact, and batch. Keep deferred and dismissed decisions visible.
 
-**Gate:** Accepted findings map to batches or explicit deferrals, conflicts are resolved with the author, and the author approves the plan and file scope. With no accepted edits, record this operation and chapter revision as skipped for the requested pass.
+**Gate:** Accepted findings map to batches or explicit deferrals, conflicts are resolved with the author, and the author approves the plan and file scope. Plan approval does not supply the separate `edit` approval required for a manuscript, baseline, or Story Bible write. With no accepted edits, record this operation and chapter revision as skipped for the requested pass.
 
 ## 6. Chapter revision
 

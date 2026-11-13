@@ -201,7 +201,9 @@ operation-grouped unverified-approval summaries. Add `--details` for complete
 failed checks and approval details. For a backup-index inconsistency, run
 `writes.mjs check-index --manifest <manifest> --explain` for read-only backup
 index inspection; it reports exact record locations and backup/approval identity
-differences without migrating history or selecting a repair value.
+differences without migrating history or selecting a repair value. When a backup
+cites a plan or other non-write approval, the diagnosis identifies that category
+and directs a check for a missing edit approval without inferring one.
 
 Updates are manual. Check and apply them with:
 
@@ -278,7 +280,9 @@ A quick run looks like this:
    voice and collocation, request intent and setup/reveal dependencies, and the exact
    replacement in context. This is editorial judgment, not lint or permission to
    expand the edit or review scope. Planning, manuscript writes, creation acceptance,
-   and restores have distinct approvals.
+   and restores have distinct approvals. A plan approval selects intended batches;
+   every manuscript, draft-baseline, or Story Bible write needs its own `edit`
+   approval for the actual operation, exact paths, actions, and input versions.
 
 ### `write-fiction`: incremental creation
 
@@ -537,6 +541,8 @@ Use `read.mjs --project-root <root>` for its bounded manifest projection and
   exposes the author decision required when no usable evidence remains.
   `check-index --explain` provides read-only backup index inspection for identity
   mismatches without migrating historical records or adding execution receipts.
+  It distinguishes non-write approval misuse from an ordinary edit-backup mismatch
+  and does not guess the missing historical edit approval.
   Restoration also requires author approval and retains its separate safety path.
 - `handoffs/` preserves pointers to the current evidence and next action.
 - `paths.creation` registers creation state and defaults to
