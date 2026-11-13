@@ -20,7 +20,8 @@ history. Create only a missing backup index. Return its bounded projection,
 registered paths, current scope, pending action, and validation result. A
 schema-valid manifest with later validation errors returns a recorded_unverified
 projection and bounded backup-index diagnosis. Unsupported or schema-invalid
-manifests create nothing. Argument errors exit 2; other failures exit 1.`);
+manifests create nothing. Schema-valid project-validation failures exit 3;
+argument errors exit 2; other failures exit 1.`);
 }
 
 function options(args) {
@@ -56,7 +57,7 @@ function outputText(result) {
   }
   if (result.validation) {
     const failures = result.validation.checks.filter((check) => !check.valid);
-    console.log(`Project validation: ${result.validation.checks.length} checks, ${failures.length} failures`);
+    console.log(`Blocking project validation: ${result.validation.checks.length} checks, ${failures.length} failures`);
     for (const check of failures) {
       console.log(`- ${check.path}: ${errorDetails(check.errors)}`);
       if (check.omitted_error_count) console.log(`  ... ${check.omitted_error_count} more errors; use --json for bounded structured diagnostics`);
@@ -75,7 +76,7 @@ try {
     const result = await initializeExistingProject(manifestPath);
     if (selection.json) console.log(JSON.stringify(result, null, 2));
     else outputText(result);
-    if (!result.valid) process.exitCode = 1;
+    if (!result.valid) process.exitCode = result.schema_valid ? 3 : 1;
   }
 } catch (error) {
   if (error.result) {

@@ -42,9 +42,9 @@ test("preflight combines payload, validation, and ordinary status in one bounded
   assert.equal(result.stderr, "");
   assert.match(result.stdout, /Payload failures: 0/);
   assert.match(result.stdout, /Entry files: pass/);
-  assert.match(result.stdout, /Project validation: 5 checks, 0 failures/);
+  assert.match(result.stdout, /Blocking project validation: 5 checks, 0 failures/);
   assert.match(result.stdout, new RegExp(`Scope: ${scopeId} \\(confirmed\\)`));
-  assert.match(result.stdout, /Execution evidence: 0\/0 verified; 0 unverified/);
+  assert.match(result.stdout, /Non-blocking unverified approvals: 0; 0\/0 execution receipts verified/);
   assert.match(result.stdout, /Operation-specific evidence: not evaluated/);
   assert.match(result.stdout, /Navigation cache: absent/);
   assert.match(result.stdout, /Preflight: passed/);
@@ -132,7 +132,7 @@ test("preflight inspects project state but fails and preserves the cache for ent
   const digest = run(["--project-root", projectRoot, "--digest"]);
   assert.equal(digest.status, 1, digest.stderr);
   assert.match(digest.stdout, /Entry files: fail/);
-  assert.match(digest.stdout, /Project validation: 5 checks, 0 failures/);
+  assert.match(digest.stdout, /Blocking project validation: 5 checks, 0 failures/);
   assert.match(digest.stdout, /Navigation cache: stale .*recorded next action withheld/);
   assert.match(digest.stdout, /Navigation cache refresh: not refreshed; earlier checks failed/);
   assert.match(digest.stdout, /Preflight: failed/);
@@ -146,7 +146,7 @@ test("preflight reports only project-entry mismatches as repairable setup failur
   assert.equal(result.status, 1, result.stderr);
   assert.match(result.stdout, /Payload failures: 0/);
   assert.match(result.stdout, /Entry files: fail/);
-  assert.match(result.stdout, /project:CLAUDE\.md: missing or unreadable/);
+  assert.match(result.stdout, /Blocking entry-file error: project:CLAUDE\.md: missing or unreadable/);
   assert.match(result.stdout, /Preflight: failed/);
 
   const json = run(["--project-root", projectRoot, "--json"]);
@@ -201,6 +201,10 @@ test("preflight strict execution is explicit and does not change ordinary inspec
   const ordinary = run(["--project-root", projectRoot, "--json"]);
   assert.equal(ordinary.status, 0, ordinary.stderr);
   assert.equal(JSON.parse(ordinary.stdout).status.execution.unverified_count, 2);
+  const ordinaryText = run(["--project-root", projectRoot]);
+  assert.equal(ordinaryText.status, 0, ordinaryText.stderr);
+  assert.match(ordinaryText.stdout, /Non-blocking unverified approvals: 2; 0\/2 execution receipts verified/);
+  assert.match(ordinaryText.stdout, /Ordinary status: non-blocking; strict execution gate: not requested/);
 
   const strict = run([
     "--project-root",
@@ -391,8 +395,8 @@ test("preflight diagnose returns recorded projection and backup-index difference
   const ordinaryText = run(["--project-root", projectRoot]);
   assert.equal(ordinaryText.status, 1, ordinaryText.stderr);
   assert.equal(ordinaryText.stderr, "");
-  assert.match(ordinaryText.stdout, /- executions: \/backups\/0\/operation backup operation does not match its approval/);
-  assert.match(ordinaryText.stdout, /Execution evidence: 0\/0 verified; 0 unverified/);
+  assert.match(ordinaryText.stdout, /Blocking error: executions: \/backups\/0\/operation backup operation does not match its approval/);
+  assert.match(ordinaryText.stdout, /Non-blocking unverified approvals: 0; 0\/0 execution receipts verified/);
   assert.match(ordinaryText.stdout, /Navigation cache: stale .*recorded next action withheld/);
   assert.match(ordinaryText.stdout, /Preflight: failed/);
   assert.doesNotMatch(ordinaryText.stdout, /Cannot read properties of undefined/);
@@ -502,7 +506,8 @@ test("preflight diagnose bounds repeated errors and reports an unreadable pendin
 
   const text = run(["--project-root", projectRoot, "--diagnose"]);
   assert.equal(text.status, 1, text.stderr);
-  assert.match(text.stdout, /Execution evidence: 0\/94 verified; 94 unverified/);
+  assert.match(text.stdout, /Non-blocking unverified approvals: 94; 0\/94 execution receipts verified/);
+  assert.match(text.stdout, /Ordinary status: non-blocking; strict execution gate: failed/);
   assert.match(text.stdout, /\.\.\. 16 more errors/);
   assert.match(text.stdout, /Pending artifacts: unavailable; 1 bounded pointers shown in --json/);
   assert.match(text.stdout, /2 more conflicting records/);

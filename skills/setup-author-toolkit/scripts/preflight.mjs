@@ -45,7 +45,9 @@ The cache check recognizes the current format and marks older or failed-state
 caches stale without displaying their recorded next action or changing files.
 The text output is a bounded summary. --json also groups unverified approvals
 by operation and bounds failed-check diagnostics. --details restores complete
-failed checks and every unverified approval in JSON without changing text output.`);
+failed checks and every unverified approval in JSON without changing text output.
+Text output labels project-validation errors as blocking. Unverified approvals
+are non-blocking during ordinary status and fail only an explicit strict gate.`);
 }
 
 function options(args) {
@@ -201,21 +203,20 @@ function outputText(result, selection) {
     `Setup payload: ${payload.files} files (${payload.references} references, ${payload.clis} CLIs); project entry files included`,
   );
   console.log(`Payload failures: ${payload.payload_failures.length}`);
-  for (const failure of payload.payload_failures) console.log(`- ${failure.path}: ${failure.reason}`);
+  for (const failure of payload.payload_failures) console.log(`Blocking payload error: ${failure.path}: ${failure.reason}`);
   console.log(`Entry files: ${payload.entry_failures.length === 0 ? "pass" : "fail"}`);
-  for (const failure of payload.entry_failures) console.log(`- ${failure.path}: ${failure.reason}`);
+  for (const failure of payload.entry_failures) console.log(`Blocking entry-file error: ${failure.path}: ${failure.reason}`);
 
   if (result.validation) {
     const checks = result.validation.checks;
     const failures = checks.filter((check) => !check.valid);
-    console.log(
-      `Project validation: ${checks.length} checks, ${failures.length} failures`,
-    );
+    console.log(`Blocking project validation: ${checks.length} checks, ${failures.length} failures`);
     for (const check of failures) {
-      console.log(`- ${check.path}: ${errorDetails(check.errors)}`);
+      console.log(`Blocking error: ${check.path}: ${errorDetails(check.errors)}`);
       if (check.omitted_error_count) console.log(`  ... ${check.omitted_error_count} more errors; use --json for bounded structured diagnostics`);
       if (check.summary) {
-        console.log(`  Execution evidence: ${check.summary.executed}/${check.summary.required} verified; ${check.summary.unverified_count} unverified`);
+        console.log(`  Non-blocking unverified approvals: ${check.summary.unverified_count}; ${check.summary.executed}/${check.summary.required} execution receipts verified`);
+        if (check.summary.unverified_count > 0) console.log("  Ordinary status: non-blocking; strict execution gate: failed");
         const groups = check.summary.unverified_by_operation;
         for (const group of groups.slice(0, 8)) {
           console.log(`  - ${group.operation}: ${group.count} (${group.first} … ${group.last})`);
@@ -289,9 +290,8 @@ function outputText(result, selection) {
     console.log(
       `Pending action: ${pending ? `${pending.operation} (${pending.status}; ${pending.scope_id})` : "none recorded"}`,
     );
-    console.log(
-      `Execution evidence: ${status.execution.executed}/${status.execution.required} verified; ${status.execution.unverified_count} unverified`,
-    );
+    console.log(`Non-blocking unverified approvals: ${status.execution.unverified_count}; ${status.execution.executed}/${status.execution.required} execution receipts verified`);
+    if (status.execution.unverified_count > 0) console.log("Ordinary status: non-blocking; strict execution gate: not requested");
     outputUnverifiedOperationGroups(status.execution.unverified);
     console.log(`Recorded stale findings (all scopes): ${status.recorded_blockers.stale_finding_count}`);
     console.log(

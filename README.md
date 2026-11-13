@@ -149,9 +149,11 @@ as setup's sole existing-project initialization implementation. It creates only
 a missing backup index and returns the bounded projection, registered paths,
 current scope, pending action, backup-index status, and validation result.
 Schema-valid state failures return a `recorded_unverified` projection and
-backup-index diagnosis without requiring ad hoc manifest parsing. Unsupported or
-schema-invalid manifests create nothing. It does not replace preflight or the
-later strict execution gate.
+backup-index diagnosis without requiring ad hoc manifest parsing, and exit 3.
+That distinct status permits setup's entry-file repair while retaining the
+project-validation failure. Unsupported or schema-invalid manifests create
+nothing and exit 1. Argument errors exit 2. Initialization does not replace
+preflight or the later strict execution gate.
 
 Run `node <setup-skill-root>/scripts/preflight.mjs --project-root <root>` to
 combine the payload and entry-file check with project validation and ordinary
@@ -161,6 +163,10 @@ both entries independently of project validation. An entry mismatch still
 allows project inspection, but exits 1 and prevents digest generation.
 Unverified approvals are grouped by operation with counts and first/last approval
 IDs; the endpoints do not imply contiguous ID ranges.
+Text labels payload, entry-file, and project-validation errors as `Blocking
+error`, while `Non-blocking unverified approvals` keeps ordinary execution
+status distinct. Only an explicit strict execution gate makes those approvals
+fail the command.
 Prefer the text summary for status gates. Add `--json` for structured results;
 add `--details` only when complete failed checks or individual unverified
 approvals are needed.

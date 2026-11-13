@@ -69,13 +69,16 @@ setup 技能在 `setup-author-toolkit/scripts/` 下提供自包含的安装检�
 
 运行 `node <setup-skill-root>/scripts/initialize.mjs --project-root <root> --json` 执行现有项目唯一的初始化实现.
 它仅在缺失时创建备份索引, 并返回有界投影、注册路径、当前范围、待处理操作、备份索引状态和校验结果.
-schema 有效但后续状态校验失败时返回 `recorded_unverified` 投影和备份索引诊断, 无需临时解析 manifest.
-不支持或 schema 无效的 manifest 不会触发创建. 它不替代 preflight 或后续严格执行门禁.
+schema 有效但后续状态校验失败时返回 `recorded_unverified` 投影和备份索引诊断, 无需临时解析 manifest, 并退出 3.
+该独立状态允许 setup 继续修复入口文件, 同时保留项目校验失败. 不支持或 schema 无效的 manifest 不会触发创建并退出 1; 参数错误退出 2.
+初始化不替代 preflight 或后续严格执行门禁.
 
 运行 `node <setup-skill-root>/scripts/preflight.mjs --project-root <root>` 可一次完成载荷和入口文件检查,
 项目校验及普通状态汇总; 它复用相同的库实现并输出有界摘要.
 `Payload failures` 仅统计安装载荷失败; `Entry files: pass` 独立确认两个入口文件均通过.
 入口不匹配不阻断项目检查, 但使命令退出 1 并禁止生成导航缓存.
+文本以 `Blocking error` 标注载荷、入口文件和项目校验错误, 以 `Non-blocking unverified approvals` 区分普通执行状态.
+只有显式严格执行门禁才使未核对批准导致命令失败.
 默认选择当前范围. 仅在执行门禁场景添加
 `--require-execution` 和显式 `--scope-id`; 仅在只读检查通过后需要刷新导航缓存时添加 `--digest`.
 preflight 还以只读方式检查缓存格式; 旧版或字段不完整的缓存, 以及项目校验或请求的严格门禁失败后的缓存,

@@ -31,6 +31,7 @@ test("initialize creates only a missing backup index and is idempotent", async (
   assert.equal(created.status, 0, created.stderr);
   assert.match(created.stdout, /Manifest schema: valid v3\.1/);
   assert.match(created.stdout, /Backup index: created/);
+  assert.match(created.stdout, /Blocking project validation: 5 checks, 0 failures/);
   assert.match(created.stdout, /Manifest projection: validated/);
   assert.match(created.stdout, /Initialize: passed/);
   assert.doesNotMatch(created.stdout, /"paths"/);
@@ -80,8 +81,15 @@ test("initialize returns registered paths despite invalid execution evidence", a
   const originalManifest = await readFile(manifestPath, "utf8");
   const originalIndex = await readFile(indexPath, "utf8");
 
+  const text = run(["--project-root", projectRoot]);
+  assert.equal(text.status, 3, text.stderr);
+  assert.match(text.stdout, /Manifest schema: valid v3\.1/);
+  assert.match(text.stdout, /Blocking project validation: 5 checks, 1 failures/);
+  assert.match(text.stdout, /- executions: \/backups\/0\/operation backup operation does not match its approval/);
+  assert.match(text.stdout, /Initialize: failed/);
+
   const result = run(["--project-root", projectRoot, "--json"]);
-  assert.equal(result.status, 1, result.stderr);
+  assert.equal(result.status, 3, result.stderr);
   const parsed = JSON.parse(result.stdout);
   assert.equal(parsed.valid, false);
   assert.equal(parsed.schema_valid, true);

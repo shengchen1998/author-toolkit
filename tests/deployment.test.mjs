@@ -174,7 +174,7 @@ test("setup carries self-contained preflight, validation, state, range, and inst
   );
   assert.equal(preflight.status, 0, preflight.stderr);
   assert.match(preflight.stdout, /Payload failures: 0\nEntry files: pass/);
-  assert.match(preflight.stdout, /Project validation: 5 checks, 0 failures/);
+  assert.match(preflight.stdout, /Blocking project validation: 5 checks, 0 failures/);
   assert.match(preflight.stdout, /Navigation cache: refreshed PROJECT_STATE.md; snapshot only/);
   assert.match(preflight.stdout, /Preflight: passed/);
 
@@ -208,6 +208,23 @@ test("setup carries self-contained preflight, validation, state, range, and inst
     input_hashes: {},
   });
   await writeFile(projectIndexPath, JSON.stringify(projectIndex));
+  const diagnosisInitialization = spawnSync(
+    process.execPath,
+    [
+      ...nodeArgs,
+      path.join(installedSetup, "scripts", "initialize.mjs"),
+      "--project-root",
+      diagnosisProject,
+      "--json",
+    ],
+    { encoding: "utf8" },
+  );
+  assert.equal(diagnosisInitialization.status, 3, diagnosisInitialization.stderr);
+  const diagnosisInitialized = JSON.parse(diagnosisInitialization.stdout);
+  assert.equal(diagnosisInitialized.valid, false);
+  assert.equal(diagnosisInitialized.schema_valid, true);
+  assert.equal(diagnosisInitialized.projection.verification, "recorded_unverified");
+
   const diagnosis = spawnSync(
     process.execPath,
     [
@@ -236,6 +253,21 @@ test("setup carries self-contained preflight, validation, state, range, and inst
   assert.equal(diagnosed.diagnosis.execution_recovery.read_only, true);
   assert.equal(diagnosed.diagnosis.execution_recovery.status, "unavailable");
   assert.equal(diagnosed.diagnosis.execution_recovery.current_draft_revision_convergence, "not_established");
+
+  const diagnosisText = spawnSync(
+    process.execPath,
+    [
+      ...nodeArgs,
+      path.join(installedSetup, "scripts", "preflight.mjs"),
+      "--project-root",
+      diagnosisProject,
+      "--diagnose",
+    ],
+    { encoding: "utf8" },
+  );
+  assert.equal(diagnosisText.status, 1, diagnosisText.stderr);
+  assert.match(diagnosisText.stdout, /Blocking error: executions:/);
+  assert.match(diagnosisText.stdout, /Non-blocking unverified approvals: 0; 0\/0 execution receipts verified/);
 
   const rangeProject = path.join(temporaryRoot, "range-project");
   await mkdir(path.join(rangeProject, "manuscript"), { recursive: true });

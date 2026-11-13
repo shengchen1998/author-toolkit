@@ -301,6 +301,9 @@ test("existing-project setup uses bounded inspection references and a categorize
   assert.match(project, /For a new manifest and every record or write operation, read \[`references\/operations\.md`\]/);
   assert.doesNotMatch(project, /For every operation, read \[`references\/operations\.md`\]/);
   assert.match(existingSetup, /Once initialization's manifest-schema check passes, perform step 3's entry-file replacement even if later project-state validation fails/);
+  assert.match(existingSetup, /Initialization exits 3 for this schema-valid project-validation failure/);
+  assert.match(existingSetup, /exit 3 does not make project validation successful/);
+  assert.match(setup, /existing-project branch explicitly handles exit 3 after an accepted v3\.1 schema/);
   assert.match(existingSetup, /report that validation failure as a setup blocker after the repair/);
   assert.match(existingSetup, /unsupported or schema-invalid manifest still stops before entry-file replacement/);
   assert.match(existingSetup, /perform step 3's entry-file replacement even if later project-state validation fails/);
