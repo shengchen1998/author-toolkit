@@ -3,7 +3,7 @@
   "files": [
     {
       "path": "SKILL.md",
-      "sha256": "0f0fdd1f26d976a214019672a8d0dbc11c05fb91d92ee3b1420af0fa2168c2e1"
+      "sha256": "36c74dc40f4588530ff62c4551e0228446349b50d2f24e0db67e81ff957e0779"
     },
     {
       "path": "assets/AGENTS.md",
@@ -103,7 +103,7 @@
     },
     {
       "path": "assets/setup/new-project.md",
-      "sha256": "c4716d5340e4be5bca4d9bd993e0da6f390e0207f616d5cd585aa184cfe2db1b"
+      "sha256": "c62bbba59684f90b1dd2ee9abcf4514ebf3b3bf2766a089c4f1be1a26ed0c952"
     },
     {
       "path": "scripts/check.mjs",

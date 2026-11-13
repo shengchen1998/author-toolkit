@@ -267,12 +267,13 @@ test("setup and routine navigation keep operational history listings bounded", a
     readFile(path.join(root, "README.zh-CN.md"), "utf8"),
   ]);
 
-  assert.match(setup, /^1\. Inspect the project root with shallow listings and targeted existence or type checks\./m);
+  assert.match(setup, /^1\. Check only whether `<project-root>\/\.author-toolkit\/project\.json` exists\./m);
   assert.match(existingSetup, /For an existing v3\.1 manifest, run `node <setup-skill-root>\/scripts\/initialize\.mjs --project-root <project-root> --json` directly for the bounded projection/);
   assert.match(setup, /print `payload-manifest\.json` or the complete manifest, or emit complete session or backup listings/);
   assert.match(setup, /inspect-root\.mjs --project-root <project-root> --json/);
-  assert.match(setup, /at most 12 candidate manuscript paths with an omitted count/);
-  assert.match(setup, /recursive historical regular-file counts without historical artifact paths/);
+  assert.match(setup, /the existing-project branch goes directly to initialization without manuscript or historical-directory discovery/);
+  assert.match(newSetup, /at most 12 candidate manuscript paths with an omitted count/);
+  assert.match(newSetup, /recursive historical regular-file counts without historical artifact paths/);
   assert.match(newSetup, /Run `node <setup-skill-root>\/scripts\/inspect-root\.mjs --project-root <project-root> --json`/);
   assert.match(newSetup, /do not enumerate historical artifact trees/);
   assert.doesNotMatch(existingSetup, /inspect-root\.mjs/);
@@ -368,7 +369,7 @@ test("setup discloses only the selected project branch", async () => {
   ]);
   const setupSteps = setup.match(/^\d+\. .+$/gm) ?? [];
   assert.equal(setupSteps.length, 4);
-  assert.match(setup, /when `\.author-toolkit\/project\.json` exists, read only \[Existing project\]\(assets\/setup\/existing-project\.md\); otherwise read only \[New project\]\(assets\/setup\/new-project\.md\)/);
+  assert.match(setup, /when the manifest exists, read only \[Existing project\]\(assets\/setup\/existing-project\.md\); otherwise read only \[New project\]\(assets\/setup\/new-project\.md\)/);
   assert.doesNotMatch(setup, /author-project\/references\/operations\.md|read-operations\.md/);
   assert.doesNotMatch(existingSetup, /author-project\/SKILL\.md|author-project\/references\/|read-operations\.md/);
   assert.match(newSetup, /\.\.\/\.\.\/\.\.\/author-project\/SKILL\.md/);
