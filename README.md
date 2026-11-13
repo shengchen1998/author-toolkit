@@ -120,10 +120,17 @@ Add `-g` to install at user level instead:
 npx skills@latest add shengchen1998/author-toolkit -a codex -g
 ```
 
-The setup skill includes self-contained installation, entry-file installation, existing-project initialization, preflight, manifest-projection, pending-action, validation, status, project-digest, finding-state, manuscript-write, and character-range CLIs under
+The setup skill includes self-contained installation, bounded root inspection, entry-file installation, existing-project initialization, preflight, manifest-projection, pending-action, validation, status, project-digest, finding-state, manuscript-write, and character-range CLIs under
 `setup-author-toolkit/scripts/`. Shared workflows resolve that installed skill
 directory directly; no repository checkout or writing-project `npm install` is
 required.
+
+Run `node <setup-skill-root>/scripts/inspect-root.mjs --project-root <root> --json`
+for new-project discovery. It returns entry-file and default component types, at
+most 12 candidate manuscript paths with an omitted count, and recursive historical
+regular-file counts without historical artifact paths. It follows no symlinks,
+reads no file contents, and writes nothing. Existing v3.1 projects use
+`initialize.mjs` instead of repeating root discovery.
 
 Run `node <setup-skill-root>/scripts/doctor.mjs` for a bounded installation
 summary and only the failed paths. It verifies the skill's regular payload files,

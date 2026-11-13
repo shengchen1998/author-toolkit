@@ -1,6 +1,6 @@
 # New-project setup
 
-Use this branch only when `<project-root>/.author-toolkit/project.json` is absent. Limit discovery to the candidate component directories and manuscript paths needed for registration; use presence checks or counts that do not emit session or backup filenames.
+Use this branch only when `<project-root>/.author-toolkit/project.json` is absent. Run `node <setup-skill-root>/scripts/inspect-root.mjs --project-root <project-root> --json` for the bounded discovery described in step 1 of `../../SKILL.md`. Select from its candidate manuscript paths and default component types, using targeted checks only for an author-supplied path or an omitted candidate that needs disambiguation; do not enumerate historical artifact trees.
 
 1. Read `../../../author-project/SKILL.md` and `../../../author-project/references/operations.md`, then follow their new-manifest procedure directly with the selected root and paths, project metadata, and BCP 47 language. Register existing paths as they are. Use these defaults only for missing components:
    - `manuscript/`

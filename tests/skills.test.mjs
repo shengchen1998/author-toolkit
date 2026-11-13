@@ -270,8 +270,12 @@ test("setup and routine navigation keep operational history listings bounded", a
   assert.match(setup, /^1\. Inspect the project root with shallow listings and targeted existence or type checks\./m);
   assert.match(existingSetup, /For an existing v3\.1 manifest, run `node <setup-skill-root>\/scripts\/initialize\.mjs --project-root <project-root> --json` directly for the bounded projection/);
   assert.match(setup, /print `payload-manifest\.json` or the complete manifest, or emit complete session or backup listings/);
-  assert.match(newSetup, /Limit discovery to the candidate component directories and manuscript paths needed for registration/);
-  assert.match(newSetup, /use presence checks or counts that do not emit session or backup filenames/);
+  assert.match(setup, /inspect-root\.mjs --project-root <project-root> --json/);
+  assert.match(setup, /at most 12 candidate manuscript paths with an omitted count/);
+  assert.match(setup, /recursive historical regular-file counts without historical artifact paths/);
+  assert.match(newSetup, /Run `node <setup-skill-root>\/scripts\/inspect-root\.mjs --project-root <project-root> --json`/);
+  assert.match(newSetup, /do not enumerate historical artifact trees/);
+  assert.doesNotMatch(existingSetup, /inspect-root\.mjs/);
 
   const navigationRule = /For routine navigation, use `PROJECT_STATE\.md` pointers, targeted artifact reads, or aggregate counts rather than emitting complete file listings of the registered session or backup directories\./;
   assert.match(readOperations, navigationRule);

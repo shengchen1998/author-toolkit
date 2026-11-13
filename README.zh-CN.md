@@ -48,8 +48,13 @@ npx skills@latest add shengchen1998/author-toolkit -a codex
 npx skills@latest add shengchen1998/author-toolkit -a codex -g
 ```
 
-setup 技能在 `setup-author-toolkit/scripts/` 下提供自包含的安装检查, 入口文件安装, 现有项目初始化, 预检, manifest 投影, 待处理操作写入, 校验, 状态, 项目导航, 发现项状态, 正文写入和行内字符区间 CLI, 包括运行依赖.
+setup 技能在 `setup-author-toolkit/scripts/` 下提供自包含的安装检查, 有界根目录盘点, 入口文件安装, 现有项目初始化, 预检, manifest 投影, 待处理操作写入, 校验, 状态, 项目导航, 发现项状态, 正文写入和行内字符区间 CLI, 包括运行依赖.
 共享工作流直接解析该技能的安装目录, 无需仓库检出, 也无需在写作项目中运行 `npm install`.
+
+运行 `node <setup-skill-root>/scripts/inspect-root.mjs --project-root <root> --json` 盘点新项目.
+它返回入口文件和默认组件类型, 至多 12 个候选稿件路径及省略计数, 以及历史目录的递归普通文件计数,
+不返回历史产物路径. 它不跟随符号链接, 不读取文件内容, 也不写入任何内容.
+已有 v3.1 项目使用 `initialize.mjs`, 不重复根目录盘点.
 
 运行 `node <setup-skill-root>/scripts/doctor.mjs` 可获得有界安装摘要和失败路径.
 它按 `assets/payload-manifest.json` 核对技能的普通载荷文件, 包括 CLI 内部模块.
