@@ -104,8 +104,10 @@ test("setup reads terminology by section from the single installed source", asyn
     readFile(path.join(root, "skills/setup-author-toolkit/SKILL.md"), "utf8"),
     readFile(path.join(root, "skills/setup-author-toolkit/assets/AGENTS.md"), "utf8"),
   ]);
-  assert.match(setup, /For setup, read the bundled \[controlled workflow terminology\]\(assets\/references\/terminology\.md\)'s \*\*Core terms\*\* and \*\*Contract values\*\* sections/);
-  assert.match(setup, /Consult its \*\*Operation identifiers\*\* section by exact identifier/);
+  assert.match(setup, /scripts\/terminology\.mjs --section "Core terms" --section "Contract values"/);
+  assert.match(setup, /read only those sections/);
+  assert.match(setup, /do not read the full terminology file/);
+  assert.match(setup, /scripts\/terminology\.mjs --section "Operation identifiers"/);
   assert.match(setup, /pending action, group of unverified approvals, or backup-index difference/);
   assert.match(instructions, /`<setup-skill-root>\/assets\/references\/terminology\.md`/);
   assert.match(instructions, /Do not copy contracts into the writing project/);

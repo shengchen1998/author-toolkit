@@ -6,7 +6,7 @@ disable-model-invocation: true
 
 # Setup Author Toolkit
 
-Register one book project and prepare its shared persistent files. Accept only the project root, an optional manuscript path, and optional language or project metadata. There is no entry-stage or workflow argument. Perform the same setup for every later creation or revision strategy. For setup, read the bundled [controlled workflow terminology](assets/references/terminology.md)'s **Core terms** and **Contract values** sections for shared terms and exact contract values. Consult its **Operation identifiers** section by exact identifier when a reported pending action, group of unverified approvals, or backup-index difference uses one.
+Register one book project and prepare its shared persistent files. Accept only the project root, an optional manuscript path, and optional language or project metadata. There is no entry-stage or workflow argument. Perform the same setup for every later creation or revision strategy. For setup, run `node <setup-skill-root>/scripts/terminology.mjs --section "Core terms" --section "Contract values"` to read only those sections of the bundled [controlled workflow terminology](assets/references/terminology.md) for shared terms and exact contract values; do not read the full terminology file. Consult its **Operation identifiers** section by exact identifier with `node <setup-skill-root>/scripts/terminology.mjs --section "Operation identifiers"` only when a reported pending action, group of unverified approvals, or backup-index difference uses one.
 
 ## Setup
 

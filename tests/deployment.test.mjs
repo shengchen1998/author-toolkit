@@ -79,7 +79,7 @@ test("setup carries self-contained preflight, validation, state, range, and inst
   );
 
   const nodeArgs = ["--no-warnings", "--experimental-loader", loader, "--require", preload];
-  for (const script of ["inspect-root.mjs", "initialize.mjs", "install-entry-files.mjs", "preflight.mjs", "check.mjs", "read.mjs", "set-pending.mjs", "validate.mjs", "status.mjs", "project-digest.mjs", "findings.mjs", "range.mjs", "doctor.mjs", "writes.mjs"]) {
+  for (const script of ["inspect-root.mjs", "initialize.mjs", "install-entry-files.mjs", "preflight.mjs", "check.mjs", "read.mjs", "set-pending.mjs", "validate.mjs", "status.mjs", "project-digest.mjs", "findings.mjs", "range.mjs", "doctor.mjs", "writes.mjs", "terminology.mjs"]) {
     const result = spawnSync(
       process.execPath,
       [...nodeArgs, path.join(installedSetup, "scripts", script), "--help"],
@@ -286,6 +286,20 @@ test("setup carries self-contained preflight, validation, state, range, and inst
   );
   assert.equal(range.status, 0, range.stderr);
   assert.equal(JSON.parse(range.stdout).text, "与热");
+
+  const terminology = spawnSync(
+    process.execPath,
+    [
+      ...nodeArgs,
+      path.join(installedSetup, "scripts", "terminology.mjs"),
+      "--section",
+      "Contract values",
+    ],
+    { encoding: "utf8" },
+  );
+  assert.equal(terminology.status, 0, terminology.stderr);
+  assert.match(terminology.stdout, /^## Contract values\n/);
+  assert.doesNotMatch(terminology.stdout, /## Core terms|## Operation identifiers/);
 
   const allocation = spawnSync(
     process.execPath,

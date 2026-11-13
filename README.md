@@ -120,7 +120,7 @@ Add `-g` to install at user level instead:
 npx skills@latest add shengchen1998/author-toolkit -a codex -g
 ```
 
-The setup skill includes self-contained installation, bounded root inspection, entry-file installation, existing-project initialization, preflight, manifest-projection, pending-action, validation, status, project-digest, finding-state, manuscript-write, and character-range CLIs under
+The setup skill includes self-contained installation, bounded root inspection, entry-file installation, existing-project initialization, preflight, manifest-projection, pending-action, validation, status, project-digest, finding-state, manuscript-write, character-range, and terminology-section CLIs under
 `setup-author-toolkit/scripts/`. Shared workflows resolve that installed skill
 directory directly; no repository checkout or writing-project `npm install` is
 required.
