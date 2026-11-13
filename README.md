@@ -161,6 +161,10 @@ status. It shares their library implementation and prints a bounded summary.
 `Payload failures` excludes project-entry failures; `Entry files: pass` confirms
 both entries independently of project validation. An entry mismatch still
 allows project inspection, but exits 1 and prevents digest generation.
+Four independent `Installation`, `Project state`, `Strategy gate`, and `Host
+visibility` states, also available in JSON under `setup`, prevent an evidence
+failure from being reported as an incomplete toolkit installation. The CLI
+always leaves host visibility unverified for the author's confirmation.
 Unverified approvals are grouped by operation with counts and first/last approval
 IDs; the endpoints do not imply contiguous ID ranges.
 Text labels payload, entry-file, and project-validation errors as `Blocking
@@ -259,7 +263,8 @@ A quick run looks like this:
    routing lives in `ask-author`; operational details remain in the installed
    skills and references. For an existing project, this repair occurs once the
    manifest-schema check accepts v3.1 even if later project-state validation
-   fails; setup then reports the blocker without repairing manuscript or history.
+   fails; setup then reports the project-state blocker without repairing
+   manuscript or history.
    Custom content in these two files is not preserved. Setup creates
    `START_HERE.md` only when absent as a fixed navigation pointer; existing
    navigation content is never replaced. Do not pass
@@ -271,7 +276,9 @@ A quick run looks like this:
    installed initialization CLI and bounded inspection reference instead of loading the
    backup, restore, and creation-commit procedures. Setup summarizes the
    installation payload, project entry files, manuscript scope, and execution
-   evidence separately.
+   evidence separately, together with the independent installation, project-state,
+   strategy-gate, and host-visibility states. A passing installation remains
+   distinct from blocked evidence-dependent operations.
 3. After setup validates the shared manifest, choose `write-fiction` to create
    or continue a novel, `revise-fiction` for whole-book revision, `revise-draft`
    for the available manuscript and current-scope review, `revise-increment` to

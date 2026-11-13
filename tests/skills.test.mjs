@@ -305,7 +305,8 @@ test("existing-project setup uses bounded inspection references and a categorize
   assert.match(existingSetup, /Initialization exits 3 for this schema-valid project-validation failure/);
   assert.match(existingSetup, /exit 3 does not make project validation successful/);
   assert.match(setup, /existing-project branch explicitly handles exit 3 after an accepted v3\.1 schema/);
-  assert.match(existingSetup, /Report any validation or requested execution-gate failure as a setup blocker after the repair/);
+  assert.match(existingSetup, /Report a validation failure as a project-state blocker and a requested execution-gate failure as a blocker for evidence-dependent operations/);
+  assert.match(existingSetup, /neither changes a passing installation into an installation failure/);
   assert.match(existingSetup, /unsupported or schema-invalid manifest still stops before entry-file replacement/);
   assert.match(existingSetup, /perform step 3's entry-file replacement even if later project-state validation fails/);
   assert.match(existingSetup, /doctor`, initialize, entry-file repair, and one diagnostic check/);
@@ -327,6 +328,11 @@ test("existing-project setup uses bounded inspection references and a categorize
   for (const heading of ["Installation payload", "Project entry files", "Manuscript scope", "Execution evidence"]) {
     assert.match(setup, new RegExp(`\\*\\*${heading}\\*\\*`));
   }
+  for (const status of ["Installation", "Project state", "Strategy gate", "Host visibility"]) {
+    assert.match(setup, new RegExp(`\\*\\*${status}\\*\\*`));
+  }
+  assert.match(setup, /A project-state or strategy-gate failure does not change that installation result/);
+  assert.match(setup, /toolkit is installed while the affected project-state or evidence-dependent operations are blocked/);
   assert.match(setup, /Distinguish mechanical execution evidence from operation-specific evidence/);
 
   for (const command of ["initialize\\.mjs --project-root", "doctor\\.mjs", "read\\.mjs --project-root", "preflight\\.mjs --project-root", "validate\\.mjs --manifest", "status\\.mjs --manifest", "writes\\.mjs check-index --manifest", "--explain", "--scope-id", "--require-execution", "--digest", "--diagnose", "project-digest\\.mjs --project-root"]) {
@@ -346,6 +352,8 @@ test("existing-project setup uses bounded inspection references and a categorize
   assert.match(readOperations, /check\.mjs/);
   assert.match(readme, /installation payload, project entry files, manuscript scope, and execution\s+evidence/);
   assert.match(zhReadme, /安装载荷、项目入口文件、稿件范围、执行证据/);
+  assert.match(readme, /Four independent `Installation`, `Project state`, `Strategy gate`, and `Host\s+visibility` states/);
+  assert.match(zhReadme, /`Installation`、`Project state`、`Strategy gate`、`Host visibility` 四项独立状态/);
 });
 
 test("setup discloses only the selected project branch", async () => {

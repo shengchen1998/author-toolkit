@@ -42,13 +42,14 @@ test("preflight combines payload, validation, and ordinary status in one bounded
   assert.equal(result.stderr, "");
   assert.match(result.stdout, /Payload failures: 0/);
   assert.match(result.stdout, /Entry files: pass/);
+  assert.match(result.stdout, /Installation: passed\nProject state: passed\nStrategy gate: not requested\nHost visibility: unverified/);
   assert.match(result.stdout, /Blocking project validation: 5 checks, 0 failures/);
   assert.match(result.stdout, new RegExp(`Scope: ${scopeId} \\(confirmed\\)`));
   assert.match(result.stdout, /Non-blocking unverified approvals: 0; 0\/0 execution receipts verified/);
   assert.match(result.stdout, /Operation-specific evidence: not evaluated/);
   assert.match(result.stdout, /Navigation cache: absent/);
   assert.match(result.stdout, /Preflight: passed/);
-  assert.ok(result.stdout.trimEnd().split("\n").length <= 14);
+  assert.ok(result.stdout.trimEnd().split("\n").length <= 18);
   await assert.rejects(readFile(path.join(projectRoot, "PROJECT_STATE.md"), "utf8"), { code: "ENOENT" });
 });
 
@@ -58,6 +59,12 @@ test("preflight defaults to current scope and refreshes the navigation cache onl
   assert.equal(result.status, 0, result.stderr);
   const parsed = JSON.parse(result.stdout);
   assert.equal(parsed.valid, true);
+  assert.deepEqual(parsed.setup, {
+    installation: "passed",
+    project_state: "passed",
+    strategy_gate: "not_requested",
+    host_visibility: "unverified",
+  });
   assert.equal(parsed.status.execution.scope_id, scopeId);
   assert.equal(parsed.execution_gate, null);
   assert.equal(parsed.digest, null);
@@ -121,6 +128,9 @@ test("preflight inspects project state but fails and preserves the cache for ent
   const parsed = JSON.parse(result.stdout);
   assert.equal(parsed.valid, false);
   assert.equal(parsed.payload.valid, false);
+  assert.equal(parsed.setup.installation, "failed");
+  assert.equal(parsed.setup.project_state, "passed");
+  assert.equal(parsed.setup.host_visibility, "unverified");
   assert.deepEqual(parsed.payload.payload_failures, []);
   assert.deepEqual(parsed.payload.entry_failures, parsed.payload.failures);
   assert.deepEqual(parsed.payload.failures.map((failure) => failure.path), ["project:AGENTS.md"]);
@@ -181,6 +191,12 @@ test("preflight rejects an incomplete installed payload before reading project s
   assert.equal(parsed.payload.payload_failures.length, 1);
   assert.deepEqual(parsed.payload.entry_failures, []);
   assert.equal(parsed.payload.failures[0].path, "assets/references/terminology.md");
+  assert.deepEqual(parsed.setup, {
+    installation: "failed",
+    project_state: "not_checked",
+    strategy_gate: "not_requested",
+    host_visibility: "unverified",
+  });
   assert.equal(parsed.validation, null);
   assert.equal(parsed.status, null);
 });
@@ -203,6 +219,7 @@ test("preflight strict execution is explicit and does not change ordinary inspec
   assert.equal(JSON.parse(ordinary.stdout).status.execution.unverified_count, 2);
   const ordinaryText = run(["--project-root", projectRoot]);
   assert.equal(ordinaryText.status, 0, ordinaryText.stderr);
+  assert.match(ordinaryText.stdout, /Installation: passed\nProject state: passed\nStrategy gate: not requested/);
   assert.match(ordinaryText.stdout, /Non-blocking unverified approvals: 2; 0\/2 execution receipts verified/);
   assert.match(ordinaryText.stdout, /Ordinary status: non-blocking; strict execution gate: not requested/);
 
@@ -218,6 +235,9 @@ test("preflight strict execution is explicit and does not change ordinary inspec
   const parsed = JSON.parse(strict.stdout);
   assert.equal(parsed.valid, false);
   assert.equal(parsed.validation.valid, true);
+  assert.equal(parsed.setup.installation, "passed");
+  assert.equal(parsed.setup.project_state, "passed");
+  assert.equal(parsed.setup.strategy_gate, "failed");
   assert.deepEqual(parsed.execution_gate, { scope_id: scopeId, unverified_count: 2, valid: false });
   assert.equal(parsed.status.execution.unverified, undefined);
   assert.deepEqual(parsed.status.execution.unverified_by_operation, [
@@ -346,6 +366,12 @@ test("preflight stops before status or digest when project validation fails", as
   const parsed = JSON.parse(result.stdout);
   assert.equal(parsed.valid, false);
   assert.equal(parsed.validation.valid, false);
+  assert.deepEqual(parsed.setup, {
+    installation: "passed",
+    project_state: "failed",
+    strategy_gate: "not_requested",
+    host_visibility: "unverified",
+  });
   assert.equal(parsed.validation.checks.find((check) => check.path === "scope").valid, false);
   assert.equal(parsed.status, null);
   assert.equal(parsed.digest, null);
@@ -395,6 +421,8 @@ test("preflight diagnose returns recorded projection and backup-index difference
   const ordinaryText = run(["--project-root", projectRoot]);
   assert.equal(ordinaryText.status, 1, ordinaryText.stderr);
   assert.equal(ordinaryText.stderr, "");
+  assert.match(ordinaryText.stdout, /Installation: passed\nProject state: failed/);
+  assert.match(ordinaryText.stdout, /Setup diagnosis: toolkit installed; project-state evidence requires attention/);
   assert.match(ordinaryText.stdout, /Blocking error: executions: \/backups\/0\/operation backup operation does not match its approval/);
   assert.match(ordinaryText.stdout, /Non-blocking unverified approvals: 0; 0\/0 execution receipts verified/);
   assert.match(ordinaryText.stdout, /Navigation cache: stale .*recorded next action withheld/);
@@ -438,7 +466,7 @@ test("preflight diagnose returns recorded projection and backup-index difference
   assert.match(text.stdout, /backups\[0\] backup-plan-001 \/ PLAN-001: operation: backup=draft-baseline, approval=revision-plan/);
   assert.match(text.stdout, /Diagnosis: current hashes verified; remaining projection recorded only; no repairs or writes performed/);
   assert.doesNotMatch(text.stdout, /pending-2\.md/);
-  assert.ok(text.stdout.trimEnd().split("\n").length <= 24);
+  assert.ok(text.stdout.trimEnd().split("\n").length <= 29);
 
   const incompatible = run(["--project-root", projectRoot, "--diagnose", "--digest"]);
   assert.equal(incompatible.status, 2);
@@ -511,7 +539,7 @@ test("preflight diagnose bounds repeated errors and reports an unreadable pendin
   assert.match(text.stdout, /\.\.\. 16 more errors/);
   assert.match(text.stdout, /Pending artifacts: unavailable; 1 bounded pointers shown in --json/);
   assert.match(text.stdout, /2 more conflicting records/);
-  assert.ok(text.stdout.trimEnd().split("\n").length <= 40);
+  assert.ok(text.stdout.trimEnd().split("\n").length <= 45);
 });
 
 test("preflight diagnose bounds displayed scope hashes", async (t) => {
@@ -554,4 +582,32 @@ test("preflight reports malformed manifests and argument errors", async (t) => {
     assert.equal(invalid.status, 2);
     assert.match(invalid.stdout, /Usage:/);
   }
+});
+
+test("preflight reports an installed toolkit separately from blocked evidence-dependent operations", async (t) => {
+  const { projectRoot, manifestPath } = await fixture(t);
+  const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
+  const trackerPath = path.join(projectRoot, manifest.paths.audit_tracker);
+  await writeFile(
+    trackerPath,
+    (await readFile(trackerPath, "utf8")).replace(
+      "| Approval ID | Type | Operation | Scope ID | Paths | Status | Reason | Updated |\n|---|---|---|---|---|---|---|---|",
+      `| Approval ID | Type | Operation | Scope ID | Paths | Status | Reason | Updated |\n|---|---|---|---|---|---|---|---|\n| EDIT-001 | edit | chapter-revision | ${scopeId} | \`manuscript/chapter-01.md\` | approved | Exact test batch. | ${timestamp} |`,
+    ),
+  );
+
+  const result = run(["--project-root", projectRoot, "--scope-id", scopeId, "--require-execution"]);
+  assert.equal(result.status, 1, result.stderr);
+  assert.match(result.stdout, /Payload failures: 0\nEntry files: pass/);
+  assert.match(result.stdout, /Installation: passed\nProject state: passed\nStrategy gate: failed\nHost visibility: unverified/);
+  assert.match(result.stdout, /Setup diagnosis: toolkit installed; evidence-dependent operations are blocked/);
+  assert.match(result.stdout, /Execution gate: failed/);
+
+  const parsed = JSON.parse(run(["--project-root", projectRoot, "--scope-id", scopeId, "--require-execution", "--json"]).stdout);
+  assert.deepEqual(parsed.setup, {
+    installation: "passed",
+    project_state: "passed",
+    strategy_gate: "failed",
+    host_visibility: "unverified",
+  });
 });

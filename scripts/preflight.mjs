@@ -47,7 +47,10 @@ The text output is a bounded summary. --json also groups unverified approvals
 by operation and bounds failed-check diagnostics. --details restores complete
 failed checks and every unverified approval in JSON without changing text output.
 Text output labels project-validation errors as blocking. Unverified approvals
-are non-blocking during ordinary status and fail only an explicit strict gate.`);
+are non-blocking during ordinary status and fail only an explicit strict gate.
+Four independent setup statuses distinguish installation, project state, the
+requested strategy gate, and author-confirmed host visibility. The CLI cannot
+confirm host visibility and always reports it as unverified.`);
 }
 
 function options(args) {
@@ -98,6 +101,12 @@ async function preflight(selection) {
   const result = {
     valid: false,
     payload,
+    setup: {
+      installation: "failed",
+      project_state: "not_checked",
+      strategy_gate: selection.requireExecution ? "blocked_by_project_state" : "not_requested",
+      host_visibility: "unverified",
+    },
     validation: null,
     status: null,
     diagnosis: null,
@@ -106,6 +115,7 @@ async function preflight(selection) {
     navigation_cache: null,
   };
   if (payload.payload_failures.length > 0) return result;
+  result.setup.installation = payload.entry_failures.length === 0 ? "passed" : "failed";
 
   result.navigation_cache = await inspectNavigationCache(selection.projectRoot);
   const validation = await inspectProjectManifest(manifestPath);
@@ -123,6 +133,7 @@ async function preflight(selection) {
       ...(check.unsupported ? { unsupported: true } : {}),
     })),
   };
+  result.setup.project_state = validation.valid ? "passed" : "failed";
   if (!validation.valid) {
     markNavigationCacheStale(result.navigation_cache, "current project validation failed");
     if (selection.diagnose && validation.manifest) {
@@ -183,6 +194,7 @@ async function preflight(selection) {
       unverified_count: result.status.execution.unverified_count,
       valid: result.status.execution.unverified_count === 0,
     };
+    result.setup.strategy_gate = result.execution_gate.valid ? "passed" : "failed";
     if (!result.execution_gate.valid) {
       markNavigationCacheStale(result.navigation_cache, "strict execution gate failed");
     }
@@ -206,6 +218,15 @@ function outputText(result, selection) {
   for (const failure of payload.payload_failures) console.log(`Blocking payload error: ${failure.path}: ${failure.reason}`);
   console.log(`Entry files: ${payload.entry_failures.length === 0 ? "pass" : "fail"}`);
   for (const failure of payload.entry_failures) console.log(`Blocking entry-file error: ${failure.path}: ${failure.reason}`);
+  console.log(`Installation: ${result.setup.installation}`);
+  console.log(`Project state: ${result.setup.project_state.replaceAll("_", " ")}`);
+  console.log(`Strategy gate: ${result.setup.strategy_gate.replaceAll("_", " ")}`);
+  console.log(`Host visibility: ${result.setup.host_visibility}`);
+  if (result.setup.installation === "passed" && result.setup.project_state === "failed") {
+    console.log("Setup diagnosis: toolkit installed; project-state evidence requires attention");
+  } else if (result.setup.installation === "passed" && result.setup.strategy_gate === "failed") {
+    console.log("Setup diagnosis: toolkit installed; evidence-dependent operations are blocked");
+  }
 
   if (result.validation) {
     const checks = result.validation.checks;

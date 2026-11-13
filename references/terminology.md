@@ -24,6 +24,9 @@ Independent skills keep their craft vocabularies. Register a craft term here bef
 | `semantic skill` | 语义技能 | Noun | A skill that owns author choices, editorial judgment, manuscript reading or synthesis, or operation sequencing. Its installed `SKILL.md` and applicable references define one procedure, which the agent executes directly. It is not an alternative implementation of an installed deterministic CLI. | |
 | `deterministic transaction` | 确定性事务 | Noun | A mechanical validation or shared-state transition with one installed CLI implementation. A semantic skill may supply its decided inputs and interpret its results, but no model-executed counterpart performs the same transaction. | |
 | `host command visibility` | 宿主命令可见性 | Noun | The author-observed presence of every exact strategy command in the current host's command palette or autocomplete, including Codex's `$` autocomplete, or of every exact registered strategy name in its skill picker when skill commands are unavailable. It requires an explicit author decision and cannot be inferred from model-facing registry metadata or displayed command strings. | `command visibility`<br>`command-visibility` |
+| `installation status` | 安装状态 | Noun | The independent setup result for the installed payload and project entry files. It does not include project validation, an execution gate, or host command visibility. | |
+| `project-state status` | 项目状态 | Noun | The independent setup result for project validation. Its failure does not make a passing installation incomplete. | |
+| `strategy-gate status` | 策略门禁状态 | Noun | The independent setup result for a requested execution gate. It records only that gate, not every strategy condition or host command visibility. | |
 | `operation` | 操作 | Noun | One named unit of work in an operation sequence, pending action, or revision report. Use the exact operation identifier; one invocation runs one operation. | |
 | `shared project state` | 共享项目状态 | Noun | The manifest and registered artifacts shared by all five strategies. It is not owned by one strategy. | `workflow state` |
 | `manuscript` | 正文稿件 | Noun | Creative Markdown or plain-text files included by manuscript inventory. Operational artifacts and staging are not manuscript. | |
@@ -137,6 +140,10 @@ Machine values remain English and case-sensitive. Qualify a value by its artifac
 
 | Artifact and field | Approved values and meanings |
 | --- | --- |
+| Setup `setup.installation` | `passed`: installed payload and project entry files passed; `failed`: at least one failed. Independent of project state and host command visibility. |
+| Setup `setup.project_state` | `passed`: project validation passed; `failed`: project validation failed; `not_checked`: installed payload failure prevented inspection. |
+| Setup `setup.strategy_gate` | `passed`: the requested execution gate passed; `failed`: the requested execution gate failed; `not_requested`: no execution gate was requested; `blocked_by_project_state`: project-validation failure prevented the requested gate. |
+| Setup `setup.host_visibility` | `unverified`: the CLI cannot observe the author's host; setup requires the author's confirmation before reporting this state as confirmed. |
 | Scope `status` | `proposed`: recorded and awaiting confirmation; `confirmed`: the author confirmed the exact scope record. |
 | Pending action `status` | `in_progress`: execution is active; `awaiting_author`: execution stopped for an author decision; `blocked`: a concrete validation, dependency, or execution blocker prevents progress. |
 | Finding tracker `Status` | `open`: awaiting decision or verified resolution; `resolved`: accepted resolution verified by current evidence; `deferred`: author postponed action; `dismissed`: author judged the finding inapplicable or intentional; `stale`: inputs changed or an equivalent rerun no longer observes it without verified resolution. |

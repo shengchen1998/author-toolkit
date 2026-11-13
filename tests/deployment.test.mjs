@@ -511,7 +511,7 @@ test("setup repairs agent entries and only creates missing navigation", async ()
   assert.doesNotMatch(setup, /rm -f AGENTS\.md|ln -s AGENTS\.md/);
   assert.match(setup, /applies to new projects and existing v3\.1 projects/);
   assert.match(existingSetup, /perform step 3's entry-file replacement even if later project-state validation fails/);
-  assert.match(existingSetup, /Report any validation or requested execution-gate failure as a setup blocker after the repair/);
+  assert.match(existingSetup, /Report a validation failure as a project-state blocker and a requested execution-gate failure as a blocker for evidence-dependent operations/);
   assert.match(existingSetup, /without repeating backup index inspection, repairing history, or inferring a migration/);
   assert.match(setup, /except for the two project-root agent entry files described above/);
   assert.match(setup, /creates `<project-root>\/START_HERE\.md` from `assets\/START_HERE\.md` only when that path is absent/);

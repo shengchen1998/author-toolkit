@@ -3,7 +3,7 @@
   "files": [
     {
       "path": "SKILL.md",
-      "sha256": "bef9d924fb958f7758ade688135d08821cdd579dbcb637a2bd4ec48fa2e2bc23"
+      "sha256": "eeb152c2d1396602b466c2a96619e7dc96891ac79cf48caa6c164d242ca39db1"
     },
     {
       "path": "assets/AGENTS.md",
@@ -91,7 +91,7 @@
     },
     {
       "path": "assets/references/terminology.md",
-      "sha256": "5e489f44de32daf5ac8185e3cea5f5eeffe5fcabbae7f1006c14d94cd997c38e"
+      "sha256": "02972698c713c824cf814b85362dd9c12cb24b0cfdaab4d6a19ba765116b8467"
     },
     {
       "path": "assets/references/workflow-reporting.md",
@@ -99,7 +99,7 @@
     },
     {
       "path": "assets/setup/existing-project.md",
-      "sha256": "ccf1d6b11fdf2d19b63db67db7002f4b826f843fc020905c8dd5c67ceb2b8e09"
+      "sha256": "47fc8bca44c49f5f5c957327c956b86547e3e8a13d3ccab40dceec3dac993837"
     },
     {
       "path": "assets/setup/new-project.md",
@@ -271,7 +271,7 @@
     },
     {
       "path": "scripts/preflight.mjs",
-      "sha256": "e3036ac985cbeee84c3ac45e1064c2eeebc9b4511391709563be6afd78943f21"
+      "sha256": "936294aece29a06b6e76018e0730a72f99ae00eecb429d35eda5e196db44bbe0"
     },
     {
       "path": "scripts/project-digest.mjs",
