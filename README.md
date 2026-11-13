@@ -185,7 +185,9 @@ doctor, validation, or strict execution logic.
 Setup runs `check.mjs --project-root <root> --diagnose` once after initialization
 and entry-file repair as its final installation and project-state verification,
 without a following doctor call or a repeated ordinary preflight. The strict
-execution gate remains a separate check.
+execution gate remains a separate check. Setup reads `PROJECT_STATE.md` only
+after that check reports a reusable snapshot; a stale or unchecked cache is
+left unread in favor of the bounded command results.
 When validation fails, add `--diagnose` without `--digest` for one bounded
 read-only result containing the projection marked `recorded_unverified` and
 backup-index conflict fields. Its text displays up to 12 scope paths with their

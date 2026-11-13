@@ -246,7 +246,8 @@ test("project digest is a generated navigation cache, not another source of trut
   assert.match(readOperations, /withholds the recorded next action and shows `revise-draft`/);
   assert.match(readOperations, /older cache, unreadable cache, or unsafe recorded route makes the cache `stale`/);
   assert.match(readOperations, /without reproducing it or rewriting the file/);
-  assert.match(existingSetup, /read `PROJECT_STATE\.md` first/i);
+  assert.match(existingSetup, /After that check reports `Navigation cache: reusable snapshot only`, read `PROJECT_STATE\.md` for navigation only/);
+  assert.match(existingSetup, /When the check reports a stale cache or does not check the cache, use the bounded command results instead of reading the cache/);
 
   for (const skill of ["write-fiction", "revise-fiction", "revise-draft", "revise-increment", "revise-request"]) {
     const text = await readFile(path.join(root, "skills", skill, "SKILL.md"), "utf8");

@@ -92,6 +92,8 @@ JSON 默认同样使用按 operation 聚合的批准摘要和有界失败诊断;
 直接复用 preflight, 不重复实现 doctor, 项目校验或严格执行门禁.
 setup 在初始化和入口文件修复后只运行一次 `check.mjs --project-root <root> --diagnose`,
 作为最终安装与项目状态核验, 不再运行 doctor 或重复普通预检; 严格执行门禁仍是独立检查.
+仅当该检查报告缓存可复用时, setup 才读取 `PROJECT_STATE.md`; 缓存 stale 或未检查时,
+使用有界的命令结果而不读取缓存.
 校验失败后添加 `--diagnose` 且不带 `--digest`, 可在一次只读结果中获得标记为 `recorded_unverified` 的有界投影和备份索引冲突字段.
 文本最多显示 12 个范围路径及其记录哈希, JSON 投影保留全部范围文件.
 所列哈希为记录值; `scope` 检查通过时, 单独的当前哈希结果确认多少个现行文件与记录一致.
