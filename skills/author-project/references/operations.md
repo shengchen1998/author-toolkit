@@ -32,7 +32,7 @@ Before any manuscript write, reread the manifest and current scope, recompute ev
 
 ## Tracker and approvals
 
-Use the registered shared tracker as the living index. Its `Findings` section follows the shared state-and-findings rules. Its `Approvals` section uses these columns:
+Use the registered shared tracker as the living index. Current scope and pending action live only in the manifest; read them through `author-project read` and `author-project status` rather than duplicating them in the tracker. Existing trackers may retain their historical summary lines: setup, initialization, and state-writing operations preserve those lines without treating them as current state. Its `Findings` section follows the shared state-and-findings rules. Its `Approvals` section uses these columns:
 
 | Approval ID | Type | Operation | Scope ID | Paths | Status | Reason | Updated |
 |---|---|---|---|---|---|---|---|

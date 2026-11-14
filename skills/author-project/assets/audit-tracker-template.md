@@ -6,8 +6,7 @@ This is the living status index. Linked reports are immutable.
 
 - Project root:
 - Manifest created at:
-- Current scope:
-- Pending action:
+- Current state: use `author-project read` and `author-project status`.
 
 ## Findings
 

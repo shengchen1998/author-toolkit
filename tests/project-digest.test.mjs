@@ -57,7 +57,7 @@ async function projectFixture(t) {
   );
   const finding = "| DIAG-001 | diagnostics | developmental | `manuscript/chapter-001.md`, lines \\| preserved | open | `reports/diagnostics/latest.md` | 2026-11-09T00:00:00Z | 等待作者决定。 |";
   const populatedTracker = tracker
-    .replace("- Pending action:", "- Pending action:\n- Next action: 确认 DIAG-001。")
+    .replace("- Manifest created at:", "- Manifest created at:\n- Next action: 确认 DIAG-001。")
     .replace(/^\| Finding ID[^\n]*\n\|[-|]+\|$/m, (header) => `${header}\n${finding}`)
     .replace("## Audit runs", `## Audit runs\n\n| Stage | Scope | Report | Engine and fallback | Language coverage | Run at | Result |\n|---|---|---|---|---|---|---|\n| diagnostics | scope-request-001 | \`reports/diagnostics/legacy.md\` | \`conversational\` | full | ${timestamp} | Historical fallback. |`);
 

@@ -365,8 +365,8 @@ test("the shipped project and tracker templates are neutral uninitialized v3 ass
 
   const tracker = await trackerTemplate();
   assert.match(tracker, /## Project/);
-  assert.match(tracker, /Current scope:/);
-  assert.match(tracker, /Pending action:/);
+  assert.doesNotMatch(tracker, /Current scope:|Pending action:/);
+  assert.match(tracker, /Current state: use `author-project read` and `author-project status`\./);
   assert.doesNotMatch(tracker, /Main workflow|Current stage/);
   for (const section of ["Findings", "Audit runs", "Approvals", "Open questions", "Approved decisions"]) {
     assert.match(tracker, new RegExp(`## ${section}`));

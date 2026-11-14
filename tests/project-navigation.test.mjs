@@ -46,6 +46,30 @@ test("read returns a bounded validated projection and leaves legacy artifacts un
   assert.equal(await readFile(manifestPath, "utf8"), legacy);
 });
 
+test("set-pending preserves legacy tracker summaries instead of synchronizing them", async (t) => {
+  const projectRoot = await fixture(t);
+  const manifestPath = path.join(projectRoot, ".author-toolkit", "project.json");
+  const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
+  const trackerPath = path.join(projectRoot, manifest.paths.audit_tracker);
+  const originalTracker = await readFile(trackerPath, "utf8");
+  const historicalTracker = originalTracker.replace(
+    /- Pending action:.*$/,
+    "- Pending action: `prose` (`awaiting_author`) — historical summary",
+  );
+  await writeFile(trackerPath, historicalTracker);
+
+  const result = run("set-pending.mjs", [
+    "--project-root", projectRoot,
+    "--operation", "current-scope-review",
+    "--status", "awaiting_author",
+    "--scope-id", manifest.current_scope.scope_id,
+    "--reason", "Await the current review decision.",
+  ]);
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(JSON.parse(await readFile(manifestPath, "utf8")).pending_action.operation, "current-scope-review");
+  assert.equal(await readFile(trackerPath, "utf8"), historicalTracker);
+});
+
 test("read bounds failed diagnostics by default and preserves complete details on request", async (t) => {
   const projectRoot = await fixture(t);
   const manifestPath = path.join(projectRoot, ".author-toolkit", "project.json");

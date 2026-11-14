@@ -308,6 +308,8 @@ AI, 作者和混合创作使用相同门禁. 每本书只保留一个活动创�
   没有 manifest 字段, 也不复制到写作项目.
 - `story-bible.md`: 记录作者意图. 已验收正文建立观察事实; 两者冲突时不能静默覆盖任一来源.
 - `audit-tracker.md`: 稳定的发现项 ID, 状态, 作者决定, 共享批准记录和报告指针.
+  当前范围和待处理操作仅由 manifest 保存, 新 tracker 不再复制这些字段;
+  既有 tracker 的历史摘要行保持不变.
   `author-project next-finding-id` 根据 tracker 和报告历史分配未占用的连续 ID 区段;
   `record-findings` 校验并以原子方式批量更新报告对应的发现项行, 保留已有作者决定和时间戳,
   不再手工追加 Markdown 行.

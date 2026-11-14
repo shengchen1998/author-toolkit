@@ -518,7 +518,9 @@ Use `read.mjs --project-root <root>` for its bounded manifest projection and
   observed story facts; neither source silently overwrites the other when they
   conflict.
 - `audit-tracker.md` records stable finding IDs, statuses, author decisions,
-  shared approvals, and report pointers. `author-project next-finding-id` supplies
+  shared approvals, and report pointers. Current scope and pending action live
+  only in the manifest; new trackers do not duplicate them, and existing
+  tracker summary lines remain untouched. `author-project next-finding-id` supplies
   unused consecutive ID blocks from tracker and report history. `record-findings`
   validates and atomically upserts complete report batches, preserving existing
   author decisions and timestamps rather than manually appending Markdown rows.
