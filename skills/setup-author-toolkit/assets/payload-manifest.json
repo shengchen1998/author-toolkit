@@ -91,7 +91,7 @@
     },
     {
       "path": "assets/references/terminology.md",
-      "sha256": "a3b6457f494b6b2881afe1c2a305e6280fac1d148c9649aa0a252b747c7dcd55"
+      "sha256": "55e2a20235dbc5d03825bf04f9954922fb7cae16f8b3eadec03d18136896f510"
     },
     {
       "path": "assets/references/workflow-reporting.md",
@@ -108,6 +108,10 @@
     {
       "path": "scripts/check.mjs",
       "sha256": "f63d2d2b94ddd31ab617afabd72d0a32f963b0e7963a719221105773aefcec27"
+    },
+    {
+      "path": "scripts/coverage-index.mjs",
+      "sha256": "0b18c30844f99b96f5737921f4acc9f7804870090eacc800d752222f5cfad3e9"
     },
     {
       "path": "scripts/doctor.mjs",
@@ -146,12 +150,16 @@
       "sha256": "81ec9734ab61afbb032180c72e0e459c5698a00a878965490c3d6ce6fdd661ae"
     },
     {
+      "path": "scripts/lib/coverage-index.mjs",
+      "sha256": "21888e3ce6b81293a6f27ac9e8a4ce6daa427a00af2224649f5c5f405a0c746c"
+    },
+    {
       "path": "scripts/lib/digest.mjs",
-      "sha256": "141a9cec5a4da83676578b57448ef7fb5e1c9376314b9224d157ad81a935649d"
+      "sha256": "79d0261a78abe3573288d7c1f20dd136ad6a01d56103f6566bc49fc3b9731954"
     },
     {
       "path": "scripts/lib/evidence-inspection.mjs",
-      "sha256": "1a2b842d681135210b1f4b8f0afbbea7dd6e9ba0ab30c43cfb8b19d3638a0c98"
+      "sha256": "cec5d2b5a970debdbcd6c33d3e80b7189859c3e21fc349de83c2a3935c646e57"
     },
     {
       "path": "scripts/lib/execution-receipts.mjs",
@@ -175,7 +183,7 @@
     },
     {
       "path": "scripts/lib/index.mjs",
-      "sha256": "311a7e1bc512887add1152947aea802b9b7f47baeb3eda2c8f0d3a6e0de3e46b"
+      "sha256": "b6b3ddf58fe599f3466ec81f96b50a2490b6b48621420bf6b9fadecf8a22558e"
     },
     {
       "path": "scripts/lib/manifest.mjs",

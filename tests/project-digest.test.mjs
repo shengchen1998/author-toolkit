@@ -6,6 +6,7 @@ import path from "node:path";
 import test from "node:test";
 
 import { root } from "./helpers.mjs";
+import { createEvidenceFixture, evidenceScopeId } from "./evidence-fixture.mjs";
 import { validateProjectFiles, validateScopeCurrency, validateTracker } from "../scripts/lib/index.mjs";
 
 const timestamp = "2026-11-09T00:00:00Z";
@@ -96,7 +97,7 @@ test("project digest generates a bounded navigation cache from shared state", as
 
   const output = await readFile(path.join(projectRoot, "PROJECT_STATE.md"), "utf8");
   const lines = output.trimEnd().split("\n");
-  assert.ok(lines.length >= 20 && lines.length <= 30, `${lines.length} lines`);
+  assert.ok(lines.length >= 20 && lines.length <= 50, `${lines.length} lines`);
   assert.match(output, /navigation cache/i);
   assert.match(output, /manifest, tracker, and current evidence remain authoritative/i);
   assert.match(output, /Generated at: `\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z`/);
@@ -110,6 +111,8 @@ test("project digest generates a bounded navigation cache from shared state", as
   assert.match(output, /Active plan: `\.author-toolkit\/revision-plan\/plan-001\.md`/);
   assert.match(output, /Latest report: `reports\/diagnostics\/latest\.md`/);
   assert.match(output, /Latest session: `sessions\/2026-11-09_diagnostics\.md`/);
+  assert.match(output, /Coverage index: none recorded/);
+  assert.match(output, /Review jobs: none recorded \(recorded pointers, evidence not evaluated\)/);
   assert.match(output, /Next action: 确认 DIAG-001。 \(recorded; strategy gates not evaluated\)/);
   assert.match(output, /Tracker: `audit-tracker.md` -> `## Findings`, `## Audit runs`, `## Approved decisions`/);
   assert.match(output, /Status: use `author-project status` for recorded blockers and execution evidence\./);
@@ -146,6 +149,51 @@ test("project digest uses explicit session fields and a historical report fallba
   assert.match(output, /Next action: 从 session 继续。 \(recorded; strategy gates not evaluated\)/);
 });
 
+test("project digest exposes current-scope synthesis and selected review job pointers", async (t) => {
+  const output = path.join(root, ".test-output");
+  await mkdir(output, { recursive: true });
+  const temporary = await mkdtemp(path.join(output, "project-digest-evidence-"));
+  t.after(() => rm(temporary, { recursive: true, force: true }));
+  const { projectRoot, manifest } = await createEvidenceFixture(
+    path.join(root, "examples", "fiction-revision-en"),
+    path.join(root, "skills/setup-author-toolkit/assets"),
+    path.join(temporary, "project"),
+  );
+  const oldJobPath = path.join(projectRoot, ".author-toolkit/reviews/review-intent-r1.json");
+  const oldJob = JSON.parse(await readFile(oldJobPath, "utf8"));
+  oldJob.scope_id = "scope-historical";
+  await writeFile(oldJobPath, JSON.stringify(oldJob));
+  const result = digestCli(projectRoot);
+  assert.equal(result.status, 0, result.stderr);
+  const digest = await readFile(path.join(projectRoot, "PROJECT_STATE.md"), "utf8");
+  assert.match(digest, new RegExp(`Coverage index: \`reports/coverage-index.json\` \\(scope \`${evidenceScopeId}\`; recorded pointers, evidence not evaluated\\)`));
+  assert.match(digest, /Synthesis \(`current-scope-review`\): `reports\/current-scope-review\/fresh-r2.md` \(full\)/);
+  assert.match(digest, /`current-scope`\/`intent` `\.author-toolkit\/reviews\/review-intent-r2.json`/);
+  assert.match(digest, /`current-scope`\/`fresh` `\.author-toolkit\/reviews\/review-fresh-r2.json`/);
+  assert.match(digest, /`current-scope`\/`standards` `\.author-toolkit\/reviews\/review-standards-r2.json`/);
+  assert.doesNotMatch(digest, /review-intent-r1.json|scope-historical/);
+  assert.ok(digest.trimEnd().split("\n").length <= 50);
+  assert.equal(manifest.current_scope.scope_id, evidenceScopeId);
+});
+
+test("project digest preserves the cache when recorded coverage evidence is malformed", async (t) => {
+  const output = path.join(root, ".test-output");
+  await mkdir(output, { recursive: true });
+  const temporary = await mkdtemp(path.join(output, "project-digest-bad-evidence-"));
+  t.after(() => rm(temporary, { recursive: true, force: true }));
+  const { projectRoot } = await createEvidenceFixture(
+    path.join(root, "examples", "fiction-revision-en"),
+    path.join(root, "skills/setup-author-toolkit/assets"),
+    path.join(temporary, "project"),
+  );
+  await writeFile(path.join(projectRoot, "PROJECT_STATE.md"), "Existing navigation\n");
+  await writeFile(path.join(projectRoot, "reports/coverage-index.json"), "{invalid\n");
+  const result = digestCli(projectRoot);
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /Cannot generate digest from the recorded coverage index/);
+  assert.equal(await readFile(path.join(projectRoot, "PROJECT_STATE.md"), "utf8"), "Existing navigation\n");
+});
+
 test("project digest withholds a dependent strategy beside its failed execution gate", async (t) => {
   const projectRoot = await projectFixture(t);
   const manifestPath = path.join(projectRoot, ".author-toolkit", "project.json");
@@ -170,7 +218,7 @@ test("project digest withholds a dependent strategy beside its failed execution 
   assert.match(output, /Execution evidence: 0\/94 verified; 94 unverified in scope `scope-request-001`; strict execution gate would fail/);
   assert.match(output, /Next action: withheld until execution evidence is reconciled; use `\$revise-draft` \(strict execution gate would fail\)/);
   assert.doesNotMatch(output, /Next action:.*revise-request/);
-  assert.ok(output.trimEnd().split("\n").length <= 30);
+  assert.ok(output.trimEnd().split("\n").length <= 50);
 
   const strict = spawnSync(process.execPath, [
     path.join(root, "scripts/status.mjs"),
@@ -277,7 +325,7 @@ test("project digest keeps long pending reasons and artifact lists bounded", asy
   const result = digestCli(projectRoot);
   assert.equal(result.status, 0, result.stderr);
   const output = await readFile(path.join(projectRoot, "PROJECT_STATE.md"), "utf8");
-  assert.ok(output.trimEnd().split("\n").length <= 30);
+  assert.ok(output.trimEnd().split("\n").length <= 50);
   assert.match(output, /Pending reason: 需要确认。.*…$/m);
   assert.match(output, /Pending artifacts: .*\+ 59 more; see `\.author-toolkit\/project\.json`/);
   assert.ok(output.length < 3000);

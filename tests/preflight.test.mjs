@@ -162,7 +162,7 @@ test("preflight reports only project-entry mismatches as repairable setup failur
   const json = run(["--project-root", projectRoot, "--json"]);
   const parsed = JSON.parse(json.stdout);
   assert.equal(parsed.valid, false);
-  assert.equal(parsed.payload.clis, 17);
+  assert.equal(parsed.payload.clis, 18);
   assert.equal(parsed.payload.project.agents, "ok");
 });
 

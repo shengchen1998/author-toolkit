@@ -81,7 +81,7 @@ test("setup carries self-contained preflight, validation, state, range, and inst
   );
 
   const nodeArgs = ["--no-warnings", "--experimental-loader", loader, "--require", preload];
-  for (const script of ["inspect-root.mjs", "initialize.mjs", "install-entry-files.mjs", "preflight.mjs", "check.mjs", "read.mjs", "set-pending.mjs", "validate.mjs", "status.mjs", "project-digest.mjs", "findings.mjs", "range.mjs", "doctor.mjs", "writes.mjs", "terminology.mjs", "scaffold-report.mjs", "review-brief.mjs"]) {
+  for (const script of ["inspect-root.mjs", "initialize.mjs", "install-entry-files.mjs", "preflight.mjs", "check.mjs", "read.mjs", "set-pending.mjs", "validate.mjs", "status.mjs", "project-digest.mjs", "findings.mjs", "range.mjs", "doctor.mjs", "writes.mjs", "terminology.mjs", "scaffold-report.mjs", "review-brief.mjs", "coverage-index.mjs"]) {
     const result = spawnSync(
       process.execPath,
       [...nodeArgs, path.join(installedSetup, "scripts", script), "--help"],
@@ -206,6 +206,49 @@ test("setup carries self-contained preflight, validation, state, range, and inst
   assert.equal(fullResult.evidence.valid, true);
   assert.equal(fullResult.evidence.selection.review_jobs, 3);
   assert.equal(fullResult.evidence.checks.length, 15);
+
+  const coverageEntry = path.join(fullProject, ".author-toolkit", "coverage-entry.json");
+  await writeFile(coverageEntry, JSON.stringify({
+    operation: "current-scope-review",
+    units: ["intent", "standards", "fresh"].map((perspective) => ({
+      unit_id: `unit-${perspective}-r2`,
+      path: `reports/coverage/unit-${perspective}-r2.json`,
+    })),
+    synthesis_report: "reports/current-scope-review/fresh-r2.md",
+    synthesis_coverage: "full",
+  }));
+  const coverage = spawnSync(
+    process.execPath,
+    [
+      ...nodeArgs,
+      path.join(installedSetup, "scripts", "coverage-index.mjs"),
+      "--manifest",
+      path.join(fullProject, ".author-toolkit", "project.json"),
+      "--entry",
+      ".author-toolkit/coverage-entry.json",
+      "--updated-at",
+      "2026-11-15T04:00:00Z",
+      "--json",
+    ],
+    { encoding: "utf8" },
+  );
+  assert.equal(coverage.status, 0, coverage.stderr);
+  assert.equal(JSON.parse(coverage.stdout).unit_count, 3);
+
+  const evidenceDigest = spawnSync(
+    process.execPath,
+    [
+      ...nodeArgs,
+      path.join(installedSetup, "scripts", "project-digest.mjs"),
+      "--project-root",
+      fullProject,
+    ],
+    { encoding: "utf8" },
+  );
+  assert.equal(evidenceDigest.status, 0, evidenceDigest.stderr);
+  const evidenceCache = await readFile(path.join(fullProject, "PROJECT_STATE.md"), "utf8");
+  assert.match(evidenceCache, /Synthesis \(`current-scope-review`\): `reports\/current-scope-review\/fresh-r2.md` \(full\)/);
+  assert.match(evidenceCache, /`current-scope`\/`intent` `\.author-toolkit\/reviews\/review-intent-r2.json`/);
 
   const diagnosisProject = path.join(temporaryRoot, "diagnosis-project");
   await cp(project, diagnosisProject, { recursive: true });
@@ -449,7 +492,7 @@ test("setup carries self-contained preflight, validation, state, range, and inst
   assert.equal(digest.status, 0, digest.stderr);
   assert.equal(digest.stdout, "PROJECT_STATE.md\n");
   const cache = await readFile(path.join(project, "PROJECT_STATE.md"), "utf8");
-  assert.ok(cache.trimEnd().split("\n").length <= 30);
+  assert.ok(cache.trimEnd().split("\n").length <= 50);
   assert.match(cache, /Generated navigation cache/);
   assert.match(cache, /Generated at: `\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z`/);
   assert.match(cache, /Validation at generation: passed/);

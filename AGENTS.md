@@ -85,6 +85,8 @@ Run `node scripts/scaffold-report.mjs --help` for create-only report v2 generati
 
 Run `node scripts/review-brief.mjs --project-root DIR [--tracker PATH] [--out PATH] [--updated-at TIMESTAMP] [--json]` to regenerate the disposable review brief from a valid v3.1 tracker. It preserves every resolved or dismissed location, complete decision reason, and current report, validates the result, and atomically replaces the brief without changing tracker decisions or manuscript.
 
+Run `node scripts/coverage-index.mjs --manifest FILE --entry FILE [--updated-at TIMESTAMP] [--json]` to register one complete operation entry in the living coverage index. It validates the full local coverage units, source and synthesis reports, confirmed current scope, and complete index before a verified atomic replacement under the shared write lock; other operations are preserved. The semantic skill supplies coverage, reuse, and synthesis decisions. Argument errors exit 2; validation and filesystem failures exit 1.
+
 Generate the bounded, disposable `PROJECT_STATE.md` navigation cache for a valid v3.1 project:
 
 ```bash

@@ -318,6 +318,9 @@ AI, 作者和混合创作使用相同门禁. 每本书只保留一个活动创�
   UTC `Generated at` 和 `Validation at generation: passed` 仅表示生成时快照, 不代表当前健康状态,
   执行门禁或当前草稿修订收敛; 复用前重新运行 preflight.
   它指向当前范围及哈希, 待处理操作, 发现项计数, 当前范围的执行证据, 当前计划, 最新会话与报告和下一操作.
+  它还指向已记录的覆盖索引, 每个操作的综合报告, 以及按复核模式和视角选择的当前范围复核任务.
+  这些指针不证明证据通过校验或当前有效; 使用 `check --full` 校验所选证据. 缓存最多 50 行,
+  保留这些导航链接而不枚举覆盖单元.
   当前范围存在未核对批准时, 缓存明确指出严格执行门禁会失败, 并隐藏原记录的下一操作,
   改为显示用于协调的 `revise-draft`; 否则保留原记录并标注策略门禁尚未评估. 零未核对批准本身不代表当前草稿修订收敛.
   manifest, tracker 和当前证据仍是权威来源; 缓存不提供批准, 也不替代证据读取.
@@ -334,6 +337,9 @@ AI, 作者和混合创作使用相同门禁. 每本书只保留一个活动创�
   resolved 和 dismissed 发现项派生的可丢弃摘要, 用于复用决定, 不作为 reviewer 输入或权威决定记录.
   使用 `node <setup-skill-root>/scripts/review-brief.mjs --project-root <root>` 生成并校验;
   也可使用 `node <setup-skill-root>/scripts/validate.mjs --review-brief <path> --tracker <path>` 独立校验现有摘要.
+  使用 `node <setup-skill-root>/scripts/coverage-index.mjs --manifest <manifest> --entry <entry.json>`
+  注册一个完整操作条目: CLI 校验完整局部覆盖单元, 来源与综合报告及当前范围,
+  保留其他操作并在共享写入锁下原子更新覆盖索引. 语义覆盖, 证据复用和综合判断仍由当前写作技能负责.
 - `sessions/`: 已完成工作, 待决事项, 备份路径和停止位置.
 - `backups/`: 获批修改前的稿件备份. 其索引还保存 edit 批准的写后执行回执和 restore 批准的完成恢复记录.
   `author-project status` 按范围报告未核对批准, 不读取正文内容, 也不把历史输出与后续文本比较.

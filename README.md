@@ -533,7 +533,11 @@ Use `read.mjs --project-root <root>` for its bounded manifest projection and
   a current-draft revision convergence claim; rerun preflight before reusing the
   cache. It points to the current scope and hashes, pending action, finding
   counts, current-scope execution evidence, active plan, latest session and
-  report, and next action. Any unverified approvals in the current scope make
+  report, and next action. It also points to the recorded coverage index, each
+  operation's synthesis report, and the selected current-scope review jobs by
+  mode and perspective. These are recorded pointers rather than validated or
+  current evidence; use `check --full` for selected-evidence validation. The
+  50-line cache does not enumerate coverage units. Any unverified approvals in the current scope make
   the cache state that the strict execution gate would fail and replace the
   recorded next action with `revise-draft` for reconciliation; otherwise the
   recorded action is labeled as unevaluated by strategy gates. Zero unverified
@@ -746,6 +750,13 @@ hashes, or synthesis dependencies.
 `review-brief.mjs --help` describes the deterministic review brief generator.
 It copies every resolved and dismissed tracker location, decision reason, and
 report path, validates the complete result, and atomically replaces the brief.
+
+`coverage-index.mjs --help` describes the living coverage-index updater. One
+complete operation entry supplies its full local coverage units and synthesis pointer;
+the CLI validates those references, preserves other operations, and atomically
+updates `<paths.reports>/coverage-index.json` under the shared write lock.
+Semantic coverage, evidence reuse, and synthesis decisions remain with the
+active writing skill.
 
 `range.mjs` resolves an author-supplied inline character range. Positions are
 1-based and inclusive, and characters count Unicode code points.

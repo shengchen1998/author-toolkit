@@ -2,10 +2,12 @@ import { readFile, readdir, rename, rm, stat, writeFile } from "node:fs/promises
 import path from "node:path";
 
 import { inspectProjectManifest } from "./project-inspection.mjs";
+import { selectProjectReviewJobs } from "./evidence-inspection.mjs";
 import { validateRelativePath } from "./schemas.mjs";
 import { splitTrackerRow, TRACKER_STATUSES } from "./tracker.mjs";
 import { readPendingArtifactIndex } from "./pending-artifacts.mjs";
 import { validateManifest } from "./manifest.mjs";
+import { validateCoverageIndex } from "./artifacts.mjs";
 
 function markdown(value) {
   return value.replaceAll("\\", "\\\\").replaceAll("`", "\\`").replaceAll("\r", " ").replaceAll("\n", " ").trim();
@@ -136,7 +138,7 @@ function executionEvidence(execution, scopeId) {
     : evidence;
 }
 
-export async function renderProjectDigest({ manifest, tracker, latestReport, latestSession, sessionText = "", projectRoot = "", execution = null }) {
+export async function renderProjectDigest({ manifest, tracker, latestReport, latestSession, sessionText = "", projectRoot = "", execution = null, coverageIndex = null, reviewJobs = [] }) {
   const counts = findingCounts(tracker);
   const report = latestReport ?? fallbackReport(tracker);
   const scope = manifest.current_scope;
@@ -145,6 +147,18 @@ export async function renderProjectDigest({ manifest, tracker, latestReport, lat
   const nextAction = execution?.unverified_count > 0
     ? `withheld until execution evidence is reconciled; use ${code("$revise-draft")} (strict execution gate would fail)`
     : `${concise(field(sessionText, "Next action") ?? field(tracker, "Next action") ?? (latestSession ? `read ${code(latestSession)} for the recorded next action` : "none recorded"))} (recorded; strategy gates not evaluated)`;
+  const coveragePath = path.posix.join(manifest.paths.reports, "coverage-index.json");
+  const coverageEntries = coverageIndex?.scope_id === scope?.scope_id && Array.isArray(coverageIndex.entries)
+    ? coverageIndex.entries.filter((entry) => entry.synthesis_report)
+    : [];
+  const evidenceLinks = [
+    `- Coverage index: ${coverageIndex ? `${code(coveragePath)} (scope ${code(coverageIndex.scope_id)}; recorded pointers, evidence not evaluated)` : "none recorded"}`,
+    ...coverageEntries.map((entry) => `- Synthesis (${code(entry.operation)}): ${code(entry.synthesis_report)} (${entry.synthesis_coverage})`),
+    ...(coverageIndex && coverageEntries.length === 0 ? ["- Synthesis: none recorded for the current scope"] : []),
+    `- Review jobs: ${reviewJobs.length > 0
+      ? reviewJobs.map((job) => `${code(job.mode)}/${code(job.perspective)} ${code(job.path)}`).join("; ")
+      : "none recorded"} (recorded pointers, evidence not evaluated)`,
+  ];
   const lines = [
     "# Project State",
     "",
@@ -166,6 +180,7 @@ export async function renderProjectDigest({ manifest, tracker, latestReport, lat
     `- Latest report: ${report ? code(report) : "none recorded"}`,
     `- Latest session: ${latestSession ? code(latestSession) : "none recorded"}`,
     `- Next action: ${nextAction}`,
+    ...evidenceLinks,
     "",
     "## Read next",
     "",
@@ -199,9 +214,22 @@ export async function generateProjectDigest(projectRoot) {
   const { manifest } = validation;
   const tracker = await readFile(path.resolve(projectRoot, manifest.paths.audit_tracker), "utf8");
   const reviewBriefPath = path.posix.join(manifest.paths.reports, "review_brief.md");
-  const [latestReport, latestSession] = await Promise.all([
+  const coveragePath = path.posix.join(manifest.paths.reports, "coverage-index.json");
+  const [latestReport, latestSession, coverageIndex, reviewJobs] = await Promise.all([
     latestFile(projectRoot, manifest.paths.reports, ".md", new Set([reviewBriefPath])),
     latestFile(projectRoot, manifest.paths.sessions, ".md"),
+    readFile(path.resolve(projectRoot, coveragePath), "utf8")
+      .then((text) => {
+        const index = JSON.parse(text);
+        const validation = validateCoverageIndex(index);
+        if (!validation.valid) throw new Error("recorded coverage index failed its schema and identity checks");
+        return index;
+      })
+      .catch((error) => {
+        if (error.code === "ENOENT") return null;
+        throw new Error(`Cannot generate digest from the recorded coverage index: ${error.message}`);
+      }),
+    manifest.current_scope ? selectProjectReviewJobs(projectRoot, manifest, manifest.current_scope.scope_id) : [],
   ]);
   const digest = await renderProjectDigest({
     manifest,
@@ -211,8 +239,10 @@ export async function generateProjectDigest(projectRoot) {
     latestSession,
     sessionText: latestSession ? await readFile(path.resolve(projectRoot, latestSession), "utf8") : "",
     projectRoot,
+    coverageIndex,
+    reviewJobs,
   });
-  if (digest.trimEnd().split("\n").length > 30) throw new Error("Project digest exceeds 30 lines");
+  if (digest.trimEnd().split("\n").length > 50) throw new Error("Project digest exceeds 50 lines");
   const destination = path.join(projectRoot, "PROJECT_STATE.md");
   const temporary = path.join(projectRoot, `.PROJECT_STATE.${process.pid}.tmp`);
   try {

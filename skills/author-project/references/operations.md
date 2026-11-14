@@ -73,6 +73,31 @@ The body file supplies the human-readable report and its `Language coverage` sec
 
 The empty array is a structural default for a completed clean review, not evidence that the reviewer found nothing. The semantic skill supplies the actual body, findings, input versions, engine notes, scope, coverage, and parent-child links; the CLI does not infer them or update review jobs, coverage indexes, manuscript hashes, or downstream syntheses. Only a successfully scaffolded report may be cited by a new coverage registration or synthesis.
 
+## Coverage index
+
+Compose the living coverage index from the semantic skill's decided full local coverage units and full-target synthesis. Supply one complete operation entry per call rather than modifying its JSON structure manually:
+
+```json
+{
+  "operation": "prose",
+  "units": [
+    { "unit_id": "prose-chapter-01", "path": "reports/coverage/prose-chapter-01.json" }
+  ],
+  "synthesis_report": "reports/prose/synthesis.md",
+  "synthesis_coverage": "full"
+}
+```
+
+Save that entry as a project-relative JSON file, then run:
+
+```bash
+node <setup-skill-root>/scripts/coverage-index.mjs --manifest <project-root>/.author-toolkit/project.json --entry <project-relative-entry-path> [--updated-at <UTC-timestamp>] [--json]
+```
+
+The command writes `<paths.reports>/coverage-index.json` with its top-level `scope_id`, `entries`, and `updated_at` fields. It replaces only the complete entry for the supplied operation and preserves the other recorded operations. The index requires a confirmed current scope; all unit and report paths stay beneath the registered reports path. The CLI validates every supplied full local coverage unit's schema, ID and operation identity, its source report, the synthesis report, and the complete result before a verified atomic replacement under the shared write lock. A reusable unit retains its original `scope_id`; the composed index records the target scope. The semantic skill establishes reuse before registration. The command rereads the manifest after acquiring the lock and stops on a concurrent change. An invalid entry or existing index, missing or mismatched artifact, duplicate operation or unit ID, or publication failure preserves the existing index.
+
+The semantic skill still decides whether units are reusable, which subchecks and dependencies are required, and whether actual full-target coverage exists. Registration validates declared identities and report structure, not semantic coverage, manuscript hash currency, review jobs, tracker findings, or current-draft revision convergence. Rerun `check --full` for selected-evidence validation and refresh the navigation cache after this logical shared-state operation. Argument errors exit 2; validation and filesystem failures exit 1.
+
 ## Review brief
 
 Generate or refresh the disposable decision summary through the installed CLI after relevant tracker changes:

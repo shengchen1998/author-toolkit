@@ -27,6 +27,11 @@ export {
   validateCreationCommit,
   validateStoryStateMarkdown,
 } from "./artifacts.mjs";
+export {
+  composeCoverageIndex,
+  updateCoverageIndex,
+  validateCoverageRegistration,
+} from "./coverage-index.mjs";
 export { validateManifest } from "./manifest.mjs";
 export { inspectProjectManifest, inspectProjectStatus } from "./project-inspection.mjs";
 export { initializeExistingProject } from "./project-initialization.mjs";

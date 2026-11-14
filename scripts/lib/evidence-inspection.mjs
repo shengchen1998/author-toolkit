@@ -11,6 +11,44 @@ import { validateCoverageUnitSchema, validateRelativePath } from "./schemas.mjs"
 
 const evidenceStages = new Set(["draft-baseline", "diagnostics", "current-scope-review"]);
 
+async function projectJobFiles(projectRoot, manifest) {
+  const sessionsRoot = validateRelativePath(manifest.paths.sessions).valid
+    ? path.resolve(projectRoot, manifest.paths.sessions)
+    : path.join(projectRoot, manifest.paths.sessions);
+  return [
+    ...await regularFiles(path.join(projectRoot, ".author-toolkit", "reviews"), ".json"),
+    ...await regularFiles(sessionsRoot, ".json"),
+  ];
+}
+
+export async function selectProjectReviewJobs(projectRoot, manifest, selectedScopeId) {
+  const jobFiles = await projectJobFiles(projectRoot, manifest);
+  const jobsByGroup = new Map();
+  for (const file of jobFiles) {
+    const relativePath = path.relative(projectRoot, file).replaceAll(path.sep, "/");
+    let job;
+    try {
+      job = JSON.parse(await readFile(file, "utf8"));
+    } catch {
+      continue;
+    }
+    if (job?.schema_version !== "1.0.0" && (path.basename(file).startsWith("review-") || path.basename(file).startsWith("job-"))) {
+      continue;
+    }
+    if (job?.schema_version !== "1.0.0" || typeof job.job_id !== "string" || typeof job.mode !== "string" ||
+        typeof job.perspective !== "string" || job.scope_id !== selectedScopeId || !Array.isArray(job.chunks) ||
+        !Array.isArray(job.volumes)) continue;
+    if (typeof job.perspective === "string" && typeof job.mode === "string") {
+      const group = `${job.mode}\0${job.perspective}`;
+      const record = { ...job, path: relativePath };
+      const previous = jobsByGroup.get(group);
+      if (!previous || latest(record, previous) === record) jobsByGroup.set(group, record);
+    }
+  }
+  return [...jobsByGroup.values()].sort((left, right) =>
+    left.mode.localeCompare(right.mode) || left.perspective.localeCompare(right.perspective));
+}
+
 function failure(message) {
   return { valid: false, errors: [{ instancePath: "", keyword: "evidence-inspection", message, params: {} }] };
 }
@@ -127,8 +165,8 @@ export async function inspectProjectEvidence(manifest, manifestPath, { scopeId, 
           check(`${reference.path}#identity`, failure(`coverage unit ID is referenced more than once: ${unit.unit_id}`));
         }
         unitIds.add(unit.unit_id);
-        if (unit.unit_id !== reference.unit_id || unit.scope_id !== selectedScopeId || unit.operation !== entry.operation) {
-          check(`${reference.path}#identity`, failure("coverage unit ID, scope, and operation must match its index reference and selected scope"));
+        if (unit.unit_id !== reference.unit_id || unit.operation !== entry.operation) {
+          check(`${reference.path}#identity`, failure("coverage unit ID and operation must match its index reference"));
         }
         linkedReports.add(unit.source_report);
       }
@@ -137,35 +175,18 @@ export async function inspectProjectEvidence(manifest, manifestPath, { scopeId, 
     check(indexPath, failure(error.message));
   }
 
-  const jobFiles = [
-    ...await regularFiles(path.join(projectRoot, ".author-toolkit", "reviews"), ".json"),
-    ...await regularFiles(resolve(manifest.paths.sessions), ".json"),
-  ];
-  const jobsByGroup = new Map();
-  for (const file of jobFiles) {
+  for (const file of await projectJobFiles(projectRoot, manifest)) {
+    if (!path.basename(file).startsWith("review-") && !path.basename(file).startsWith("job-")) continue;
     const relativePath = path.relative(projectRoot, file).replaceAll(path.sep, "/");
-    let job;
     try {
-      job = JSON.parse(await readFile(file, "utf8"));
+      const job = JSON.parse(await readFile(file, "utf8"));
+      if (job?.schema_version !== "1.0.0") check(relativePath, failure("review job schema_version must be 1.0.0"));
     } catch (error) {
-      if (path.basename(file).startsWith("review-") || path.basename(file).startsWith("job-")) {
-        check(relativePath, failure(`cannot read review job: ${error.message}`));
-      }
-      continue;
+      check(relativePath, failure(`cannot read review job: ${error.message}`));
     }
-    if (job?.schema_version !== "1.0.0" && (path.basename(file).startsWith("review-") || path.basename(file).startsWith("job-"))) {
-      check(relativePath, failure("review job schema_version must be 1.0.0"));
-      continue;
-    }
-    if (job?.schema_version !== "1.0.0" || typeof job.job_id !== "string" || typeof job.mode !== "string" ||
-        typeof job.perspective !== "string" || job.scope_id !== selectedScopeId || !Array.isArray(job.chunks) ||
-        !Array.isArray(job.volumes)) continue;
-    const group = `${job.mode}\0${job.perspective}`;
-    const record = { ...job, path: relativePath };
-    const previous = jobsByGroup.get(group);
-    if (!previous || latest(record, previous) === record) jobsByGroup.set(group, record);
   }
-  for (const record of jobsByGroup.values()) {
+  const selectedJobs = await selectProjectReviewJobs(projectRoot, manifest, selectedScopeId);
+  for (const record of selectedJobs) {
     const job = { ...record };
     const pathLabel = job.path;
     delete job.path;
@@ -239,7 +260,7 @@ export async function inspectProjectEvidence(manifest, manifestPath, { scopeId, 
     check(`${record.path}#finding-identity`, { valid: errors.length === 0, errors });
   }
   if (reportRecords.length === 0) check("evidence/reports", failure("no selected-scope immutable evidence reports were found"));
-  if (jobsByGroup.size === 0) check("evidence/review-jobs", failure("no selected-scope review jobs were found"));
+  if (selectedJobs.length === 0) check("evidence/review-jobs", failure("no selected-scope review jobs were found"));
 
   return {
     valid: checks.every((result) => result.valid),
@@ -247,7 +268,7 @@ export async function inspectProjectEvidence(manifest, manifestPath, { scopeId, 
     selection: {
       latest_report: latestReport?.path ?? null,
       latest_reports_by_stage_and_audit: latestByAudit.size,
-      review_jobs: jobsByGroup.size,
+      review_jobs: selectedJobs.length,
       linked_reports: linkedReports.size,
     },
     checks: details ? checks : checks.map((result) => result.valid ? { path: result.path, valid: true, errors: [] } : {
