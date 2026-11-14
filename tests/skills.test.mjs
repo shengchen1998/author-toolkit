@@ -192,7 +192,8 @@ test("project instructions defer detailed routing and write procedures", async (
   assert.match(instructions, /Match the author's language/);
   assert.match(instructions, /Read the installed `ask-author` skill's `SKILL\.md` before selecting among shared strategies or independent skills/);
   assert.match(instructions, /Manuscript edits require explicit approval of the exact operation, scope, paths, actions, and input versions/);
-  assert.match(instructions, /Follow the active strategy and `author-project` for complete-batch backups, execution receipts, staged draft acceptance, commit journals, and separately approved restores/);
+  assert.match(instructions, /Restores require separate approval/);
+  assert.match(instructions, /Follow the active strategy and `author-project` for complete write procedures/);
   assert.doesNotMatch(instructions, /\| Request \| Skill \||record-backup|range\.mjs|workflow-reporting\.md|Finish with the current operation/);
 
   assert.match(ask, /\| Request \| Skill \|/);
@@ -583,7 +584,7 @@ test("creation and revision strategies share state and stable switching gates", 
     assert.match(text, /revise-increment/);
   }
   assert.match(ask, /standalone `fiction-workshop`/);
-  assert.match(instructions, /staged draft/);
+  assert.match(instructions, /Restores require separate approval/);
   assert.match(instructions, /stable operation gate/i);
   assert.match(state, /Creation evidence does not satisfy `chapter-revision`/);
 });

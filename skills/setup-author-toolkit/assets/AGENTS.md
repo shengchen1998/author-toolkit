@@ -22,10 +22,8 @@ For shared fiction creation or revision, locate `.author-toolkit/project.json`:
 
 Before shared-state work, run `node <setup-skill-root>/scripts/check.mjs --project-root <project-root>`. If it fails, rerun it with `--diagnose`, report the failure, and stop at the active strategy's author gate.
 
-Use one manifest per book. Resolve registered artifacts through its `paths`; `author-project` owns state operations and writing skills own creative content. All five strategies use the same state. Run one evidence-gated operation and stop at its author gate. Strategy switches occur only at a stable operation gate and never resume a write or commit automatically. A pending action does not authorize a manuscript write or publication.
+Use one manifest per book and resolve registered artifacts through its `paths`. Run one evidence-gated operation and stop at its author gate; a pending action never authorizes a manuscript write or publication. Follow the active strategy for stable operation gates, shared state, and ownership of state operations and creative content.
 
 ## Keep author decisions explicit
 
-Manuscript edits require explicit approval of the exact operation, scope, paths, actions, and input versions, recorded in the shared tracker. Discussing or accepting a finding does not approve an edit. Story Bible creative changes require author confirmation. Follow the active strategy and `author-project` for complete-batch backups, execution receipts, staged draft acceptance, commit journals, and separately approved restores.
-
-For shared reports, findings, approvals, evidence reuse, navigation, and session transfer, follow the active strategy and `author-project`; the manifest, tracker, and current evidence remain authoritative.
+Manuscript edits require explicit approval of the exact operation, scope, paths, actions, and input versions; discussing or accepting a finding does not approve an edit. Restores require separate approval, and Story Bible creative changes require author confirmation. Follow the active strategy and `author-project` for complete write procedures, reports, findings, evidence reuse, navigation, and session transfer; the manifest, tracker, and current evidence remain authoritative.
