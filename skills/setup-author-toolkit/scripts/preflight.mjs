@@ -8,6 +8,7 @@ import { generateProjectDigest } from "./lib/digest.mjs";
 import { outputUnverifiedOperationGroups, summarizeExecution } from "./lib/execution-summary.mjs";
 import { auditExecutionRecovery } from "./lib/execution-recovery.mjs";
 import { explainBackupIndex } from "./lib/backup-index-diagnostics.mjs";
+import { inspectProjectEvidence } from "./lib/evidence-inspection.mjs";
 import { inspectNavigationCache, markNavigationCacheStale } from "./lib/navigation-cache.mjs";
 import {
   inspectProjectManifest,
@@ -27,7 +28,7 @@ function argumentError(message) {
 function usage() {
   console.log(`Usage:
   node scripts/preflight.mjs --project-root DIR [--scope-id ID]
-                             [--require-execution] [--digest] [--diagnose]
+                             [--require-execution] [--full] [--digest] [--diagnose]
                              [--json] [--details]
 
 Check the installed payload, project entry files, registered paths, current
@@ -41,6 +42,12 @@ prevent digest generation.
 a bounded recorded-unverified projection and backup-index explanation. It
 previews evidence reconciliation without changing validation results or state.
 --digest also refreshes PROJECT_STATE.md after the read-only checks pass.
+--full selects the current scope when no scope is explicit, applies the strict
+execution gate, and also checks the review brief, coverage index and its units,
+latest immutable reports by stage and audit, reports linked by those artifacts,
+latest review jobs by mode and perspective, and fresh reader-state. It performs
+no writes and does not infer evidence currency, operation completion, or
+current-draft revision convergence. It cannot be combined with --digest.
 The cache check recognizes the current format and marks older or failed-state
 caches stale without displaying their recorded next action or changing files.
 The text output is a bounded summary. --json also groups unverified approvals
@@ -54,7 +61,7 @@ confirm host visibility and always reports it as unverified.`);
 }
 
 function options(args) {
-  const result = { details: false, digest: false, diagnose: false, json: false, requireExecution: false };
+  const result = { details: false, digest: false, diagnose: false, full: false, json: false, requireExecution: false };
   for (let index = 0; index < args.length; index += 1) {
     if (args[index] === "--project-root" && args[index + 1]) {
       result.projectRoot = path.resolve(args[++index]);
@@ -62,6 +69,8 @@ function options(args) {
       result.scopeId = args[++index];
     } else if (args[index] === "--require-execution") {
       result.requireExecution = true;
+    } else if (args[index] === "--full") {
+      result.full = true;
     } else if (args[index] === "--digest") {
       result.digest = true;
     } else if (args[index] === "--diagnose") {
@@ -75,8 +84,11 @@ function options(args) {
     }
   }
   if (!result.projectRoot) throw argumentError("--project-root DIR is required");
-  if (result.requireExecution && !result.scopeId) {
+  if (result.requireExecution && !result.scopeId && !result.full) {
     throw argumentError("--require-execution requires --scope-id ID");
+  }
+  if (result.full && result.digest) {
+    throw argumentError("--full cannot be combined with --digest");
   }
   if (result.diagnose && result.digest) {
     throw argumentError("--diagnose cannot be combined with --digest");
@@ -104,13 +116,14 @@ async function preflight(selection) {
     setup: {
       installation: "failed",
       project_state: "not_checked",
-      strategy_gate: selection.requireExecution ? "blocked_by_project_state" : "not_requested",
+      strategy_gate: selection.requireExecution || selection.full ? "blocked_by_project_state" : "not_requested",
       host_visibility: "unverified",
     },
     validation: null,
     status: null,
     diagnosis: null,
     execution_gate: null,
+    evidence: null,
     digest: null,
     navigation_cache: null,
   };
@@ -118,7 +131,14 @@ async function preflight(selection) {
   result.setup.installation = payload.entry_failures.length === 0 ? "passed" : "failed";
 
   result.navigation_cache = await inspectNavigationCache(selection.projectRoot);
-  const validation = await inspectProjectManifest(manifestPath);
+  let inspectionScopeId = selection.scopeId;
+  if (!inspectionScopeId) {
+    try {
+      const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
+      inspectionScopeId = manifest.current_scope?.scope_id;
+    } catch {}
+  }
+  const validation = await inspectProjectManifest(manifestPath, { scopeId: inspectionScopeId });
   const displayedChecks = selection.json && selection.details
     ? validation.checks
     : validation.checks.map((check) => check.valid ? { path: check.path, valid: true, errors: [] } : failedCheck(check, false));
@@ -184,11 +204,12 @@ async function preflight(selection) {
   }
 
   const scopeId = selection.scopeId ?? validation.manifest.current_scope?.scope_id;
+  const strictExecution = selection.requireExecution || selection.full;
   result.status = await inspectProjectStatus(validation.manifest, manifestPath, { scopeId });
   if (selection.json && !selection.details) {
     result.status.execution = summarizeExecution(result.status.execution);
   }
-  if (selection.requireExecution) {
+  if (strictExecution) {
     result.execution_gate = {
       scope_id: scopeId,
       unverified_count: result.status.execution.unverified_count,
@@ -200,12 +221,27 @@ async function preflight(selection) {
     }
   }
 
+  if (selection.full) {
+    try {
+      result.evidence = await inspectProjectEvidence(validation.manifest, manifestPath, {
+        scopeId,
+        details: selection.details,
+      });
+    } catch (error) {
+      result.evidence = {
+        valid: false,
+        scope_id: scopeId,
+        checks: [{ path: "evidence", valid: false, errors: [{ instancePath: "", message: error.message }] }],
+      };
+    }
+  }
+
   if (selection.digest && payload.entry_failures.length === 0 && result.execution_gate?.valid !== false) {
     const digest = await generateProjectDigest(selection.projectRoot);
     result.digest = { path: path.basename(digest.path), refreshed: true };
     result.navigation_cache = await inspectNavigationCache(selection.projectRoot);
   }
-  result.valid = payload.entry_failures.length === 0 && result.execution_gate?.valid !== false;
+  result.valid = payload.entry_failures.length === 0 && result.execution_gate?.valid !== false && result.evidence?.valid !== false;
   return result;
 }
 
@@ -318,10 +354,19 @@ function outputText(result, selection) {
     console.log(
       `Blocked pending action: ${status.recorded_blockers.blocked_pending_action ? "recorded in selected scope" : "none recorded"}`,
     );
-    console.log("Operation-specific evidence: not evaluated");
+    console.log(result.evidence ? "Operation-specific evidence: validated artifacts; currency and operation gates not evaluated" : "Operation-specific evidence: not evaluated");
   }
   if (result.execution_gate) {
     console.log(`Execution gate: ${result.execution_gate.valid ? "passed" : "failed"}`);
+  }
+  if (result.evidence) {
+    const { evidence } = result;
+    console.log(`Evidence validation: ${evidence.checks.length} checks, ${evidence.checks.filter((check) => !check.valid).length} failures; scope ${evidence.scope_id ?? "not selected"}`);
+    console.log(`Evidence selection: ${evidence.selection?.latest_reports_by_stage_and_audit ?? 0} latest stage/audit reports; ${evidence.selection?.linked_reports ?? 0} linked reports; ${evidence.selection?.review_jobs ?? 0} review jobs`);
+    for (const check of evidence.checks.filter((item) => !item.valid)) {
+      console.log(`Blocking evidence error: ${check.path}: ${errorDetails(check.errors)}`);
+      if (check.omitted_error_count) console.log(`  ... ${check.omitted_error_count} more errors; use --details for complete evidence diagnostics`);
+    }
   }
   if (result.digest) {
     console.log("Navigation cache: refreshed PROJECT_STATE.md; snapshot only");

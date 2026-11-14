@@ -150,6 +150,10 @@
       "sha256": "141a9cec5a4da83676578b57448ef7fb5e1c9376314b9224d157ad81a935649d"
     },
     {
+      "path": "scripts/lib/evidence-inspection.mjs",
+      "sha256": "1a2b842d681135210b1f4b8f0afbbea7dd6e9ba0ab30c43cfb8b19d3638a0c98"
+    },
+    {
       "path": "scripts/lib/execution-receipts.mjs",
       "sha256": "9f3beed828ec540d04aeadc90bcc968ad08cce998433121bee14df7a7abfe850"
     },
@@ -171,7 +175,7 @@
     },
     {
       "path": "scripts/lib/index.mjs",
-      "sha256": "ff32dadaeddf1c07f4a97c760a24fcc13bfecc8974e64ea07e92ba5ec198056d"
+      "sha256": "fc440f96e11602de50a04027e50edd61a3f5f729af99ef85332434dd9fba0c9c"
     },
     {
       "path": "scripts/lib/manifest.mjs",
@@ -279,7 +283,7 @@
     },
     {
       "path": "scripts/preflight.mjs",
-      "sha256": "fa531c750b34975417a3b50cfa6e0112550bba4bc8bfdeee3863dd8925117d92"
+      "sha256": "264c3e09f6719a73b54367adb67828d4e21cddc0099c45126a789c9afe093bc0"
     },
     {
       "path": "scripts/project-digest.mjs",

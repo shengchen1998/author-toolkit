@@ -305,7 +305,7 @@ test("existing-project setup uses bounded inspection references and a categorize
     readFile(path.join(root, "README.zh-CN.md"), "utf8"),
   ]);
 
-  assert.match(project, /For `read`, `validate`, `status`, `status --digest`, and `check-index`, read \[`references\/read-operations\.md`\]/);
+  assert.match(project, /For `read`, `validate`, `status`, `check --full`, `status --digest`, and `check-index`, read \[`references\/read-operations\.md`\]/);
   assert.match(project, /For a new manifest and every record or write operation, read \[`references\/operations\.md`\]/);
   assert.doesNotMatch(project, /For every operation, read \[`references\/operations\.md`\]/);
   assert.match(existingSetup, /Once initialization's manifest-schema check passes, perform step 3's entry-file replacement even if later project-state validation fails/);

@@ -4,6 +4,8 @@ import { cp, mkdir, mkdtemp, readFile, readdir, rm, symlink, writeFile } from "n
 import path from "node:path";
 import test from "node:test";
 
+import { createEvidenceFixture } from "./evidence-fixture.mjs";
+
 const root = path.resolve(import.meta.dirname, "..");
 const canonicalReferences = path.join(root, "references");
 const setupReferences = path.join(
@@ -185,6 +187,25 @@ test("setup carries self-contained preflight, validation, state, range, and inst
   );
   assert.equal(check.status, 0, check.stderr);
   assert.equal(check.stdout, preflight.stdout.replace("Navigation cache: refreshed PROJECT_STATE.md; snapshot only", "Navigation cache: reusable snapshot only; recorded next action remains unevaluated"));
+
+  const fullProject = path.join(temporaryRoot, "full-project");
+  await createEvidenceFixture(
+    path.join(root, "examples", "fiction-revision-en"),
+    path.join(installedSetup, "assets"),
+    fullProject,
+  );
+  const full = spawnSync(
+    process.execPath,
+    [...nodeArgs, path.join(installedSetup, "scripts", "check.mjs"), "--project-root", fullProject, "--full", "--json"],
+    { encoding: "utf8" },
+  );
+  assert.equal(full.status, 0, full.stderr);
+  const fullResult = JSON.parse(full.stdout);
+  assert.equal(fullResult.valid, true);
+  assert.equal(fullResult.execution_gate.valid, true);
+  assert.equal(fullResult.evidence.valid, true);
+  assert.equal(fullResult.evidence.selection.review_jobs, 3);
+  assert.equal(fullResult.evidence.checks.length, 15);
 
   const diagnosisProject = path.join(temporaryRoot, "diagnosis-project");
   await cp(project, diagnosisProject, { recursive: true });

@@ -187,6 +187,18 @@ unverified approval.
 The current scope is selected by default. Add `--require-execution` with an
 explicit `--scope-id` only for an execution gate; add `--digest` only when the
 navigation cache should be refreshed after successful read-only checks.
+For one read-only final evidence check, add `--full` instead. It selects the
+current scope when no explicit scope is supplied, applies strict execution,
+validates the review brief, coverage index and its units, latest immutable
+reports by stage and audit, reports linked by the index and latest review jobs,
+the latest review job per mode and perspective, and the fresh reader-state.
+It reports one exit status for project, evidence, and execution failures. Review
+jobs are discovered under `.author-toolkit/reviews/` and the registered sessions
+path; their reader-state paths remain authoritative. `--full` writes nothing,
+does not refresh the cache, and cannot be combined with `--digest`. It validates
+artifacts and their references, not evidence currency, semantic evidence reuse,
+operation completion, or current-draft revision convergence; the active strategy
+still evaluates those gates.
 Preflight also checks the cache format read-only. Legacy or incomplete caches,
 and caches invalidated by project-validation or requested strict-gate failures,
 are marked stale and their recorded next action is withheld rather than repeated.
