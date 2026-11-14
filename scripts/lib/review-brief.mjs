@@ -1,4 +1,4 @@
-import { splitTrackerRow, trackerDecisions } from "./tracker.mjs";
+import { cleanTrackerCell, splitTrackerRow, trackerDecisions } from "./tracker.mjs";
 import { validateRelativePath } from "./schemas.mjs";
 
 const headings = ["Finding ID", "Location", "Decision reason", "Current report"];
@@ -8,7 +8,7 @@ function briefError(instancePath, message) {
 }
 
 function cleanCell(value) {
-  return value.trim().replace(/^`([^`]*)`$/, "$1").trim();
+  return cleanTrackerCell(value);
 }
 
 function reportPath(value) {
@@ -41,6 +41,7 @@ function rowsFor(markdown, status) {
   const decisions = [];
   for (const [index, line] of section.slice(tableIndex + 2).entries()) {
     if (!line.trim()) break;
+    if (line === "No resolved or dismissed findings.") break;
     const row = splitTrackerRow(line);
     if (!row || row.length !== headings.length) {
       errors.push(briefError(`/${heading}/${index}`, "finding row must have four columns"));
@@ -91,4 +92,54 @@ export function validateReviewBrief(markdown, trackerMarkdown) {
     }
   }
   return { valid: errors.length === 0, errors };
+}
+
+function briefCell(value) {
+  const text = value.replace(/\r?\n/g, " ").trim();
+  if (/\|/.test(text)) {
+    const longestRun = Math.max(0, ...[...text.matchAll(/`+/g)].map((match) => match[0].length));
+    const delimiter = "`".repeat(longestRun + 1);
+    return `${delimiter} ${text} ${delimiter}`;
+  }
+  return text;
+}
+
+function briefSection(status, decisions) {
+  const heading = status === "resolved" ? "Resolved decisions" : "Dismissed decisions";
+  const selected = decisions.filter((decision) => decision.status === status);
+  const lines = [
+    `## ${heading}`,
+    "",
+    "| Finding ID | Location | Decision reason | Current report |",
+    "|---|---|---|---|",
+  ];
+  if (decisions.length === 0) {
+    lines.push("No resolved or dismissed findings.");
+  } else {
+    for (const decision of selected) {
+      lines.push(`| ${[decision.id, decision.location, decision.reason, decision.report].map(briefCell).join(" | ")} |`);
+    }
+  }
+  return lines;
+}
+
+export function generateReviewBrief(trackerMarkdown, trackerPath, updatedAt = new Date().toISOString()) {
+  const decisions = trackerDecisions(trackerMarkdown);
+  const lines = [
+    "# Review Brief",
+    "",
+    `- Updated: \`${updatedAt}\``,
+    `- Tracker: \`${trackerPath}\``,
+    "",
+    ...briefSection("resolved", decisions),
+    "",
+    ...briefSection("dismissed", decisions),
+    "",
+  ];
+  const markdown = lines.join("\n");
+  const validation = validateReviewBrief(markdown, trackerMarkdown);
+  if (!validation.valid) {
+    throw new Error(validation.errors.map((error) => `${error.instancePath || "/"} ${error.message}`).join("; "));
+  }
+  return { markdown, resolved: decisions.filter((decision) => decision.status === "resolved").length, dismissed: decisions.filter((decision) => decision.status === "dismissed").length };
 }

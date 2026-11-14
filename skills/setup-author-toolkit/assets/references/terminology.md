@@ -66,7 +66,7 @@ Independent skills keep their craft vocabularies. Register a craft term here bef
 | `final review` | 全书终审 | Noun | The `final-review` operation over the whole book with three independent perspectives. Current-scope review and milestone review do not satisfy it. | |
 | `review job` | 复核任务 | Noun | The resumable artifact for one perspective, scope, review mode, ordered sources, units, syntheses, and reviewer identity. | |
 | `request review` | 请求复核 | Noun | A current-scope review with `review_mode=request` over only declared changed and dependency-affected manuscript units. Its full coverage does not establish current-draft revision convergence for the target scope. | `diff review` |
-| `review brief` | 复核决定摘要 | Noun | A disposable summary of resolved and dismissed tracker findings and their reasons, used after independent review to reuse finding identities and author decisions. It is not reviewer input or authoritative state. | `prior-decision brief` |
+| `review brief` | 复核决定摘要 | Noun | A disposable summary of resolved and dismissed tracker findings and their reasons, generated through `author-project review-brief` after independent review to reuse finding identities and author decisions. It is not reviewer input or authoritative state. | `prior-decision brief` |
 | `reader-state` | 读者状态 | Noun | The fresh reader's isolated resumable reading state. It is not a summary shared with another perspective. | |
 | `fresh reader` | 新读者 | Noun | The sequential review perspective that reads actual manuscript text through one logical reviewer and only that reviewer's reader-state. | |
 | `finding` | 发现项 | Noun | A stable, located observation with a recommendation. Finding status lives in the tracker, not in finding v2. | |

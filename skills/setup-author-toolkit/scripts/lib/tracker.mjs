@@ -28,6 +28,10 @@ function trackerError(instancePath, message) {
   return { instancePath, keyword: "tracker", message, params: {} };
 }
 
+export function cleanTrackerCell(value = "") {
+  return cleanCell(value);
+}
+
 function cleanCell(value = "") {
   const trimmed = value.trim();
   const delimiter = trimmed.match(/^`+/)?.[0];

@@ -38,7 +38,7 @@ export {
   validateReaderStateMarkdown,
   validateReviewJob,
 } from "./review.mjs";
-export { validateReviewBrief } from "./review-brief.mjs";
+export { generateReviewBrief, validateReviewBrief } from "./review-brief.mjs";
 export {
   projectRootFromManifest,
   validatePendingArtifactIndex,
@@ -48,6 +48,7 @@ export {
 export {
   APPROVAL_STATUSES,
   TRACKER_STATUSES,
+  cleanTrackerCell,
   parseApprovalsMarkdown,
   trackerFindingRows,
   trackerDecisions,

@@ -358,6 +358,9 @@ test("existing-project setup uses bounded inspection references and a categorize
   assert.match(operations, /## Scaffold report/);
   assert.match(operations, /scaffold-report\.mjs --manifest/);
   assert.match(operations, /When `findings` is omitted, the CLI supplies `findings: \[\]`/);
+  assert.match(project, /\| `review-brief` \|/);
+  assert.match(operations, /## Review brief/);
+  assert.match(operations, /review-brief\.mjs --project-root/);
   assert.match(operations, /reconcile-executions/);
   assert.match(operations, /including create-only batches/);
   assert.match(readOperations, /check\.mjs/);

@@ -35,7 +35,7 @@ A finding absent from an equivalent complete rerun becomes `stale`, not `resolve
 
 ## Review brief and decision reuse
 
-Before processing shared review findings, generate or refresh `<paths.reports>/review_brief.md` from the current tracker. This review brief is a disposable navigation summary, not an immutable report or another authority. It has exactly these sections:
+Before processing shared review findings, run `author-project` with `review-brief` to generate or refresh `<paths.reports>/review_brief.md` from the current tracker. This review brief is a disposable navigation summary, not an immutable report or another authority. The CLI produces exactly these sections:
 
 ```md
 # Review Brief
@@ -54,7 +54,7 @@ Before processing shared review findings, generate or refresh `<paths.reports>/r
 |---|---|---|---|
 ```
 
-Include every tracker row whose status is `resolved` or `dismissed`; copy its actual location, decision reason, and report path without expanding it into a full finding or manuscript excerpt. If neither status has any rows, state `No resolved or dismissed findings.` beneath both headings instead of inventing decisions. Refresh the brief after relevant tracker changes and validate it with `node <setup-skill-root>/scripts/validate.mjs --review-brief <path> --tracker <tracker-path>`. The tracker remains authoritative; rebuild a missing or inconsistent brief rather than treating its contents as approval.
+The CLI includes every tracker row whose status is `resolved` or `dismissed`, preserving its actual location, decision reason, and report path without expanding it into a full finding or manuscript excerpt. If neither status has any rows, it states `No resolved or dismissed findings.` beneath both headings. Refresh the brief through the same CLI after relevant tracker changes. It validates the complete result before atomically replacing the brief; `node <setup-skill-root>/scripts/validate.mjs --review-brief <path> --tracker <tracker-path>` remains the independent check. The tracker remains authoritative; regenerate a missing or inconsistent brief rather than treating its contents as approval.
 
 Match each new review observation using the Finding identity rules above before presenting an author decision. For the same underlying issue, reuse its existing ID and point the current report at the new immutable report. Keep a `resolved` or `dismissed` status and its original reason; do not put the observation back into the decision queue merely because a reviewer reports it again. Record the decision reuse in the session note. An unrelated wording change or a new report alone is not new evidence.
 

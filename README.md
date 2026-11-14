@@ -449,7 +449,7 @@ can additionally use `story-structure` Audit without adopting the
    silently expand them to full chapters or the full manuscript. If full-scope
    review was explicitly selected, instead run a full-target current-scope review
    with a sequential fresh reader.
-6. Generate `reports/review_brief.md` from resolved and dismissed tracker findings.
+6. Generate `reports/review_brief.md` through `author-project review-brief` from resolved and dismissed tracker findings.
    Reconcile repeated observations after independent review: preserve their finding
    IDs and decisions unless the relevant passage, factual basis, dependency, or
    underlying issue materially changed. Reviewers, including the fresh reader, do
@@ -559,7 +559,8 @@ Use `read.mjs --project-root <root>` for its bounded manifest projection and
   registered path. `review_brief.md` is a disposable summary of resolved and
   dismissed tracker findings used for decision reuse, not reviewer input or an
   authoritative decision record. Validate it against the tracker with
-  `node <setup-skill-root>/scripts/validate.mjs --review-brief <path> --tracker <path>`.
+  `node <setup-skill-root>/scripts/review-brief.mjs --project-root <root>`, or check
+  an existing brief with `node <setup-skill-root>/scripts/validate.mjs --review-brief <path> --tracker <path>`.
 - `sessions/` records completed work, open decisions, backup paths, and the
   stopping point so a later session can resume or handle rework.
 - `backups/` preserves affected manuscript files before approved edits. Its index
@@ -741,6 +742,10 @@ node scripts/range.mjs --project-root /path/to/writing-project "manuscript/1.md:
 It supplies `findings: []` when that field is omitted and validates the complete
 report before publication; it does not infer reviewer findings, coverage, input
 hashes, or synthesis dependencies.
+
+`review-brief.mjs --help` describes the deterministic review brief generator.
+It copies every resolved and dismissed tracker location, decision reason, and
+report path, validates the complete result, and atomically replaces the brief.
 
 `range.mjs` resolves an author-supplied inline character range. Positions are
 1-based and inclusive, and characters count Unicode code points.

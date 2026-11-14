@@ -73,6 +73,16 @@ The body file supplies the human-readable report and its `Language coverage` sec
 
 The empty array is a structural default for a completed clean review, not evidence that the reviewer found nothing. The semantic skill supplies the actual body, findings, input versions, engine notes, scope, coverage, and parent-child links; the CLI does not infer them or update review jobs, coverage indexes, manuscript hashes, or downstream syntheses. Only a successfully scaffolded report may be cited by a new coverage registration or synthesis.
 
+## Review brief
+
+Generate or refresh the disposable decision summary through the installed CLI after relevant tracker changes:
+
+```bash
+node <setup-skill-root>/scripts/review-brief.mjs --project-root <project-root> [--tracker <project-relative-tracker-path>] [--out <project-relative-brief-path>] [--updated-at <UTC-timestamp>] [--json]
+```
+
+The tracker defaults to `paths.audit_tracker`; the output defaults to `<paths.reports>/review_brief.md`. The command includes every `resolved` and `dismissed` finding with its exact location, decision reason, and current report. It validates the tracker and complete brief before replacing the output through a verified temporary sibling under the shared write lock. Invalid input, unsafe paths, or a failed publication preserves the existing brief and tracker. It changes no decisions or manuscript and grants no approval. Argument errors exit 2; validation and filesystem failures exit 1.
+
 For explicit report validation, `--report` may be repeated. `node <setup-skill-root>/scripts/validate.mjs --report <path>...` checks report-internal duplicate IDs and conflicting identities within the supplied set. Add `--tracker <path>` to compare tracker stage and audit identity; use exactly one `--manifest <path>` with reports from that project to load its tracker and historical report identities. Independent project reports must not be compared as one batch.
 
 ## Initialize

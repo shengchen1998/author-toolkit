@@ -81,7 +81,7 @@ test("setup carries self-contained preflight, validation, state, range, and inst
   );
 
   const nodeArgs = ["--no-warnings", "--experimental-loader", loader, "--require", preload];
-  for (const script of ["inspect-root.mjs", "initialize.mjs", "install-entry-files.mjs", "preflight.mjs", "check.mjs", "read.mjs", "set-pending.mjs", "validate.mjs", "status.mjs", "project-digest.mjs", "findings.mjs", "range.mjs", "doctor.mjs", "writes.mjs", "terminology.mjs", "scaffold-report.mjs"]) {
+  for (const script of ["inspect-root.mjs", "initialize.mjs", "install-entry-files.mjs", "preflight.mjs", "check.mjs", "read.mjs", "set-pending.mjs", "validate.mjs", "status.mjs", "project-digest.mjs", "findings.mjs", "range.mjs", "doctor.mjs", "writes.mjs", "terminology.mjs", "scaffold-report.mjs", "review-brief.mjs"]) {
     const result = spawnSync(
       process.execPath,
       [...nodeArgs, path.join(installedSetup, "scripts", script), "--help"],
@@ -315,6 +315,10 @@ test("setup carries self-contained preflight, validation, state, range, and inst
     path.join(scaffoldProject, ".author-toolkit", "project.json"),
     await readFile(path.join(root, "examples", "fiction-revision-en", ".author-toolkit", "project.json"), "utf8"),
   );
+  await cp(
+    path.join(root, "examples", "fiction-revision-en", "audit-tracker.md"),
+    path.join(scaffoldProject, "audit-tracker.md"),
+  );
   const scaffoldBody = path.join(temporaryRoot, "scaffold-body.md");
   const scaffoldEnvelope = path.join(temporaryRoot, "scaffold-envelope.json");
   await writeFile(scaffoldBody, "# Report\n\n## Language coverage\n\nfull\n", "utf8");
@@ -366,6 +370,40 @@ test("setup carries self-contained preflight, validation, state, range, and inst
     { encoding: "utf8" },
   );
   assert.equal(scaffoldValidation.status, 0, scaffoldValidation.stderr);
+
+  const briefTracker = (await readFile(path.join(scaffoldProject, "audit-tracker.md"), "utf8"))
+    .replaceAll("reports/structure/2026-01-17_structure.md", "reports/current-scope-review/scaffold.md")
+    .replace("| STRUCT-004 | structure | story-structure-audit | `manuscript/chapter-01.md`, chapter 1 | open |", "| STRUCT-004 | current-scope-review | author-review-standards | `manuscript/chapter-01.md`, chapter 1 | resolved |")
+    .replace("| STRUCT-004 | current-scope-review | author-review-standards | `manuscript/chapter-01.md`, chapter 1 | resolved | reports/current-scope-review/scaffold.md | 2026-01-17T18:00:00Z | No author decision recorded. |", "| STRUCT-004 | current-scope-review | author-review-standards | `manuscript/chapter-01.md`, chapter 1 | resolved | reports/current-scope-review/scaffold.md | 2026-11-15T00:00:00Z | Author retained the structural choice. |");
+  await writeFile(path.join(scaffoldProject, "audit-tracker.md"), briefTracker, "utf8");
+  const brief = spawnSync(
+    process.execPath,
+    [
+      ...nodeArgs,
+      path.join(installedSetup, "scripts", "review-brief.mjs"),
+      "--project-root",
+      scaffoldProject,
+      "--updated-at",
+      "2026-11-15T00:00:00Z",
+      "--json",
+    ],
+    { encoding: "utf8" },
+  );
+  assert.equal(brief.status, 0, brief.stderr);
+  assert.equal(JSON.parse(brief.stdout).resolved, 1);
+  const briefValidation = spawnSync(
+    process.execPath,
+    [
+      ...nodeArgs,
+      path.join(installedSetup, "scripts", "validate.mjs"),
+      "--review-brief",
+      path.join(scaffoldProject, "reports/review_brief.md"),
+      "--tracker",
+      path.join(scaffoldProject, "audit-tracker.md"),
+    ],
+    { encoding: "utf8" },
+  );
+  assert.equal(briefValidation.status, 0, briefValidation.stderr);
 
   const terminology = spawnSync(
     process.execPath,

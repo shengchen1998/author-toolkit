@@ -263,7 +263,7 @@ AI, 作者和混合创作使用相同门禁. 每本书只保留一个活动创�
    局部请求不会静默缩小当前草稿修订收敛所需覆盖度.
 5. 一轮获批修改完成后, 默认通过 `review_mode=request` 以三个视角只复核声明的改动及受影响段落.
    不静默扩展到整章或全稿. 若作者明确选择全稿复核, 则运行全目标范围的当前范围复核, 由新读者顺序阅读全稿.
-6. 从 tracker 的 resolved 和 dismissed 发现项生成 `reports/review_brief.md`. 独立复核结束后归并重复观察,
+6. 通过 `author-project review-brief` 从 tracker 的 resolved 和 dismissed 发现项生成 `reports/review_brief.md`. 独立复核结束后归并重复观察,
    保留其 ID 和原决定; 只有相关段落, 事实依据, 依赖或底层问题实质变化时才重新请求决定.
    三个独立 reviewer 和新读者都不读取该摘要.
 7. 分别报告请求完成和当前草稿修订收敛. 请求复核不能满足全稿复核要求; 仅执行请求复核后,
@@ -332,7 +332,8 @@ AI, 作者和混合创作使用相同门禁. 每本书只保留一个活动创�
 - `reports/`: 诊断上下文和机器可读结果. 重新审计生成新报告, 不覆盖已交付报告. 可复用
   覆盖单元和持续更新的覆盖索引也保存在登记的 reports 路径下. `review_brief.md` 是从 tracker 的
   resolved 和 dismissed 发现项派生的可丢弃摘要, 用于复用决定, 不作为 reviewer 输入或权威决定记录.
-  使用 `node <setup-skill-root>/scripts/validate.mjs --review-brief <path> --tracker <path>` 对照 tracker 校验.
+  使用 `node <setup-skill-root>/scripts/review-brief.mjs --project-root <root>` 生成并校验;
+  也可使用 `node <setup-skill-root>/scripts/validate.mjs --review-brief <path> --tracker <path>` 独立校验现有摘要.
 - `sessions/`: 已完成工作, 待决事项, 备份路径和停止位置.
 - `backups/`: 获批修改前的稿件备份. 其索引还保存 edit 批准的写后执行回执和 restore 批准的完成恢复记录.
   `author-project status` 按范围报告未核对批准, 不读取正文内容, 也不把历史输出与后续文本比较.
@@ -482,6 +483,9 @@ node scripts/range.mjs --project-root /path/to/writing-project "manuscript/1.md:
 
 `scaffold-report.mjs --help` 说明不可覆盖的共享报告生成命令. 它在未提供 `findings` 字段时
 补充 `findings: []`, 并在发布前校验完整报告; 不推断复核发现项, 实际覆盖度, 输入哈希或综合报告依赖.
+
+`review-brief.mjs --help` 说明确定性的复核决定摘要生成命令. 它保留 tracker 中每个 resolved
+和 dismissed 发现项的实际位置, 完整决定原因和报告路径, 校验完整结果后原子替换摘要.
 
 这些命令只覆盖仓库级契约, 不代表宿主运行验证或创作质量. 宿主版本, 已完成检查和限制见
 [docs/VALIDATION.md](docs/VALIDATION.md).

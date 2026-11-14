@@ -91,7 +91,7 @@
     },
     {
       "path": "assets/references/terminology.md",
-      "sha256": "b0beaec78e2cb5bd0e1ede4cfe0f5cd244b3d14fda67f4db9aae07e51cf745d5"
+      "sha256": "a3b6457f494b6b2881afe1c2a305e6280fac1d148c9649aa0a252b747c7dcd55"
     },
     {
       "path": "assets/references/workflow-reporting.md",
@@ -175,7 +175,7 @@
     },
     {
       "path": "scripts/lib/index.mjs",
-      "sha256": "fc440f96e11602de50a04027e50edd61a3f5f729af99ef85332434dd9fba0c9c"
+      "sha256": "311a7e1bc512887add1152947aea802b9b7f47baeb3eda2c8f0d3a6e0de3e46b"
     },
     {
       "path": "scripts/lib/manifest.mjs",
@@ -219,7 +219,7 @@
     },
     {
       "path": "scripts/lib/review-brief.mjs",
-      "sha256": "7085a1fde0655620ed8b887a3f77f2e5f4897e58c9b4ce0dfefac46b7fed8475"
+      "sha256": "4a1d2c2878fa5038e17c06e5023fa309bd41139536c0753c3dbb7304750e5234"
     },
     {
       "path": "scripts/lib/review.mjs",
@@ -247,7 +247,7 @@
     },
     {
       "path": "scripts/lib/tracker.mjs",
-      "sha256": "45492c2ae77147635828bb496404680a6217301c5bbaa9bb481e3ad86b22abec"
+      "sha256": "756698c6052679dee6084f413b6ccaacceb3bd3e0d1274e476b276cb672eb98a"
     },
     {
       "path": "scripts/lib/write-lock.mjs",
@@ -296,6 +296,10 @@
     {
       "path": "scripts/read.mjs",
       "sha256": "bc34c8afb97baec56d79007e244d545299aef046d332e535065a461ec9b4177b"
+    },
+    {
+      "path": "scripts/review-brief.mjs",
+      "sha256": "01103e88d0a02ea8f91c4e67123ffe32dda3431637b84cdac4f5b9415d0acf85"
     },
     {
       "path": "scripts/scaffold-report.mjs",
