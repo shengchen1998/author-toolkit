@@ -152,6 +152,14 @@ test("report envelopes reject additional fields and nested legacy findings", asy
     confidence: "judgment",
   };
   assert.equal(validateReportEnvelope(legacyFinding).valid, false);
+
+  const missingFindings = clone(envelope);
+  delete missingFindings.findings;
+  const missingResult = validateReportEnvelope(missingFindings);
+  assert.equal(missingResult.valid, false);
+  assert.ok(missingResult.errors.some(
+    (error) => error.keyword === "required" && error.params.missingProperty === "findings",
+  ));
 });
 
 test("v3.1 requires seven operational paths and a fiction-only manifest", async () => {

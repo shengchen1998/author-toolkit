@@ -354,6 +354,10 @@ test("existing-project setup uses bounded inspection references and a categorize
   assert.match(readOperations, /creates only a missing `<paths\.backups>\/index\.json`/);
   assert.doesNotMatch(readOperations, /## Backup and creation commit|## Record execution|## Restore/);
   assert.match(operations, /\[Digest\]\(read-operations\.md#digest\)/);
+  assert.match(project, /\| `scaffold-report` \|/);
+  assert.match(operations, /## Scaffold report/);
+  assert.match(operations, /scaffold-report\.mjs --manifest/);
+  assert.match(operations, /When `findings` is omitted, the CLI supplies `findings: \[\]`/);
   assert.match(operations, /reconcile-executions/);
   assert.match(operations, /including create-only batches/);
   assert.match(readOperations, /check\.mjs/);

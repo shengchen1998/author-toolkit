@@ -79,7 +79,7 @@ test("setup carries self-contained preflight, validation, state, range, and inst
   );
 
   const nodeArgs = ["--no-warnings", "--experimental-loader", loader, "--require", preload];
-  for (const script of ["inspect-root.mjs", "initialize.mjs", "install-entry-files.mjs", "preflight.mjs", "check.mjs", "read.mjs", "set-pending.mjs", "validate.mjs", "status.mjs", "project-digest.mjs", "findings.mjs", "range.mjs", "doctor.mjs", "writes.mjs", "terminology.mjs"]) {
+  for (const script of ["inspect-root.mjs", "initialize.mjs", "install-entry-files.mjs", "preflight.mjs", "check.mjs", "read.mjs", "set-pending.mjs", "validate.mjs", "status.mjs", "project-digest.mjs", "findings.mjs", "range.mjs", "doctor.mjs", "writes.mjs", "terminology.mjs", "scaffold-report.mjs"]) {
     const result = spawnSync(
       process.execPath,
       [...nodeArgs, path.join(installedSetup, "scripts", script), "--help"],
@@ -286,6 +286,65 @@ test("setup carries self-contained preflight, validation, state, range, and inst
   );
   assert.equal(range.status, 0, range.stderr);
   assert.equal(JSON.parse(range.stdout).text, "与热");
+
+  const scaffoldProject = path.join(temporaryRoot, "scaffold-project");
+  await mkdir(path.join(scaffoldProject, ".author-toolkit"), { recursive: true });
+  await mkdir(path.join(scaffoldProject, "reports"), { recursive: true });
+  await writeFile(
+    path.join(scaffoldProject, ".author-toolkit", "project.json"),
+    await readFile(path.join(root, "examples", "fiction-revision-en", ".author-toolkit", "project.json"), "utf8"),
+  );
+  const scaffoldBody = path.join(temporaryRoot, "scaffold-body.md");
+  const scaffoldEnvelope = path.join(temporaryRoot, "scaffold-envelope.json");
+  await writeFile(scaffoldBody, "# Report\n\n## Language coverage\n\nfull\n", "utf8");
+  await writeFile(scaffoldEnvelope, JSON.stringify({
+    schema_version: "2.0.0",
+    report_id: "SCAFFOLD-DEPLOYMENT-001",
+    audit: "scaffold-deployment",
+    stage: "current-scope-review",
+    created_at: "2026-11-15T00:00:00Z",
+    language: "en",
+    skill: { name: "author-review", version: "unversioned" },
+    inputs: [{ path: "manuscript/chapter-01.md", version: "a".repeat(64), version_type: "sha256" }],
+    engine: {
+      name: "conversational",
+      version: "unknown",
+      degraded: false,
+      notes: "scope_id=scope-example-revision; review_mode=current-scope; operation_coverage=full; subchecks=standards; Language coverage: full (en); unit=chapter-01.",
+    },
+  }), "utf8");
+  const scaffold = spawnSync(
+    process.execPath,
+    [
+      ...nodeArgs,
+      path.join(installedSetup, "scripts", "scaffold-report.mjs"),
+      "--manifest",
+      path.join(scaffoldProject, ".author-toolkit", "project.json"),
+      "--output",
+      "reports/current-scope-review/scaffold.md",
+      "--body",
+      scaffoldBody,
+      "--envelope",
+      scaffoldEnvelope,
+      "--json",
+    ],
+    { encoding: "utf8" },
+  );
+  assert.equal(scaffold.status, 0, scaffold.stderr);
+  assert.equal(JSON.parse(scaffold.stdout).finding_count, 0);
+  const scaffoldedReport = await readFile(path.join(scaffoldProject, "reports/current-scope-review/scaffold.md"), "utf8");
+  assert.match(scaffoldedReport, /"findings": \[\]/);
+  const scaffoldValidation = spawnSync(
+    process.execPath,
+    [
+      ...nodeArgs,
+      path.join(installedSetup, "scripts", "validate.mjs"),
+      "--report",
+      path.join(scaffoldProject, "reports/current-scope-review/scaffold.md"),
+    ],
+    { encoding: "utf8" },
+  );
+  assert.equal(scaffoldValidation.status, 0, scaffoldValidation.stderr);
 
   const terminology = spawnSync(
     process.execPath,

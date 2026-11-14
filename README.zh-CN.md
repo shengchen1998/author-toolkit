@@ -48,7 +48,7 @@ npx skills@latest add shengchen1998/author-toolkit -a codex
 npx skills@latest add shengchen1998/author-toolkit -a codex -g
 ```
 
-setup 技能在 `setup-author-toolkit/scripts/` 下提供自包含的安装检查, 有界根目录盘点, 入口文件安装, 现有项目初始化, 预检, manifest 投影, 待处理操作写入, 校验, 状态, 项目导航, 发现项状态, 正文写入, 行内字符区间和术语分节读取 CLI, 包括运行依赖.
+setup 技能在 `setup-author-toolkit/scripts/` 下提供自包含的安装检查, 有界根目录盘点, 入口文件安装, 现有项目初始化, 预检, manifest 投影, 待处理操作写入, 报告脚手架, 校验, 状态, 项目导航, 发现项状态, 正文写入, 行内字符区间和术语分节读取 CLI, 包括运行依赖.
 共享工作流直接解析该技能的安装目录, 无需仓库检出, 也无需在写作项目中运行 `npm install`.
 
 运行 `node <setup-skill-root>/scripts/inspect-root.mjs --project-root <root> --json` 盘点新项目.
@@ -469,6 +469,9 @@ node scripts/range.mjs --project-root /path/to/writing-project "manuscript/1.md:
 ```
 
 `range.mjs` 解析作者给出的行内字符区间; 行号和字符位置均从 1 开始且包含端点, 字符按 Unicode 码点计数.
+
+`scaffold-report.mjs --help` 说明不可覆盖的共享报告生成命令. 它在未提供 `findings` 字段时
+补充 `findings: []`, 并在发布前校验完整报告; 不推断复核发现项, 实际覆盖度, 输入哈希或综合报告依赖.
 
 这些命令只覆盖仓库级契约, 不代表宿主运行验证或创作质量. 宿主版本, 已完成检查和限制见
 [docs/VALIDATION.md](docs/VALIDATION.md).

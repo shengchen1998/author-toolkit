@@ -81,6 +81,8 @@ The help output defines the creation-batch, commit-journal, story-state, coverag
 
 `author-project next-finding-id` allocates a consecutive unused ID block from tracker and report history. `author-project record-findings` validates and atomically upserts a complete report batch into the tracker while preserving existing decisions and timestamps. Both use the installed setup CLI and do not replace semantic finding identity reconciliation or author decisions.
 
+Run `node scripts/scaffold-report.mjs --help` for create-only report v2 generation. It supplies `findings: []` when omitted, validates the complete report before writing, and preserves existing reports. The semantic skill supplies actual findings, input versions, coverage, and synthesis dependencies; the CLI does not infer them.
+
 Generate the bounded, disposable `PROJECT_STATE.md` navigation cache for a valid v3.1 project:
 
 ```bash

@@ -21,6 +21,7 @@ Accept one operation per invocation:
 | `status --digest` | Project root | Generate the bounded `PROJECT_STATE.md` navigation cache after complete project validation, with a UTC generation-time snapshot, finding counts, current-scope execution evidence, latest pointers, and the recorded next action when execution evidence permits; otherwise show the reconciliation route |
 | `next-finding-id` | Uppercase audit prefix and positive batch count | Return an unused consecutive ID block after all tracker and immutable-report history |
 | `record-findings` | Project root and one or more immutable report paths beneath the registered reports path | Validate and atomically insert or update finding rows while preserving author decisions |
+| `scaffold-report` | Project manifest, create-only report destination, human-readable body, and report v2 envelope | Default omitted findings to `findings: []`, validate the complete report before writing, and preserve existing reports |
 | `set-pending` | Operation, status, scope ID, reason, and artifacts | Write the requested pending action without stage progression |
 | `record-scope` | Scope ID, description, ordered files with SHA-256 hashes, excluded files, and `proposed` or `confirmed` status | Record the current scope after the required author confirmation |
 | `record-backup` | Operation, scope ID, approval ID, exact batch file, and optional backup ID | Refuse a new batch while another unverified approval remains; otherwise back up existing files and record expected absence for create targets |

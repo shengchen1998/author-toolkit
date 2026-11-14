@@ -120,7 +120,7 @@ Add `-g` to install at user level instead:
 npx skills@latest add shengchen1998/author-toolkit -a codex -g
 ```
 
-The setup skill includes self-contained installation, bounded root inspection, entry-file installation, existing-project initialization, preflight, manifest-projection, pending-action, validation, status, project-digest, finding-state, manuscript-write, character-range, and terminology-section CLIs under
+The setup skill includes self-contained installation, bounded root inspection, entry-file installation, existing-project initialization, preflight, manifest-projection, pending-action, report-scaffolding, validation, status, project-digest, finding-state, manuscript-write, character-range, and terminology-section CLIs under
 `setup-author-toolkit/scripts/`. Shared workflows resolve that installed skill
 directory directly; no repository checkout or writing-project `npm install` is
 required.
@@ -722,6 +722,11 @@ node scripts/status.mjs --manifest /path/to/.author-toolkit/project.json --scope
 node scripts/writes.mjs check-index --manifest /path/to/.author-toolkit/project.json --explain
 node scripts/range.mjs --project-root /path/to/writing-project "manuscript/1.md:1:56-71"
 ```
+
+`scaffold-report.mjs --help` describes the create-only shared report generator.
+It supplies `findings: []` when that field is omitted and validates the complete
+report before publication; it does not infer reviewer findings, coverage, input
+hashes, or synthesis dependencies.
 
 `range.mjs` resolves an author-supplied inline character range. Positions are
 1-based and inclusive, and characters count Unicode code points.

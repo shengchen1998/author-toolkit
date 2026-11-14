@@ -61,6 +61,18 @@ The command accepts only valid v3.1 manifests and reports beneath the registered
 
 A new finding enters as `open` with the report creation timestamp and `No author decision recorded.` An existing ID updates only its location and current report pointer after comparison with the tracker row's current report; preserve its status, author reason, and updated timestamp. Reimporting the same report does not append duplicate rows. Historical reports remain immutable: a changed rerun uses a new report file. The command does not perform semantic identity matching, reopen a decided finding, record author decisions, or refresh the review brief; the caller completes those steps and refreshes the navigation cache after the logical state operation.
 
+## Scaffold report
+
+Create every shared report v2 through the installed scaffold rather than hand-assembling its JSON envelope:
+
+```bash
+node <setup-skill-root>/scripts/scaffold-report.mjs --manifest <project-root>/.author-toolkit/project.json --output <project-relative-report-path> --body <body-file> --envelope <envelope-file> [--created-at <UTC-timestamp>] [--json]
+```
+
+The body file supplies the human-readable report and its `Language coverage` section without fenced code blocks. The envelope file supplies the actual report v2 fields and findings; `created_at` may come from either the envelope or the matching `--created-at` option. When `findings` is omitted, the CLI supplies `findings: []` for a clean report. It validates the complete report before writing and publishes it create-only through a verified temporary sibling. It rejects invalid findings, missing or invalid inputs and notes, evidence-semantic failures, a destination outside the registered reports path, special-file inputs, and every existing destination without writing a report. Argument errors exit 2; validation and filesystem failures exit 1.
+
+The empty array is a structural default for a completed clean review, not evidence that the reviewer found nothing. The semantic skill supplies the actual body, findings, input versions, engine notes, scope, coverage, and parent-child links; the CLI does not infer them or update review jobs, coverage indexes, manuscript hashes, or downstream syntheses. Only a successfully scaffolded report may be cited by a new coverage registration or synthesis.
+
 For explicit report validation, `--report` may be repeated. `node <setup-skill-root>/scripts/validate.mjs --report <path>...` checks report-internal duplicate IDs and conflicting identities within the supplied set. Add `--tracker <path>` to compare tracker stage and audit identity; use exactly one `--manifest <path>` with reports from that project to load its tracker and historical report identities. Independent project reports must not be compared as one batch.
 
 ## Initialize

@@ -8,6 +8,8 @@ Use `<setup-skill-root>/assets/references/report-schema-v2.json` as the authorit
 
 Write each report beneath the registered shared `reports/` path using an operation directory and a unique UTC-stamped filename. Include human-readable context, a `Language coverage` heading, and exactly one fenced `json` block containing one report v2 object.
 
+Use `author-project scaffold-report` to assemble and validate the complete report before its create-only publication. Supply the body and all actual envelope fields; the CLI supplies `findings: []` when that field is omitted for a clean report. Do not hand-assemble the envelope or manually append findings to the immutable result. The scaffold does not establish actual coverage, input currency, or synthesis dependencies.
+
 Populate the actual v2 fields:
 
 - `skill.name` and `skill.version` identify the executing skill; use its declared version or `unversioned`.
@@ -21,7 +23,7 @@ Populate the actual v2 fields:
 
 Use `confidence: "judgment"` for editorial interpretation and `deterministic` only for direct code-detected evidence. Finding status is tracker state and is not a finding v2 property.
 
-Run `node <setup-skill-root>/scripts/validate.mjs --report <report-path>` and retain the result in the session note. Use `validateEvidenceReport` for v3 evidence-semantic checks. If the payload does not conform, record the operation as `blocked`; never emit a legacy payload as a substitute.
+The scaffold runs the applicable report and evidence-semantic validation before writing and fails without a destination file. Run `node <setup-skill-root>/scripts/validate.mjs --report <report-path>` when an independent or historical report check is needed and retain the result in the session note. If the payload does not conform, record the operation as `blocked`; never emit a legacy payload as a substitute.
 
 Historical reports are immutable. Author decisions, stale marks, later locations, and rerun results go into the living tracker and new reports.
 
