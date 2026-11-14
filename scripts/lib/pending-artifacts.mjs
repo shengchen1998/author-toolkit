@@ -95,3 +95,17 @@ export async function setPendingAction(projectRoot, values, updatedAt = new Date
   }
   return prepared;
 }
+
+export async function refreshPendingForEvidence({ projectRoot, manifestPath, operation, artifacts, updatedAt }) {
+  const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
+  const pending = manifest.pending_action;
+  if (pending?.status !== "awaiting_author" || pending.operation !== operation) return manifest;
+  if (!(pending.artifacts ?? []).some((artifact) => artifacts.includes(artifact))) return manifest;
+  const prepared = preparePendingAction(manifest, {
+    ...pending,
+    artifacts: [...new Set([...pending.artifacts ?? [], ...artifacts])],
+  }, updatedAt);
+  await writeAtomic(manifestPath, prepared.manifest);
+  if (prepared.index) await writeAtomic(path.join(projectRoot, PENDING_ARTIFACT_INDEX), prepared.index);
+  return prepared.manifest;
+}

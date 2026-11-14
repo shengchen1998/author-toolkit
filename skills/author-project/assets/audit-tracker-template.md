@@ -1,6 +1,6 @@
 # Author Toolkit Audit Tracker
 
-This is the living status index. Linked reports are immutable.
+This is the living status index. Linked reports are immutable while retained.
 
 ## Project
 

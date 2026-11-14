@@ -5,6 +5,7 @@ import { findingIdentity, sameFindingIdentity, validateFindingIdentity } from ".
 import { validateEvidenceReport } from "./markdown.mjs";
 import { validateRelativePath } from "./schemas.mjs";
 import { splitTrackerRow, trackerFindingRows } from "./tracker.mjs";
+import { syncTrackerFindingHistory, trackerFindingHistory } from "./tracker-history.mjs";
 
 export async function readReportFindings(file, projectRoot) {
   const relative = path.relative(projectRoot, path.resolve(file)).replaceAll(path.sep, "/");
@@ -47,9 +48,20 @@ export async function reportFindingIdentities(projectRoot, reportsPath) {
   return reports;
 }
 
-export function validateFindingBatch(reports, trackerMarkdown, history = []) {
+export function validateFindingBatch(reports, trackerMarkdown, history = [], { bounded = false } = {}) {
   const errors = [];
   const rows = trackerFindingRows(trackerMarkdown);
+  if (bounded) {
+    const identities = new Map(trackerFindingHistory(trackerMarkdown).map((entry) => [entry.id, entry]));
+    for (const report of reports) {
+      for (const finding of report.envelope.findings ?? []) {
+        const entry = identities.get(finding.id);
+        if (entry && !sameFindingIdentity(findingIdentity(report.envelope, finding), entry)) {
+          errors.push({ report: report.path, instancePath: "", keyword: "finding-identity", message: `conflicting finding identity: ${finding.id}`, params: {} });
+        }
+      }
+    }
+  }
   for (const report of reports) {
     const related = [
       ...reports.filter((candidate) => candidate.path !== report.path),
@@ -107,8 +119,8 @@ function trackerTable(lines) {
   throw new Error("tracker Findings table requires a Finding ID header");
 }
 
-export function upsertTrackerFindings(markdown, reports, history = []) {
-  const validation = validateFindingBatch(reports, markdown, history);
+export function upsertTrackerFindings(markdown, reports, history = [], { bounded = false } = {}) {
+  const validation = validateFindingBatch(reports, markdown, history, { bounded });
   if (!validation.valid) {
     throw new Error(validation.errors.map((error) => `${error.report}: ${error.message}`).join("; "));
   }
@@ -125,11 +137,12 @@ export function upsertTrackerFindings(markdown, reports, history = []) {
       const old = existing.find((candidate) => candidate.id === finding.id);
       if (old) {
         const current = history.find((candidate) => candidate.path === old.report);
-        if (!current) throw new Error(`cannot verify tracker report for ${finding.id}: ${old.report}`);
-        const previous = current.envelope.findings.find((candidate) => candidate.id === finding.id);
-        if (!previous || !sameFindingIdentity(
+        const previousIdentity = bounded
+          ? trackerFindingHistory(markdown).find((candidate) => candidate.id === finding.id)
+          : current?.envelope.findings.find((candidate) => candidate.id === finding.id);
+        if (!previousIdentity || !sameFindingIdentity(
           findingIdentity(report.envelope, finding),
-          findingIdentity(current.envelope, previous),
+          bounded ? previousIdentity : findingIdentity(current.envelope, previousIdentity),
         )) {
           throw new Error(`conflicting finding identity: ${finding.id}`);
         }
@@ -155,5 +168,10 @@ export function upsertTrackerFindings(markdown, reports, history = []) {
     }
   }
   lines.splice(table.end + 1, 0, ...rows);
-  return { markdown: lines.join(newline), inserted, updated };
+  const updatedMarkdown = lines.join(newline);
+  return {
+    markdown: bounded ? syncTrackerFindingHistory(updatedMarkdown, reports) : updatedMarkdown,
+    inserted,
+    updated,
+  };
 }

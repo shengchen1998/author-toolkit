@@ -31,6 +31,8 @@ Report concrete observations at real locations. In human-readable synthesis and 
 
 ## Collect and finish
 
+When the project has `evidence_retention.mode: "bounded"`, run `author-project` `evidence-retention --apply` only after the selected review chain and its references validate. Retain every source report reused by the current coverage index and every incomplete or recovery-linked chain. Never delete batches, backups, execution evidence, or manuscript through this cleanup.
+
 `collect` validates the review job and coverage before consolidating. Check the review ID, mode, scope, perspective, ordered source paths and hashes, every required unit, parent-child links, applicable syntheses, report envelopes, and finding IDs. For fresh, also verify one logical reviewer, strict unit order, and an unbroken chain of its own reader-state. Reject reports from another scope, perspective, source version, or reviewer chain as evidence for the missing coverage.
 
 Return a gap list and `partial` or `skipped` coverage when anything is missing. A perspective is complete only when every required unit and every applicable synthesis for that perspective is complete. `all` is complete only when this holds for intent, standards, and fresh under the same current scope and review mode. A consolidated report preserves all finding IDs, perspectives, and disagreements; it does not repair missing coverage or authorize edits.

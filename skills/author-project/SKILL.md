@@ -24,6 +24,7 @@ Accept one operation per invocation:
 | `record-findings` | Project root and one or more immutable report paths beneath the registered reports path | Validate and atomically insert or update finding rows while preserving author decisions |
 | `scaffold-report` | Project manifest, create-only report destination, human-readable body, and report v2 envelope | Default omitted findings to `findings: []`, validate the complete report before writing, and preserve existing reports |
 | `coverage-index` | Project manifest and one complete operation entry | Validate the referenced full local coverage units and reports, preserve other operations, and atomically update the living coverage index |
+| `evidence-retention` | Project root; optional operation; explicit enable and apply for migration | Preview bounded audit-evidence retention or migrate and apply it while protecting current and recovery references |
 | `review-brief` | Project root, living tracker, and optional output path | Regenerate every resolved and dismissed tracker decision with exact locations, reasons, and report paths; validate and atomically replace the disposable brief |
 | `set-pending` | Operation, status, scope ID, reason, and artifacts | Write the requested pending action without stage progression |
 | `record-scope` | Scope ID, description, ordered files with SHA-256 hashes, excluded files, and `proposed` or `confirmed` status | Record the current scope after the required author confirmation |

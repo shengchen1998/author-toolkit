@@ -25,7 +25,7 @@ Use `confidence: "judgment"` for editorial interpretation and `deterministic` on
 
 The scaffold runs the applicable report and evidence-semantic validation before writing and fails without a destination file. Run `node <setup-skill-root>/scripts/validate.mjs --report <report-path>` when an independent or historical report check is needed and retain the result in the session note. If the payload does not conform, record the operation as `blocked`; never emit a legacy payload as a substitute.
 
-Historical reports are immutable. Author decisions, stale marks, later locations, and rerun results go into the living tracker and new reports.
+Reports are immutable while retained. Author decisions, stale marks, later locations, and rerun results go into the living tracker and new reports. Projects without bounded evidence retention preserve historical reports; bounded projects retire only unreferenced superseded reports after migrating finding identities into the tracker.
 
 ## Finding identity across reruns
 
@@ -62,7 +62,7 @@ Reopen the finding as `open` only when the relevant quoted passage or location, 
 
 ## Living tracker
 
-After reconciling new observations with prior findings and decisions, run `author-project` with `record-findings` and the complete report set to batch upsert finding rows through the installed CLI. Do not hand-write batches of tracker rows. New IDs enter as `open`; a reused ID retains its status, author reason, and updated timestamp while its location and current report pointer change. Preserve historical reports and refresh the review brief when applicable. The CLI rejects duplicate report IDs and conflicting identities but does not replace semantic identity reconciliation.
+After reconciling new observations with prior findings and decisions, run `author-project` with `record-findings` and the complete report set to batch upsert finding rows through the installed CLI. Do not hand-write batches of tracker rows. New IDs enter as `open`; a reused ID retains its status, author reason, and updated timestamp while its location and current report pointer change. Preserve historical reports in the default mode and refresh the review brief when applicable. The CLI rejects duplicate report IDs and conflicting identities but does not replace semantic identity reconciliation.
 
 Use only these finding statuses:
 
@@ -106,7 +106,7 @@ Only the author can confirm a new scope or expand an existing one. New chapters 
 
 ## Stale propagation
 
-Apply stale state to the smallest affected dependency set. Keep old reports readable as historical evidence.
+Apply stale state to the smallest affected dependency set. Keep old reports readable as historical evidence in the default preserved mode. Bounded mode retires only unreferenced stale evidence through the retention transaction.
 
 | Change | Evidence to mark stale |
 |---|---|
@@ -156,6 +156,8 @@ On a nonzero strict result, do not claim the state, enter a strategy that requir
 If `reconcilable_count` is positive, preview and apply those named evidence files through `reconcile-executions`, then repeat strict status and the remaining conditions of that state. If it is zero and unverified approvals remain, stop repeating reconciliation. Present one author decision: locate additional preserved post-write evidence and rerun the audit, or end recovery for that scope with current-draft revision convergence explicitly not established. Record the decision and audit counts in the pending action and session, retaining `blocked` while no author decision is active and `awaiting_author` while the decision is open. A new scope, baseline, revision pass, request, or narrowed pass does not remove or waive this historical execution blocker; preserve every approval and the project-wide backup gate. An active increment's or request's own approved edits may stale its verified previous or base scope without rerunning that historical entry gate, but every new target-scope check for that state still requires strict status.
 
 ## Pending actions and session writes
+
+Record `- Operation: <operation>` in each session. In bounded projects, retain only the latest completed summary per operation after its replacement validates; keep unresolved, interrupted, and recovery-linked sessions. Never infer this cleanup from manuscript approval.
 
 The neutral manifest stores only the current scope and an optional shared pending action. A pending action records `operation`, `status`, `scope_id`, `reason`, `artifacts`, optional `artifact_index`, and `updated_at`; status is `in_progress`, `awaiting_author`, or `blocked`. It does not record which orchestration skill created it. Use `author-project set-pending` to retain at most eight inline artifacts and put longer complete lists in the linked pending artifact index. Legacy longer inline lists without an index remain valid.
 

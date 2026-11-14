@@ -764,6 +764,11 @@ updates `<paths.reports>/coverage-index.json` under the shared write lock.
 Semantic coverage, evidence reuse, and synthesis decisions remain with the
 active writing skill.
 
+`evidence-retention.mjs --help` describes optional bounded audit-evidence retention.
+Default projects preserve historical evidence. Explicit `--enable --apply` migrates
+finding identities into the tracker before deleting unreferenced superseded audit
+artifacts; manuscript, backups, batches, and execution evidence are never candidates.
+
 `range.mjs` resolves an author-supplied inline character range. Positions are
 1-based and inclusive, and characters count Unicode code points.
 

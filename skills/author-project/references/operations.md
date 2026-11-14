@@ -26,11 +26,13 @@ Whole-report evidence is reusable only when its operation, `scope_id`, every inp
 
 A full local coverage unit can also compose into an expanded scope through the living coverage index. Its original scope ID remains bound to the source report; reuse requires matching operation, exact paths and hashes, requested subchecks, and dependencies, while the new synthesis receives the new scope ID. Synthesis units never reuse this way.
 
-This evidence is shared by all five strategies. Read the latest tracker and reports before reuse, and preserve historical artifacts. Follow [`../../revise-fiction/references/state-and-findings.md`](../../revise-fiction/references/state-and-findings.md) for report identity, finding status, coverage units, and dependency-specific stale propagation. Creation evidence does not become chapter-revision evidence.
+This evidence is shared by all five strategies. Read the latest tracker and reports before reuse. Projects without `evidence_retention.mode: "bounded"` preserve historical artifacts. Bounded projects retire only validated, unreferenced audit evidence through the shared retention transaction; this never includes backups, write batches, creation records, or execution evidence. Follow [`../../revise-fiction/references/state-and-findings.md`](../../revise-fiction/references/state-and-findings.md) for report identity, finding status, coverage units, and dependency-specific stale propagation. Creation evidence does not become chapter-revision evidence.
 
 Before any manuscript write, reread the manifest and current scope, recompute every existing affected file's SHA-256 hash, require every create target to be absent, and require an exact match with the approved input batch. Stop when any path, presence, hash, approval, or dependency differs.
 
 ## Tracker and approvals
+
+The optional manifest `evidence_retention: { "mode": "bounded" }` selects bounded audit-evidence retention. Its absence preserves every historical artifact. Enabling requires an explicit author decision and one preview followed by `evidence-retention --enable --apply`; migration copies every finding identity into the tracker before deleting unreferenced old audit artifacts. Later coverage registration cleans replaced unreferenced evidence automatically. A pending action naming a superseded reference must first be refreshed through `set-pending`; never bypass it to delete recovery inputs.
 
 Use the registered shared tracker as the living index. Current scope and pending action live only in the manifest; read them through `author-project read` and `author-project status` rather than duplicating them in the tracker. Existing trackers may retain their historical summary lines: setup, initialization, and state-writing operations preserve those lines without treating them as current state. Its `Findings` section follows the shared state-and-findings rules. Its `Approvals` section uses these columns:
 
@@ -97,6 +99,12 @@ node <setup-skill-root>/scripts/coverage-index.mjs --manifest <project-root>/.au
 The command writes `<paths.reports>/coverage-index.json` with its top-level `scope_id`, `entries`, and `updated_at` fields. It replaces only the complete entry for the supplied operation and preserves the other recorded operations. The index requires a confirmed current scope; all unit and report paths stay beneath the registered reports path. The CLI validates every supplied full local coverage unit's schema, ID and operation identity, its source report, the synthesis report, and the complete result before a verified atomic replacement under the shared write lock. A reusable unit retains its original `scope_id`; the composed index records the target scope. The semantic skill establishes reuse before registration. The command rereads the manifest after acquiring the lock and stops on a concurrent change. An invalid entry or existing index, missing or mismatched artifact, duplicate operation or unit ID, or publication failure preserves the existing index.
 
 The semantic skill still decides whether units are reusable, which subchecks and dependencies are required, and whether actual full-target coverage exists. Registration validates declared identities and report structure, not semantic coverage, manuscript hash currency, review jobs, tracker findings, or current-draft revision convergence. Rerun `check --full` for selected-evidence validation and refresh the navigation cache after this logical shared-state operation. Argument errors exit 2; validation and filesystem failures exit 1.
+
+## Evidence retention
+
+Run `node <setup-skill-root>/scripts/evidence-retention.mjs --project-root <project-root> [--operation <operation>]` for a read-only preview. An unenabled project requires explicit `--enable --apply` after author confirmation. Once enabled, `--apply` removes only superseded audit reports, unreferenced coverage units, completed review chains, and closed session summaries. Current coverage, source and synthesis reports, tracker findings, full-check report roots, pending artifacts, incomplete review jobs, fresh reader-state, and recovery references are protected. Unknown or unreadable candidates fail closed. Cleanup runs under the shared write lock and returns deleted and failed paths; deletion failures never claim success.
+
+In bounded mode, the tracker `Finding history` table supplies retired finding identities for ID allocation and conflict checks. An optional manifest field never authorizes manuscript, backup, batch, creation, or restore deletion.
 
 ## Review brief
 

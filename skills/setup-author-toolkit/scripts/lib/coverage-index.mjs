@@ -7,6 +7,7 @@ import { validateMarkdownReport } from "./markdown.mjs";
 import { validateCoverageIndexSchema, validateCoverageUnitSchema, validateRelativePath } from "./schemas.mjs";
 import { withProjectWriteLock } from "./write-lock.mjs";
 import { validateManifest } from "./manifest.mjs";
+import { applyEvidenceRetention } from "./evidence-retention.mjs";
 
 function failure(instancePath, message) {
   return { instancePath, keyword: "coverage-registration", message, params: {} };
@@ -188,6 +189,9 @@ export async function updateCoverageIndex({ projectRoot, manifestPath, manifest,
     const destination = path.resolve(projectRoot, indexPath);
     await mkdir(path.dirname(destination), { recursive: true });
     await writeJsonAtomic(destination, index);
+    const retention = manifest.evidence_retention?.mode === "bounded"
+      ? await applyEvidenceRetention({ projectRoot, operation: entryResult.entry.operation, locked: true, pendingEntry: entryResult.entry, pendingUpdatedAt: updatedAt })
+      : null;
     return {
       path: indexPath,
       operation: entryResult.entry.operation,
@@ -197,6 +201,11 @@ export async function updateCoverageIndex({ projectRoot, manifestPath, manifest,
       synthesis_coverage: entryResult.entry.synthesis_coverage,
       operation_count: index.entries.length,
       updated_at: updatedAt,
+      evidence_retention: retention ? {
+        deleted_count: retention.deleted_count,
+        failed_count: retention.failures.length,
+        valid: retention.valid,
+      } : null,
     };
   });
 }

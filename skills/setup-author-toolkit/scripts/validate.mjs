@@ -205,16 +205,20 @@ async function main() {
         tracker = await readFile(path.resolve(projectRoot, manifest.paths.audit_tracker), "utf8");
       }
       const history = [];
+      let bounded = false;
       if (selection.manifests.length === 1) {
         const manifestFile = selection.manifests[0];
         const manifest = await readJson(manifestFile);
+        bounded = manifest.evidence_retention?.mode === "bounded";
         const projectRoot = projectRootFromManifest(manifestFile);
         history.push(...await reportFindingIdentities(projectRoot, manifest.paths.reports));
         for (const report of reportInputs) {
           report.path = path.relative(projectRoot, report.path).replaceAll(path.sep, "/");
         }
       }
-      const result = validateFindingBatch(identityReports, tracker, history);
+      const result = validateFindingBatch(identityReports, tracker, history, {
+        bounded,
+      });
       for (const file of selection.reports) {
         const reportPath = selection.manifests.length === 1
           ? path.relative(projectRootFromManifest(selection.manifests[0]), file).replaceAll(path.sep, "/")

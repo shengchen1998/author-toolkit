@@ -10,6 +10,7 @@ import {
   projectRootFromManifest,
   trackerFindingRows,
   upsertTrackerFindings,
+  trackerFindingHistory,
   validateManifest,
   validateTrackerV3Markdown,
   validateTrackerFindingIds,
@@ -74,11 +75,13 @@ async function main() {
   const trackerValidation = validateTrackerFindingIds(tracker);
   if (!trackerValidation.valid) throw new Error(trackerValidation.errors.map((error) => error.message).join("; "));
   const history = await reportFindingIdentities(projectRoot, manifest.paths.reports);
+  const bounded = manifest.evidence_retention?.mode === "bounded";
 
   if (operation === "next-finding-id") {
     const occupied = [
       ...trackerFindingRows(tracker).map((row) => row.id),
       ...history.flatMap((report) => report.envelope.findings.map((finding) => finding.id)),
+      ...(bounded ? trackerFindingHistory(tracker).map((finding) => finding.id) : []),
     ];
     console.log(JSON.stringify({ ids: allocateFindingIds(prefix, occupied, selection.count ?? 1) }, null, 2));
     return;
@@ -92,7 +95,7 @@ async function main() {
     }
     reports.push(report);
   }
-  const result = upsertTrackerFindings(tracker, reports, history);
+  const result = upsertTrackerFindings(tracker, reports, history, { bounded });
   const validation = await validateTrackerV3Markdown(result.markdown, projectRoot);
   if (!validation.valid) throw new Error(validation.errors.map((error) => error.message).join("; "));
   const temporary = `${trackerPath}.${process.pid}.tmp`;

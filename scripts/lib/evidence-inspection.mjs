@@ -3,6 +3,7 @@ import path from "node:path";
 
 import { validateCoverageIndex } from "./artifacts.mjs";
 import { reportFindingIdentities, validateFindingBatch } from "./findings.mjs";
+import { trackerHistoryAsReports, validateTrackerFindingHistory } from "./tracker-history.mjs";
 import { extractReportEnvelope, validateEvidenceReport, validateMarkdownReport } from "./markdown.mjs";
 import { projectRootFromManifest } from "./project-files.mjs";
 import { validateReviewBrief } from "./review-brief.mjs";
@@ -11,7 +12,7 @@ import { validateCoverageUnitSchema, validateRelativePath } from "./schemas.mjs"
 
 const evidenceStages = new Set(["draft-baseline", "diagnostics", "current-scope-review"]);
 
-async function projectJobFiles(projectRoot, manifest) {
+export async function projectJobFiles(projectRoot, manifest) {
   const sessionsRoot = validateRelativePath(manifest.paths.sessions).valid
     ? path.resolve(projectRoot, manifest.paths.sessions)
     : path.join(projectRoot, manifest.paths.sessions);
@@ -21,9 +22,9 @@ async function projectJobFiles(projectRoot, manifest) {
   ];
 }
 
-export async function selectProjectReviewJobs(projectRoot, manifest, selectedScopeId) {
+export async function readProjectReviewJobs(projectRoot, manifest, selectedScopeId) {
   const jobFiles = await projectJobFiles(projectRoot, manifest);
-  const jobsByGroup = new Map();
+  const jobs = [];
   for (const file of jobFiles) {
     const relativePath = path.relative(projectRoot, file).replaceAll(path.sep, "/");
     let job;
@@ -39,14 +40,22 @@ export async function selectProjectReviewJobs(projectRoot, manifest, selectedSco
         typeof job.perspective !== "string" || job.scope_id !== selectedScopeId || !Array.isArray(job.chunks) ||
         !Array.isArray(job.volumes)) continue;
     if (typeof job.perspective === "string" && typeof job.mode === "string") {
-      const group = `${job.mode}\0${job.perspective}`;
       const record = { ...job, path: relativePath };
-      const previous = jobsByGroup.get(group);
-      if (!previous || latest(record, previous) === record) jobsByGroup.set(group, record);
+      jobs.push(record);
     }
   }
-  return [...jobsByGroup.values()].sort((left, right) =>
+  return jobs.sort((left, right) =>
     left.mode.localeCompare(right.mode) || left.perspective.localeCompare(right.perspective));
+}
+
+export async function selectProjectReviewJobs(projectRoot, manifest, selectedScopeId) {
+  const jobsByGroup = new Map();
+  for (const record of await readProjectReviewJobs(projectRoot, manifest, selectedScopeId)) {
+    const group = `${record.mode}\0${record.perspective}`;
+    const previous = jobsByGroup.get(group);
+    if (!previous || latest(record, previous) === record) jobsByGroup.set(group, record);
+  }
+  return [...jobsByGroup.values()];
 }
 
 function failure(message) {
@@ -239,14 +248,23 @@ export async function inspectProjectEvidence(manifest, manifestPath, { scopeId, 
       latestByAudit.set(key, record);
     }
   }
-  for (const record of latestByAudit.values()) linkedReports.add(record.path);
+  for (const record of latestByAudit.values()) {
+    const stage = record.envelope.stage;
+    if (manifest.evidence_retention?.mode !== "bounded" || !["prose", "ai-cleanup", "current-scope-review"].includes(stage)) {
+      linkedReports.add(record.path);
+    }
+  }
   if (latestReport) linkedReports.add(latestReport.path);
   for (const relativePath of [...linkedReports].sort()) {
     if (typeof relativePath === "string") await readReport(relativePath, true);
   }
 
   const history = await reportFindingIdentities(projectRoot, manifest.paths.reports);
-  const identities = validateFindingBatch(reportRecords, tracker, history);
+  const bounded = manifest.evidence_retention?.mode === "bounded";
+  const identities = validateFindingBatch(reportRecords, tracker, bounded ? trackerHistoryAsReports(tracker) : history, { bounded });
+  if (bounded) {
+    check("tracker#finding-history", validateTrackerFindingHistory(tracker, reportRecords));
+  }
   const reportIds = new Map();
   for (const record of history) {
     if (reportIds.has(record.envelope.report_id)) {

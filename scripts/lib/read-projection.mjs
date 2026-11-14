@@ -46,6 +46,7 @@ export async function manifestProjection(manifest, projectRoot, { diagnostic = f
     project_type: manifest.project_type,
     language: manifest.language,
     manuscript_root: manifest.manuscript_root,
+    evidence_retention: manifest.evidence_retention ?? { mode: "preserved" },
     paths: manifest.paths,
     current_scope: manifest.current_scope
       ? {

@@ -495,6 +495,10 @@ node scripts/range.mjs --project-root /path/to/writing-project "manuscript/1.md:
 `scaffold-report.mjs --help` 说明不可覆盖的共享报告生成命令. 它在未提供 `findings` 字段时
 补充 `findings: []`, 并在发布前校验完整报告; 不推断复核发现项, 实际覆盖度, 输入哈希或综合报告依赖.
 
+`evidence-retention.mjs --help` 说明可选的有界证据保留. 默认项目保留所有历史证据.
+只有显式 `--enable --apply` 才迁移发现项身份并删除无引用的旧审计产物;
+正文、备份、写入批次和执行证据永不进入删除候选.
+
 `review-brief.mjs --help` 说明确定性的复核决定摘要生成命令. 它保留 tracker 中每个 resolved
 和 dismissed 发现项的实际位置, 完整决定原因和报告路径, 校验完整结果后原子替换摘要.
 

@@ -12,6 +12,13 @@ export {
 } from "./execution-receipts.mjs";
 export { explainBackupIndex } from "./backup-index-diagnostics.mjs";
 export { inspectProjectEvidence } from "./evidence-inspection.mjs";
+export { readProjectReviewJobs, selectProjectReviewJobs } from "./evidence-inspection.mjs";
+export {
+  syncTrackerFindingHistory,
+  trackerFindingHistory,
+  trackerHistoryAsReports,
+  validateTrackerFindingHistory,
+} from "./tracker-history.mjs";
 export { auditExecutionRecovery } from "./execution-recovery.mjs";
 export {
   completeWrite,

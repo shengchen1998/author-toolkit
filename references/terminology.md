@@ -97,7 +97,9 @@ Independent skills keep their craft vocabularies. Register a craft term here bef
 | `Story Bible` | 故事圣经 | Noun | The record of author intent. Observed manuscript facts and Story Bible intent remain distinct when they conflict. | |
 | `dependency fingerprint` | 依赖指纹 | Noun | The SHA-256 identity of a creation plan, selected context, and file inputs. It determines whether staged content still matches its included dependencies. | |
 | `input version` | 输入版本 | Noun | The declared content identity of an input, normally a SHA-256 hash for current manuscript. A schema-valid artifact does not prove that its input version is current. | |
-| `immutable report` | 不可变报告 | Noun | A historical report preserved without rewrite. Later decisions and reruns create living tracker updates and new reports. | |
+| `immutable report` | 不可变报告 | Noun | A retained report preserved without rewrite. Later decisions and reruns create living tracker updates and new reports. Explicit bounded retention can delete superseded unreferenced reports without modifying them. | |
+| `bounded evidence retention` | 有界证据保留 | Noun | An explicitly enabled project policy that retires superseded, unreferenced audit evidence after current references and finding identities validate. It never deletes manuscript, backups, write batches, creation records, or execution evidence. | |
+| `finding history` | 发现项历史 | Noun | The living tracker identity record that allows bounded retention to allocate and reconcile finding IDs after an unreferenced report is retired. | |
 | `report scaffold` | 报告脚手架 | Noun | The deterministic `scaffold-report` transaction that supplies `findings: []` when that field is omitted, validates the complete report v2 before writing, and publishes it create-only beneath the registered reports path. It does not infer findings, actual coverage, input currency, or synthesis dependencies. | |
 | `living artifact` | 持续更新产物 | Noun | An artifact intentionally updated as shared project state changes, such as the tracker, coverage index, or story state. Historical reports and accepted batches are not living artifacts. | |
 | `navigation cache` | 导航缓存 | Noun | The generated `PROJECT_STATE.md` index of pointers to the current scope, pending action, current-scope execution evidence, active plan, latest session and report, coverage-index syntheses, selected review jobs, and next action. It is disposable and regenerated through `author-project status --digest` after complete project validation. Its UTC timestamp and generation-time validation result do not establish current health, evidence currency, an execution gate, or current-draft revision convergence; rerun preflight before reuse. Preflight marks older formats and caches invalidated by failed checks stale and withholds their recorded route. A new cache withholds a dependent route when strict execution would fail; otherwise the recorded next action remains unevaluated by strategy gates. The manifest, tracker, and current evidence remain authoritative. It grants no approval and does not replace evidence reading. | |
@@ -136,6 +138,8 @@ Use these identifiers exactly in pending actions and their permitted artifact co
 | `milestone-review` | 里程碑复核 | Summarize and check an author-selected volume or story phase. It is not final review or current-scope review. |
 
 ## Contract values
+
+| Evidence retention `mode` | `preserved`: preserve every historical artifact; `bounded`: retire only validated unreferenced audit artifacts after explicit project opt-in. |
 
 Machine values remain English and case-sensitive. Qualify a value by its artifact and field when natural-language context could make it ambiguous.
 

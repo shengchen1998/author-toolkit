@@ -87,6 +87,8 @@ Run `node scripts/review-brief.mjs --project-root DIR [--tracker PATH] [--out PA
 
 Run `node scripts/coverage-index.mjs --manifest FILE --entry FILE [--updated-at TIMESTAMP] [--json]` to register one complete operation entry in the living coverage index. It validates the full local coverage units, source and synthesis reports, confirmed current scope, and complete index before a verified atomic replacement under the shared write lock; other operations are preserved. The semantic skill supplies coverage, reuse, and synthesis decisions. Argument errors exit 2; validation and filesystem failures exit 1.
 
+Run `node scripts/evidence-retention.mjs --project-root DIR [--operation ID] [--enable --apply]` for explicitly bounded audit-evidence retention. First migration requires `--enable --apply`; current and recovery references are protected. Backups, batches, creation records, execution evidence, and manuscript are never candidates.
+
 Generate the bounded, disposable `PROJECT_STATE.md` navigation cache for a valid v3.1 project:
 
 ```bash
@@ -190,7 +192,7 @@ Release metadata lives in `package.json`; inspect it when changing versions.
 - Write the creation commit journal before touching manuscript content. Publish each file through a verified temporary sibling and atomic rename, updating the journal after every transition. The journal coordinates files; it is not a multi-file filesystem transaction. Interrupted publication stops for an explicit author decision.
 - Restores require separate approval naming the backup or creation commit and exact files, plus a safety backup of current content. Move files created by the restored batch into that safety backup before removing them. Edit or creation approval is not restore approval.
 - Use `creation-import` to reconcile externally added, modified, deleted, or reordered manuscript. Report changed inputs instead of silently refreshing scope hashes, story state, or stale evidence.
-- Preserve historical reports, findings, approvals, creation batches, commit journals, backups, and migration snapshots. Record later decisions in living state, the tracker, and new reports. Handoffs contain paths, IDs, approved decision summaries, and next actions, not manuscript excerpts, Story Bible content, draft baselines, reader-state content, or full findings.
+- Preserve historical findings, approvals, creation batches, commit journals, backups, and migration snapshots. Default projects preserve historical reports; explicitly bounded projects retire only validated unreferenced audit artifacts through the retention transaction, with finding identities retained in the tracker. Record later decisions in living state, the tracker, and new reports. Handoffs contain paths, IDs, approved decision summaries, and next actions, not manuscript excerpts, Story Bible content, draft baselines, reader-state content, or full findings.
 - Git is optional for writing projects and does not replace toolkit backups or commit journals. Setup does not alter Git configuration or `.gitignore`.
 
 ## Verification and repository conventions

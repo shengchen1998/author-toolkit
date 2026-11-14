@@ -23,6 +23,14 @@
     "project_type": { "const": "fiction" },
     "language": { "$ref": "#/$defs/language" },
     "manuscript_root": { "$ref": "relative-path-schema.json" },
+    "evidence_retention": {
+      "type": "object",
+      "required": ["mode"],
+      "additionalProperties": false,
+      "properties": {
+        "mode": { "enum": ["preserved", "bounded"] }
+      }
+    },
     "paths": {
       "type": "object",
       "required": [

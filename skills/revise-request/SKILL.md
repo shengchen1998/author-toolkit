@@ -60,7 +60,7 @@ Use the shared [Current-draft revision convergence](../revise-fiction/references
 
 At every author gate, follow the [Author decision loop](../revise-fiction/references/state-and-findings.md). Before manuscript changes, read `<setup-skill-root>/assets/references/context-fit.md` and complete its check before presenting an edit proposal. Show the exact operation, request, full-manuscript target scope, work-set paths, actions, input versions, exact candidates, and checked local context. Record explicit approval in the shared tracker, then run `author-project` with `record-backup` for every affected file and approval ID. Run `complete-write` with the exact approved content to publish it, preserve evidence, and record the execution receipt in one invocation; an interrupted batch has no execution receipt until reconciliation and remains unverified. Restore requires separate explicit approval and a safety backup.
 
-Before writing any report or changing finding or approval status, read [`../revise-fiction/references/state-and-findings.md`](../revise-fiction/references/state-and-findings.md). Validate newly written reports and artifacts with the installed validator and preserve historical evidence.
+Before writing any report or changing finding or approval status, read [`../revise-fiction/references/state-and-findings.md`](../revise-fiction/references/state-and-findings.md). Validate newly written reports and artifacts with the installed validator; preserve historical evidence by default or retire only unreferenced audit artifacts under the explicitly enabled bounded policy.
 
 ## Strategy switching and shared state
 

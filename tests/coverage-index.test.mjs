@@ -77,6 +77,7 @@ test("coverage index CLI registers and replaces complete operation entries atomi
     synthesis_coverage: "full",
     operation_count: 2,
     updated_at: timestamp,
+    evidence_retention: null,
   });
   const indexPath = path.join(projectRoot, "reports/coverage-index.json");
   const first = JSON.parse(await readFile(indexPath, "utf8"));
