@@ -393,6 +393,12 @@ no manuscript revision is requested, `revision-plan` and `chapter-revision` may
 be skipped with the reason recorded. A direct entry or narrowed requested pass
 does not by itself establish current-draft revision convergence.
 
+Within a shared `prose` operation, selected audits 1-18 still run one at a time.
+After a validated fully covered clean report is persisted with its local evidence
+and run index, the next selected audit starts without an empty confirmation.
+Findings, incomplete or degraded applicable coverage, input changes, and approval
+needs retain their gates. The final selected audit still stops at the `prose` gate.
+
 ### `revise-increment`: revision after incremental creation
 
 Use this entry when the previous scope has reached current-draft revision

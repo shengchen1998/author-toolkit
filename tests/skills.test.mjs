@@ -541,6 +541,62 @@ test("revision strategies share one project and keep distinct evidence gates", a
   assert.match(draft, /normally confirmation of the proposed scope/);
 });
 
+test("shared prose advances clean audits without weakening author gates", async () => {
+  const [prose, reporting, fictionGates, draftGates, increment, chineseRules, adapter] =
+    await Promise.all([
+      readFile(path.join(root, "skills/prose-mechanics/SKILL.md"), "utf8"),
+      readFile(path.join(root, "references/workflow-reporting.md"), "utf8"),
+      readFile(path.join(root, "skills/revise-fiction/references/stage-gates.md"), "utf8"),
+      readFile(path.join(root, "skills/revise-draft/references/stage-gates.md"), "utf8"),
+      readFile(path.join(root, "skills/revise-increment/SKILL.md"), "utf8"),
+      readFile(path.join(root, "skills/prose-mechanics/references/chinese-rules.md"), "utf8"),
+      readFile(path.join(root, "skills/prose-mechanics/references/avoid-ai-writing-adapter.md"), "utf8"),
+    ]);
+  const continuation = prose.split("### Shared clean-audit continuation\n")[1]?.split("\n## Common Mistakes")[0];
+  assert.ok(continuation, "shared prose has one clean-audit continuation contract");
+
+  for (const strategy of ["revise-fiction", "revise-draft", "revise-increment", "revise-request"]) {
+    assert.match(continuation, new RegExp(`\`${strategy}\``));
+    const entry = await readFile(path.join(root, `skills/${strategy}/SKILL.md`), "utf8");
+    assert.match(entry, /Clean-audit continuation|clean-audit continuation/);
+  }
+  for (const gates of [fictionGates, draftGates]) {
+    assert.match(gates, /following its shared clean-audit continuation rule/);
+  }
+
+  assert.match(continuation, /selected audits 1-18/);
+  assert.match(continuation, /does not apply to standalone audits, audit 19, or `ai-cleanup`/);
+  assert.match(continuation, /every unit of the agreed scope/);
+  assert.match(continuation, /`findings: \[\]`/);
+  assert.match(continuation, /`operation_coverage=full`/);
+  assert.match(continuation, /`engine\.degraded=false`/);
+  assert.match(continuation, /language-inapplicable subchecks/);
+  assert.match(continuation, /requested applicable coverage that is partial or skipped is not clean/);
+  assert.match(continuation, /Validate and publish the report/);
+  assert.match(continuation, /index the run in the tracker before continuing/);
+  assert.match(continuation, /without presenting an empty report template or asking whether to continue/);
+  assert.match(continuation, /Continue automatically only within the author-selected audit queue/);
+  assert.match(continuation, /Stop when the author pauses/);
+  assert.match(continuation, /partial, skipped, degraded, or failed/);
+  assert.match(continuation, /retain every current matching unit accumulated for the target scope/);
+  assert.match(continuation, /Generate the complete full-target synthesis only after the selected queue finishes/);
+  assert.match(continuation, /stop at the `prose` operation gate/);
+  assert.match(continuation, /Historical findings do not block/);
+  assert.match(continuation, /Findings returned by the current audit stop the queue/);
+  assert.match(continuation, /before requesting confirmation to enter the next audit/);
+  assert.match(continuation, /`pending_action\.operation=prose`/);
+  assert.match(continuation, /`pending_action\.status=in_progress`/);
+  assert.match(continuation, /resume by validating reusable evidence before the first unfinished selected audit/);
+
+  assert.match(prose, /Standalone work waits for the author's next request/);
+  assert.match(prose, /In standalone work, stop at it and wait for the author/);
+  assert.match(prose, /Do not start the next audit without confirmation/);
+  assert.match(chineseRules, /等待作者决定后再修改/);
+  assert.match(adapter, /Do not route through `prose-mechanics`/);
+  assert.match(reporting, /do not create an author gate solely to ask whether to continue after a clean audit/);
+  assert.match(increment, /retain every accumulated matching unit/);
+});
+
 test("revision plans separate decisions from exact write approvals", async () => {
   const [state, template, fictionGates, draftGates, operations] = await Promise.all([
     readFile(path.join(root, "skills/revise-fiction/references/state-and-findings.md"), "utf8"),

@@ -7,7 +7,7 @@
     },
     {
       "path": "assets/AGENTS.md",
-      "sha256": "a43c0ef256be4302b0d0204b8287e4a4e40bdb8587dbecba5d99d92744ec50fc"
+      "sha256": "a28671ee0f1d36d0c3a034aae4120960185b3327f822299514ab6f3481bb9033"
     },
     {
       "path": "assets/START_HERE.md",
@@ -95,7 +95,7 @@
     },
     {
       "path": "assets/references/workflow-reporting.md",
-      "sha256": "8887892ae29947d1bed4cb682a0a5e3f9bd54a6822db2be37c541ef5e10b8cf1"
+      "sha256": "952cbcdccf0606f16876cb65a4d85a0aab3a6c1d16c7a7957973e89f58559503"
     },
     {
       "path": "assets/setup/existing-project.md",

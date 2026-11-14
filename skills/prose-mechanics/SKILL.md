@@ -5,7 +5,7 @@ description: "Use when auditing prose at the sentence level on stabilized drafts
 
 # Prose Mechanics
 
-Diagnostic audits for sentence-level prose quality on near-final drafts. Each audit is a focused pass that produces a flagged-issues report; the author reviews and applies fixes before moving to the next audit. Works for fiction or nonfiction.
+Diagnostic audits for sentence-level prose quality on near-final drafts. Each audit is a focused pass that produces a flagged-issues report; the author reviews and applies fixes before moving to the next audit. Shared revision workflows automatically advance past a fully covered clean audit under the workflow rule below. Works for fiction or nonfiction.
 
 ## Session Continuity
 
@@ -95,13 +95,25 @@ For each audit:
    - Why it was flagged (which detection pattern matched)
    - A suggested fix or two—not a mandate, just options
 
-4. **Stop. Wait for author review.** Do not apply fixes automatically. The author decides which flags are real and which are stylistic choices.
+4. **Review the result.** Do not apply fixes automatically. When the report contains findings, stop for author review; the author decides which flags are real and which are stylistic choices. In workflow mode, apply the clean-audit continuation rule below instead of requesting an empty confirmation.
 
 5. **Apply approved fixes:** In workflow mode, return the approved file list to `revise-fiction`, `revise-draft`, `revise-increment`, or `revise-request` and wait for its backup confirmation before editing. The orchestrator records every backup through `author-project`. Use targeted text edits only on confirmed flags and record the resulting backup IDs in the session note.
 
 6. **Update the tracker:** Index the report and update each finding's review status. Keep full finding details in the report.
 
-7. **Wait for the next request.** The author explicitly starts the next audit or asks the orchestrator to continue.
+7. **Finish or continue:** Standalone work waits for the author's next request. Shared revision work follows the clean-audit continuation rule and otherwise waits at the current audit's author gate.
+
+### Shared clean-audit continuation
+
+This rule applies only when `revise-fiction`, `revise-draft`, `revise-increment`, or `revise-request` supplies workflow context for selected audits 1-18. It does not apply to standalone audits, audit 19, or `ai-cleanup`.
+
+1. Finish the current audit over every unit of the agreed scope before starting another audit. Keep audits sequential and produce a separate immutable report for each one; do not interleave per-file passes from different audits or merge their reports.
+2. A clean audit has `findings: []`, `operation_coverage=full`, full applicable language coverage, and `engine.degraded=false`. Documented language-inapplicable subchecks may remain explicitly `skipped` with their reasons; requested applicable coverage that is partial or skipped is not clean.
+3. Validate and publish the report, persist its full local coverage units, and index the run in the tracker before continuing. A clean report adds no finding decision and needs no manuscript approval, backup, or execution receipt. Report `0 findings` and the next audit briefly without presenting an empty report template or asking whether to continue.
+4. Continue automatically only within the author-selected audit queue. Before each next audit, recheck the confirmed scope, input hashes, dependencies, structural stability or override, and unresolved write or commit interruptions. Stop when the author pauses, an applicable check is partial, skipped, degraded, or failed, or any of those prerequisites differs.
+5. When updating the living `prose` coverage entry, retain every current matching unit accumulated for the target scope, including units from earlier audits and reusable unchanged paths. Do not replace earlier units with only the latest audit's units. Until all selected audits finish, keep synthesis coverage partial or unrecorded rather than claiming a full-target synthesis. Generate the complete full-target synthesis only after the selected queue finishes, then stop at the `prose` operation gate.
+6. Historical findings do not block an otherwise clean current audit. Findings returned by the current audit stop the queue for the author decision loop. After any approved fixes, complete the required decisions, approvals, backups, execution receipts, and stale propagation before requesting confirmation to enter the next audit; a later clean audit cannot close that earlier gate.
+7. During automatic continuation, keep `pending_action.operation=prose` and `pending_action.status=in_progress`. At a clean audit boundary, record the selected queue, completed audit, and exact next audit in the pending reason and session note. If context is exhausted or execution is interrupted, finish the current report and state writes when possible, preserve the same pending operation, and resume by validating reusable evidence before the first unfinished selected audit. Use `awaiting_author` for a finding or other author decision and `blocked` for a concrete blocker, not for an ordinary context handoff.
 
 ## Common Mistakes
 
@@ -132,7 +144,7 @@ Use these checkpoints to verify you're running audits correctly.
 **After producing the report:**
 - [ ] Can the author act on each flag without re-reading the audit reference?
 - [ ] Did you include a short excerpt and a suggested fix for each flag?
-- [ ] Did you stop and wait for review rather than continuing to the next audit?
+- [ ] For a report with findings, did you stop for review? For a clean shared-workflow audit, did you meet every continuation condition?
 
 **After applying fixes:**
 - [ ] Did you use targeted text edits for surgical changes only?
@@ -140,21 +152,21 @@ Use these checkpoints to verify you're running audits correctly.
 - [ ] Did you update the tracker before ending the session?
 
 **Before moving to the next audit:**
-- [ ] Is the current audit's flags fully resolved (applied, dismissed, or deferred with a note)?
-- [ ] Have you confirmed the author wants to proceed?
+- [ ] Is the current audit clean and eligible for automatic continuation, or are its flags fully resolved with confirmation to proceed?
+- [ ] For standalone work or a completed audit with findings, have you confirmed the author wants to proceed?
 
 If you answered "no" to any checkpoint, stop and resolve it before continuing.
 
 ## Stopping Points
 
-Each audit has a defined end. Stop at it. Do not auto-advance to the next audit, do not silently expand the audit's lens, do not apply fixes without explicit author confirmation.
+Each audit has a defined end. In standalone work, stop at it and wait for the author. In shared revision work, follow the clean-audit continuation rule without expanding the audit's lens or applying fixes without explicit author confirmation.
 
 | Tool / Phase | Stop when... | Then |
 |--------------|--------------|------|
-| **Active/Passive audit** | Flagged-issues report for the requested scope is delivered | Wait for author review. Do not apply fixes. Do not start the next audit. |
-| **Parallel Structure audit** | Flagged-issues report is delivered | Same as above. Do not roll forward into variance. |
-| **Sentence Length Variance audit** | Flagged-issues report is delivered (with std-dev numbers and flagged runs) | Wait. Variance fixes ripple, so confirmation matters. |
-| **Readability audit** | Flagged-issues report is delivered (with FK grade, paragraph-length, jargon flags) | Wait. Don't pivot into developmental editing if structural concerns surface—surface them and stop. |
+| **Active/Passive audit** | Flagged-issues report for the requested scope is delivered | Findings wait for author review. A clean shared-workflow result follows the continuation rule. Do not apply fixes automatically. |
+| **Parallel Structure audit** | Flagged-issues report is delivered | Same as above; never merge the pass into variance. |
+| **Sentence Length Variance audit** | Flagged-issues report is delivered (with std-dev numbers and flagged runs) | Findings wait. Variance fixes ripple, so confirmation matters. |
+| **Readability audit** | Flagged-issues report is delivered (with FK grade, paragraph-length, jargon flags) | Findings wait. Don't pivot into developmental editing if structural concerns surface—surface them and stop. |
 | **Approved-fixes pass** | All author-confirmed flags resolved via targeted text edits | Update the tracker. Do not start the next audit without confirmation. |
 | **Audit sequence** | Author defers, OR a later audit reveals the manuscript needs structural work | Stop. Note in tracker. Recommend the author switch to `fiction-workshop` or `narrative-nonfiction` for the structural pass. |
 | **Session** | Stopping point reached or context window is filling | Update `audit-tracker.md`; write a `sessions/` note; stop. |

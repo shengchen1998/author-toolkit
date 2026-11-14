@@ -38,7 +38,7 @@ For each diagnostic callee, supply the operation identifier, destination report 
 | `ai-cleanup` | Follow `<setup-skill-root>/assets/references/avoid-ai-writing-adapter.md` |
 | `final-review` | `author-review` with `review_mode=final` |
 
-Honor each callee's stopping point. A pause within an operation ends with the same operation `awaiting_author`; the author can then continue it.
+Honor each callee's stopping point. A pause for an author decision within an operation ends with the same operation `awaiting_author`; the author can then continue it. Sequential clean-audit continuation inside `prose` remains part of that operation, not an automatic transition to another operation.
 
 ## Approval and backup gate
 

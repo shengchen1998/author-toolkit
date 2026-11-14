@@ -150,7 +150,7 @@ The canonical manifest is `<project-root>/.author-toolkit/project.json`. A v3.1 
 
 Resolve artifacts through the manifest's registered `paths`, including custom report, backup, handoff, and creation locations. New manifests default backups, handoffs, and creation beneath `.author-toolkit/`; existing projects may retain registered locations. All strategies share the manifest, tracker, reports, sessions, backups, handoffs, and creation state. Switching at a stable operation gate requires no second project tree or shared-state reset and does not authorize a pending write.
 
-Read the strategy's `SKILL.md` and `references/stage-gates.md` before changing its operation sequence or author gates. Run one evidence-gated operation at a time and stop at its author gate.
+Read the strategy's `SKILL.md` and `references/stage-gates.md` before changing its operation sequence or author gates. Run one evidence-gated operation at a time and stop at its author gate. Selected prose audits 1-18 are subchecks within one `prose` operation; a validated fully covered clean audit advances sequentially under `prose-mechanics` without an empty author confirmation, while findings and operation transitions retain their gates.
 
 ### Creation, evidence, and review
 
