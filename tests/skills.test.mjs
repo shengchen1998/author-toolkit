@@ -306,6 +306,7 @@ test("setup and routine navigation keep operational history listings bounded", a
   assert.match(newSetup, /at most 12 candidate manuscript paths with an omitted count/);
   assert.match(newSetup, /recursive historical regular-file counts without historical artifact paths/);
   assert.match(newSetup, /Run `node <setup-skill-root>\/scripts\/inspect-root\.mjs --project-root <project-root> --json`/);
+  assert.match(newSetup, /Use its entry-file results directly rather than pre-reading those files/);
   assert.match(newSetup, /do not enumerate historical artifact trees/);
   assert.doesNotMatch(existingSetup, /inspect-root\.mjs/);
 
