@@ -24,6 +24,19 @@ test("the default CLI validates every shipped schema and example", () => {
   assert.match(result.stdout, /fiction-revision-zh\/reports\/structure/);
 });
 
+test("the CLI displays absolute paths for explicitly selected files", () => {
+  const directory = path.join(root, "examples", "fiction-revision-zh");
+  const manifest = path.join(directory, ".author-toolkit", "project.json");
+  const report = path.join(directory, "reports", "structure", "2026-01-17_structure.md");
+  const result = runValidator(["--manifest", manifest, "--report", report]);
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.ok(result.stdout.includes(`ok - ${manifest}\n`), result.stdout);
+  assert.ok(result.stdout.includes(`ok - ${report}\n`), result.stdout);
+  assert.ok(result.stdout.includes(`ok - ${report}#finding-identity\n`), result.stdout);
+  assert.doesNotMatch(result.stdout, /ok - (?:\.\.\/|examples\/)/);
+});
+
 test("the CLI exits nonzero for an invalid manifest and invalid Markdown", async (t) => {
   const output = path.join(root, ".test-output");
   await mkdir(output, { recursive: true });

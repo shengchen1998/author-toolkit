@@ -339,7 +339,7 @@
     },
     {
       "path": "scripts/validate.mjs",
-      "sha256": "e43512ac55a029022b069ac30b9e43dbf10765500d5fd546852c7b2f3a6d688d"
+      "sha256": "1050de2533d3c0336910ea44fb0a86d682b5dc87e03d52a901eef1d7a79cb3d7"
     },
     {
       "path": "scripts/writes.mjs",

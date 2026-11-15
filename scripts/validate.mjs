@@ -127,6 +127,7 @@ async function main() {
   const useDefaults = Object.entries(selection).every(
     ([key, files]) => key === "help" || files.length === 0,
   );
+  const displayPath = (file) => useDefaults ? path.relative(root, file) : file;
 
   let checks = 0;
   let failures = 0;
@@ -157,7 +158,7 @@ async function main() {
     const inspection = await inspectProjectManifest(file);
     for (const result of inspection.checks) {
       const suffix = result.path === "manifest" ? "" : `#${result.path}`;
-      check(`${path.relative(root, file)}${suffix}`, result);
+      check(`${displayPath(file)}${suffix}`, result);
       if (result.unsupported) {
         console.error(
           "  unsupported project detected; only v3.1 fiction manifests are supported",
@@ -174,10 +175,10 @@ async function main() {
       const needsEvidence = ["draft-baseline", "diagnostics", "current-scope-review"].includes(
         parsed.envelope?.stage,
       );
-      check(path.relative(root, file), needsEvidence ? validateEvidenceReport(markdown) : parsed);
+      check(displayPath(file), needsEvidence ? validateEvidenceReport(markdown) : parsed);
       if (parsed.envelope) reportInputs.push({ path: file, envelope: parsed.envelope });
     } catch (error) {
-      check(path.relative(root, file), {
+      check(displayPath(file), {
         valid: false,
         errors: [{ instancePath: "", message: error.message }],
       });
@@ -224,7 +225,7 @@ async function main() {
           ? path.relative(projectRootFromManifest(selection.manifests[0]), file).replaceAll(path.sep, "/")
           : file;
         const errors = result.errors.filter((error) => error.report === reportPath);
-        check(`${path.relative(root, file)}#finding-identity`, { valid: errors.length === 0, errors });
+        check(`${displayPath(file)}#finding-identity`, { valid: errors.length === 0, errors });
       }
     } catch (error) {
       check("finding identity", { valid: false, errors: [{ instancePath: "", message: error.message }] });
@@ -241,9 +242,9 @@ async function main() {
               ...(type.key === "reviewBriefs" ? [await readFile(selection.trackers[0], "utf8")] : []),
             )
           : type.validate(await readJson(file));
-        check(path.relative(root, file), result);
+        check(displayPath(file), result);
       } catch (error) {
-        check(path.relative(root, file), {
+        check(displayPath(file), {
           valid: false,
           errors: [{ instancePath: "", message: error.message }],
         });
