@@ -63,6 +63,7 @@ The command validates the complete manifest and any pending artifact index befor
 Run the self-contained installed validator:
 
 ```bash
+node <setup-skill-root>/scripts/validate.mjs --project-root <project-root>
 node <setup-skill-root>/scripts/validate.mjs --manifest <manifest-path>
 ```
 

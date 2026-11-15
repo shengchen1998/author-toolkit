@@ -738,8 +738,8 @@ npm test
 npm run validate
 ```
 
-Validate a manifest or report directly with the corresponding CLI option. The
-validator also provides options for creation batches, commit journals, story
+Validate a project root, manifest, or report directly with the corresponding CLI
+option. The validator also provides options for creation batches, commit journals, story
 state, coverage artifacts, and review jobs; use the installed CLI as the source
 for their exact names:
 
@@ -747,6 +747,7 @@ for their exact names:
 node scripts/validate.mjs --help
 node scripts/doctor.mjs --project-root /path/to/writing-project
 node scripts/preflight.mjs --project-root /path/to/writing-project
+node scripts/validate.mjs --project-root /path/to/writing-project
 node scripts/validate.mjs --manifest /path/to/.author-toolkit/project.json
 node scripts/validate.mjs --report /path/to/report.md
 node scripts/status.mjs --manifest /path/to/.author-toolkit/project.json --scope-id scope-001

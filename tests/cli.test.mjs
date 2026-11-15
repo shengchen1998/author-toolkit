@@ -24,6 +24,16 @@ test("the default CLI validates every shipped schema and example", () => {
   assert.match(result.stdout, /fiction-revision-zh\/reports\/structure/);
 });
 
+test("the CLI resolves the manifest from a project root", () => {
+  const projectRoot = path.join(root, "examples", "fiction-revision-en");
+  const manifest = path.join(projectRoot, ".author-toolkit", "project.json");
+  const result = runValidator(["--project-root", projectRoot]);
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.ok(result.stdout.includes(`ok - ${manifest}\n`), result.stdout);
+  assert.match(result.stdout, /5 checks, 0 failures/);
+});
+
 test("the CLI displays absolute paths for explicitly selected files", () => {
   const directory = path.join(root, "examples", "fiction-revision-zh");
   const manifest = path.join(directory, ".author-toolkit", "project.json");

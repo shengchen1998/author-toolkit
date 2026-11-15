@@ -108,6 +108,19 @@ test("setup carries self-contained preflight, validation, state, range, and inst
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /5 checks, 0 failures/);
 
+  const rootValidation = spawnSync(
+    process.execPath,
+    [
+      ...nodeArgs,
+      path.join(installedSetup, "scripts", "validate.mjs"),
+      "--project-root",
+      path.join(root, "examples", "fiction-revision-zh"),
+    ],
+    { encoding: "utf8" },
+  );
+  assert.equal(rootValidation.status, 0, rootValidation.stderr);
+  assert.match(rootValidation.stdout, /5 checks, 0 failures/);
+
   const projection = spawnSync(
     process.execPath,
     [

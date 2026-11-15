@@ -476,13 +476,14 @@ npm test
 npm run validate
 ```
 
-可用对应 CLI 参数直接校验 manifest, report 和新产物. 新参数包括创作批次, 提交日志,
+可用对应 CLI 参数直接校验项目根目录, manifest, report 和新产物. 新参数包括创作批次, 提交日志,
 故事状态, 覆盖产物和复核任务; 准确参数名以当前安装的 `--help` 为准:
 
 ```bash
 node scripts/validate.mjs --help
 node scripts/doctor.mjs --project-root /path/to/writing-project
 node scripts/preflight.mjs --project-root /path/to/writing-project
+node scripts/validate.mjs --project-root /path/to/writing-project
 node scripts/validate.mjs --manifest /path/to/.author-toolkit/project.json
 node scripts/validate.mjs --report /path/to/report.md
 node scripts/status.mjs --manifest /path/to/.author-toolkit/project.json --scope-id scope-001

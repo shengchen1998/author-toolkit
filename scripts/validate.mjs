@@ -57,7 +57,7 @@ const artifactTypes = [
 function usage() {
   console.log(`Usage:
   node scripts/validate.mjs
-  node scripts/validate.mjs [--manifest FILE] [--report FILE] [--tracker FILE]...
+  node scripts/validate.mjs [--manifest FILE] [--project-root DIR] [--report FILE] [--tracker FILE]...
   node scripts/validate.mjs [--creation-batch FILE] [--creation-commit FILE]...
   node scripts/validate.mjs [--coverage-unit FILE] [--coverage-index FILE]...
   node scripts/validate.mjs [--review-job FILE] [--review-brief FILE --tracker FILE] [--reader-state FILE] [--story-state FILE]...
@@ -82,6 +82,7 @@ async function markdownFiles(directory) {
 function parseArguments(args) {
   const selection = {
     manifests: [],
+    projectRoots: [],
     reports: [],
     trackers: [],
     ...Object.fromEntries(artifactTypes.map(({ key }) => [key, []])),
@@ -89,6 +90,7 @@ function parseArguments(args) {
   };
   const destinations = {
     "--manifest": "manifests",
+    "--project-root": "projectRoots",
     "--report": "reports",
     "--tracker": "trackers",
     ...Object.fromEntries(artifactTypes.map(({ key, option }) => [option, key])),
@@ -116,6 +118,9 @@ async function main() {
     usage();
     return;
   }
+  selection.manifests.push(...selection.projectRoots.map((projectRoot) =>
+    path.join(projectRoot, ".author-toolkit", "project.json"),
+  ));
   if (
     selection.trackers.length > 1 ||
     (selection.reviewBriefs.length > 0 && selection.trackers.length !== 1) ||
