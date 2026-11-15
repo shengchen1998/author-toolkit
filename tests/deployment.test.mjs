@@ -697,7 +697,8 @@ test("setup repairs agent entries and only creates missing navigation", async ()
   const navigation = await readFile(path.join(root, "skills", "setup-author-toolkit", "assets", "START_HERE.md"), "utf8");
   assert.match(navigation, /`PROJECT_STATE\.md`/);
   assert.match(navigation, /`\.author-toolkit\/project\.json`/);
-  assert.match(navigation, /check\.mjs --project-root <project-root>/);
+  assert.match(navigation, /\[`AGENTS\.md`\]\(AGENTS\.md#run-creation-or-revision-from-shared-state\)/);
+  assert.doesNotMatch(navigation, /check\.mjs --project-root/);
   assert.ok(navigation.indexOf("- Status check:") < navigation.indexOf("- Current navigation:"));
   assert.match(navigation, /only when that check reports `Navigation cache: reusable snapshot only`/);
   assert.match(navigation, /When the cache is stale or unchecked, use the bounded command results instead/);
