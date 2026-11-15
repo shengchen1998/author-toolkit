@@ -768,6 +768,25 @@ test("setup branch references are included in the authoritative payload manifest
   assert.ok(paths.has("assets/setup/new-project.md"));
 });
 
+test("new-project setup prechecks sibling author-project dependencies", async () => {
+  const newProject = await readFile(
+    path.join(root, "skills", "setup-author-toolkit", "assets", "setup", "new-project.md"),
+    "utf8",
+  );
+  for (const dependency of [
+    "../../../author-project/SKILL.md",
+    "../../../author-project/references/operations.md",
+    "../../../author-project/references/read-operations.md",
+    "../../../author-project/assets/story-bible-template.md",
+    "../../../author-project/assets/audit-tracker-template.md",
+  ]) {
+    assert.ok(newProject.includes(`\`${dependency}\``), dependency);
+  }
+  assert.match(newProject, /Before step 1, verify/);
+  assert.match(newProject, /`author-project` skill is missing or incompletely installed/);
+  assert.match(newProject, /create no project files/);
+});
+
 test("shared workflows resolve installed setup references without project deployment", async () => {
   const callers = [
     "ask-author",

@@ -103,7 +103,7 @@
     },
     {
       "path": "assets/setup/new-project.md",
-      "sha256": "1113cbb7b1404d9d68bb9e5f27429d2038b99602a3fd7a978c8786fd3ba1658f"
+      "sha256": "edf03eaa8775aa8a4d89296055995429c73e1ec71667746f3b9bf25044804b82"
     },
     {
       "path": "scripts/check.mjs",
