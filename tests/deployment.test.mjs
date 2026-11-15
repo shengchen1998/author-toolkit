@@ -734,6 +734,9 @@ test("setup uses the authoritative payload inventory and bounded doctor", async 
   for (const text of [setup, operations]) {
     assert.match(text, /assets\/payload-manifest\.json/);
   }
+  assert.match(setup, /Run `node <setup-skill-root>\/scripts\/doctor\.mjs` and report its payload-only summary/);
+  assert.match(setup, /Defer project-entry installation and verification to step 3/);
+  assert.doesNotMatch(setup, /scripts\/doctor\.mjs --project-root <project-root>/);
   assert.match(setup, /If an installed-payload check fails, report an incomplete toolkit installation and stop/);
   assert.match(setup, /final installation and project-state verification/);
   assert.match(instructions, /scripts\/check\.mjs --project-root <project-root>/);
