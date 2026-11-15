@@ -306,8 +306,10 @@ test("existing-project setup uses bounded inspection references and a categorize
     readFile(path.join(root, "README.zh-CN.md"), "utf8"),
   ]);
 
-  assert.match(project, /For `read`, `validate`, `status`, `check --full`, `status --digest`, and `check-index`, read \[`references\/read-operations\.md`\]/);
-  assert.match(project, /For a new manifest and every record or write operation, read \[`references\/operations\.md`\]/);
+  assert.match(project, /For `validate`, read only \[Read and validate\]\(references\/read-operations\.md#read-and-validate\)/);
+  assert.match(project, /For `read`, `status`, `check --full`, `status --digest`, and `check-index`, read \[`references\/read-operations\.md`\]/);
+  assert.match(project, /For a new manifest, read only \[Paths and manifest identity\]\(references\/operations\.md#paths-and-manifest-identity\) and \[Initialize\]\(references\/operations\.md#initialize\)/);
+  assert.match(project, /for every record or write operation, read \[`references\/operations\.md`\]/);
   assert.doesNotMatch(project, /For every operation, read \[`references\/operations\.md`\]/);
   assert.match(existingSetup, /Once initialization's manifest-schema check passes, perform step 3's entry-file replacement even if later project-state validation fails/);
   assert.match(existingSetup, /Initialization exits 3 for this schema-valid project-validation failure/);
@@ -387,8 +389,10 @@ test("setup discloses only the selected project branch", async () => {
   assert.doesNotMatch(setup, /author-project\/references\/operations\.md|read-operations\.md/);
   assert.doesNotMatch(existingSetup, /author-project\/SKILL\.md|author-project\/references\/|read-operations\.md/);
   assert.match(newSetup, /\.\.\/\.\.\/\.\.\/author-project\/SKILL\.md/);
-  assert.match(newSetup, /\.\.\/\.\.\/\.\.\/author-project\/references\/operations\.md/);
-  assert.doesNotMatch(newSetup, /existing-project\.md|read-operations\.md/);
+  assert.match(newSetup, /\.\.\/\.\.\/\.\.\/author-project\/references\/operations\.md#paths-and-manifest-identity/);
+  assert.match(newSetup, /\.\.\/\.\.\/\.\.\/author-project\/references\/operations\.md#initialize/);
+  assert.match(newSetup, /only \[Read and validate\]\(\.\.\/\.\.\/\.\.\/author-project\/references\/read-operations\.md#read-and-validate\)/);
+  assert.doesNotMatch(newSetup, /existing-project\.md/);
 });
 
 test("convergence gates run strict execution checks without gating ordinary inspection", async () => {
