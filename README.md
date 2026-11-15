@@ -133,10 +133,12 @@ reads no file contents, and writes nothing. Existing v3.1 projects use
 Run `node <setup-skill-root>/scripts/doctor.mjs` for a bounded installation
 summary and only the failed paths. It verifies the skill's regular payload files,
 including internal CLI modules, against `assets/payload-manifest.json`. Add
+`--require-sibling author-project` to verify the five regular files setup needs from
+that sibling skill; setup runs this check before either project branch. Add
 `--project-root <root>` to verify the writing project's `AGENTS.md` and relative
 `CLAUDE.md -> AGENTS.md` link; project-state validation and host command visibility
-remain separate checks. Its text and JSON output distinguish installed-payload
-failures from repairable project-entry failures, with an explicit exit reason.
+remain separate checks. Its text and JSON output distinguish installed-payload,
+required-sibling, and repairable project-entry failures, with an explicit exit reason.
 
 Run `node <setup-skill-root>/scripts/install-entry-files.mjs --project-root <root> --json`
 to repair the two project agent entry files after a successful payload check. It

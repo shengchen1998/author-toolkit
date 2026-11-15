@@ -9,6 +9,7 @@ import { root } from "./helpers.mjs";
 
 const tool = path.join(root, "scripts", "doctor.mjs");
 const installedSource = path.join(root, "skills", "setup-author-toolkit");
+const siblingSource = path.join(root, "skills", "author-project");
 
 function run(args = [], options = {}) {
   return spawnSync(process.execPath, [options.tool ?? tool, ...args], {
@@ -23,11 +24,13 @@ async function fixture(t) {
   t.after(() => rm(temporary, { recursive: true, force: true }));
   const setupRoot = path.join(temporary, "setup-author-toolkit");
   await cp(installedSource, setupRoot, { recursive: true });
+  const siblingRoot = path.join(temporary, "author-project");
+  await cp(siblingSource, siblingRoot, { recursive: true });
   const projectRoot = path.join(temporary, "writing-project");
   await mkdir(projectRoot);
   await cp(path.join(setupRoot, "assets", "AGENTS.md"), path.join(projectRoot, "AGENTS.md"));
   await symlink("AGENTS.md", path.join(projectRoot, "CLAUDE.md"));
-  return { temporary, setupRoot, projectRoot };
+  return { temporary, setupRoot, siblingRoot, projectRoot };
 }
 
 test("doctor reports a bounded summary for a complete installed payload", async (t) => {
@@ -62,6 +65,46 @@ test("source doctor resolves the checked-in setup skill", () => {
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /Setup payload: \d+ files \(\d+ references, 19 CLIs\)\nPayload failures: 0\nProject entry check: skipped \(no --project-root\)\nProject state: not checked/);
   assert.doesNotMatch(result.stdout, /Project entry failures:/);
+});
+
+test("doctor optionally checks the required author-project sibling files", async (t) => {
+  const { setupRoot, siblingRoot } = await fixture(t);
+  const installedTool = path.join(setupRoot, "scripts", "doctor.mjs");
+  const args = ["--require-sibling", "author-project"];
+  const complete = run(args, { tool: installedTool });
+  assert.equal(complete.status, 0, complete.stderr);
+  assert.match(
+    complete.stdout,
+    /Sibling author-project: 5 required files\nSibling author-project failures: 0\n/,
+  );
+
+  const json = run([...args, "--json"], { tool: installedTool });
+  assert.equal(json.status, 0, json.stderr);
+  const parsed = JSON.parse(json.stdout);
+  assert.deepEqual(parsed.sibling, { checked: true, name: "author-project", files: 5 });
+  assert.deepEqual(parsed.sibling_failures, []);
+
+  await rm(path.join(siblingRoot, "references", "operations.md"));
+  const ordinary = run([], { tool: installedTool });
+  assert.equal(ordinary.status, 0, ordinary.stderr);
+  assert.doesNotMatch(ordinary.stdout, /Sibling author-project/);
+
+  const missing = run(args, { tool: installedTool });
+  assert.equal(missing.status, 1);
+  assert.match(missing.stdout, /Payload failures: 0\nSibling author-project: 5 required files/);
+  assert.match(missing.stdout, /Sibling author-project failures: 1/);
+  assert.match(missing.stdout, /sibling:author-project\/references\/operations\.md: missing or unreadable/);
+  assert.match(missing.stdout, /Exit reason: incomplete toolkit installation; stop setup/);
+  assert.doesNotMatch(missing.stdout, /SKILL\.md|read-operations\.md/);
+
+  const missingJson = run([...args, "--json"], { tool: installedTool });
+  assert.equal(missingJson.status, 1);
+  const missingParsed = JSON.parse(missingJson.stdout);
+  assert.equal(missingParsed.valid, false);
+  assert.deepEqual(missingParsed.payload_failures, []);
+  assert.deepEqual(missingParsed.entry_failures, []);
+  assert.deepEqual(missingParsed.failures, missingParsed.sibling_failures);
+  assert.equal(missingParsed.sibling_failures.length, 1);
 });
 
 test("doctor reports only failed payload paths, including missing internal modules and drift", async (t) => {
@@ -204,8 +247,15 @@ test("doctor exposes help and argument errors", async (t) => {
   const help = run(["--help"], { tool: installedTool });
   assert.equal(help.status, 0, help.stderr);
   assert.match(help.stdout, /payload-manifest\.json/);
+  assert.match(help.stdout, /--require-sibling author-project/);
   assert.match(help.stdout, /writes nothing/);
-  for (const args of [["--project-root"], ["--unknown"], ["extra"]]) {
+  for (const args of [
+    ["--project-root"],
+    ["--require-sibling"],
+    ["--require-sibling", "author-review"],
+    ["--unknown"],
+    ["extra"],
+  ]) {
     const result = run(args, { tool: installedTool });
     assert.equal(result.status, 2);
     assert.match(result.stdout, /Usage:/);

@@ -54,6 +54,11 @@ test("setup carries self-contained preflight, validation, state, range, and inst
 
   const installedSetup = path.join(temporaryRoot, "setup-author-toolkit");
   await cp(path.dirname(path.dirname(setupReferences)), installedSetup, { recursive: true });
+  await cp(
+    path.join(root, "skills", "author-project"),
+    path.join(temporaryRoot, "author-project"),
+    { recursive: true },
+  );
   const loader = path.join(temporaryRoot, "block-runtime-packages.mjs");
   await writeFile(
     loader,
@@ -133,11 +138,16 @@ test("setup carries self-contained preflight, validation, state, range, and inst
 
   const doctor = spawnSync(
     process.execPath,
-    [...nodeArgs, path.join(installedSetup, "scripts", "doctor.mjs")],
+    [
+      ...nodeArgs,
+      path.join(installedSetup, "scripts", "doctor.mjs"),
+      "--require-sibling",
+      "author-project",
+    ],
     { encoding: "utf8" },
   );
   assert.equal(doctor.status, 0, doctor.stderr);
-  assert.match(doctor.stdout, /Payload failures: 0\nProject entry check: skipped \(no --project-root\)/);
+  assert.match(doctor.stdout, /Payload failures: 0\nSibling author-project: 5 required files\nSibling author-project failures: 0\nProject entry check: skipped \(no --project-root\)/);
   assert.doesNotMatch(doctor.stdout, /Project entry failures:/);
   assert.doesNotMatch(doctor.stdout, /AGENTS\.md/);
 
@@ -735,10 +745,10 @@ test("setup uses the authoritative payload inventory and bounded doctor", async 
   for (const text of [setup, operations]) {
     assert.match(text, /assets\/payload-manifest\.json/);
   }
-  assert.match(setup, /Run `node <setup-skill-root>\/scripts\/doctor\.mjs` and report its payload-only summary/);
+  assert.match(setup, /Run `node <setup-skill-root>\/scripts\/doctor\.mjs --require-sibling author-project` and report its payload and sibling summary/);
   assert.match(setup, /Defer project-entry installation and verification to step 3/);
   assert.doesNotMatch(setup, /scripts\/doctor\.mjs --project-root <project-root>/);
-  assert.match(setup, /If an installed-payload check fails, report an incomplete toolkit installation and stop/);
+  assert.match(setup, /If either installation check fails, report an incomplete toolkit installation and stop/);
   assert.match(setup, /final installation and project-state verification/);
   assert.match(instructions, /scripts\/check\.mjs --project-root <project-root>/);
   assert.match(instructions, /rerun it with `--diagnose`/);
@@ -769,23 +779,18 @@ test("setup branch references are included in the authoritative payload manifest
   assert.ok(paths.has("assets/setup/new-project.md"));
 });
 
-test("new-project setup prechecks sibling author-project dependencies", async () => {
-  const newProject = await readFile(
-    path.join(root, "skills", "setup-author-toolkit", "assets", "setup", "new-project.md"),
-    "utf8",
-  );
-  for (const dependency of [
-    "../../../author-project/SKILL.md",
-    "../../../author-project/references/operations.md",
-    "../../../author-project/references/read-operations.md",
-    "../../../author-project/assets/story-bible-template.md",
-    "../../../author-project/assets/audit-tracker-template.md",
-  ]) {
-    assert.ok(newProject.includes(`\`${dependency}\``), dependency);
-  }
-  assert.match(newProject, /Before step 1, verify/);
-  assert.match(newProject, /`author-project` skill is missing or incompletely installed/);
-  assert.match(newProject, /create no project files/);
+test("setup mechanically prechecks sibling author-project dependencies before either branch", async () => {
+  const [setup, newProject] = await Promise.all([
+    readFile(path.join(root, "skills", "setup-author-toolkit", "SKILL.md"), "utf8"),
+    readFile(
+      path.join(root, "skills", "setup-author-toolkit", "assets", "setup", "new-project.md"),
+      "utf8",
+    ),
+  ]);
+  assert.match(setup, /scripts\/doctor\.mjs --require-sibling author-project/);
+  assert.match(setup, /If either installation check fails/);
+  assert.match(setup, /this check creates no project files/);
+  assert.doesNotMatch(newProject, /Before step 1, verify|If any file is missing/);
 });
 
 test("shared workflows resolve installed setup references without project deployment", async () => {

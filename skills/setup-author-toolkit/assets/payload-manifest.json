@@ -3,7 +3,7 @@
   "files": [
     {
       "path": "SKILL.md",
-      "sha256": "bbeba44808f22ab2344aaa9b5084f970907b989b2ffb072755b610742fd428d1"
+      "sha256": "62a07e155a6da7b8abadd192eaf8fd573e228a2aabd1d29990b93e184f52ccac"
     },
     {
       "path": "assets/AGENTS.md",
@@ -103,7 +103,7 @@
     },
     {
       "path": "assets/setup/new-project.md",
-      "sha256": "edf03eaa8775aa8a4d89296055995429c73e1ec71667746f3b9bf25044804b82"
+      "sha256": "1113cbb7b1404d9d68bb9e5f27429d2038b99602a3fd7a978c8786fd3ba1658f"
     },
     {
       "path": "scripts/check.mjs",
@@ -115,7 +115,7 @@
     },
     {
       "path": "scripts/doctor.mjs",
-      "sha256": "5150c422f2e488e9a5376fd8c850390f16a7dea5fba62d0f77cf54764a190a8f"
+      "sha256": "518005e5cafba5c9783e9fc15361bdf34b36502f2df9164f67607091598a0409"
     },
     {
       "path": "scripts/evidence-retention.mjs",
@@ -251,7 +251,7 @@
     },
     {
       "path": "scripts/lib/setup-payload.mjs",
-      "sha256": "a9ecc4bbc26d08f020644366442d00fd25b0162ec35ab0e1119042eb61e4b658"
+      "sha256": "09ae4e1c2e12f473e256a309ab87f41a7ad55b05c3b1001577aad939920d19f6"
     },
     {
       "path": "scripts/lib/state-files.mjs",

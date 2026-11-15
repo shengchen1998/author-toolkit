@@ -4,6 +4,15 @@ import { lstat, readFile, readlink } from "node:fs/promises";
 import path from "node:path";
 
 const PAYLOAD_MANIFEST = "assets/payload-manifest.json";
+const REQUIRED_SIBLINGS = {
+  "author-project": [
+    "SKILL.md",
+    "references/operations.md",
+    "references/read-operations.md",
+    "assets/story-bible-template.md",
+    "assets/audit-tracker-template.md",
+  ],
+};
 
 export function resolveSetupRoot(scriptRoot) {
   return existsSync(path.join(scriptRoot, PAYLOAD_MANIFEST))
@@ -84,7 +93,7 @@ async function readPayloadManifest(setupRoot) {
   return { manifest: value, failures: [] };
 }
 
-export async function inspectSetupPayload(setupRoot, { projectRoot } = {}) {
+export async function inspectSetupPayload(setupRoot, { projectRoot, requireSibling } = {}) {
   const { manifest, failures } = await readPayloadManifest(setupRoot);
   let references = 0;
   let clis = 0;
@@ -113,6 +122,28 @@ export async function inspectSetupPayload(setupRoot, { projectRoot } = {}) {
       }
     } catch (error) {
       failures.push({ path: entry.path, reason: `missing or unreadable: ${error.message}` });
+    }
+  }
+
+  const sibling = {
+    checked: requireSibling !== undefined,
+    name: requireSibling ?? null,
+    files: 0,
+  };
+  if (requireSibling !== undefined) {
+    const requiredFiles = REQUIRED_SIBLINGS[requireSibling];
+    if (!requiredFiles) throw new Error(`Unsupported required sibling: ${requireSibling}`);
+    sibling.files = requiredFiles.length;
+    for (const relative of requiredFiles) {
+      try {
+        const stats = await lstat(path.join(setupRoot, "..", requireSibling, relative));
+        if (!stats.isFile()) throw new Error("not a regular file");
+      } catch (error) {
+        failures.push({
+          path: `sibling:${requireSibling}/${relative}`,
+          reason: `missing or unreadable: ${error.message}`,
+        });
+      }
     }
   }
 
@@ -164,9 +195,12 @@ export async function inspectSetupPayload(setupRoot, { projectRoot } = {}) {
     files: manifest?.files.length ?? 0,
     references,
     clis,
+    sibling,
     project,
     failures,
-    payload_failures: failures.filter((failure) => !failure.path.startsWith("project:")),
+    payload_failures: failures.filter((failure) =>
+      !failure.path.startsWith("project:") && !failure.path.startsWith("sibling:")),
+    sibling_failures: failures.filter((failure) => failure.path.startsWith("sibling:")),
     entry_failures: failures.filter((failure) => failure.path.startsWith("project:")),
   };
 }

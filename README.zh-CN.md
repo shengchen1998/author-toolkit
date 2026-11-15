@@ -55,9 +55,10 @@ setup 技能在 `setup-author-toolkit/scripts/` 下提供自包含的安装检�
 
 运行 `node <setup-skill-root>/scripts/doctor.mjs` 可获得有界安装摘要和失败路径.
 它按 `assets/payload-manifest.json` 核对技能的普通载荷文件, 包括 CLI 内部模块.
-添加 `--project-root <root>` 可同时核对写作项目的 `AGENTS.md` 和相对符号链接
-`CLAUDE.md -> AGENTS.md`; 项目状态校验与宿主命令可见性仍是独立检查.
-文本和 JSON 输出分别列出安装载荷失败与可修复的项目入口失败, 并明确显示退出原因.
+添加 `--require-sibling author-project` 可核对 setup 所需的该兄弟技能的 5 个普通文件;
+setup 在进入任一项目分支前执行此检查. 添加 `--project-root <root>` 可同时核对写作项目的
+`AGENTS.md` 和相对符号链接 `CLAUDE.md -> AGENTS.md`; 项目状态校验与宿主命令可见性仍是独立检查.
+文本和 JSON 输出分别列出安装载荷、必需兄弟技能与可修复项目入口的失败, 并明确显示退出原因.
 
 运行 `node <setup-skill-root>/scripts/install-entry-files.mjs --project-root <root> --json`,
 在载荷检查通过后修复两个项目代理入口文件.

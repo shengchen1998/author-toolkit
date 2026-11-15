@@ -2,8 +2,6 @@
 
 Use this branch only when `<project-root>/.author-toolkit/project.json` is absent. Run `node <setup-skill-root>/scripts/inspect-root.mjs --project-root <project-root> --json` for bounded discovery. It returns entry-file and default component types, at most 12 candidate manuscript paths with an omitted count, and recursive historical regular-file counts without historical artifact paths. Select from its candidate manuscript paths and default component types, using targeted checks only for an author-supplied path or an omitted candidate that needs disambiguation; if several plausible roots or manuscript paths exist, present the choices and let the author select one; do not enumerate historical artifact trees.
 
-Before step 1, verify that the installed sibling `author-project` skill provides `../../../author-project/SKILL.md`, `../../../author-project/references/operations.md`, `../../../author-project/references/read-operations.md`, `../../../author-project/assets/story-bible-template.md`, and `../../../author-project/assets/audit-tracker-template.md`. If any file is missing, stop and report that the `author-project` skill is missing or incompletely installed; create no project files.
-
 1. Read `../../../author-project/SKILL.md` and only [Paths and manifest identity](../../../author-project/references/operations.md#paths-and-manifest-identity) and [Initialize](../../../author-project/references/operations.md#initialize) in `operations.md`, then follow their new-manifest procedure directly with the selected root and paths, project metadata, and BCP 47 language. Register existing paths as they are. Use these defaults only for missing components:
    - `manuscript/`
    - `story-bible.md`

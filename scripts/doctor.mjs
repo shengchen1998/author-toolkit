@@ -13,9 +13,10 @@ function argumentError(message) {
 
 function usage() {
   console.log(`Usage:
-  node scripts/doctor.mjs [--project-root DIR] [--json]
+  node scripts/doctor.mjs [--project-root DIR] [--require-sibling author-project] [--json]
 
 Verify the installed setup skill's regular files against payload-manifest.json.
+With --require-sibling author-project, also verify its five required regular files.
 With --project-root, also verify that AGENTS.md matches the installed template
 and CLAUDE.md is a relative symlink to AGENTS.md. Project manifests, manuscript,
 historical evidence, and host command visibility are not checked. This command
@@ -32,6 +33,11 @@ function options(args) {
   for (let index = 0; index < args.length; index += 1) {
     if (args[index] === "--project-root" && args[index + 1]) {
       result.projectRoot = path.resolve(args[++index]);
+    } else if (args[index] === "--require-sibling" && args[index + 1]) {
+      if (args[index + 1] !== "author-project") {
+        throw argumentError(`Unsupported required sibling: ${args[index + 1]}`);
+      }
+      result.requireSibling = args[++index];
     } else if (args[index] === "--json") {
       result.json = true;
     } else {
@@ -57,6 +63,10 @@ try {
         `Setup payload: ${result.files} files (${result.references} references, ${result.clis} CLIs)${project}`,
       );
       outputFailures("Payload failures", result.payload_failures);
+      if (result.sibling.checked) {
+        console.log(`Sibling ${result.sibling.name}: ${result.sibling.files} required files`);
+        outputFailures(`Sibling ${result.sibling.name} failures`, result.sibling_failures);
+      }
       if (result.project.checked) {
         outputFailures("Project entry failures", result.entry_failures);
       } else {
@@ -65,6 +75,8 @@ try {
       console.log("Project state: not checked");
       if (result.payload_failures.length > 0) {
         console.log("Exit reason: incomplete installed payload; stop shared work");
+      } else if (result.sibling_failures.length > 0) {
+        console.log("Exit reason: incomplete toolkit installation; stop setup");
       } else if (result.entry_failures.length > 0) {
         console.log("Exit reason: project entry files need repair; continue setup entry-file repair");
       }
