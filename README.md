@@ -256,7 +256,8 @@ picker after generic skill installation:
 | --- | --- | --- | --- | --- | --- |
 | `setup-author-toolkit` | `write-fiction` | `revise-fiction` | `revise-draft` | `revise-increment` | `revise-request` |
 
-Start `ask-author` the same way.
+Start `ask-author` the same way. When you invoked setup through a host skill
+command, setup reuses that command syntax for the entries it displays.
 
 The five strategies are user entries; model-facing registry metadata does not
 establish their author-facing availability. Setup reports ready only after your confirmation of host
@@ -272,7 +273,9 @@ A quick run looks like this:
 1. Identify the writing project directory. It may contain an existing Markdown
    or plain-text manuscript, or it may be the destination for a new novel.
 2. Invoke `setup-author-toolkit` with that path. Answer the project registration
-   and language questions. Registration records paths; it does not move the
+   and language questions. Setup reports the registered BCP 47 language and asks
+   you to confirm a detected value; an explicitly supplied language needs no
+   repeated confirmation. Registration records paths; it does not move the
    manuscript into a new layout. Shared contracts remain in the setup skill's
    installed `assets/references/` payload and are read directly from that
    location; setup does not deploy them into the writing project. On every
@@ -287,8 +290,10 @@ A quick run looks like this:
    manuscript or history.
    Custom content in these two files is not preserved. Setup creates
    `START_HERE.md` only when absent as a fixed navigation pointer; existing
-   navigation content is never replaced. Do not pass
-   a workflow name or operation argument. After a toolkit update, existing v3.1
+   navigation content is never replaced. For a new project, standalone validation
+   gates the new state before entry-file installation; the final diagnostic check
+   then revalidates project state together with installation and status results.
+   Do not pass a workflow name or operation argument. After a toolkit update, existing v3.1
    projects use the updated installed contracts without another deployment.
    Initial `author-project` read, validation, and status calls report missing
    installed contracts or scripts as an incomplete toolkit installation rather

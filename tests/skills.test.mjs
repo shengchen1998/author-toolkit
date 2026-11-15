@@ -78,7 +78,12 @@ test("setup requires author-confirmed host command visibility", async () => {
   assert.match(setupStep, /all five commands in the current host's command palette or autocomplete/);
   assert.match(setupStep, /all five exact registered names in its skill picker on a host without skill commands/);
   assert.match(setupStep, /`ask-author` as the optional "help me choose" routing entry/);
-  assert.match(setupStep, /Wait for that confirmation and the author's choice of a strategy or the `ask-author` routing entry/);
+  assert.match(setupStep, /registered BCP 47 language/);
+  assert.match(setupStep, /detected rather than received the language from the author/);
+  assert.match(setupStep, /an author-supplied language needs no repeated confirmation/);
+  assert.match(setupStep, /Wait for the required host-visibility and detected-language confirmations and the author's choice of a strategy or the `ask-author` routing entry/);
+  assert.match(setup, /reuse that command syntax for these entries/);
+  assert.match(readyRule, /any detected language has been confirmed by the author/);
   assert.match(readyRule, /author has confirmed host command visibility for all five strategies/);
   assert.match(readyRule, /model-facing registry metadata or displayed command strings/);
   assert.match(readyRule, /report host command visibility as unverified and do not report setup as ready/);
@@ -98,6 +103,10 @@ test("setup requires author-confirmed host command visibility", async () => {
   assert.match(readme, /model-facing registry metadata/);
   assert.match(zhReadme, /宿主命令可见性/);
   assert.match(zhReadme, /模型侧注册元数据/);
+  assert.match(readme, /reuses that command syntax/);
+  assert.match(readme, /confirm a detected value/);
+  assert.match(zhReadme, /沿用相同的命令语法/);
+  assert.match(zhReadme, /确认自动检测的值/);
 });
 
 test("setup reads a bounded terminology preset from the single installed source", async () => {
@@ -412,6 +421,12 @@ test("setup discloses only the selected project branch", async () => {
   assert.match(newSetup, /\.\.\/\.\.\/\.\.\/author-project\/references\/operations\.md#paths-and-manifest-identity/);
   assert.match(newSetup, /\.\.\/\.\.\/\.\.\/author-project\/references\/operations\.md#initialize/);
   assert.match(newSetup, /only \[Read and validate\]\(\.\.\/\.\.\/\.\.\/author-project\/references\/read-operations\.md#read-and-validate\)/);
+  assert.match(newSetup, /a detected language requires the final author confirmation/);
+  assert.match(newSetup, /successful doctor satisfies that section's doctor prerequisite/);
+  assert.match(newSetup, /do not run it again/);
+  assert.match(newSetup, /standalone validation gates the new manifest and skeleton files before entry-file installation/);
+  assert.match(newSetup, /final diagnostic check deliberately repeats project validation/);
+  assert.doesNotMatch(newSetup, /--skip-doctor/);
   assert.doesNotMatch(newSetup, /existing-project\.md/);
 });
 
