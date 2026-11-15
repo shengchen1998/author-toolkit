@@ -29,6 +29,6 @@ Switching among all five strategies at a stable operation gate preserves shared 
 
 ## Host commands
 
-Codex uses `$author-handoff`, `$write-fiction`, `$revise-fiction`, `$revise-draft`, `$revise-increment`, and `$revise-request` with unqualified registered skill names. Never present an internal skill call as an author-facing command.
+Start `author-handoff`, `write-fiction`, `revise-fiction`, `revise-draft`, `revise-increment`, and `revise-request` through the current host's skill command or skill picker with unqualified registered skill names. Never present an internal skill call as an author-facing command.
 
 Creation is complete when the file contains only approved handoff categories and every referenced path resolves or is marked missing. Restoration is complete when the author can see current shared state and the next command; neither result implies operation completion.

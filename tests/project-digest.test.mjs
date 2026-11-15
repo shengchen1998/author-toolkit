@@ -209,14 +209,15 @@ test("project digest withholds a dependent strategy beside its failed execution 
   );
   await writeFile(
     path.join(projectRoot, "sessions/2026-11-09_diagnostics.md"),
-    "- Next action: `$revise-request`\n",
+    "- Next action: `revise-request`\n",
   );
 
   const result = digestCli(projectRoot);
   assert.equal(result.status, 0, result.stderr);
   const output = await readFile(path.join(projectRoot, "PROJECT_STATE.md"), "utf8");
   assert.match(output, /Execution evidence: 0\/94 verified; 94 unverified in scope `scope-request-001`; strict execution gate would fail/);
-  assert.match(output, /Next action: withheld until execution evidence is reconciled; use `\$revise-draft` \(strict execution gate would fail\)/);
+  assert.match(output, /Next action: withheld until execution evidence is reconciled; use the `revise-draft` host command \(strict execution gate would fail\)/);
+  assert.doesNotMatch(output, /\$revise-draft\b/);
   assert.doesNotMatch(output, /Next action:.*revise-request/);
   assert.ok(output.trimEnd().split("\n").length <= 50);
 

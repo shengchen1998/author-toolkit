@@ -38,7 +38,7 @@ export async function inspectNavigationCache(projectRoot) {
   if (!validationPattern.test(text)) result.issues.push("missing generation-time validation field");
   if (!freshnessPattern.test(text)) result.issues.push("missing generation-time freshness field");
   if (!executionPattern.test(text)) result.issues.push("missing or invalid execution-evidence field");
-  if (!/^- Next action: .+ \(recorded; strategy gates not evaluated\)$/m.test(text) && !/^- Next action: withheld until execution evidence is reconciled; use `\$revise-draft` \(strict execution gate would fail\)$/m.test(text)) {
+  if (!/^- Next action: .+ \(recorded; strategy gates not evaluated\)$/m.test(text) && !/^- Next action: withheld until execution evidence is reconciled; use the `revise-draft` host command \(strict execution gate would fail\)$/m.test(text)) {
     result.issues.push("missing or unsafe next-action field");
   }
   result.format_valid = result.issues.length === 0;

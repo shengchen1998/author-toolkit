@@ -81,7 +81,7 @@ test("preflight defaults to current scope and refreshes the navigation cache onl
 });
 
 test("preflight marks legacy caches stale without reproducing their recorded routes", async (t) => {
-  const legacy = "# Project State\n\n- Pending reason: 恢复 current-draft revision convergence。\n- Next action: `$revise-request`\n";
+  const legacy = "# Project State\n\n- Pending reason: 恢复 current-draft revision convergence。\n- Next action: `revise-request`\n";
   const { projectRoot } = await fixture(t, legacy);
   const result = run(["--project-root", projectRoot, "--json"]);
   assert.equal(result.status, 0, result.stderr);
@@ -102,7 +102,7 @@ test("preflight marks legacy caches stale without reproducing their recorded rou
 });
 
 test("preflight rejects unsafe next-action fields and reports unreadable caches without reading their contents", async (t) => {
-  const unsafe = "# Project State\n- Generated at: `2026-11-11T00:00:00.000Z`\n- Validation at generation: passed (project validation only; not an execution gate or current-draft revision convergence claim).\n- Freshness: generation-time snapshot only; rerun preflight before reuse.\n- Execution evidence: 0/0 verified; 0 unverified in scope `scope-example-revision`\n- Next action: `$revise-request`\n";
+  const unsafe = "# Project State\n- Generated at: `2026-11-11T00:00:00.000Z`\n- Validation at generation: passed (project validation only; not an execution gate or current-draft revision convergence claim).\n- Freshness: generation-time snapshot only; rerun preflight before reuse.\n- Execution evidence: 0/0 verified; 0 unverified in scope `scope-example-revision`\n- Next action: `revise-request`\n";
   const { projectRoot } = await fixture(t, unsafe);
   const result = run(["--project-root", projectRoot, "--json"]);
   assert.equal(result.status, 0, result.stderr);

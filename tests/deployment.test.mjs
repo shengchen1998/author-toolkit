@@ -700,6 +700,8 @@ test("setup repairs agent entries and only creates missing navigation", async ()
   assert.ok(navigation.indexOf("- Status check:") < navigation.indexOf("- Current navigation:"));
   assert.match(navigation, /only when that check reports `Navigation cache: reusable snapshot only`/);
   assert.match(navigation, /When the cache is stale or unchecked, use the bounded command results instead/);
+  assert.match(navigation, /Start `ask-author` through your host's skill command or skill picker/);
+  assert.doesNotMatch(navigation, /\$ask-author\b/);
 });
 
 test("setup reads shared references without deploying them into project state", async () => {

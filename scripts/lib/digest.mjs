@@ -145,7 +145,7 @@ export async function renderProjectDigest({ manifest, tracker, latestReport, lat
   const pending = manifest.pending_action;
   const plan = relativePath(field(sessionText, "Active plan"));
   const nextAction = execution?.unverified_count > 0
-    ? `withheld until execution evidence is reconciled; use ${code("$revise-draft")} (strict execution gate would fail)`
+    ? `withheld until execution evidence is reconciled; use the ${code("revise-draft")} host command (strict execution gate would fail)`
     : `${concise(field(sessionText, "Next action") ?? field(tracker, "Next action") ?? (latestSession ? `read ${code(latestSession)} for the recorded next action` : "none recorded"))} (recorded; strategy gates not evaluated)`;
   const coveragePath = path.posix.join(manifest.paths.reports, "coverage-index.json");
   const coverageEntries = coverageIndex?.scope_id === scope?.scope_id && Array.isArray(coverageIndex.entries)

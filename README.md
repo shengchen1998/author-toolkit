@@ -1,7 +1,7 @@
 # Author Toolkit
 
 Incremental fiction creation and four fiction revision strategies sharing one
-project evidence model, plus six independent writing skills for Codex.
+project evidence model, plus six independent writing skills for coding agents.
 
 [Chinese quick start](README.zh-CN.md) | [Controlled terminology](references/terminology.md) |
 [Validation status](docs/VALIDATION.md)
@@ -75,8 +75,9 @@ affected passages; an explicit full-scope review is required to reverify
 current-draft revision convergence for the full-manuscript target scope.
 
 Narrative nonfiction remains a direct `narrative-nonfiction` task. Multi-book
-projects and integrations with hosts other than Codex are outside the supported
-3.1 workflows.
+projects are outside the supported 3.1 workflows. Skill discovery and
+author-facing invocation follow the selected host; setup requires author
+confirmation of host command visibility.
 
 English and Chinese are the core workflow languages. Chinese prose audits use
 `skills/prose-mechanics/references/chinese-rules.md`, with Chinese sentence
@@ -98,27 +99,24 @@ language and exact contract values.
 
 ## Installation
 
-### Codex
-
-Use the generic installation below. Codex discovers project skills from
-`.agents/skills/` and user skills from `~/.agents/skills/`. Invoke a skill with
-`$` followed by its exact unqualified registered name, such as
-`$setup-author-toolkit`.
-
-### Generic project or user installation
+### Project or user installation
 
 The generic installer requires Node.js >= 22.20. Install into the current
-project for Codex:
+project and follow its host-selection prompts:
 
 ```bash
-npx skills@latest add shengchen1998/author-toolkit -a codex
+npx skills@latest add shengchen1998/author-toolkit
 ```
 
 Add `-g` to install at user level instead:
 
 ```bash
-npx skills@latest add shengchen1998/author-toolkit -a codex -g
+npx skills@latest add shengchen1998/author-toolkit -g
 ```
+
+Use your host's documented project or user skill location. Start user entries
+through its skill command or skill picker with the exact unqualified registered
+skill name.
 
 The setup skill includes self-contained installation, bounded root inspection, entry-file installation, existing-project initialization, preflight, manifest-projection, pending-action, report-scaffolding, validation, status, project-digest, finding-state, manuscript-write, character-range, and terminology-section CLIs under
 `setup-author-toolkit/scripts/`. Shared workflows resolve that installed skill
@@ -249,18 +247,19 @@ installation path.
 
 ## Set up a project and choose a strategy
 
-Use these Codex commands after generic skill installation:
+Start these user entries through the current host's skill command or skill
+picker after generic skill installation:
 
 | Setup | Creation | Whole-book revision | Current-draft revision | Incremental revision | Request revision |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| `$setup-author-toolkit` | `$write-fiction` | `$revise-fiction` | `$revise-draft` | `$revise-increment` | `$revise-request` |
+| --- | --- | --- | --- | --- | --- |
+| `setup-author-toolkit` | `write-fiction` | `revise-fiction` | `revise-draft` | `revise-increment` | `revise-request` |
 
-For `ask-author`, use the same command form with that skill name.
+Start `ask-author` the same way.
 
 The five strategies are user entries; model-facing registry metadata does not
 establish their author-facing availability. Setup reports ready only after your confirmation of host
 command visibility: all five exact strategy commands appear in the current
-host's command palette or autocomplete (the `$` autocomplete in Codex). On a host without skill commands,
+host's command palette or autocomplete. On a host without skill commands,
 confirm all five exact registered names in its skill picker instead. Without
 that confirmation, setup reports host command visibility as unverified.
 Displayed command strings and registry metadata do not

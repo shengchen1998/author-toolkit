@@ -42,4 +42,4 @@ Delete the two lines that do not apply. State the fresh target reader inline in 
 
 ## Resume command
 
-Use `$author-review` with `review_mode=<named mode>`, `perspective=<named perspective>`, `scope_id=<scope ID>`, and `handoff=<this path>`.
+Start `author-review` through the current host's skill command or skill picker, supplying `review_mode=<named mode>`, `perspective=<named perspective>`, `scope_id=<scope ID>`, and `handoff=<this path>`.

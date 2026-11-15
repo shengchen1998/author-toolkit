@@ -35,20 +35,20 @@ Show only the routes matching the author's situation and wait for the author to 
 
 ## Author-facing commands
 
-Codex uses `$name` with the exact unqualified registered skill name.
+Start user entries through the current host's skill command or skill picker with the exact unqualified registered skill name.
 
-| Need | Codex command |
+| Need | Registered skill |
 |---|---|
-| Set up or register a manuscript project | `$setup-author-toolkit` |
-| Create fiction from scratch or continue shared creation | `$write-fiction` |
-| Revise a whole-book baseline, structure, or final review | `$revise-fiction` |
-| Revise an unfinished draft within a confirmed scope | `$revise-draft` |
-| Revise added or affected chapters after the previous scope has reached current-draft revision convergence and the manuscript grows | `$revise-increment` |
-| Revise existing content after the full-manuscript base scope has reached current-draft revision convergence | `$revise-request` |
-| Create or restore a session handoff | `$author-handoff` |
-| Use standalone fiction writing or editing | `$fiction-workshop` |
-| Work on narrative nonfiction | `$narrative-nonfiction` |
-| Run sentence-level audits or Chinese AI-Isms detection | `$prose-mechanics` |
-| Run the upstream English AI-writing catalog | `$avoid-ai-writing` |
+| Set up or register a manuscript project | `setup-author-toolkit` |
+| Create fiction from scratch or continue shared creation | `write-fiction` |
+| Revise a whole-book baseline, structure, or final review | `revise-fiction` |
+| Revise an unfinished draft within a confirmed scope | `revise-draft` |
+| Revise added or affected chapters after the previous scope has reached current-draft revision convergence and the manuscript grows | `revise-increment` |
+| Revise existing content after the full-manuscript base scope has reached current-draft revision convergence | `revise-request` |
+| Create or restore a session handoff | `author-handoff` |
+| Use standalone fiction writing or editing | `fiction-workshop` |
+| Work on narrative nonfiction | `narrative-nonfiction` |
+| Run sentence-level audits or Chinese AI-Isms detection | `prose-mechanics` |
+| Run the upstream English AI-writing catalog | `avoid-ai-writing` |
 
 Routing is complete when the author can see the current or missing shared state and the exact next command. The author, not this skill, starts the selected route.

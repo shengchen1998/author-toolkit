@@ -90,7 +90,7 @@ test("setup requires author-confirmed host command visibility", async () => {
   assert.match(instructions, /Deterministic shared-state transactions have one installed CLI implementation and no model-executed counterpart/);
   assert.match(instructions, /Do not use model-facing registry metadata to check the explicit author entry points/);
   assert.match(instructions, /setup checks the five strategies' host command visibility with the author/);
-  assert.match(instructions, /display its exact host command and wait for the author; do not start it as an internal callee/);
+  assert.match(instructions, /display its exact host command, or its exact registered skill name when the host uses only a skill picker, and wait for the author; do not start it as an internal callee/);
   assert.match(instructions, /never start a strategy automatically/);
   assert.match(terminology, /`host command visibility` \| 宿主命令可见性/);
   assert.match(readme, /confirmation of host\s+command visibility/);
@@ -149,7 +149,7 @@ test("skill procedure bodies contain no host-specific tool invocation", async ()
   }
 });
 
-test("author-facing commands support Codex dollar-prefixed skill invocation", async () => {
+test("author-facing entries use host-independent skill invocation", async () => {
   const [setup, instructions, ask, handoff, reviewHandoff, readme, zhReadme] = await Promise.all([
     readFile(path.join(root, "skills/setup-author-toolkit/SKILL.md"), "utf8"),
     readFile(path.join(root, "skills/setup-author-toolkit/assets/AGENTS.md"), "utf8"),
@@ -160,22 +160,27 @@ test("author-facing commands support Codex dollar-prefixed skill invocation", as
     readFile(path.join(root, "README.zh-CN.md"), "utf8"),
   ]);
   const strategies = ["write-fiction", "revise-fiction", "revise-draft", "revise-increment", "revise-request"];
-  for (const text of [setup, ask, handoff, readme, zhReadme]) {
-    for (const skill of strategies) assert.match(text, new RegExp(`\\$${skill}\\b`), skill);
+  for (const text of [setup, instructions, ask, handoff, reviewHandoff, readme, zhReadme]) {
+    assert.doesNotMatch(text, /`\$[a-z]/);
   }
-  assert.match(setup, /Use `\$write-fiction`/);
-  assert.match(setup, /the `\$` autocomplete/);
+  for (const text of [setup, ask, handoff, readme, zhReadme]) {
+    for (const skill of strategies) assert.match(text, new RegExp(`\\b${skill}\\b`), skill);
+  }
+  assert.match(setup, /current host's skill command or skill picker/);
   assert.match(setup, /Do not add a qualifier to these unqualified registered skill names/);
-  assert.match(ask, /\| Need \| Codex command \|/);
-  assert.match(instructions, /`\$write-fiction`/);
-  assert.match(instructions, /`\$` autocomplete/);
-  assert.match(instructions, /check visibility in the `\$` autocomplete/);
-  assert.match(handoff, /`\$author-handoff`/);
-  assert.match(reviewHandoff, /Use `\$author-review`/);
+  assert.match(ask, /\| Need \| Registered skill \|/);
+  assert.match(instructions, /current host's skill command or skill picker/);
+  assert.match(instructions, /`write-fiction`/);
+  assert.match(instructions, /confirm visibility in that interface/);
+  assert.match(handoff, /current host's skill command or skill picker/);
+  assert.match(handoff, /`author-handoff`/);
+  assert.match(reviewHandoff, /Start `author-review` through the current host's skill command or skill picker/);
+  assert.doesNotMatch(reviewHandoff, /\$author-review\b/);
   for (const file of ["write-fiction", "revise-fiction", "revise-draft", "revise-increment", "revise-request"]) {
     const text = await readFile(path.join(root, "skills", file, "SKILL.md"), "utf8");
+    assert.doesNotMatch(text, /\$setup-author-toolkit\b/, file);
     if (["write-fiction", "revise-fiction"].includes(file)) {
-      assert.match(text, /display `\$setup-author-toolkit` and stop/);
+      assert.match(text, /display the host command for user-invoked `setup-author-toolkit` and stop/);
     } else {
       assert.match(text, /Use the same setup command forms as `revise-fiction`/);
     }

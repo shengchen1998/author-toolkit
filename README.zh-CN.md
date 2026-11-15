@@ -1,7 +1,7 @@
 # Author Toolkit 中文快速上手
 
 Author Toolkit 3.1.0 提供增量小说创作, 四个小说修订策略和六个独立写作技能. 创作与修订共享
-同一项目证据模型, 支持 Codex. 完整说明见 [英文 README](README.md),
+同一项目证据模型, 可用于支持技能的编码代理宿主. 完整说明见 [英文 README](README.md),
 共享用语见 [受控术语表](references/terminology.md).
 
 ## 包含的 16 个技能
@@ -28,25 +28,22 @@ Author Toolkit 3.1.0 提供增量小说创作, 四个小说修订策略和六个
 
 ## 安装
 
-### Codex
+### 项目级或用户级安装
 
-使用下面的通用安装方式. Codex 从项目的 `.agents/skills/` 发现项目级技能, 从
-`~/.agents/skills/` 发现用户级技能. 使用 `$` 加准确且不带命名空间的注册技能名调用, 例如
-`$setup-author-toolkit`.
-
-### 通用安装
-
-通用安装器需要 Node.js >= 22.20. 默认安装到当前项目:
+通用安装器需要 Node.js >= 22.20. 默认安装到当前项目, 按提示选择宿主:
 
 ```bash
-npx skills@latest add shengchen1998/author-toolkit -a codex
+npx skills@latest add shengchen1998/author-toolkit
 ```
 
 在命令末尾添加 `-g` 可安装到用户级目录:
 
 ```bash
-npx skills@latest add shengchen1998/author-toolkit -a codex -g
+npx skills@latest add shengchen1998/author-toolkit -g
 ```
+
+使用宿主文档指定的项目级或用户级技能位置. 通过宿主的技能命令或技能选择器,
+以准确且不带命名空间的注册技能名启动用户入口.
 
 setup 技能在 `setup-author-toolkit/scripts/` 下提供自包含的安装检查, 有界根目录盘点, 入口文件安装, 现有项目初始化, 预检, manifest 投影, 待处理操作写入, 报告脚手架, 校验, 状态, 项目导航, 发现项状态, 正文写入, 行内字符区间和术语分节读取 CLI, 包括运行依赖.
 共享工作流直接解析该技能的安装目录, 无需仓库检出, 也无需在写作项目中运行 `npm install`.
@@ -132,17 +129,17 @@ npx skills update
 
 ## 先 setup, 再选择创作或修订入口
 
-通用技能安装后使用以下 Codex 命令:
+通用技能安装后, 通过当前宿主的技能命令或技能选择器启动以下用户入口:
 
 | Setup | 创作 | 全书修订 | 当前草稿修订 | 增量修订 | 请求修订 |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| `$setup-author-toolkit` | `$write-fiction` | `$revise-fiction` | `$revise-draft` | `$revise-increment` | `$revise-request` |
+| --- | --- | --- | --- | --- | --- |
+| `setup-author-toolkit` | `write-fiction` | `revise-fiction` | `revise-draft` | `revise-increment` | `revise-request` |
 
-`ask-author` 使用相同的命令形式替换技能名.
+`ask-author` 使用相同方式启动.
 
 五个策略都是用户入口, 模型侧注册元数据不能确立作者侧可用性. 只有你确认宿主命令可见性后,
 setup 才报告 ready: 在当前宿主的命令面板或自动补全中, 五个策略的准确命令都必须可见;
-Codex 使用 `$` 自动补全. 没有技能命令的宿主, 则在技能选择器中确认五个准确注册名. 未确认时, setup 将宿主命令可见性
+没有技能命令的宿主, 则在技能选择器中确认五个准确注册名. 未确认时, setup 将宿主命令可见性
 报告为未验证. 仅展示命令字符串或读取注册元数据, 都不能确立宿主命令可见性.
 
 快速流程:

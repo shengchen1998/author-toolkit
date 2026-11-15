@@ -3,15 +3,15 @@
   "files": [
     {
       "path": "SKILL.md",
-      "sha256": "f3adaf03fa93822161d44565b0a881989c777a0af4ea292760bb6baaba231759"
+      "sha256": "bad49725de8e570f2acf03a86172c3d3df9e6784b8c8fa55bc496badf9d08433"
     },
     {
       "path": "assets/AGENTS.md",
-      "sha256": "a28671ee0f1d36d0c3a034aae4120960185b3327f822299514ab6f3481bb9033"
+      "sha256": "4d78bc30e6a283a6a12e040525510d740575faffba896fcaa8976da009aea934"
     },
     {
       "path": "assets/START_HERE.md",
-      "sha256": "47c09f1d5bf589162c413d77b5eb034956d2d0933f9f40f2c7647fcb985cbe4f"
+      "sha256": "2c17b432daf07bdb7a273b492d3d50c8a3690b10ae8c4237687a687967cbab66"
     },
     {
       "path": "assets/references/avoid-ai-writing-adapter.md",
@@ -91,7 +91,7 @@
     },
     {
       "path": "assets/references/terminology.md",
-      "sha256": "7f28cc68381873c46b8407857ee8b782817ef08d30bf8527d50762fc0d3c2132"
+      "sha256": "b90b7cc72e12212f5a3ab8576e958483312d597484a3b8f05704c09e7867c225"
     },
     {
       "path": "assets/references/workflow-reporting.md",
@@ -159,7 +159,7 @@
     },
     {
       "path": "scripts/lib/digest.mjs",
-      "sha256": "79d0261a78abe3573288d7c1f20dd136ad6a01d56103f6566bc49fc3b9731954"
+      "sha256": "519c50c5fabc8e108c98be450208921db4266df46ea4acecb539676f79a3c7f4"
     },
     {
       "path": "scripts/lib/evidence-inspection.mjs",
@@ -207,7 +207,7 @@
     },
     {
       "path": "scripts/lib/navigation-cache.mjs",
-      "sha256": "e11994996274fee637d8b9f1d5c2af8757a31b239bd190d431b96055eaec7ff0"
+      "sha256": "b0b3aeda8285c8431db864f1d7f635169897b0c0aead1847961dec52829ef5d6"
     },
     {
       "path": "scripts/lib/pending-artifacts.mjs",
