@@ -422,6 +422,8 @@ test("setup discloses only the selected project branch", async () => {
   assert.match(newSetup, /\.\.\/\.\.\/\.\.\/author-project\/references\/operations\.md#initialize/);
   assert.match(newSetup, /only \[Read and validate\]\(\.\.\/\.\.\/\.\.\/author-project\/references\/read-operations\.md#read-and-validate\)/);
   assert.match(newSetup, /a detected language requires the final author confirmation/);
+  assert.match(newSetup, /selected manuscript as decoded UTF-8 text before limiting it to at most 300 Unicode code points/);
+  assert.match(newSetup, /use `und` for mixed or inconclusive text/);
   assert.match(newSetup, /successful doctor satisfies that section's doctor prerequisite/);
   assert.match(newSetup, /do not run it again/);
   assert.match(newSetup, /standalone validation gates the new manifest and skeleton files before entry-file installation/);
