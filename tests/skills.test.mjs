@@ -77,7 +77,8 @@ test("setup requires author-confirmed host command visibility", async () => {
   assert.match(setupStep, /Ask the author to confirm host command visibility/);
   assert.match(setupStep, /all five commands in the current host's command palette or autocomplete/);
   assert.match(setupStep, /all five exact registered names in its skill picker on a host without skill commands/);
-  assert.match(setupStep, /Wait for that confirmation and the author's strategy choice/);
+  assert.match(setupStep, /`ask-author` as the optional "help me choose" routing entry/);
+  assert.match(setupStep, /Wait for that confirmation and the author's choice of a strategy or the `ask-author` routing entry/);
   assert.match(readyRule, /author has confirmed host command visibility for all five strategies/);
   assert.match(readyRule, /model-facing registry metadata or displayed command strings/);
   assert.match(readyRule, /report host command visibility as unverified and do not report setup as ready/);
