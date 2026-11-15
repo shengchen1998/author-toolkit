@@ -266,6 +266,19 @@ test("project digest is a generated navigation cache, not another source of trut
   }
 });
 
+test("new Story Bibles use a neutral heading and an optional title field", async () => {
+  const [template, newSetup] = await Promise.all([
+    readFile(path.join(root, "skills/author-project/assets/story-bible-template.md"), "utf8"),
+    readFile(path.join(root, "skills/setup-author-toolkit/assets/setup/new-project.md"), "utf8"),
+  ]);
+
+  assert.match(template, /^# Story Bible\n/);
+  assert.match(template, /^- Title:$/m);
+  assert.doesNotMatch(template, /PROJECT_TITLE/);
+  assert.match(newSetup, /write a supplied project title to its `Title` field and otherwise leave that field empty/);
+  assert.match(newSetup, /retain the neutral `# Story Bible` heading in both cases/);
+});
+
 test("setup and routine navigation keep operational history listings bounded", async () => {
   const [setup, existingSetup, newSetup, readOperations, readme, zhReadme] = await Promise.all([
     readFile(path.join(root, "skills/setup-author-toolkit/SKILL.md"), "utf8"),

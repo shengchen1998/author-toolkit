@@ -1,9 +1,10 @@
-# Story Bible: PROJECT_TITLE
+# Story Bible
 
 This file starts as an empty project skeleton. The author and fiction writing skills supply its creative content.
 
 ## Quick reference
 
+- Title:
 - Genre:
 - Target reader:
 - Logline:
