@@ -57,7 +57,11 @@ try {
         `Setup payload: ${result.files} files (${result.references} references, ${result.clis} CLIs)${project}`,
       );
       outputFailures("Payload failures", result.payload_failures);
-      outputFailures("Project entry failures", result.entry_failures);
+      if (result.project.checked) {
+        outputFailures("Project entry failures", result.entry_failures);
+      } else {
+        console.log("Project entry check: skipped (no --project-root)");
+      }
       console.log("Project state: not checked");
       if (result.payload_failures.length > 0) {
         console.log("Exit reason: incomplete installed payload; stop shared work");

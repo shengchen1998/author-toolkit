@@ -60,7 +60,8 @@ test("doctor reports a bounded summary for a complete installed payload", async 
 test("source doctor resolves the checked-in setup skill", () => {
   const result = run();
   assert.equal(result.status, 0, result.stderr);
-  assert.match(result.stdout, /Setup payload: \d+ files \(\d+ references, 19 CLIs\)\nPayload failures: 0\nProject entry failures: 0\nProject state: not checked/);
+  assert.match(result.stdout, /Setup payload: \d+ files \(\d+ references, 19 CLIs\)\nPayload failures: 0\nProject entry check: skipped \(no --project-root\)\nProject state: not checked/);
+  assert.doesNotMatch(result.stdout, /Project entry failures:/);
 });
 
 test("doctor reports only failed payload paths, including missing internal modules and drift", async (t) => {
@@ -74,7 +75,7 @@ test("doctor reports only failed payload paths, including missing internal modul
   assert.match(result.stdout, /^Setup payload: \d+ files \(\d+ references, 19 CLIs\)\nPayload failures: 2\n/);
   assert.match(result.stdout, /scripts\/lib\/digest\.mjs: missing or unreadable/);
   assert.match(result.stdout, /assets\/references\/terminology\.md: SHA-256 differs/);
-  assert.match(result.stdout, /Project entry failures: 0\nProject state: not checked\nExit reason: incomplete installed payload; stop shared work\n$/);
+  assert.match(result.stdout, /Project entry check: skipped \(no --project-root\)\nProject state: not checked\nExit reason: incomplete installed payload; stop shared work\n$/);
   assert.equal(result.stderr, "");
   assert.doesNotMatch(result.stdout, /state-and-findings/);
   assert.doesNotMatch(result.stdout, /AGENTS\.md|project entry files/);

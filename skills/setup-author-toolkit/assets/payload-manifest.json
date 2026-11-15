@@ -115,7 +115,7 @@
     },
     {
       "path": "scripts/doctor.mjs",
-      "sha256": "11663f2f9f22189dd1c2f892f55a8c1cd7c1a73dd801c647eb4ff38621db4513"
+      "sha256": "5150c422f2e488e9a5376fd8c850390f16a7dea5fba62d0f77cf54764a190a8f"
     },
     {
       "path": "scripts/evidence-retention.mjs",
