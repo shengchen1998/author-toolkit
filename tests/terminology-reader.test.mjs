@@ -37,13 +37,40 @@ test("prints multiple sections once in document order", () => {
   assert.doesNotMatch(result.stdout, /## Writing rules|## Operation identifiers/);
 });
 
+test("prints only setup-relevant rows with the setup preset", () => {
+  const result = run(["--preset", "setup"]);
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /^## Core terms\n/);
+  assert.match(result.stdout, /`host command visibility`/);
+  assert.match(result.stdout, /`current-draft revision convergence`/);
+  assert.match(result.stdout, /Setup `setup\.installation`/);
+  assert.match(result.stdout, /Pending action `status`/);
+  assert.doesNotMatch(result.stdout, /`review coverage`|Coverage `coverage`|Evidence retention `mode`/);
+  assert.doesNotMatch(result.stdout, /## Writing rules|## Operation identifiers/);
+
+  const core = result.stdout.split("## Core terms\n")[1].split("\n## Contract values")[0];
+  const contracts = result.stdout.split("## Contract values\n")[1];
+  assert.equal(core.split("\n").filter((line) => line.startsWith("| `")).length, 28);
+  assert.equal(contracts.split("\n").filter((line) => line.startsWith("| ")).length - 2, 7);
+});
+
 test("rejects unknown sections and invalid arguments", () => {
   const unknown = run(["--section", "Core terms", "--section", "Missing"]);
   assert.equal(unknown.status, 1);
   assert.match(unknown.stderr, /unknown terminology section: Missing/);
   assert.equal(unknown.stdout, "");
 
-  for (const args of [[], ["--section"], ["Core terms"], ["--json"]]) {
+  for (const args of [
+    [],
+    ["--section"],
+    ["Core terms"],
+    ["--json"],
+    ["--preset"],
+    ["--preset", "missing"],
+    ["--preset", "setup", "--preset", "setup"],
+    ["--preset", "setup", "--section", "Core terms"],
+    ["--section", "Core terms", "--preset", "setup"],
+  ]) {
     const result = run(args);
     assert.equal(result.status, 2, args.join(" "));
     assert.match(result.stdout, /Usage:/);
@@ -54,5 +81,6 @@ test("exposes help without reading terminology", () => {
   const result = run(["--help"]);
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /--section NAME/);
+  assert.match(result.stdout, /--preset setup/);
   assert.match(result.stdout, /writes nothing/);
 });
