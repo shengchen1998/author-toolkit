@@ -344,6 +344,9 @@ test("existing-project setup uses bounded inspection references and a categorize
   assert.match(setup, /A project-state or strategy-gate failure does not change that installation result/);
   assert.match(setup, /toolkit is installed while the affected project-state or evidence-dependent operations are blocked/);
   assert.match(setup, /Distinguish mechanical execution evidence from operation-specific evidence/);
+  assert.match(setup, /Without a `current_scope`, output `current scope hashes: not applicable`/);
+  assert.match(setup, /this state has no manuscript hashes to compute or report as scope evidence/);
+  assert.match(setup, /With a `current_scope`, report its recorded hashes and validation status/);
 
   for (const command of ["initialize\\.mjs --project-root", "doctor\\.mjs", "read\\.mjs --project-root", "preflight\\.mjs --project-root", "validate\\.mjs --manifest", "status\\.mjs --manifest", "writes\\.mjs check-index --manifest", "--explain", "--scope-id", "--require-execution", "--digest", "--diagnose", "project-digest\\.mjs --project-root"]) {
     assert.match(readOperations, new RegExp(command));
