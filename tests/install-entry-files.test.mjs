@@ -50,7 +50,7 @@ test("install-entry-files creates both agent entries and navigation from an unre
     valid: true,
     project_root: projectRoot,
     agents: { path: "AGENTS.md", status: "created" },
-    claude: { path: "CLAUDE.md", target: "AGENTS.md", status: "missing" },
+    claude: { path: "CLAUDE.md", target: "AGENTS.md", status: "created" },
     start_here: { path: "START_HERE.md", status: "created" },
   });
   await validEntries(setupRoot, projectRoot);
@@ -156,6 +156,7 @@ test("install-entry-files verifies the installed copy and reports argument error
   const installedTool = path.join(setupRoot, "scripts", "install-entry-files.mjs");
   const installed = run(["--project-root", projectRoot, "--json"], { tool: installedTool });
   assert.equal(installed.status, 0, installed.stderr);
+  assert.equal(JSON.parse(installed.stdout).claude.status, "created");
   await validEntries(setupRoot, projectRoot);
 
   const help = run(["--help"], { tool: installedTool });

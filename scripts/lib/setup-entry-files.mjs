@@ -15,7 +15,7 @@ async function targetStatus(target, file, expected) {
   try {
     stats = await lstat(target);
   } catch (error) {
-    if (error.code === "ENOENT") return file === "AGENTS.md" ? "created" : "missing";
+    if (error.code === "ENOENT") return "created";
     throw error;
   }
   if (stats.isDirectory()) throw targetError(file, "is a directory");

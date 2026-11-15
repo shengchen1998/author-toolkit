@@ -247,7 +247,7 @@
     },
     {
       "path": "scripts/lib/setup-entry-files.mjs",
-      "sha256": "c25718e8174e5eeeda20198f82716bcd7d3d574f98d753c7f0e69f6b7aaee456"
+      "sha256": "7d346a063909bd7364228d8876aee0a0623bc0b4927056854eafd3ba481025f5"
     },
     {
       "path": "scripts/lib/setup-payload.mjs",
