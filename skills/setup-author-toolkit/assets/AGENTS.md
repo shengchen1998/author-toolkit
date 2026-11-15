@@ -22,7 +22,7 @@ For shared fiction creation or revision, locate `.author-toolkit/project.json`:
 
 Before shared-state work, run `node <setup-skill-root>/scripts/check.mjs --project-root <project-root>`. If it fails, rerun it with `--diagnose`, report the failure, and stop at the active strategy's author gate.
 
-Use one manifest per book and resolve registered artifacts through its `paths`. Run one evidence-gated operation and stop at its author gate; a pending action never authorizes a manuscript write or publication. Selected prose audits 1-18 remain subchecks within one `prose` operation: a validated fully covered clean audit advances sequentially under `prose-mechanics` without an empty author confirmation, while findings and operation transitions retain their gates. Follow the active strategy for stable operation gates, shared state, and ownership of state operations and creative content.
+Use one manifest per book and resolve registered artifacts through its `paths`. Run one evidence-gated operation and stop at its author gate; a pending action never authorizes a manuscript write or publication. Follow the active strategy for stable operation gates, shared state, and ownership of state operations and creative content.
 
 ## Keep author decisions explicit
 
