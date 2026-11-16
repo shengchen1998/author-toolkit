@@ -109,13 +109,14 @@ test("setup requires author-confirmed host command visibility", async () => {
   assert.match(zhReadme, /确认自动检测的值/);
 });
 
-test("setup reads a bounded terminology preset from the single installed source", async () => {
+test("setup reads a bounded reporting preset from the single installed source", async () => {
   const [setup, instructions] = await Promise.all([
     readFile(path.join(root, "skills/setup-author-toolkit/SKILL.md"), "utf8"),
     readFile(path.join(root, "skills/setup-author-toolkit/assets/AGENTS.md"), "utf8"),
   ]);
-  assert.match(setup, /scripts\/terminology\.mjs --preset setup/);
-  assert.match(setup, /setup-relevant rows from \*\*Core terms\*\* and \*\*Contract values\*\*/);
+  assert.match(setup, /scripts\/terminology\.mjs --preset setup-report/);
+  assert.match(setup, /setup reporting and entry routing/);
+  assert.match(setup, /--preset setup` for the complete setup selection/);
   assert.match(setup, /do not read the full terminology file/);
   assert.match(setup, /scripts\/terminology\.mjs --section "Operation identifiers"/);
   assert.match(setup, /pending action, group of unverified approvals, or backup-index difference/);

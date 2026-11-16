@@ -518,15 +518,16 @@ test("setup carries self-contained preflight, validation, state, range, and inst
       ...nodeArgs,
       path.join(installedSetup, "scripts", "terminology.mjs"),
       "--preset",
-      "setup",
+      "setup-report",
     ],
     { encoding: "utf8" },
   );
   assert.equal(setupTerminology.status, 0, setupTerminology.stderr);
   assert.match(setupTerminology.stdout, /^## Core terms\n/);
   assert.match(setupTerminology.stdout, /`host command visibility`/);
+  assert.match(setupTerminology.stdout, /`previous scope`/);
   assert.match(setupTerminology.stdout, /Setup `setup\.installation`/);
-  assert.doesNotMatch(setupTerminology.stdout, /`review coverage`|Coverage `coverage`/);
+  assert.doesNotMatch(setupTerminology.stdout, /`manuscript inventory`|`review coverage`|Coverage `coverage`/);
   assert.doesNotMatch(setupTerminology.stdout, /## Writing rules|## Operation identifiers/);
 
   const allocation = spawnSync(

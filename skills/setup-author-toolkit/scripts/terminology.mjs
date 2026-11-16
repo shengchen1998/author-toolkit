@@ -9,6 +9,15 @@ import { resolveSetupRoot } from "./lib/setup-payload.mjs";
 const scriptRoot = path.dirname(fileURLToPath(import.meta.url));
 const setupRoot = resolveSetupRoot(path.join(scriptRoot, ".."));
 const terminologyPath = path.join(setupRoot, "assets", "references", "terminology.md");
+const setupContractValues = [
+  "Setup `setup.installation`",
+  "Setup `setup.project_state`",
+  "Setup `setup.strategy_gate`",
+  "Setup `setup.host_visibility`",
+  "Scope `status`",
+  "Pending action `status`",
+  "Approval `Status`",
+];
 const presetDefinitions = {
   setup: {
     coreTerms: [
@@ -41,15 +50,25 @@ const presetDefinitions = {
       "input version",
       "operation completion",
     ],
-    contractValues: [
-      "Setup `setup.installation`",
-      "Setup `setup.project_state`",
-      "Setup `setup.strategy_gate`",
-      "Setup `setup.host_visibility`",
-      "Scope `status`",
-      "Pending action `status`",
-      "Approval `Status`",
+    contractValues: setupContractValues,
+  },
+  "setup-report": {
+    coreTerms: [
+      "host command visibility",
+      "current scope",
+      "previous scope",
+      "base scope",
+      "stale evidence",
+      "approval",
+      "execution receipt",
+      "unverified approval",
+      "recorded blocker",
+      "current-draft revision convergence",
+      "navigation cache",
+      "pending action",
+      "operation completion",
     ],
+    contractValues: setupContractValues,
   },
 };
 
@@ -63,12 +82,14 @@ function usage() {
   console.log(`Usage:
   node scripts/terminology.mjs --section NAME [--section NAME]...
   node scripts/terminology.mjs --preset setup
+  node scripts/terminology.mjs --preset setup-report
 
 Print selected level-two sections from the installed controlled workflow
-terminology, in document order, or select setup-relevant rows from Core terms
-and Contract values. Each section includes its heading and ends before the next
-level-two heading. This helper writes nothing and does not inspect project
-state.`);
+terminology, in document order, or select preset rows from Core terms and
+Contract values. The setup preset covers setup procedures; setup-report keeps
+only reporting and entry-routing rows. Each section includes its heading and
+ends before the next level-two heading. This helper writes nothing and does not
+inspect project state.`);
 }
 
 function options(args) {

@@ -54,6 +54,28 @@ test("prints only setup-relevant rows with the setup preset", () => {
   assert.equal(contracts.split("\n").filter((line) => line.startsWith("| ")).length - 2, 7);
 });
 
+test("prints only reporting and routing rows with the setup-report preset", () => {
+  const result = run(["--preset", "setup-report"]);
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /^## Core terms\n/);
+  assert.match(result.stdout, /`host command visibility`/);
+  assert.match(result.stdout, /`previous scope`/);
+  assert.match(result.stdout, /`base scope`/);
+  assert.match(result.stdout, /`execution receipt`/);
+  assert.match(result.stdout, /`unverified approval`/);
+  assert.match(result.stdout, /`current-draft revision convergence`/);
+  assert.match(result.stdout, /Setup `setup\.installation`/);
+  assert.match(result.stdout, /Approval `Status`/);
+  assert.doesNotMatch(result.stdout, /`manuscript inventory`|`execution recovery audit`|`backup index inspection`/);
+  assert.doesNotMatch(result.stdout, /`pending artifact index`|`input version`/);
+  assert.doesNotMatch(result.stdout, /## Writing rules|## Operation identifiers/);
+
+  const core = result.stdout.split("## Core terms\n")[1].split("\n## Contract values")[0];
+  const contracts = result.stdout.split("## Contract values\n")[1];
+  assert.equal(core.split("\n").filter((line) => line.startsWith("| `")).length, 13);
+  assert.equal(contracts.split("\n").filter((line) => line.startsWith("| ")).length - 2, 7);
+});
+
 test("rejects unknown sections and invalid arguments", () => {
   const unknown = run(["--section", "Core terms", "--section", "Missing"]);
   assert.equal(unknown.status, 1);
@@ -82,5 +104,6 @@ test("exposes help without reading terminology", () => {
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /--section NAME/);
   assert.match(result.stdout, /--preset setup/);
+  assert.match(result.stdout, /--preset setup-report/);
   assert.match(result.stdout, /writes nothing/);
 });
