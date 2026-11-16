@@ -148,7 +148,7 @@ export async function renderProjectDigest({ manifest, tracker, latestReport, lat
     ? `withheld until execution evidence is reconciled; use the ${code("revise-draft")} host command (strict execution gate would fail)`
     : `${concise(field(sessionText, "Next action") ?? field(tracker, "Next action") ?? (latestSession ? `read ${code(latestSession)} for the recorded next action` : "none recorded"))} (recorded; strategy gates not evaluated)`;
   const coveragePath = path.posix.join(manifest.paths.reports, "coverage-index.json");
-  const coverageEntries = coverageIndex?.scope_id === scope?.scope_id && Array.isArray(coverageIndex.entries)
+  const coverageEntries = coverageIndex && coverageIndex.scope_id === scope?.scope_id && Array.isArray(coverageIndex.entries)
     ? coverageIndex.entries.filter((entry) => entry.synthesis_report)
     : [];
   const evidenceLinks = [

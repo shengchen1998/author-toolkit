@@ -89,6 +89,27 @@ function digestCli(projectRoot) {
   );
 }
 
+test("project digest supports a newly scaffolded project without scope or reports", async (t) => {
+  const output = path.join(root, ".test-output");
+  await mkdir(output, { recursive: true });
+  const temporary = await mkdtemp(path.join(output, "project-digest-empty-"));
+  t.after(() => rm(temporary, { recursive: true, force: true }));
+  const projectRoot = path.join(temporary, "project");
+  const scaffold = spawnSync(process.execPath, [
+    path.join(root, "scripts", "scaffold-project.mjs"),
+    "--project-root", projectRoot,
+    "--author-project-root", path.join(root, "skills", "author-project"),
+  ], { encoding: "utf8" });
+  assert.equal(scaffold.status, 0, scaffold.stderr);
+
+  const result = digestCli(projectRoot);
+  assert.equal(result.status, 0, result.stderr);
+  const digest = await readFile(path.join(projectRoot, "PROJECT_STATE.md"), "utf8");
+  assert.match(digest, /Scope: none recorded/);
+  assert.match(digest, /Latest report: none recorded/);
+  assert.match(digest, /Coverage index: none recorded/);
+});
+
 test("project digest generates a bounded navigation cache from shared state", async (t) => {
   const projectRoot = await projectFixture(t);
   const result = digestCli(projectRoot);
