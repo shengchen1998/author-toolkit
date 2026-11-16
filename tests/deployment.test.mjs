@@ -749,6 +749,8 @@ test("setup repairs agent entries and only creates missing navigation", async ()
   assert.match(setup, /scripts\/install-entry-files\.mjs --project-root <project-root> --json/);
   assert.match(setup, /After successful entry-file installation, read `<project-root>\/AGENTS\.md` once; it is the entry contract for the next strategy/);
   assert.match(setup, /Do not rely on the host to inject it automatically/);
+  assert.match(setup, /reuse the install JSON's `claude\.target` and `start_here\.status` as the entry-file installation results/);
+  assert.match(setup, /after the final check passes entry-file verification, use these command results rather than another directory listing or metadata check of the entry files or registered directories/);
   assert.match(setup, /checks both agent targets before writing/);
   assert.match(setup, /leaves correct entries unchanged/);
   assert.match(setup, /atomically replaces other regular files or symlinks/);
