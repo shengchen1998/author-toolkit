@@ -69,7 +69,7 @@ test("setup assumes the five strategy entries are installed", async () => {
     readFile(path.join(root, "README.md"), "utf8"),
     readFile(path.join(root, "README.zh-CN.md"), "utf8"),
   ]);
-  const setupStep = setup.match(/^4\. .+$/m)?.[0];
+  const setupStep = setup.match(/^4\. .+(?:\n {3}.+)*/m)?.[0];
   const readyRule = setup.match(/^Report setup as ready only when .+$/m)?.[0];
   assert.ok(setupStep);
   assert.ok(readyRule);
