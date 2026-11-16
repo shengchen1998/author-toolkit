@@ -145,13 +145,43 @@ test("scaffold-project refuses an existing manifest without changing project fil
 
 test("scaffold-project rejects unsafe paths and invalid metadata before writing", async (t) => {
   const temporaryRoot = await fixture(t);
-  const invalidPaths = ["../outside", "/tmp/outside", "C:/outside", "draft\\chapter.md", "draft/../chapter.md"];
-  for (const [index, manuscriptRoot] of invalidPaths.entries()) {
-    const projectRoot = path.join(temporaryRoot, `unsafe-${index}`);
-    const result = run(argumentsFor(projectRoot, "--manuscript-root", manuscriptRoot));
-    assert.equal(result.status, 1, manuscriptRoot);
-    assert.match(result.stderr, /new project manifest is invalid/);
-    await assert.rejects(readFile(path.join(projectRoot, ".author-toolkit", "project.json"), "utf8"), { code: "ENOENT" });
+  const pathOptions = [
+    "--manuscript-root",
+    "--story-bible",
+    "--audit-tracker",
+    "--reports",
+    "--sessions",
+    "--backups",
+    "--handoffs",
+    "--creation",
+  ];
+  const invalidPaths = [
+    "../outside",
+    "/tmp/outside",
+    "~/outside",
+    "C:/outside",
+    "https://outside",
+    "draft\\chapter.md",
+    "draft/../chapter.md",
+  ];
+  for (const [optionIndex, option] of pathOptions.entries()) {
+    for (const [pathIndex, value] of invalidPaths.entries()) {
+      const projectRoot = path.join(temporaryRoot, `unsafe-${optionIndex}-${pathIndex}`);
+      const result = run(argumentsFor(projectRoot, option, value));
+      const label = `${option} ${value}`;
+      assert.equal(result.status, 2, label);
+      assert.ok(
+        result.stderr.startsWith(`${option} must be a portable project-relative path, e.g. manuscript`),
+        label,
+      );
+      assert.doesNotMatch(result.stderr, /new project manifest is invalid/, label);
+      assert.match(result.stdout, /Usage:/, label);
+      await assert.rejects(
+        readFile(path.join(projectRoot, ".author-toolkit", "project.json"), "utf8"),
+        { code: "ENOENT" },
+        label,
+      );
+    }
   }
   for (const [index, extra] of [["--language", "not-a-language"], ["--created-at", "yesterday"], ["--title", "two\nlines"]].entries()) {
     const projectRoot = path.join(temporaryRoot, `invalid-${index}`);
@@ -188,6 +218,7 @@ test("scaffold-project help and argument errors define the CLI contract", async 
   const help = run(["--help"]);
   assert.equal(help.status, 0, help.stderr);
   assert.match(help.stdout, /--author-project-root DIR/);
+  assert.match(help.stdout, /--project-root and use forward slashes\./);
   assert.match(help.stdout, /creates only missing directories and skeleton files/);
   for (const args of [[], ["--project-root"], ["--unknown"], ["--project-root", "/tmp/project"]]) {
     const invalid = run(args);

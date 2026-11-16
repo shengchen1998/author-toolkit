@@ -103,7 +103,7 @@
     },
     {
       "path": "assets/setup/new-project.md",
-      "sha256": "1e3b71a6e1accbb7d6cc5cecb34c7e674784972c7fc81e9be3da753dcdcb8fb3"
+      "sha256": "5f13817f4b22589fa5ca8bc63ee23a2763a14770db53593225cee43393b6d0bb"
     },
     {
       "path": "scripts/check.mjs",
@@ -327,7 +327,7 @@
     },
     {
       "path": "scripts/scaffold-project.mjs",
-      "sha256": "aa307463eac0c7f86a4c0ed1ec0cad811ee450d3a6ac4ce4e4e08a0e25fcf275"
+      "sha256": "32fba95b74f613cd995346ef0e6f27bca569b4e0ec7637b04a1bed86ef33330a"
     },
     {
       "path": "scripts/scaffold-report.mjs",

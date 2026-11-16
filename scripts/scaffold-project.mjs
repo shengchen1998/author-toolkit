@@ -2,7 +2,7 @@
 
 import path from "node:path";
 
-import { scaffoldNewProject } from "./lib/index.mjs";
+import { scaffoldNewProject, validateRelativePath } from "./lib/index.mjs";
 
 function argumentError(message) {
   const error = new Error(message);
@@ -19,6 +19,9 @@ function usage() {
     [--created-at TIMESTAMP] [--json]
 
 Create a new v3.1 fiction project from the sibling author-project templates.
+--manuscript-root and the paths supplied to --story-bible, --audit-tracker,
+--reports, --sessions, --backups, --handoffs, and --creation are relative to
+--project-root and use forward slashes.
 The CLI creates only missing directories and skeleton files, preserves existing
 manuscript and skeleton content, and refuses an existing project manifest.
 Omitted paths retain template defaults. One timestamp supplies manifest
@@ -61,6 +64,15 @@ function options(args) {
   for (const field of ["projectRoot", "authorProjectRoot"]) {
     if (!result[field]) throw argumentError(`${field} is required`);
     result[field] = path.resolve(result[field]);
+  }
+  const projectPaths = [
+    ["--manuscript-root", result.manuscriptRoot],
+    ...Object.entries(pathNames).map(([argument, field]) => [argument, result.paths[field]]),
+  ];
+  for (const [argument, value] of projectPaths) {
+    if (value !== undefined && !validateRelativePath(value).valid) {
+      throw argumentError(`${argument} must be a portable project-relative path, e.g. manuscript`);
+    }
   }
   return result;
 }
