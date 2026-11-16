@@ -174,7 +174,11 @@ test("check is a strict-mode-compatible preflight alias", async (t) => {
   assert.equal(alias.stdout, ordinary.stdout);
   const help = run(["--help"], path.join(root, "scripts", "check.mjs"));
   assert.equal(help.status, 0, help.stderr);
+  assert.match(help.stdout, /Usage:\n  node scripts\/check\.mjs /);
   assert.match(help.stdout, /--require-execution/);
+  const directHelp = run(["--help"]);
+  assert.equal(directHelp.status, 0, directHelp.stderr);
+  assert.match(directHelp.stdout, /Usage:\n  node scripts\/preflight\.mjs /);
 });
 
 test("preflight rejects an incomplete installed payload before reading project state", async (t) => {

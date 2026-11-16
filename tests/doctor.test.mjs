@@ -71,6 +71,9 @@ test("doctor optionally checks the required author-project sibling files", async
   const { setupRoot, siblingRoot } = await fixture(t);
   const installedTool = path.join(setupRoot, "scripts", "doctor.mjs");
   const args = ["--require-sibling", "author-project"];
+  const help = run(["--help"], { tool: installedTool });
+  assert.equal(help.status, 0, help.stderr);
+  assert.match(help.stdout, /also verify its seven required regular files/);
   const complete = run(args, { tool: installedTool });
   assert.equal(complete.status, 0, complete.stderr);
   assert.match(

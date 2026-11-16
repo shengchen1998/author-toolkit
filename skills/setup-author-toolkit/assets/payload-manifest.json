@@ -115,7 +115,7 @@
     },
     {
       "path": "scripts/doctor.mjs",
-      "sha256": "518005e5cafba5c9783e9fc15361bdf34b36502f2df9164f67607091598a0409"
+      "sha256": "0245eef9e6eca51292ce7a47f010978a9b680ca68165ac399a193ce227c77dae"
     },
     {
       "path": "scripts/evidence-retention.mjs",
@@ -307,7 +307,7 @@
     },
     {
       "path": "scripts/preflight.mjs",
-      "sha256": "264c3e09f6719a73b54367adb67828d4e21cddc0099c45126a789c9afe093bc0"
+      "sha256": "83810226d8dce81f2283aa491371bef53fb2ceca4e5cf2698112d7786d3f9a03"
     },
     {
       "path": "scripts/project-digest.mjs",

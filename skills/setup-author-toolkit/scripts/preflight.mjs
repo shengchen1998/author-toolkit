@@ -27,7 +27,7 @@ function argumentError(message) {
 
 function usage() {
   console.log(`Usage:
-  node scripts/preflight.mjs --project-root DIR [--scope-id ID]
+  node scripts/${path.basename(process.argv[1])} --project-root DIR [--scope-id ID]
                              [--require-execution] [--full] [--digest] [--diagnose]
                              [--json] [--details]
 
