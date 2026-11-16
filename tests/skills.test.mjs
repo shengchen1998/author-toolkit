@@ -324,6 +324,8 @@ test("setup and routine navigation keep operational history listings bounded", a
   assert.match(newSetup, /at most 12 candidate manuscript paths with an omitted count/);
   assert.match(newSetup, /recursive historical regular-file counts without historical artifact paths/);
   assert.match(newSetup, /Run `node <setup-skill-root>\/scripts\/inspect-root\.mjs --project-root <project-root> --json`/);
+  assert.match(newSetup, /adding `--language-sample` when the author has not supplied a language/);
+  assert.match(newSetup, /Without `--language-sample`, discovery reads no file contents/);
   assert.match(newSetup, /Use its entry-file results directly rather than pre-reading those files/);
   assert.match(newSetup, /do not enumerate historical artifact trees/);
   assert.doesNotMatch(existingSetup, /inspect-root\.mjs/);
@@ -439,7 +441,9 @@ test("setup discloses only the selected project branch", async () => {
   assert.doesNotMatch(newSetup, /author-project\/SKILL\.md|author-project\/references\//);
   assert.match(newSetup, /--author-project-root <setup-skill-root>\/\.\.\/author-project/);
   assert.match(newSetup, /ask the author to confirm a detected language before creating the project/);
-  assert.match(newSetup, /selected manuscript as decoded UTF-8 text before limiting it to at most 300 Unicode code points/);
+  assert.match(newSetup, /only when exactly one unomitted candidate exists/);
+  assert.match(newSetup, /lexicographically first direct manuscript file with strict UTF-8 decoding and at most 300 Unicode code points without reading the whole manuscript/);
+  assert.match(newSetup, /A non-unique or empty candidate selection returns no text; invalid UTF-8 is an explicit file-path error/);
   assert.match(newSetup, /use `und` for mixed or inconclusive text/);
   assert.match(newSetup, /built-in project validation gates the new manifest and skeleton files before entry-file installation/);
   assert.match(newSetup, /That check deliberately repeats project validation/);

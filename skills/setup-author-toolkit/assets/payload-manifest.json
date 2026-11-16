@@ -103,7 +103,7 @@
     },
     {
       "path": "assets/setup/new-project.md",
-      "sha256": "bf9a38a976bd9a7af24dacf53002bb40b7afae5563faf1605192f51dc64c09d8"
+      "sha256": "41dc6cbf1caa349fc6d838afea51d996263cfcadd9fb178a46b50eee3ddab212"
     },
     {
       "path": "scripts/check.mjs",
@@ -131,7 +131,7 @@
     },
     {
       "path": "scripts/inspect-root.mjs",
-      "sha256": "2228e3bf230cd73b47a2ea37de97930578198534bca7d5dabbc86de9f8e05d0d"
+      "sha256": "8d93bb3d86a99afbce09f40e5162476d191830030f7515dc68da9f9e0e051716"
     },
     {
       "path": "scripts/install-entry-files.mjs",

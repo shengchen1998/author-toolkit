@@ -127,7 +127,12 @@ Run `node <setup-skill-root>/scripts/inspect-root.mjs --project-root <root> --js
 for new-project discovery. It returns entry-file and default component types, at
 most 12 candidate manuscript paths with an omitted count, and recursive historical
 regular-file counts without historical artifact paths. It follows no symlinks,
-reads no file contents, and writes nothing. Existing v3.1 projects use
+reads no file contents by default, and writes nothing. When the author has not
+supplied a language, add `--language-sample`: only one unomitted candidate permits
+a sample from its root file or lexicographically first direct manuscript file,
+using strict UTF-8 and at most 300 Unicode code points without reading the whole
+manuscript. Non-unique or empty selections return no sample; invalid UTF-8 is an
+explicit file-path error. Existing v3.1 projects use
 `initialize.mjs` instead of repeating root discovery.
 
 Run `node <setup-skill-root>/scripts/scaffold-project.mjs --project-root <root> --author-project-root <setup-skill-root>/../author-project --language <tag> --json`

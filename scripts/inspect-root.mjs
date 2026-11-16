@@ -1,9 +1,11 @@
 #!/usr/bin/env node
 
-import { lstat, readdir } from "node:fs/promises";
+import { lstat, open, readdir } from "node:fs/promises";
 import path from "node:path";
 
 const candidateLimit = 12;
+const languageSampleLimit = 300;
+const languageSampleByteLimit = 4 * languageSampleLimit;
 const manuscriptExtensions = new Set([".md", ".markdown", ".txt"]);
 const componentPaths = {
   manifest: ".author-toolkit/project.json",
@@ -41,19 +43,25 @@ function argumentError(message) {
 
 function usage() {
   console.log(`Usage:
-  node scripts/inspect-root.mjs --project-root DIR [--json]
+  node scripts/inspect-root.mjs --project-root DIR [--language-sample] [--json]
 
 Inspect one project root without changing it. Return entry-file types, at most
 ${candidateLimit} manuscript candidate paths, default component types, and recursive
 regular-file counts for historical directories. Do not list historical artifact
-paths, follow symlinks, read file contents, or inspect shared project state.`);
+paths, follow symlinks, or inspect shared project state. File contents remain
+unread unless --language-sample is supplied. That option samples at most
+${languageSampleLimit} Unicode code points with strict UTF-8 decoding only when one
+unomitted manuscript candidate exists: a root file or the first direct file in
+a directory.`);
 }
 
 function options(args) {
-  const result = { json: false };
+  const result = { json: false, languageSample: false };
   for (let index = 0; index < args.length; index += 1) {
     if (args[index] === "--project-root" && args[index + 1]) {
       result.projectRoot = path.resolve(args[++index]);
+    } else if (args[index] === "--language-sample") {
+      result.languageSample = true;
     } else if (args[index] === "--json") {
       result.json = true;
     } else {
@@ -89,6 +97,47 @@ async function directManuscriptFiles(absolutePath) {
     .sort();
 }
 
+function decodeSample(decoder, contents, options, relativePath) {
+  try {
+    return decoder.decode(contents, options);
+  } catch {
+    throw new Error(`Language sample is not valid UTF-8: ${relativePath}`);
+  }
+}
+
+async function readLanguageSample(absolutePath, relativePath) {
+  const file = await open(absolutePath, "r");
+  const decoder = new TextDecoder("utf-8", { fatal: true });
+  const buffer = Buffer.allocUnsafe(languageSampleByteLimit);
+  let text = "";
+  try {
+    while ([...text].length < languageSampleLimit) {
+      const { bytesRead } = await file.read(buffer, 0, buffer.length, null);
+      if (bytesRead === 0) {
+        text += decodeSample(decoder, undefined, undefined, relativePath);
+        break;
+      }
+      text += decodeSample(decoder, buffer.subarray(0, bytesRead), { stream: true }, relativePath);
+    }
+  } finally {
+    await file.close();
+  }
+  return [...text].slice(0, languageSampleLimit).join("");
+}
+
+async function inspectLanguageSample(projectRoot, candidates, omittedCount, filesByCandidate) {
+  if (omittedCount > 0 || candidates.length > 1) return { status: "not_unique" };
+  if (candidates.length === 0) return { status: "no_manuscript_file" };
+  const files = filesByCandidate.get(candidates[0].path) ?? [];
+  if (files.length === 0) return { status: "no_manuscript_file" };
+  const relativePath = files[0];
+  return {
+    status: "sampled",
+    path: relativePath,
+    text: await readLanguageSample(path.join(projectRoot, relativePath), relativePath),
+  };
+}
+
 async function countRegularFiles(absolutePath) {
   if (await entryType(absolutePath) !== "directory") return null;
   const entries = await readdir(absolutePath, { withFileTypes: true });
@@ -100,12 +149,13 @@ async function countRegularFiles(absolutePath) {
   return counts.reduce((total, count) => total + count, 0);
 }
 
-async function inspectRoot(projectRoot) {
+async function inspectRoot(projectRoot, includeLanguageSample) {
   if (await entryType(projectRoot) !== "directory") {
     throw new Error("--project-root must name an accessible directory");
   }
   const rootEntries = await readdir(projectRoot, { withFileTypes: true });
   const manuscriptCandidates = [];
+  const filesByCandidate = new Map();
   for (const name of rootEntries
     .filter((entry) => entry.isFile()
       && isManuscriptFile(entry.name)
@@ -113,6 +163,7 @@ async function inspectRoot(projectRoot) {
     .map((entry) => entry.name)
     .sort()) {
     manuscriptCandidates.push({ path: name, type: "file" });
+    filesByCandidate.set(name, [name]);
   }
 
   const directories = rootEntries
@@ -124,11 +175,13 @@ async function inspectRoot(projectRoot) {
   for (const name of directories) {
     const files = await directManuscriptFiles(path.join(projectRoot, name));
     if (name === "manuscript" || files.length > 0) {
+      const candidatePath = `${name}/`;
       manuscriptCandidates.push({
-        path: `${name}/`,
+        path: candidatePath,
         type: "directory",
         direct_manuscript_files: files.length,
       });
+      filesByCandidate.set(candidatePath, files.map((file) => `${name}/${file}`));
     }
   }
   manuscriptCandidates.sort((left, right) => left.path.localeCompare(right.path));
@@ -150,13 +203,22 @@ async function inspectRoot(projectRoot) {
     history[relativePath] = await countRegularFiles(path.join(projectRoot, relativePath));
   }
 
-  return {
+  const result = {
     entries,
     manuscript_candidates: manuscriptCandidates.slice(0, candidateLimit),
     omitted_manuscript_candidates: Math.max(0, manuscriptCandidates.length - candidateLimit),
     components,
     historical_file_counts: history,
   };
+  if (includeLanguageSample) {
+    result.language_sample = await inspectLanguageSample(
+      projectRoot,
+      result.manuscript_candidates,
+      result.omitted_manuscript_candidates,
+      filesByCandidate,
+    );
+  }
+  return result;
 }
 
 function outputText(result) {
@@ -173,6 +235,13 @@ function outputText(result) {
   for (const [relativePath, count] of Object.entries(result.historical_file_counts)) {
     console.log(`Historical files ${relativePath}: ${count ?? "not a directory"}`);
   }
+  if (result.language_sample) {
+    console.log(`Language sample: ${result.language_sample.status}`);
+    if (result.language_sample.status === "sampled") {
+      console.log(`Language sample file: ${result.language_sample.path}`);
+      console.log(result.language_sample.text);
+    }
+  }
 }
 
 const args = process.argv.slice(2);
@@ -181,7 +250,7 @@ try {
     usage();
   } else {
     const selection = options(args);
-    const result = await inspectRoot(selection.projectRoot);
+    const result = await inspectRoot(selection.projectRoot, selection.languageSample);
     if (selection.json) console.log(JSON.stringify(result, null, 2));
     else outputText(result);
   }
