@@ -60,7 +60,7 @@ CLI 才读取其根目录文件或按字典序排列的首个直接稿件文件,
 运行 `node <setup-skill-root>/scripts/scaffold-project.mjs --project-root <root> --author-project-root <setup-skill-root>/../author-project --language <tag> --json`
 执行 setup 唯一的新项目脚手架实现. 可选标题和路径参数登记选定的元数据与位置, 省略项沿用模板默认值.
 CLI 仅创建缺失目录和骨架文件, 保留已有正文与骨架内容, 拒绝已有 manifest, 为 manifest 和新 tracker 使用同一时间戳,
-并在成功前完整校验项目. 语言检测及检测值的作者确认仍是执行该命令前的 setup 步骤.
+并在成功前完整校验项目. 语言检测仍是执行该命令前的 setup 步骤; 检测或直接提供的语言会直接登记, 并在最终设置报告中说明.
 
 运行 `node <setup-skill-root>/scripts/doctor.mjs` 可获得有界安装摘要和失败路径.
 它按 `assets/payload-manifest.json` 核对技能的普通载荷文件, 包括 CLI 内部模块.
@@ -152,8 +152,8 @@ npx skills update
 快速流程:
 
 1. 确认写作项目目录. 其中可以有 Markdown 或纯文本稿件, 也可以是新小说的目标目录.
-2. 调用 `setup-author-toolkit`, 提供路径并回答项目登记和语言问题. setup 会报告注册的 BCP 47 语言,
-   并要求你确认自动检测的值; 明确提供的语言无需重复确认. 登记会保留原稿路径.
+2. 调用 `setup-author-toolkit`, 提供路径并回答项目登记问题. setup 会直接登记自动检测或明确提供的语言,
+   并在最终输出中报告注册的 BCP 47 语言, 无需单独确认语言. 登记会保留原稿路径.
    共享契约保留在 setup 技能安装目录的 `assets/references/` 中并由运行时直接读取, 不部署到写作项目.
    每次 setup 都会用安装模板覆盖项目根目录的 `AGENTS.md`, 并将普通文件或已有符号链接
    `CLAUDE.md` 替换为指向 `AGENTS.md` 的相对符号链接; 模板仅保留语言、显式入口路由和稿件安全约束,

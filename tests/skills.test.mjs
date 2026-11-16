@@ -77,11 +77,10 @@ test("setup assumes the five strategy entries are installed", async () => {
   assert.match(setupStep, /Assume these entries are installed; do not check their host visibility or ask the author to confirm it/);
   assert.match(setupStep, /`ask-author` as the optional "help me choose" routing entry/);
   assert.match(setupStep, /registered BCP 47 language/);
-  assert.match(setupStep, /new-project branch confirms a detected language before scaffolding/);
-  assert.match(setupStep, /an author-supplied language needs no repeated confirmation/);
+  assert.match(setupStep, /new-project branch registers the detected or author-supplied language directly and reports it in the final setup output/);
   assert.match(setupStep, /Wait for the author's choice of a strategy or the `ask-author` routing entry/);
   assert.match(setup, /reuse that command syntax for these entries/);
-  assert.match(readyRule, /any detected language has been confirmed by the author/);
+  assert.match(readyRule, /installation and project state pass, and all selected paths are registered\./);
   assert.match(readyRule, /Assume the five strategy entries are installed without checking or reporting their host visibility/);
   assert.match(readyRule, /Do not start .+ or another writing skill from setup/);
   for (const skill of ["write-fiction", "revise-fiction", "revise-draft", "revise-increment", "revise-request"]) {
@@ -100,9 +99,9 @@ test("setup assumes the five strategy entries are installed", async () => {
     assert.doesNotMatch(text, /host_visibility|Host visibility|host command visibility|宿主命令可见性/);
   }
   assert.match(readme, /reuses that command syntax/);
-  assert.match(readme, /confirm a detected value/);
+  assert.match(readme, /registers a detected or explicitly supplied language directly/);
   assert.match(zhReadme, /沿用相同的命令语法/);
-  assert.match(zhReadme, /确认自动检测的值/);
+  assert.match(zhReadme, /无需单独确认语言/);
 });
 
 test("setup reads a bounded reporting preset from the single installed source", async () => {
@@ -435,7 +434,7 @@ test("setup discloses only the selected project branch", async () => {
   assert.doesNotMatch(existingSetup, /author-project\/SKILL\.md|author-project\/references\/|read-operations\.md/);
   assert.doesNotMatch(newSetup, /author-project\/SKILL\.md|author-project\/references\//);
   assert.match(newSetup, /--author-project-root <setup-skill-root>\/\.\.\/author-project/);
-  assert.match(newSetup, /ask the author to confirm a detected language before creating the project/);
+  assert.match(newSetup, /Register the detected or author-supplied language directly and report it in the final setup output/);
   assert.match(newSetup, /only when exactly one unomitted candidate exists/);
   assert.match(newSetup, /lexicographically first direct manuscript file with strict UTF-8 decoding and at most 300 Unicode code points without reading the whole manuscript/);
   assert.match(newSetup, /A non-unique or empty candidate selection returns no text; invalid UTF-8 is an explicit file-path error/);

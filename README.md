@@ -141,8 +141,9 @@ arguments register the selected metadata and locations while retaining template
 defaults for omissions. The CLI creates only missing directories and skeleton
 files, preserves existing manuscript and skeleton content, refuses an existing
 manifest, applies one timestamp to the manifest and new tracker, and validates
-the complete project before succeeding. Language detection and confirmation of
-a detected value remain setup steps before this command.
+the complete project before succeeding. Language detection remains a setup step
+before this command; its result is registered directly and disclosed in the
+final setup report.
 
 Run `node <setup-skill-root>/scripts/doctor.mjs` for a bounded installation
 summary and only the failed paths. It verifies the skill's regular payload files,
@@ -281,12 +282,12 @@ A quick run looks like this:
 1. Identify the writing project directory. It may contain an existing Markdown
    or plain-text manuscript, or it may be the destination for a new novel.
 2. Invoke `setup-author-toolkit` with that path. Answer the project registration
-   and language questions. Setup reports the registered BCP 47 language and asks
-   you to confirm a detected value; an explicitly supplied language needs no
-   repeated confirmation. Registration records paths; it does not move the
-   manuscript into a new layout. Shared contracts remain in the setup skill's
-   installed `assets/references/` payload and are read directly from that
-   location; setup does not deploy them into the writing project. On every
+   questions. Setup registers a detected or explicitly supplied language directly
+   and reports the registered BCP 47 language in its final output. Registration
+   records paths; it does not move the manuscript into a new layout. Shared
+   contracts remain in the setup skill's installed `assets/references/` payload
+   and are read directly from that location; setup does not deploy them into the
+   writing project. On every
    setup, it overwrites the project-root `AGENTS.md` with the installed template
    and replaces a regular `CLAUDE.md` or existing symlink with a relative
    `CLAUDE.md -> AGENTS.md` symlink. The template keeps only language,
