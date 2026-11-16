@@ -66,7 +66,7 @@ CLI 仅创建缺失目录和骨架文件, 保留已有正文与骨架内容, 拒
 它按 `assets/payload-manifest.json` 核对技能的普通载荷文件, 包括 CLI 内部模块.
 添加 `--require-sibling author-project` 可核对 setup 所需的该兄弟技能的 7 个普通文件;
 setup 在进入任一项目分支前执行此检查. 添加 `--project-root <root>` 可同时核对写作项目的
-`AGENTS.md` 和相对符号链接 `CLAUDE.md -> AGENTS.md`; 项目状态校验与宿主命令可见性仍是独立检查.
+`AGENTS.md` 和相对符号链接 `CLAUDE.md -> AGENTS.md`; 项目状态校验仍是独立检查.
 文本和 JSON 输出分别列出安装载荷、必需兄弟技能与可修复项目入口的失败, 并明确显示退出原因.
 
 运行 `node <setup-skill-root>/scripts/install-entry-files.mjs --project-root <root> --json`,
@@ -89,8 +89,8 @@ schema 有效但后续状态校验失败时返回 `recorded_unverified` 投影�
 项目校验及普通状态汇总; 它复用相同的库实现并输出有界摘要.
 `Payload failures` 仅统计安装载荷失败; `Entry files: pass` 独立确认两个入口文件均通过.
 入口不匹配不阻断项目检查, 但使命令退出 1 并禁止生成导航缓存.
-`Installation`、`Project state`、`Strategy gate`、`Host visibility` 四项独立状态也位于 JSON 的 `setup` 对象中,
-避免将证据失败误报为工具包安装不完整; CLI 始终将宿主可见性保留为待作者确认.
+`Installation`、`Project state`、`Strategy gate` 三项独立状态也位于 JSON 的 `setup` 对象中,
+避免将证据失败误报为工具包安装不完整; 五个策略入口始终假定已安装, CLI 不检查宿主可见性.
 文本以 `Blocking error` 标注载荷、入口文件和项目校验错误, 以 `Non-blocking unverified approvals` 区分普通执行状态.
 只有显式严格执行门禁才使未核对批准导致命令失败.
 默认选择当前范围. 仅在执行门禁场景添加
@@ -147,10 +147,7 @@ npx skills update
 
 `ask-author` 使用相同方式启动. 如果你通过宿主技能命令启动 setup, setup 展示后续入口时会沿用相同的命令语法.
 
-五个策略都是用户入口, 模型侧注册元数据不能确立作者侧可用性. 只有你确认宿主命令可见性后,
-setup 才报告 ready: 在当前宿主的命令面板或自动补全中, 五个策略的准确命令都必须可见;
-没有技能命令的宿主, 则在技能选择器中确认五个准确注册名. 未确认时, setup 将宿主命令可见性
-报告为未验证. 仅展示命令字符串或读取注册元数据, 都不能确立宿主命令可见性.
+五个策略都是用户入口. setup 始终假定五个策略入口已安装, 不检查也不要求作者确认宿主可见性.
 
 快速流程:
 
@@ -169,7 +166,7 @@ setup 才报告 ready: 在当前宿主的命令面板或自动补全中, 五个�
    初始 `author-project` 读取, 校验和状态调用会将缺失的安装契约或脚本报告为工具包安装不完整,
    不依赖项目内的共享引用副本. 已有项目使用安装的初始化 CLI 和有界检查参考, 不加载备份,
    恢复和创作提交规则. setup 分别汇总安装载荷、项目入口文件、稿件范围、执行证据,
-   并列出独立的安装、项目状态、策略门禁和宿主可见性状态. 安装通过与证据依赖操作被阻塞互不混淆.
+   并列出独立的安装、项目状态和策略门禁状态. 安装通过与证据依赖操作被阻塞互不混淆.
 3. setup 验证共享 manifest 后, 根据目标选择 `write-fiction`, `revise-fiction`,
    `revise-draft`, `revise-increment` 或 `revise-request`. 增量修订用于复用未变章节的可复用证据,
    处理新增或受影响章节并恢复目标范围的当前草稿修订收敛. 请求修订用于从已达到当前草稿修订收敛的
@@ -464,8 +461,8 @@ AI 关联发现只描述文本模式, 不能证明文本由 AI 生成.
 ## 验证状态
 
 3.1.0 工作树的仓库检查已通过: 214 项协议测试和 13 项默认校验, 详见
-[docs/VALIDATION.md](docs/VALIDATION.md). 新增的宿主命令可见性以及有界盘点与导航检查仅为静态契约验证,
-不代表新的宿主 setup 运行, 实际宿主命令可见性观察或上下文降噪实测. 通用本地源安装已发现全部 16 个技能, setup 共享载荷,
+[docs/VALIDATION.md](docs/VALIDATION.md). 有界盘点与导航检查仅为静态契约验证,
+不代表新的宿主 setup 运行或上下文降噪实测. 通用本地源安装已发现全部 16 个技能, setup 共享载荷,
 自包含安装检查与校验 CLI, 项目内 schema 和独立技能本地契约均已验证. 完整宿主流程,
 `revise-increment` 与 `revise-request` 端到端运行和百万字稿件的创作质量仍未验证.
 

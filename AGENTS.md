@@ -73,7 +73,7 @@ Use each script's `--help` output as the exact argument contract. Repository scr
 - `initialize.mjs --project-root DIR` is the sole existing-project initialization implementation. It preserves the manifest and history and creates only a missing backup index under the shared write lock. Project-state failures return a bounded `recorded_unverified` diagnosis (exit 3); invalid schemas create nothing (exit 1); argument errors exit 2.
 - `check.mjs --project-root DIR` aliases `preflight.mjs`, combining payload and entry-file checks, project validation, and status. Ordinary status uses the current scope and leaves unverified approvals non-blocking. Standalone `--require-execution` requires a scope ID. `--full` applies strict execution and read-only evidence validation. `--digest` is a separate opt-in after read-only checks and cannot be combined with `--full` or `--diagnose`. `--diagnose` returns bounded read-only diagnoses and an execution-recovery preview without repairing state; `--details` restores complete JSON details.
 
-Setup's final `check --diagnose` verifies the installed payload and both project agent entries without another doctor call or a required `START_HERE.md` match. Entry-file failures do not stop project inspection, but fail preflight and prevent digest generation. Installation, project state, strategy gate, and author-confirmed host visibility are independent results.
+Setup's final `check --diagnose` verifies the installed payload and both project agent entries without another doctor call or a required `START_HERE.md` match. Entry-file failures do not stop project inspection, but fail preflight and prevent digest generation. Installation, project state, and strategy gate are independent results. Setup assumes the five strategy entries are installed and does not check their host visibility.
 
 ### Project inspection, validation, and writes
 
@@ -132,7 +132,7 @@ The skills have three invocation modes:
 - Three shared orchestration capabilities: `author-project` owns state, paths, validation, backups, execution receipts, commits, and restores; `author-handoff` preserves resumable context; `author-review` performs manuscript reading and synthesis.
 - Six independent skills: `fiction-workshop`, `character-archetypes`, `story-structure`, `narrative-nonfiction`, `prose-mechanics`, and `avoid-ai-writing`. They work without setup, retain their standalone contracts, and leave shared state unchanged unless the author incorporates their output.
 
-`tests/skills.test.mjs` checks the complete inventory, matching directory and frontmatter names, invocation modes, and host-independent procedure bodies. Skill discovery and author-facing invocation follow the selected host and require author confirmation of host command visibility.
+`tests/skills.test.mjs` checks the complete inventory, matching directory and frontmatter names, invocation modes, and host-independent procedure bodies. Skill discovery and author-facing invocation follow the selected host; setup assumes the five strategy entries are installed.
 
 ### Validation and module boundaries
 

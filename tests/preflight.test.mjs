@@ -42,7 +42,8 @@ test("preflight combines payload, validation, and ordinary status in one bounded
   assert.equal(result.stderr, "");
   assert.match(result.stdout, /Payload failures: 0/);
   assert.match(result.stdout, /Entry files: pass/);
-  assert.match(result.stdout, /Installation: passed\nProject state: passed\nStrategy gate: not requested\nHost visibility: unverified/);
+  assert.match(result.stdout, /Installation: passed\nProject state: passed\nStrategy gate: not requested/);
+  assert.doesNotMatch(result.stdout, /Host visibility/);
   assert.match(result.stdout, /Blocking project validation: 5 checks, 0 failures/);
   assert.match(result.stdout, new RegExp(`Scope: ${scopeId} \\(confirmed\\)`));
   assert.match(result.stdout, /Non-blocking unverified approvals: 0; 0\/0 execution receipts verified/);
@@ -63,7 +64,6 @@ test("preflight defaults to current scope and refreshes the navigation cache onl
     installation: "passed",
     project_state: "passed",
     strategy_gate: "not_requested",
-    host_visibility: "unverified",
   });
   assert.equal(parsed.status.execution.scope_id, scopeId);
   assert.equal(parsed.execution_gate, null);
@@ -130,7 +130,7 @@ test("preflight inspects project state but fails and preserves the cache for ent
   assert.equal(parsed.payload.valid, false);
   assert.equal(parsed.setup.installation, "failed");
   assert.equal(parsed.setup.project_state, "passed");
-  assert.equal(parsed.setup.host_visibility, "unverified");
+  assert.equal(parsed.setup.host_visibility, undefined);
   assert.deepEqual(parsed.payload.payload_failures, []);
   assert.deepEqual(parsed.payload.entry_failures, parsed.payload.failures);
   assert.deepEqual(parsed.payload.failures.map((failure) => failure.path), ["project:AGENTS.md"]);
@@ -199,7 +199,6 @@ test("preflight rejects an incomplete installed payload before reading project s
     installation: "failed",
     project_state: "not_checked",
     strategy_gate: "not_requested",
-    host_visibility: "unverified",
   });
   assert.equal(parsed.validation, null);
   assert.equal(parsed.status, null);
@@ -374,7 +373,6 @@ test("preflight stops before status or digest when project validation fails", as
     installation: "passed",
     project_state: "failed",
     strategy_gate: "not_requested",
-    host_visibility: "unverified",
   });
   assert.equal(parsed.validation.checks.find((check) => check.path === "scope").valid, false);
   assert.equal(parsed.status, null);
@@ -603,7 +601,7 @@ test("preflight reports an installed toolkit separately from blocked evidence-de
   const result = run(["--project-root", projectRoot, "--scope-id", scopeId, "--require-execution"]);
   assert.equal(result.status, 1, result.stderr);
   assert.match(result.stdout, /Payload failures: 0\nEntry files: pass/);
-  assert.match(result.stdout, /Installation: passed\nProject state: passed\nStrategy gate: failed\nHost visibility: unverified/);
+  assert.match(result.stdout, /Installation: passed\nProject state: passed\nStrategy gate: failed/);
   assert.match(result.stdout, /Setup diagnosis: toolkit installed; evidence-dependent operations are blocked/);
   assert.match(result.stdout, /Execution gate: failed/);
 
@@ -612,6 +610,5 @@ test("preflight reports an installed toolkit separately from blocked evidence-de
     installation: "passed",
     project_state: "passed",
     strategy_gate: "failed",
-    host_visibility: "unverified",
   });
 });

@@ -55,9 +55,9 @@ by operation and bounds failed-check diagnostics. --details restores complete
 failed checks and every unverified approval in JSON without changing text output.
 Text output labels project-validation errors as blocking. Unverified approvals
 are non-blocking during ordinary status and fail only an explicit strict gate.
-Four independent setup statuses distinguish installation, project state, the
-requested strategy gate, and author-confirmed host visibility. The CLI cannot
-confirm host visibility and always reports it as unverified.`);
+Three independent setup statuses distinguish installation, project state, and
+the requested strategy gate. The five strategy entries are assumed to be
+installed; this command does not check their host visibility.`);
 }
 
 function options(args) {
@@ -117,7 +117,6 @@ async function preflight(selection) {
       installation: "failed",
       project_state: "not_checked",
       strategy_gate: selection.requireExecution || selection.full ? "blocked_by_project_state" : "not_requested",
-      host_visibility: "unverified",
     },
     validation: null,
     status: null,
@@ -257,7 +256,6 @@ function outputText(result, selection) {
   console.log(`Installation: ${result.setup.installation}`);
   console.log(`Project state: ${result.setup.project_state.replaceAll("_", " ")}`);
   console.log(`Strategy gate: ${result.setup.strategy_gate.replaceAll("_", " ")}`);
-  console.log(`Host visibility: ${result.setup.host_visibility}`);
   if (result.setup.installation === "passed" && result.setup.project_state === "failed") {
     console.log("Setup diagnosis: toolkit installed; project-state evidence requires attention");
   } else if (result.setup.installation === "passed" && result.setup.strategy_gate === "failed") {

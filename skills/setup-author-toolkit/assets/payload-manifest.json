@@ -3,11 +3,11 @@
   "files": [
     {
       "path": "SKILL.md",
-      "sha256": "9185bf9407fb7de6cac4beb0b7dd7ecefb2c8ec473b27a6396c3e3c05df34a88"
+      "sha256": "e3aaa9b011a35a3f97f25683bce8c5037d435ff05f4fd6bfbc106e55c374fc4e"
     },
     {
       "path": "assets/AGENTS.md",
-      "sha256": "e29e8891b7e807d091abcf711db46a5de039151a831192bf448e57ad2ad1c472"
+      "sha256": "3aa4b9ef457fc9e05fc85e6fd5295768344b24689b3b277f38c23285b3b87149"
     },
     {
       "path": "assets/START_HERE.md",
@@ -91,7 +91,7 @@
     },
     {
       "path": "assets/references/terminology.md",
-      "sha256": "b90b7cc72e12212f5a3ab8576e958483312d597484a3b8f05704c09e7867c225"
+      "sha256": "be49816174532b5e973f895199fcf0410d2156936c7b14fb0d8e71ec54f51c8f"
     },
     {
       "path": "assets/references/workflow-reporting.md",
@@ -115,7 +115,7 @@
     },
     {
       "path": "scripts/doctor.mjs",
-      "sha256": "0245eef9e6eca51292ce7a47f010978a9b680ca68165ac399a193ce227c77dae"
+      "sha256": "691939de389e42d159aaa3cd2af7dfaf136d6a214fb0910563448b7d888a3ffe"
     },
     {
       "path": "scripts/evidence-retention.mjs",
@@ -307,7 +307,7 @@
     },
     {
       "path": "scripts/preflight.mjs",
-      "sha256": "83810226d8dce81f2283aa491371bef53fb2ceca4e5cf2698112d7786d3f9a03"
+      "sha256": "bb9eb5792c22620d4c64c4a16ca8cf8b2d012e9c046cff14a69cf1e478d061f4"
     },
     {
       "path": "scripts/project-digest.mjs",
@@ -343,7 +343,7 @@
     },
     {
       "path": "scripts/terminology.mjs",
-      "sha256": "e2355a95ad79a8a66bdf523b119481ba56abe443387ed221e3c7ec85973011ac"
+      "sha256": "31c8ab082786412256ca73654ad8ce07d999b1ae02b4b892f8b13228a61034d8"
     },
     {
       "path": "scripts/validate.mjs",

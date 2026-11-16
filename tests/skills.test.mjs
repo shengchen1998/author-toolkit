@@ -61,7 +61,7 @@ test("the inventory contains exactly 16 skills and seven user entries", async ()
   assert.equal(userEntries.size, 7);
 });
 
-test("setup requires author-confirmed host command visibility", async () => {
+test("setup assumes the five strategy entries are installed", async () => {
   const [setup, instructions, terminology, readme, zhReadme] = await Promise.all([
     readFile(path.join(root, "skills/setup-author-toolkit/SKILL.md"), "utf8"),
     readFile(path.join(root, "skills/setup-author-toolkit/assets/AGENTS.md"), "utf8"),
@@ -74,19 +74,15 @@ test("setup requires author-confirmed host command visibility", async () => {
   assert.ok(setupStep);
   assert.ok(readyRule);
 
-  assert.match(setupStep, /Ask the author to confirm host command visibility/);
-  assert.match(setupStep, /all five commands in the current host's command palette or autocomplete/);
-  assert.match(setupStep, /all five exact registered names in its skill picker on a host without skill commands/);
+  assert.match(setupStep, /Assume these entries are installed; do not check their host visibility or ask the author to confirm it/);
   assert.match(setupStep, /`ask-author` as the optional "help me choose" routing entry/);
   assert.match(setupStep, /registered BCP 47 language/);
   assert.match(setupStep, /new-project branch confirms a detected language before scaffolding/);
   assert.match(setupStep, /an author-supplied language needs no repeated confirmation/);
-  assert.match(setupStep, /Wait for the required host-visibility confirmation and the author's choice of a strategy or the `ask-author` routing entry/);
+  assert.match(setupStep, /Wait for the author's choice of a strategy or the `ask-author` routing entry/);
   assert.match(setup, /reuse that command syntax for these entries/);
   assert.match(readyRule, /any detected language has been confirmed by the author/);
-  assert.match(readyRule, /author has confirmed host command visibility for all five strategies/);
-  assert.match(readyRule, /model-facing registry metadata or displayed command strings/);
-  assert.match(readyRule, /report host command visibility as unverified and do not report setup as ready/);
+  assert.match(readyRule, /Assume the five strategy entries are installed without checking or reporting their host visibility/);
   assert.match(readyRule, /Do not start .+ or another writing skill from setup/);
   for (const skill of ["write-fiction", "revise-fiction", "revise-draft", "revise-increment", "revise-request"]) {
     assert.match(setupStep, new RegExp(`\`${skill}\``));
@@ -94,15 +90,15 @@ test("setup requires author-confirmed host command visibility", async () => {
   }
   assert.match(instructions, /Read each semantic skill's installed `SKILL\.md` and applicable references, then execute its procedure directly/);
   assert.match(instructions, /Deterministic shared-state transactions have one installed CLI implementation and no model-executed counterpart/);
-  assert.match(instructions, /Do not use model-facing registry metadata to check the explicit author entry points/);
-  assert.match(instructions, /setup checks the five strategies' host command visibility with the author/);
+  assert.match(instructions, /Assume the explicit author entry points below are installed; do not check their host visibility or infer availability from model-facing registry metadata/);
   assert.match(instructions, /display its exact host command, or its exact registered skill name when the host uses only a skill picker, and wait for the author; do not start it as an internal callee/);
   assert.match(instructions, /never start a strategy automatically/);
-  assert.match(terminology, /`host command visibility` \| 宿主命令可见性/);
-  assert.match(readme, /confirmation of host\s+command visibility/);
-  assert.match(readme, /model-facing registry metadata/);
-  assert.match(zhReadme, /宿主命令可见性/);
-  assert.match(zhReadme, /模型侧注册元数据/);
+  assert.doesNotMatch(terminology, /host command visibility|host_visibility/);
+  assert.match(readme, /setup assumes the five\s+strategy entries are installed/);
+  assert.match(zhReadme, /setup 始终假定五个策略入口已安装/);
+  for (const text of [setup, instructions, readme, zhReadme]) {
+    assert.doesNotMatch(text, /host_visibility|Host visibility|host command visibility|宿主命令可见性/);
+  }
   assert.match(readme, /reuses that command syntax/);
   assert.match(readme, /confirm a detected value/);
   assert.match(zhReadme, /沿用相同的命令语法/);
@@ -199,7 +195,6 @@ test("author-facing entries use host-independent skill invocation", async () => 
   assert.match(ask, /\| Need \| Registered skill \|/);
   assert.match(instructions, /current host's skill command or skill picker/);
   assert.match(instructions, /`write-fiction`/);
-  assert.match(instructions, /confirm visibility in that interface/);
   assert.match(handoff, /current host's skill command or skill picker/);
   assert.match(handoff, /`author-handoff`/);
   assert.match(reviewHandoff, /Start `author-review` through the current host's skill command or skill picker/);
@@ -387,7 +382,7 @@ test("existing-project setup uses bounded inspection references and a categorize
   for (const heading of ["Installation payload", "Project entry files", "Manuscript scope", "Execution evidence"]) {
     assert.match(setup, new RegExp(`\\*\\*${heading}\\*\\*`));
   }
-  for (const status of ["Installation", "Project state", "Strategy gate", "Host visibility"]) {
+  for (const status of ["Installation", "Project state", "Strategy gate"]) {
     assert.match(setup, new RegExp(`\\*\\*${status}\\*\\*`));
   }
   assert.match(setup, /A project-state or strategy-gate failure does not change that installation result/);
@@ -423,8 +418,8 @@ test("existing-project setup uses bounded inspection references and a categorize
   assert.match(readOperations, /check\.mjs/);
   assert.match(readme, /installation payload, project entry files, manuscript scope, and execution\s+evidence/);
   assert.match(zhReadme, /安装载荷、项目入口文件、稿件范围、执行证据/);
-  assert.match(readme, /Four independent `Installation`, `Project state`, `Strategy gate`, and `Host\s+visibility` states/);
-  assert.match(zhReadme, /`Installation`、`Project state`、`Strategy gate`、`Host visibility` 四项独立状态/);
+  assert.match(readme, /Three independent `Installation`, `Project state`, and `Strategy gate` states/);
+  assert.match(zhReadme, /`Installation`、`Project state`、`Strategy gate` 三项独立状态/);
 });
 
 test("setup discloses only the selected project branch", async () => {

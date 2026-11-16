@@ -4,9 +4,9 @@ Match the author's language. The active skill's `SKILL.md` and its references su
 
 ## Resolve and route skills
 
-Read each semantic skill's installed `SKILL.md` and applicable references, then execute its procedure directly. Deterministic shared-state transactions have one installed CLI implementation and no model-executed counterpart. Do not use model-facing registry metadata to check the explicit author entry points below; setup checks the five strategies' host command visibility with the author.
+Read each semantic skill's installed `SKILL.md` and applicable references, then execute its procedure directly. Deterministic shared-state transactions have one installed CLI implementation and no model-executed counterpart. Assume the explicit author entry points below are installed; do not check their host visibility or infer availability from model-facing registry metadata.
 
-For author-facing entries, use the current host's skill command or skill picker with the exact unqualified registered skill name, such as `write-fiction`. Ask the author to confirm visibility in that interface.
+For author-facing entries, use the current host's skill command or skill picker with the exact unqualified registered skill name, such as `write-fiction`.
 
 `ask-author`, `setup-author-toolkit`, `write-fiction`, `revise-fiction`, `revise-draft`, `revise-increment`, and `revise-request` are explicit author entry points. When one is needed, display its exact host command, or its exact registered skill name when the host uses only a skill picker, and wait for the author; do not start it as an internal callee. Setup, routing, validation, and handoff restoration never start a strategy automatically. Read the installed `ask-author` skill's `SKILL.md` before selecting among shared strategies or independent skills; when the route is unclear, show its host command or registered skill name and the relevant choices.
 

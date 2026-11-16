@@ -13,7 +13,6 @@ const setupContractValues = [
   "Setup `setup.installation`",
   "Setup `setup.project_state`",
   "Setup `setup.strategy_gate`",
-  "Setup `setup.host_visibility`",
   "Scope `status`",
   "Pending action `status`",
   "Approval `Status`",
@@ -23,7 +22,6 @@ const presetDefinitions = {
     coreTerms: [
       "strategy",
       "user entry",
-      "host command visibility",
       "installation status",
       "project-state status",
       "strategy-gate status",
@@ -54,7 +52,6 @@ const presetDefinitions = {
   },
   "setup-report": {
     coreTerms: [
-      "host command visibility",
       "current scope",
       "previous scope",
       "base scope",

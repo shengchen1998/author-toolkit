@@ -19,8 +19,9 @@ Verify the installed setup skill's regular files against payload-manifest.json.
 With --require-sibling author-project, also verify its seven required regular files.
 With --project-root, also verify that AGENTS.md matches the installed template
 and CLAUDE.md is a relative symlink to AGENTS.md. Project manifests, manuscript,
-historical evidence, and host command visibility are not checked. This command
-writes nothing and reports only a summary and failures.`);
+and historical evidence are not checked. The five strategy entries are assumed
+to be installed. This command writes nothing and reports only a summary and
+failures.`);
 }
 
 function outputFailures(label, failures) {

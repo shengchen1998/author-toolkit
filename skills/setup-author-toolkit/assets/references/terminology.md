@@ -23,10 +23,9 @@ Independent skills keep their craft vocabularies. Register a craft term here bef
 | `user entry` | 用户入口 | Noun | A skill that the author invokes explicitly. The five strategies and the setup and routing skills are user entries. | |
 | `semantic skill` | 语义技能 | Noun | A skill that owns author choices, editorial judgment, manuscript reading or synthesis, or operation sequencing. Its installed `SKILL.md` and applicable references define one procedure, which the agent executes directly. It is not an alternative implementation of an installed deterministic CLI. | |
 | `deterministic transaction` | 确定性事务 | Noun | A mechanical validation or shared-state transition with one installed CLI implementation. A semantic skill may supply its decided inputs and interpret its results, but no model-executed counterpart performs the same transaction. | |
-| `host command visibility` | 宿主命令可见性 | Noun | The author-observed presence of every exact strategy command in the current host's command palette or autocomplete, or of every exact registered strategy name in its skill picker when skill commands are unavailable. It requires an explicit author decision and cannot be inferred from model-facing registry metadata or displayed command strings. | `command visibility`<br>`command-visibility` |
-| `installation status` | 安装状态 | Noun | The independent setup result for the installed payload and project entry files. It does not include project validation, an execution gate, or host command visibility. | |
+| `installation status` | 安装状态 | Noun | The independent setup result for the installed payload and project entry files. It does not include project validation or an execution gate. | |
 | `project-state status` | 项目状态 | Noun | The independent setup result for project validation. Its failure does not make a passing installation incomplete. | |
-| `strategy-gate status` | 策略门禁状态 | Noun | The independent setup result for a requested execution gate. It records only that gate, not every strategy condition or host command visibility. | |
+| `strategy-gate status` | 策略门禁状态 | Noun | The independent setup result for a requested execution gate. It records only that gate, not every strategy condition. | |
 | `operation` | 操作 | Noun | One named unit of work in an operation sequence, pending action, or revision report. Use the exact operation identifier; one invocation runs one operation. | |
 | `shared project state` | 共享项目状态 | Noun | The manifest and registered artifacts shared by all five strategies. It is not owned by one strategy. | `workflow state` |
 | `manuscript` | 正文稿件 | Noun | Creative Markdown or plain-text files included by manuscript inventory. Operational artifacts and staging are not manuscript. | |
@@ -75,7 +74,7 @@ Independent skills keep their craft vocabularies. Register a craft term here bef
 | `author decision` | 作者决定 | Noun | An explicit author choice recorded for one active item. A model recommendation is not an author decision. | |
 | `author decision loop` | 作者决定循环 | Noun | The procedure that presents one active decision, records its explicit outcome, and then advances to the next decision. | |
 | `context-fit check` | 上下文适配检查 | Noun | The editorial judgment applied to exact edit candidates against local continuity, history, repetition, voice, request intent, and narrative dependencies before proposal presentation. It neither approves an edit nor expands its scope or coverage. | `context-fit checklist` |
-| `confirmation` | 确认 | Noun | An author decision for host command visibility, a scope, baseline, request plan, or creative foundation. Confirmation of host command visibility does not validate the manifest or installed payload; confirmation alone does not authorize a manuscript write. | |
+| `confirmation` | 确认 | Noun | An author decision for a scope, baseline, request plan, detected language, or creative foundation. Confirmation alone does not authorize a manuscript write. | |
 | `approval` | 批准 | Noun | A tracked decision or authorization for an exact operation, scope, paths, actions, and input versions. Only edit and restore approvals authorize writes; plan, baseline, Story Bible, scope, and override approvals record decisions. Each write uses an edit approval for its actual operation rather than a revision-plan approval. Edit and restore approvals are separate. | |
 | `complete write` | 完成写入 | Noun | The deterministic `complete-write` transaction that publishes exact approved content, verifies each output, preserves post-write evidence, and appends its linked execution receipt in one invocation. Per-file publication is atomic; a multi-file batch is not one filesystem transaction. | |
 | `execution receipt` | 执行回执 | Noun | A post-write record linking one edit approval to its backups and verified per-file input and output hashes. A completed restoration record is the execution receipt for a restore. Neither an approval nor a backup proves execution. | |
@@ -145,10 +144,9 @@ Machine values remain English and case-sensitive. Qualify a value by its artifac
 
 | Artifact and field | Approved values and meanings |
 | --- | --- |
-| Setup `setup.installation` | `passed`: installed payload and project entry files passed; `failed`: at least one failed. Independent of project state and host command visibility. |
+| Setup `setup.installation` | `passed`: installed payload and project entry files passed; `failed`: at least one failed. Independent of project state. |
 | Setup `setup.project_state` | `passed`: project validation passed; `failed`: project validation failed; `not_checked`: installed payload failure prevented inspection. |
 | Setup `setup.strategy_gate` | `passed`: the requested execution gate passed; `failed`: the requested execution gate failed; `not_requested`: no execution gate was requested; `blocked_by_project_state`: project-validation failure prevented the requested gate. |
-| Setup `setup.host_visibility` | `unverified`: the CLI cannot observe the author's host; setup requires the author's confirmation before reporting this state as confirmed. |
 | Scope `status` | `proposed`: recorded and awaiting confirmation; `confirmed`: the author confirmed the exact scope record. |
 | Pending action `status` | `in_progress`: execution is active; `awaiting_author`: execution stopped for an author decision; `blocked`: a concrete validation, dependency, or execution blocker prevents progress. |
 | Finding tracker `Status` | `open`: awaiting decision or verified resolution; `resolved`: accepted resolution verified by current evidence; `deferred`: author postponed action; `dismissed`: author judged the finding inapplicable or intentional; `stale`: inputs changed or an equivalent rerun no longer observes it without verified resolution. |

@@ -18,7 +18,7 @@ test("prints only the selected terminology section", () => {
   const result = run(["--section", "Core terms"]);
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /^## Core terms\n/);
-  assert.match(result.stdout, /`host command visibility`/);
+  assert.match(result.stdout, /`strategy`/);
   assert.doesNotMatch(result.stdout, /## Writing rules|## Operation identifiers|## Contract values/);
 });
 
@@ -41,7 +41,8 @@ test("prints only setup-relevant rows with the setup preset", () => {
   const result = run(["--preset", "setup"]);
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /^## Core terms\n/);
-  assert.match(result.stdout, /`host command visibility`/);
+  assert.match(result.stdout, /`user entry`/);
+  assert.doesNotMatch(result.stdout, /host_visibility|host command visibility/);
   assert.match(result.stdout, /`current-draft revision convergence`/);
   assert.match(result.stdout, /Setup `setup\.installation`/);
   assert.match(result.stdout, /Pending action `status`/);
@@ -50,15 +51,15 @@ test("prints only setup-relevant rows with the setup preset", () => {
 
   const core = result.stdout.split("## Core terms\n")[1].split("\n## Contract values")[0];
   const contracts = result.stdout.split("## Contract values\n")[1];
-  assert.equal(core.split("\n").filter((line) => line.startsWith("| `")).length, 28);
-  assert.equal(contracts.split("\n").filter((line) => line.startsWith("| ")).length - 2, 7);
+  assert.equal(core.split("\n").filter((line) => line.startsWith("| `")).length, 27);
+  assert.equal(contracts.split("\n").filter((line) => line.startsWith("| ")).length - 2, 6);
 });
 
 test("prints only reporting and routing rows with the setup-report preset", () => {
   const result = run(["--preset", "setup-report"]);
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /^## Core terms\n/);
-  assert.match(result.stdout, /`host command visibility`/);
+  assert.doesNotMatch(result.stdout, /host_visibility|host command visibility/);
   assert.match(result.stdout, /`previous scope`/);
   assert.match(result.stdout, /`base scope`/);
   assert.match(result.stdout, /`execution receipt`/);
@@ -72,8 +73,8 @@ test("prints only reporting and routing rows with the setup-report preset", () =
 
   const core = result.stdout.split("## Core terms\n")[1].split("\n## Contract values")[0];
   const contracts = result.stdout.split("## Contract values\n")[1];
-  assert.equal(core.split("\n").filter((line) => line.startsWith("| `")).length, 13);
-  assert.equal(contracts.split("\n").filter((line) => line.startsWith("| ")).length - 2, 7);
+  assert.equal(core.split("\n").filter((line) => line.startsWith("| `")).length, 12);
+  assert.equal(contracts.split("\n").filter((line) => line.startsWith("| ")).length - 2, 6);
 });
 
 test("rejects unknown sections and invalid arguments", () => {

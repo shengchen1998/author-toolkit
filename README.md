@@ -76,8 +76,8 @@ current-draft revision convergence for the full-manuscript target scope.
 
 Narrative nonfiction remains a direct `narrative-nonfiction` task. Multi-book
 projects are outside the supported 3.1 workflows. Skill discovery and
-author-facing invocation follow the selected host; setup requires author
-confirmation of host command visibility.
+author-facing invocation follow the selected host; setup assumes the five
+strategy entries are installed.
 
 English and Chinese are the core workflow languages. Chinese prose audits use
 `skills/prose-mechanics/references/chinese-rules.md`, with Chinese sentence
@@ -150,8 +150,8 @@ including internal CLI modules, against `assets/payload-manifest.json`. Add
 `--require-sibling author-project` to verify the seven regular files setup needs from
 that sibling skill; setup runs this check before either project branch. Add
 `--project-root <root>` to verify the writing project's `AGENTS.md` and relative
-`CLAUDE.md -> AGENTS.md` link; project-state validation and host command visibility
-remain separate checks. Its text and JSON output distinguish installed-payload,
+`CLAUDE.md -> AGENTS.md` link; project-state validation remains a separate check.
+Its text and JSON output distinguish installed-payload,
 required-sibling, and repairable project-entry failures, with an explicit exit reason.
 
 Run `node <setup-skill-root>/scripts/install-entry-files.mjs --project-root <root> --json`
@@ -182,10 +182,10 @@ status. It shares their library implementation and prints a bounded summary.
 `Payload failures` excludes project-entry failures; `Entry files: pass` confirms
 both entries independently of project validation. An entry mismatch still
 allows project inspection, but exits 1 and prevents digest generation.
-Four independent `Installation`, `Project state`, `Strategy gate`, and `Host
-visibility` states, also available in JSON under `setup`, prevent an evidence
-failure from being reported as an incomplete toolkit installation. The CLI
-always leaves host visibility unverified for the author's confirmation.
+Three independent `Installation`, `Project state`, and `Strategy gate` states,
+also available in JSON under `setup`, prevent an evidence failure from being
+reported as an incomplete toolkit installation. The five strategy entries are
+assumed to be installed; the CLI does not check their host visibility.
 Unverified approvals are grouped by operation with counts and first/last approval
 IDs; the endpoints do not imply contiguous ID ranges.
 Text labels payload, entry-file, and project-validation errors as `Blocking
@@ -273,14 +273,8 @@ picker after generic skill installation:
 Start `ask-author` the same way. When you invoked setup through a host skill
 command, setup reuses that command syntax for the entries it displays.
 
-The five strategies are user entries; model-facing registry metadata does not
-establish their author-facing availability. Setup reports ready only after your confirmation of host
-command visibility: all five exact strategy commands appear in the current
-host's command palette or autocomplete. On a host without skill commands,
-confirm all five exact registered names in its skill picker instead. Without
-that confirmation, setup reports host command visibility as unverified.
-Displayed command strings and registry metadata do not
-establish it.
+The five strategies are user entries. Setup assumes they are installed and does
+not check or ask you to confirm their host visibility.
 
 A quick run looks like this:
 
@@ -316,7 +310,7 @@ A quick run looks like this:
    backup, restore, and creation-commit procedures. Setup summarizes the
    installation payload, project entry files, manuscript scope, and execution
    evidence separately, together with the independent installation, project-state,
-   strategy-gate, and host-visibility states. A passing installation remains
+   and strategy-gate states. A passing installation remains
    distinct from blocked evidence-dependent operations.
 3. After setup validates the shared manifest, choose `write-fiction` to create
    or continue a novel, `revise-fiction` for whole-book revision, `revise-draft`

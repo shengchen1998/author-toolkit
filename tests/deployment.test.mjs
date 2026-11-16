@@ -524,7 +524,7 @@ test("setup carries self-contained preflight, validation, state, range, and inst
   );
   assert.equal(setupTerminology.status, 0, setupTerminology.stderr);
   assert.match(setupTerminology.stdout, /^## Core terms\n/);
-  assert.match(setupTerminology.stdout, /`host command visibility`/);
+  assert.doesNotMatch(setupTerminology.stdout, /host_visibility|host command visibility/);
   assert.match(setupTerminology.stdout, /`previous scope`/);
   assert.match(setupTerminology.stdout, /Setup `setup\.installation`/);
   assert.doesNotMatch(setupTerminology.stdout, /`manuscript inventory`|`review coverage`|Coverage `coverage`/);
