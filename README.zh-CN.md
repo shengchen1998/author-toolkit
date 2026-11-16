@@ -45,7 +45,7 @@ npx skills@latest add shengchen1998/author-toolkit -g
 使用宿主文档指定的项目级或用户级技能位置. 通过宿主的技能命令或技能选择器,
 以准确且不带命名空间的注册技能名启动用户入口.
 
-setup 技能在 `setup-author-toolkit/scripts/` 下提供自包含的安装检查, 有界根目录盘点, 入口文件安装, 现有项目初始化, 预检, manifest 投影, 待处理操作写入, 报告脚手架, 校验, 状态, 项目导航, 发现项状态, 正文写入, 行内字符区间和术语分节读取 CLI, 包括运行依赖.
+setup 技能在 `setup-author-toolkit/scripts/` 下提供自包含的安装检查, 有界根目录盘点, 入口文件安装, 新项目脚手架, 现有项目初始化, 预检, manifest 投影, 待处理操作写入, 报告脚手架, 校验, 状态, 项目导航, 发现项状态, 正文写入, 行内字符区间和术语分节读取 CLI, 包括运行依赖.
 共享工作流直接解析该技能的安装目录, 无需仓库检出, 也无需在写作项目中运行 `npm install`.
 
 运行 `node <setup-skill-root>/scripts/inspect-root.mjs --project-root <root> --json` 盘点新项目.
@@ -53,9 +53,14 @@ setup 技能在 `setup-author-toolkit/scripts/` 下提供自包含的安装检�
 不返回历史产物路径. 它不跟随符号链接, 不读取文件内容, 也不写入任何内容.
 已有 v3.1 项目使用 `initialize.mjs`, 不重复根目录盘点.
 
+运行 `node <setup-skill-root>/scripts/scaffold-project.mjs --project-root <root> --author-project-root <setup-skill-root>/../author-project --language <tag> --json`
+执行 setup 唯一的新项目脚手架实现. 可选标题和路径参数登记选定的元数据与位置, 省略项沿用模板默认值.
+CLI 仅创建缺失目录和骨架文件, 保留已有正文与骨架内容, 拒绝已有 manifest, 为 manifest 和新 tracker 使用同一时间戳,
+并在成功前完整校验项目. 语言检测及检测值的作者确认仍是执行该命令前的 setup 步骤.
+
 运行 `node <setup-skill-root>/scripts/doctor.mjs` 可获得有界安装摘要和失败路径.
 它按 `assets/payload-manifest.json` 核对技能的普通载荷文件, 包括 CLI 内部模块.
-添加 `--require-sibling author-project` 可核对 setup 所需的该兄弟技能的 5 个普通文件;
+添加 `--require-sibling author-project` 可核对 setup 所需的该兄弟技能的 7 个普通文件;
 setup 在进入任一项目分支前执行此检查. 添加 `--project-root <root>` 可同时核对写作项目的
 `AGENTS.md` 和相对符号链接 `CLAUDE.md -> AGENTS.md`; 项目状态校验与宿主命令可见性仍是独立检查.
 文本和 JSON 输出分别列出安装载荷、必需兄弟技能与可修复项目入口的失败, 并明确显示退出原因.
@@ -155,7 +160,7 @@ setup 才报告 ready: 在当前宿主的命令面板或自动补全中, 五个�
    检查接受 v3.1 后即修复入口文件, 即使后续项目状态校验失败也不例外; setup 随后报告项目状态阻塞, 不修复正文或历史记录.
    这两个文件中的自定义内容不会保留.
    setup 仅在 `START_HERE.md` 缺失时创建固定导航指针, 不替换已有导航内容.
-   对新项目, 独立校验先在入口文件安装前检查新状态; 最终诊断检查随后重新校验项目状态,
+   对新项目, 脚手架 CLI 的内置校验先在入口文件安装前检查新状态; 最终诊断检查随后重新校验项目状态,
    并一并检查安装和状态结果. 不指定工作流或操作参数. 工具包更新后, 已有 v3.1 项目直接使用更新后的安装契约, 无需再次部署.
    初始 `author-project` 读取, 校验和状态调用会将缺失的安装契约或脚本报告为工具包安装不完整,
    不依赖项目内的共享引用副本. 已有项目使用安装的初始化 CLI 和有界检查参考, 不加载备份,

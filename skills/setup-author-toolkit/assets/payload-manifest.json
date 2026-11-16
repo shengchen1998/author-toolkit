@@ -3,7 +3,7 @@
   "files": [
     {
       "path": "SKILL.md",
-      "sha256": "f293cb1f423c18e879838e3d6431f8222548fc17cdc13585ccbfa6fbcb7a6e69"
+      "sha256": "b1c9ec57fbfe5d1f5af8ba21d53abc5ed05c9d13ce33c30ce15bed1d97ba0a91"
     },
     {
       "path": "assets/AGENTS.md",
@@ -103,7 +103,7 @@
     },
     {
       "path": "assets/setup/new-project.md",
-      "sha256": "2fcf27bc46d0d69968fedf061782c215b92f7324273d38a0c2c11efc4e53fb0b"
+      "sha256": "4888e5a12cf6c4b6e81e69c7aa1552bc3ab48bcb3ccbfbd7deb7d6fd11cbd085"
     },
     {
       "path": "scripts/check.mjs",
@@ -191,7 +191,7 @@
     },
     {
       "path": "scripts/lib/index.mjs",
-      "sha256": "62aca44c110a3e4b90e9714112d659869a5813aedf044686aea62ce4734812e6"
+      "sha256": "c06e171d0fd5be4f0889fbea86ce2a9328b09e4653ca9efdc55f8c7d8e043907"
     },
     {
       "path": "scripts/lib/manifest.mjs",
@@ -226,6 +226,10 @@
       "sha256": "6f312e5a9fb2c17678cf9c82e0f3e064cb4ec8bb059ce06b61a57ab9577f5746"
     },
     {
+      "path": "scripts/lib/project-scaffold.mjs",
+      "sha256": "715580e91dcae5f21351a72588f2fa3756c7d34ef7c820ff80d83f1a7339bcac"
+    },
+    {
       "path": "scripts/lib/read-projection.mjs",
       "sha256": "fadf64121bebc53be94a318bd39cf340f1871b6782ada03e8a81c5cef858400c"
     },
@@ -251,7 +255,7 @@
     },
     {
       "path": "scripts/lib/setup-payload.mjs",
-      "sha256": "09ae4e1c2e12f473e256a309ab87f41a7ad55b05c3b1001577aad939920d19f6"
+      "sha256": "8337cf1c6f8ffcbaa369ccb27c8ad0ccef8021c44cba521af1a92291b0609886"
     },
     {
       "path": "scripts/lib/state-files.mjs",
@@ -320,6 +324,10 @@
     {
       "path": "scripts/review-brief.mjs",
       "sha256": "01103e88d0a02ea8f91c4e67123ffe32dda3431637b84cdac4f5b9415d0acf85"
+    },
+    {
+      "path": "scripts/scaffold-project.mjs",
+      "sha256": "aa307463eac0c7f86a4c0ed1ec0cad811ee450d3a6ac4ce4e4e08a0e25fcf275"
     },
     {
       "path": "scripts/scaffold-report.mjs",

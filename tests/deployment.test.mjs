@@ -86,7 +86,7 @@ test("setup carries self-contained preflight, validation, state, range, and inst
   );
 
   const nodeArgs = ["--no-warnings", "--experimental-loader", loader, "--require", preload];
-  for (const script of ["inspect-root.mjs", "initialize.mjs", "install-entry-files.mjs", "preflight.mjs", "check.mjs", "read.mjs", "set-pending.mjs", "validate.mjs", "status.mjs", "project-digest.mjs", "findings.mjs", "range.mjs", "doctor.mjs", "writes.mjs", "terminology.mjs", "scaffold-report.mjs", "review-brief.mjs", "coverage-index.mjs"]) {
+  for (const script of ["inspect-root.mjs", "scaffold-project.mjs", "initialize.mjs", "install-entry-files.mjs", "preflight.mjs", "check.mjs", "read.mjs", "set-pending.mjs", "validate.mjs", "status.mjs", "project-digest.mjs", "findings.mjs", "range.mjs", "doctor.mjs", "writes.mjs", "terminology.mjs", "scaffold-report.mjs", "review-brief.mjs", "coverage-index.mjs"]) {
     const result = spawnSync(
       process.execPath,
       [...nodeArgs, path.join(installedSetup, "scripts", script), "--help"],
@@ -160,9 +160,35 @@ test("setup carries self-contained preflight, validation, state, range, and inst
     { encoding: "utf8" },
   );
   assert.equal(doctor.status, 0, doctor.stderr);
-  assert.match(doctor.stdout, /Payload failures: 0\nSibling author-project: 5 required files\nSibling author-project failures: 0\nProject entry check: skipped \(no --project-root\)/);
+  assert.match(doctor.stdout, /Payload failures: 0\nSibling author-project: 7 required files\nSibling author-project failures: 0\nProject entry check: skipped \(no --project-root\)/);
   assert.doesNotMatch(doctor.stdout, /Project entry failures:/);
   assert.doesNotMatch(doctor.stdout, /AGENTS\.md/);
+
+  const newProject = path.join(temporaryRoot, "new-project");
+  const scaffolding = spawnSync(
+    process.execPath,
+    [
+      ...nodeArgs,
+      path.join(installedSetup, "scripts", "scaffold-project.mjs"),
+      "--project-root",
+      newProject,
+      "--author-project-root",
+      path.join(temporaryRoot, "author-project"),
+      "--language",
+      "zh-CN",
+      "--title",
+      "安装测试",
+      "--created-at",
+      "2026-11-16T00:00:00Z",
+      "--json",
+    ],
+    { encoding: "utf8" },
+  );
+  assert.equal(scaffolding.status, 0, scaffolding.stderr);
+  const scaffolded = JSON.parse(scaffolding.stdout);
+  assert.equal(scaffolded.valid, true);
+  assert.equal(scaffolded.validation.valid, true);
+  assert.equal(scaffolded.language, "zh-CN");
 
   const project = path.join(temporaryRoot, "writing-project");
   await cp(path.join(root, "examples", "fiction-revision-zh"), project, { recursive: true });
@@ -807,6 +833,8 @@ test("setup branch references are included in the authoritative payload manifest
   const paths = new Set(payload.files.map((entry) => entry.path));
   assert.ok(paths.has("assets/setup/existing-project.md"));
   assert.ok(paths.has("assets/setup/new-project.md"));
+  assert.ok(paths.has("scripts/scaffold-project.mjs"));
+  assert.ok(paths.has("scripts/lib/project-scaffold.mjs"));
 });
 
 test("setup mechanically prechecks sibling author-project dependencies before either branch", async () => {

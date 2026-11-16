@@ -79,9 +79,9 @@ test("setup requires author-confirmed host command visibility", async () => {
   assert.match(setupStep, /all five exact registered names in its skill picker on a host without skill commands/);
   assert.match(setupStep, /`ask-author` as the optional "help me choose" routing entry/);
   assert.match(setupStep, /registered BCP 47 language/);
-  assert.match(setupStep, /detected rather than received the language from the author/);
+  assert.match(setupStep, /new-project branch confirms a detected language before scaffolding/);
   assert.match(setupStep, /an author-supplied language needs no repeated confirmation/);
-  assert.match(setupStep, /Wait for the required host-visibility and detected-language confirmations and the author's choice of a strategy or the `ask-author` routing entry/);
+  assert.match(setupStep, /Wait for the required host-visibility confirmation and the author's choice of a strategy or the `ask-author` routing entry/);
   assert.match(setup, /reuse that command syntax for these entries/);
   assert.match(readyRule, /any detected language has been confirmed by the author/);
   assert.match(readyRule, /author has confirmed host command visibility for all five strategies/);
@@ -124,9 +124,10 @@ test("setup reads a bounded terminology preset from the single installed source"
 });
 
 test("deterministic initialization and semantic skills have one implementation each", async () => {
-  const [setup, existingSetup, project, operations, instructions, development] = await Promise.all([
+  const [setup, existingSetup, newSetup, project, operations, instructions, development] = await Promise.all([
     readFile(path.join(root, "skills/setup-author-toolkit/SKILL.md"), "utf8"),
     readFile(path.join(root, "skills/setup-author-toolkit/assets/setup/existing-project.md"), "utf8"),
+    readFile(path.join(root, "skills/setup-author-toolkit/assets/setup/new-project.md"), "utf8"),
     readFile(path.join(root, "skills/author-project/SKILL.md"), "utf8"),
     readFile(path.join(root, "skills/author-project/references/operations.md"), "utf8"),
     readFile(path.join(root, "skills/setup-author-toolkit/assets/AGENTS.md"), "utf8"),
@@ -135,9 +136,14 @@ test("deterministic initialization and semantic skills have one implementation e
   assert.match(existingSetup, /scripts\/initialize\.mjs --project-root <project-root> --json/);
   assert.match(existingSetup, /only existing-project initialization implementation/);
   assert.match(existingSetup, /do not read `author-project`'s initialization references/);
+  assert.match(newSetup, /scripts\/scaffold-project\.mjs --project-root <project-root>/);
+  assert.match(newSetup, /The CLI reads the four sibling templates/);
+  assert.match(newSetup, /do not manually create state or repeat standalone validation after success/);
   assert.doesNotMatch(project, /\| `initialize` \|/);
-  assert.match(project, /this skill has no `initialize` operation/);
-  assert.match(operations, /That CLI is the only initialization implementation/);
+  assert.doesNotMatch(project, /\| `scaffold-project` \|/);
+  assert.match(project, /this skill has no `scaffold-project` or `initialize` operation/);
+  assert.match(operations, /That CLI is the only new-project scaffolding implementation/);
+  assert.match(operations, /That CLI is the only existing-project initialization implementation/);
   assert.match(development, /### Implementation and host independence/);
   assert.match(development, /one authoritative implementation/);
   assert.match(development, /remove the equivalent model-executed procedure and its skill-operation entry/);
@@ -284,8 +290,8 @@ test("new Story Bibles use a neutral heading and an optional title field", async
   assert.match(template, /^# Story Bible\n/);
   assert.match(template, /^- Title:$/m);
   assert.doesNotMatch(template, /PROJECT_TITLE/);
-  assert.match(newSetup, /write a supplied project title to its `Title` field and otherwise leave that field empty/);
-  assert.match(newSetup, /retain the neutral `# Story Bible` heading in both cases/);
+  assert.match(newSetup, /writes a supplied project title to the `Title` field and otherwise leaves that field empty/);
+  assert.match(newSetup, /retaining the neutral `# Story Bible` heading/);
 });
 
 test("setup and routine navigation keep operational history listings bounded", async () => {
@@ -337,8 +343,8 @@ test("existing-project setup uses bounded inspection references and a categorize
 
   assert.match(project, /For `validate`, read only \[Read and validate\]\(references\/read-operations\.md#read-and-validate\)/);
   assert.match(project, /For `read`, `status`, `check --full`, `status --digest`, and `check-index`, read \[`references\/read-operations\.md`\]/);
-  assert.match(project, /For a new manifest, read only \[Paths and manifest identity\]\(references\/operations\.md#paths-and-manifest-identity\) and \[Initialize\]\(references\/operations\.md#initialize\)/);
-  assert.match(project, /for every record or write operation, read \[`references\/operations\.md`\]/);
+  assert.match(project, /Setup owns new-project registration through `<setup-skill-root>\/scripts\/scaffold-project\.mjs`/);
+  assert.match(project, /For every record or write operation, read \[`references\/operations\.md`\]/);
   assert.doesNotMatch(project, /For every operation, read \[`references\/operations\.md`\]/);
   assert.match(existingSetup, /Once initialization's manifest-schema check passes, perform step 3's entry-file replacement even if later project-state validation fails/);
   assert.match(existingSetup, /Initialization exits 3 for this schema-valid project-validation failure/);
@@ -418,17 +424,13 @@ test("setup discloses only the selected project branch", async () => {
   assert.match(setup, /when the manifest exists, read only \[Existing project\]\(assets\/setup\/existing-project\.md\); otherwise read only \[New project\]\(assets\/setup\/new-project\.md\)/);
   assert.doesNotMatch(setup, /author-project\/references\/operations\.md|read-operations\.md/);
   assert.doesNotMatch(existingSetup, /author-project\/SKILL\.md|author-project\/references\/|read-operations\.md/);
-  assert.match(newSetup, /\.\.\/\.\.\/\.\.\/author-project\/SKILL\.md/);
-  assert.match(newSetup, /\.\.\/\.\.\/\.\.\/author-project\/references\/operations\.md#paths-and-manifest-identity/);
-  assert.match(newSetup, /\.\.\/\.\.\/\.\.\/author-project\/references\/operations\.md#initialize/);
-  assert.match(newSetup, /only \[Read and validate\]\(\.\.\/\.\.\/\.\.\/author-project\/references\/read-operations\.md#read-and-validate\)/);
-  assert.match(newSetup, /a detected language requires the final author confirmation/);
+  assert.doesNotMatch(newSetup, /author-project\/SKILL\.md|author-project\/references\//);
+  assert.match(newSetup, /--author-project-root <setup-skill-root>\/\.\.\/author-project/);
+  assert.match(newSetup, /ask the author to confirm a detected language before creating the project/);
   assert.match(newSetup, /selected manuscript as decoded UTF-8 text before limiting it to at most 300 Unicode code points/);
   assert.match(newSetup, /use `und` for mixed or inconclusive text/);
-  assert.match(newSetup, /successful doctor satisfies that section's doctor prerequisite/);
-  assert.match(newSetup, /do not run it again/);
-  assert.match(newSetup, /standalone validation gates the new manifest and skeleton files before entry-file installation/);
-  assert.match(newSetup, /final diagnostic check deliberately repeats project validation/);
+  assert.match(newSetup, /built-in project validation gates the new manifest and skeleton files before entry-file installation/);
+  assert.match(newSetup, /That check deliberately repeats project validation/);
   assert.doesNotMatch(newSetup, /--skip-doctor/);
   assert.doesNotMatch(newSetup, /existing-project\.md/);
 });

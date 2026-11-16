@@ -118,7 +118,7 @@ Use your host's documented project or user skill location. Start user entries
 through its skill command or skill picker with the exact unqualified registered
 skill name.
 
-The setup skill includes self-contained installation, bounded root inspection, entry-file installation, existing-project initialization, preflight, manifest-projection, pending-action, report-scaffolding, validation, status, project-digest, finding-state, manuscript-write, character-range, and terminology-section CLIs under
+The setup skill includes self-contained installation, bounded root inspection, entry-file installation, new-project scaffolding, existing-project initialization, preflight, manifest-projection, pending-action, report-scaffolding, validation, status, project-digest, finding-state, manuscript-write, character-range, and terminology-section CLIs under
 `setup-author-toolkit/scripts/`. Shared workflows resolve that installed skill
 directory directly; no repository checkout or writing-project `npm install` is
 required.
@@ -130,10 +130,19 @@ regular-file counts without historical artifact paths. It follows no symlinks,
 reads no file contents, and writes nothing. Existing v3.1 projects use
 `initialize.mjs` instead of repeating root discovery.
 
+Run `node <setup-skill-root>/scripts/scaffold-project.mjs --project-root <root> --author-project-root <setup-skill-root>/../author-project --language <tag> --json`
+as setup's sole new-project scaffolding implementation. Optional title and path
+arguments register the selected metadata and locations while retaining template
+defaults for omissions. The CLI creates only missing directories and skeleton
+files, preserves existing manuscript and skeleton content, refuses an existing
+manifest, applies one timestamp to the manifest and new tracker, and validates
+the complete project before succeeding. Language detection and confirmation of
+a detected value remain setup steps before this command.
+
 Run `node <setup-skill-root>/scripts/doctor.mjs` for a bounded installation
 summary and only the failed paths. It verifies the skill's regular payload files,
 including internal CLI modules, against `assets/payload-manifest.json`. Add
-`--require-sibling author-project` to verify the five regular files setup needs from
+`--require-sibling author-project` to verify the seven regular files setup needs from
 that sibling skill; setup runs this check before either project branch. Add
 `--project-root <root>` to verify the writing project's `AGENTS.md` and relative
 `CLAUDE.md -> AGENTS.md` link; project-state validation and host command visibility
@@ -290,8 +299,8 @@ A quick run looks like this:
    manuscript or history.
    Custom content in these two files is not preserved. Setup creates
    `START_HERE.md` only when absent as a fixed navigation pointer; existing
-   navigation content is never replaced. For a new project, standalone validation
-   gates the new state before entry-file installation; the final diagnostic check
+   navigation content is never replaced. For a new project, the scaffold CLI's
+   built-in validation gates the new state before entry-file installation; the final diagnostic check
    then revalidates project state together with installation and status results.
    Do not pass a workflow name or operation argument. After a toolkit update, existing v3.1
    projects use the updated installed contracts without another deployment.

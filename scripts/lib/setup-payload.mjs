@@ -9,6 +9,8 @@ const REQUIRED_SIBLINGS = {
     "SKILL.md",
     "references/operations.md",
     "references/read-operations.md",
+    "assets/project-template.json",
+    "assets/backup-index-template.json",
     "assets/story-bible-template.md",
     "assets/audit-tracker-template.md",
   ],

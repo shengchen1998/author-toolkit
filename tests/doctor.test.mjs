@@ -41,7 +41,7 @@ test("doctor reports a bounded summary for a complete installed payload", async 
   assert.equal(result.status, 0, result.stderr);
   assert.match(
     result.stdout,
-    /^Setup payload: \d+ files \(\d+ references, 19 CLIs\); project entry files included\nPayload failures: 0\nProject entry failures: 0\nProject state: not checked\n$/,
+    /^Setup payload: \d+ files \(\d+ references, 20 CLIs\); project entry files included\nPayload failures: 0\nProject entry failures: 0\nProject state: not checked\n$/,
   );
   assert.equal(result.stderr, "");
 
@@ -52,7 +52,7 @@ test("doctor reports a bounded summary for a complete installed payload", async 
   const parsed = JSON.parse(json.stdout);
   assert.equal(parsed.valid, true);
   assert.equal(parsed.payload_manifest, "payload-manifest.json");
-  assert.equal(parsed.clis, 19);
+  assert.equal(parsed.clis, 20);
   assert.equal(parsed.project.agents, "ok");
   assert.equal(parsed.project.claude, "ok");
   assert.deepEqual(parsed.failures, []);
@@ -63,7 +63,7 @@ test("doctor reports a bounded summary for a complete installed payload", async 
 test("source doctor resolves the checked-in setup skill", () => {
   const result = run();
   assert.equal(result.status, 0, result.stderr);
-  assert.match(result.stdout, /Setup payload: \d+ files \(\d+ references, 19 CLIs\)\nPayload failures: 0\nProject entry check: skipped \(no --project-root\)\nProject state: not checked/);
+  assert.match(result.stdout, /Setup payload: \d+ files \(\d+ references, 20 CLIs\)\nPayload failures: 0\nProject entry check: skipped \(no --project-root\)\nProject state: not checked/);
   assert.doesNotMatch(result.stdout, /Project entry failures:/);
 });
 
@@ -75,13 +75,13 @@ test("doctor optionally checks the required author-project sibling files", async
   assert.equal(complete.status, 0, complete.stderr);
   assert.match(
     complete.stdout,
-    /Sibling author-project: 5 required files\nSibling author-project failures: 0\n/,
+    /Sibling author-project: 7 required files\nSibling author-project failures: 0\n/,
   );
 
   const json = run([...args, "--json"], { tool: installedTool });
   assert.equal(json.status, 0, json.stderr);
   const parsed = JSON.parse(json.stdout);
-  assert.deepEqual(parsed.sibling, { checked: true, name: "author-project", files: 5 });
+  assert.deepEqual(parsed.sibling, { checked: true, name: "author-project", files: 7 });
   assert.deepEqual(parsed.sibling_failures, []);
 
   await rm(path.join(siblingRoot, "references", "operations.md"));
@@ -91,7 +91,7 @@ test("doctor optionally checks the required author-project sibling files", async
 
   const missing = run(args, { tool: installedTool });
   assert.equal(missing.status, 1);
-  assert.match(missing.stdout, /Payload failures: 0\nSibling author-project: 5 required files/);
+  assert.match(missing.stdout, /Payload failures: 0\nSibling author-project: 7 required files/);
   assert.match(missing.stdout, /Sibling author-project failures: 1/);
   assert.match(missing.stdout, /sibling:author-project\/references\/operations\.md: missing or unreadable/);
   assert.match(missing.stdout, /Exit reason: incomplete toolkit installation; stop setup/);
@@ -115,7 +115,7 @@ test("doctor reports only failed payload paths, including missing internal modul
 
   const result = run([], { tool: path.join(setupRoot, "scripts", "doctor.mjs") });
   assert.equal(result.status, 1);
-  assert.match(result.stdout, /^Setup payload: \d+ files \(\d+ references, 19 CLIs\)\nPayload failures: 2\n/);
+  assert.match(result.stdout, /^Setup payload: \d+ files \(\d+ references, 20 CLIs\)\nPayload failures: 2\n/);
   assert.match(result.stdout, /scripts\/lib\/digest\.mjs: missing or unreadable/);
   assert.match(result.stdout, /assets\/references\/terminology\.md: SHA-256 differs/);
   assert.match(result.stdout, /Project entry check: skipped \(no --project-root\)\nProject state: not checked\nExit reason: incomplete installed payload; stop shared work\n$/);
