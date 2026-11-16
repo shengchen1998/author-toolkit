@@ -521,8 +521,9 @@ when the scope check passes, and index differences without repeating the other
 inspection commands or printing the complete manifest.
 Its execution recovery audit is read-only and never establishes current-draft
 revision convergence by itself.
-Use `read.mjs --project-root <root>` for its bounded manifest projection and
-`set-pending.mjs --help` for validated pending-action updates.
+Use `read.mjs --project-root <root>` for its bounded manifest projection,
+`set-pending.mjs --help` for validated pending-action updates, and
+`record-scope.mjs --help` for proposed-scope recording and exact-record confirmation.
 
 - `project.json` records project registration, artifact locations, and optional
   `current_scope` and `pending_action`. It has no `workflow.name`,
@@ -535,6 +536,10 @@ Use `read.mjs --project-root <root>` for its bounded manifest projection and
   `pending_action.artifact_index`; `set-pending.mjs` validates and writes the
   pair. Existing long inline lists without an index remain valid and are never
   migrated by setup or inspection.
+- `record-scope.mjs` records a proposed scope with ordered current manuscript
+  hashes under the shared write lock. After explicit author confirmation,
+  `--confirm` accepts only the exact unchanged proposed record; it never silently
+  refreshes hashes. Exclusions name current non-manuscript inventory entries.
 - Shared runtime contracts remain in the installed setup skill's
   `assets/references/` payload and are read directly from that location. They
   have no manifest field and are not copied into the writing project.

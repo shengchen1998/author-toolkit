@@ -4,7 +4,7 @@ For every operation, resolve the installed `setup-author-toolkit` skill's root a
 
 For each shared-state operation, finish by refreshing the navigation cache as described under [Digest](read-operations.md#digest). Generation validates the backup index and records a generation-time snapshot without reproducing its contents. For a reported backup-index inconsistency, use the read-only `check-index --explain` procedure in [Validation](read-operations.md#validation); it is not a state-writing operation and does not refresh the cache.
 
-Use bounded reads for routine state inspection. `set-pending` is the only operation whose CLI requires manifest input; other operations obtain their required state through the bounded projection, current scope, tracker sections, and named artifacts. A manuscript write, backup, execution receipt, restore, or scope record still verifies exact current input hashes and approved paths immediately before its state transition. Reading the full manifest is reserved for diagnosing a reported manifest inconsistency, not for routine navigation.
+Use bounded reads for routine state inspection. Obtain required state through the bounded projection, current scope, tracker sections, and named artifacts; state-writing CLIs reread the manifest internally for their transactions. A manuscript write, backup, execution receipt, restore, or scope record still verifies exact current input hashes and approved paths immediately before its state transition. Reading the full manifest is reserved for diagnosing a reported manifest inconsistency, not for routine navigation.
 
 ## Paths and manifest identity
 
@@ -128,6 +128,26 @@ Neither command populates manuscript or Story Bible creative content, establishe
 
 Read, validation, status, and navigation-cache procedures live in [`read-operations.md`](read-operations.md).
 
+## Record scope
+
+Record a proposed scope with:
+
+```bash
+node <setup-skill-root>/scripts/record-scope.mjs --manifest <project-root>/.author-toolkit/project.json --scope-id <scope-id> --description <description> --status proposed --file <project-relative-path> [--file <project-relative-path> ...] [--exclude <project-relative-path> ...] [--created-at <UTC-timestamp>]
+```
+
+Each `--file` retains its supplied reading order. The CLI rejects duplicate paths and computes every SHA-256 hash from current file bytes inside the shared write lock. Each `--exclude` names a current non-manuscript inventory exclusion; it does not exclude a manuscript file from `current_scope.files`. Apply the scope-ID rules above: a confirmed scope can retain its ID for text-only hash changes, while membership, reading-order, or exclusion changes require a new ID.
+
+After the author explicitly confirms the proposed scope ID, description, ordered paths and hashes, and exclusions, confirm that exact record with:
+
+```bash
+node <setup-skill-root>/scripts/record-scope.mjs --manifest <project-root>/.author-toolkit/project.json --scope-id <scope-id> --confirm [--updated-at <UTC-timestamp>]
+```
+
+Confirmation accepts no proposal fields. It preserves `created_at` and every other scope field, updates only `status` and the manifest's top-level `updated_at`, and stops if any manuscript hash or recorded non-manuscript exclusion has changed. It never refreshes the proposed hashes to match changed text. A text change requires a new proposal before confirmation.
+
+Both forms reread the manifest after acquiring the shared lock and stop on a concurrent change. They preserve unrelated manifest fields, validate the complete candidate project before a verified atomic write, and validate the published manifest afterward. Their JSON output includes the complete `current_scope` for the author decision. Argument errors exit 2; validation and filesystem failures exit 1.
+
 ## Set pending
 
 The CLI reads the manifest internally immediately before each write. Use `node <setup-skill-root>/scripts/set-pending.mjs --project-root <project-root> --operation <operation> --status <status> --reason <reason> [--scope-id <scope-id>] [--artifact <path>...]`. Status is `in_progress`, `awaiting_author`, or `blocked`; reason is always nonempty and identifies the decision, interruption, or dependency. Preserve `current_scope` and all historical records. The command removes duplicate artifact paths while preserving first occurrence, retains at most eight inline in `pending_action.artifacts`, and writes the complete list to `.author-toolkit/pending-artifacts.json` when longer. The index matches the pending operation, scope ID, pending timestamp, and top-level manifest timestamp, and `pending_action.artifact_index` points to it. Shorter lists stay inline without an index. Set both `pending_action.updated_at` and top-level `updated_at` to the same current UTC timestamp; validate both files through the installed validator. An interrupted two-file update requires reconciliation before relying on either file.
@@ -135,12 +155,6 @@ The CLI reads the manifest internally immediately before each write. Use `node <
 The index is the current pending action's living artifact index, not a history of completed operations. A subsequent pending action replaces it only as part of that state update. Preserve reports, sessions, batches, and other historical evidence at their original paths. An existing long inline list without `artifact_index` remains valid until an author-requested pending-action update; never migrate it as part of setup or read-only work.
 
 `pending_action` describes requested or interrupted work, not linear operation progress. Do not mark an operation complete, choose a following operation, or resume a write because another skill was invoked. The calling strategy supplies each explicit transition. If a write fails after the manifest was read, reread before retrying.
-
-## Record scope
-
-Hash every complete manuscript file immediately before writing. Record the scope ID, description, ordered paths, SHA-256 hashes, `excluded_files`, `proposed` or `confirmed` status, and creation timestamp. A confirmed write requires the author's explicit confirmation of that exact record. Preserve the prior scope in reports and session history.
-
-Before a later manuscript write, repeat the read, presence, and hash comparison. Treat a mismatch as a stopped approval and backup gate, not as permission to refresh the scope silently.
 
 ## Backup and creation commit
 

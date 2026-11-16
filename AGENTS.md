@@ -85,12 +85,15 @@ node scripts/validate.mjs --report /path/to/report.md
 node scripts/status.mjs --manifest /path/to/.author-toolkit/project.json --scope-id scope-001
 node scripts/read.mjs --project-root /path/to/writing-project
 node scripts/set-pending.mjs --help
+node scripts/record-scope.mjs --help
 node scripts/writes.mjs --help
 ```
 
 The validator also accepts creation batches, commit journals, story state, coverage units and indexes, review jobs, review briefs, and reader state; its help defines the exact options. A review-brief check requires the tracker for decision comparison. Report validation rejects duplicate report IDs; repeated reports, `--tracker`, or `--manifest` enable batch or historical identity checks. Manifest validation also checks registered files, the tracker, and execution receipts; a v3.1 manifest with `current_scope` additionally checks current manuscript hashes. Validation failures exit nonzero and argument errors exit 2.
 
 `read.mjs` returns a bounded validated manifest projection. Long displayed scope descriptions and pending artifact paths are capped without changing authoritative on-disk values. Failed validation returns bounded failed checks and diagnostics unless `--details` is supplied. `set-pending.mjs` validates pending-action updates; new actions retain at most eight unique inline artifacts and put longer complete lists in `.author-toolkit/pending-artifacts.json`. Legacy long inline lists remain valid without migration.
+
+`record-scope.mjs` records ordered current manuscript hashes as a proposed scope under the shared write lock, then confirms only the exact unchanged record after explicit author confirmation. It validates the complete candidate project, writes the manifest atomically, and treats `--exclude` as current non-manuscript inventory exclusions. Membership, reading-order, or exclusion changes require a new scope ID; text-only changes can retain it through a new proposal.
 
 `status.mjs` joins edit approvals to execution receipts and restore approvals to restoration records without reading manuscript content. Missing receipts are `unverified`, not malformed state. `--scope-id` with `--require-execution` enables the target-scope execution gate; `--json` returns the complete list. Strict status exits 1 for unverified approvals in the selected scope, but does not evaluate the other current-draft revision convergence conditions.
 
@@ -139,7 +142,7 @@ The skills have three invocation modes:
 Ajv and ajv-formats provide strict JSON Schema draft 2020-12 validation. The main `scripts/lib/` boundaries are:
 
 - `schemas.mjs` loads schemas and configures Ajv. `manifest.mjs` accepts only schema 3.1.0; other versions are rejected without conversion.
-- `project-scaffold.mjs` implements template-driven, create-only new-project scaffolding and final validation. `project-initialization.mjs` implements existing-project schema validation, missing-index creation, bounded projection, and failure diagnosis. `write-lock.mjs` owns the common backup-root write lock. `atomic-json.mjs` and `state-files.mjs` support shared-state persistence.
+- `project-scaffold.mjs` implements template-driven, create-only new-project scaffolding and final validation. `project-initialization.mjs` implements existing-project schema validation, missing-index creation, bounded projection, and failure diagnosis. `scope.mjs` implements proposed-scope recording and exact-record confirmation with current hashes and complete candidate validation. `write-lock.mjs` owns the common backup-root write lock. `atomic-json.mjs` and `state-files.mjs` support shared-state persistence.
 - `manuscript.mjs` inventories `.md`, `.markdown`, and `.txt` files while excluding registered operational paths and creation staging. `project-files.mjs` checks registered files, artifacts, scope hashes, pending artifact indexes, and newly added manuscript files. `pending-artifacts.mjs` implements bounded inline artifacts and atomic pending-index writes.
 - `markdown.mjs` extracts the single report JSON envelope and validates language and evidence coverage. `finding-identity.mjs` allocates unused ID blocks and checks identity conflicts; `findings.mjs` batches validated report findings into the living tracker. `tracker.mjs` parses and validates living finding and approval tables; `approval-paths.mjs` handles paths containing commas, pipes, and backticks.
 - `execution-receipts.mjs` validates post-write receipts and derives scoped unverified approvals without comparing historical output hashes to current manuscript. `write-operations.mjs` implements backups, exact writes, evidence, and receipts. `execution-recovery.mjs` audits recoverable evidence. `backup-index-diagnostics.mjs` supports read-only index inspection.

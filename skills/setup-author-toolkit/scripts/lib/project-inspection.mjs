@@ -22,7 +22,10 @@ export async function inspectProjectManifest(manifestPath, { scopeId } = {}) {
   } catch (error) {
     return { valid: false, checks: [{ path: "manifest", ...failure(error.message) }] };
   }
+  return inspectManifestValue(manifest, manifestPath, { scopeId });
+}
 
+export async function inspectManifestValue(manifest, manifestPath, { scopeId } = {}) {
   const checks = [];
   const check = (name, result) => {
     checks.push({ path: name, ...result });

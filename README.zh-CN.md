@@ -124,7 +124,8 @@ setup 在初始化和入口文件修复后只运行一次 `check.mjs --project-r
 命令仍退出 1, 且不修复状态.
 诊断已经解释的冲突无需再运行 `check-index`.
 
-运行 `read.mjs --project-root <root>` 获取有界 manifest 投影; 通过 `set-pending.mjs --help` 查看待处理操作写入参数.
+运行 `read.mjs --project-root <root>` 获取有界 manifest 投影; 通过 `set-pending.mjs --help`
+查看待处理操作写入参数, 通过 `record-scope.mjs --help` 查看范围提议记录和精确记录确认参数.
 校验失败时默认只返回失败检查, 每项最多 12 条错误和按 operation 聚合的未核对批准摘要;
 添加 `--details` 可获取完整失败检查和批准明细. 备份索引不一致时运行
 `writes.mjs check-index --manifest <manifest> --explain` 进行只读备份索引检查,
@@ -317,6 +318,8 @@ AI, 作者和混合创作使用相同门禁. 每本书只保留一个活动创�
 - 新待处理操作最多内联 8 个产物路径. 更长的完整列表保存在 `.author-toolkit/pending-artifacts.json`,
   由 `pending_action.artifact_index` 指向, 并通过 `set-pending.mjs` 校验和写入.
   没有索引的既有长列表继续有效; setup 和检查不会自动迁移或截断它们.
+- `record-scope.mjs` 在共享写锁内按顺序计算当前正文哈希并记录提议范围. 作者显式确认后,
+  `--confirm` 只接受完全未变的提议记录, 不会静默刷新哈希. 排除项记录当前清单中的非正文条目.
 - 共享运行时契约: 保留在已安装 setup 技能的 `assets/references/` 中并直接读取,
   没有 manifest 字段, 也不复制到写作项目.
 - `story-bible.md`: 记录作者意图. 已验收正文建立观察事实; 两者冲突时不能静默覆盖任一来源.

@@ -191,7 +191,7 @@
     },
     {
       "path": "scripts/lib/index.mjs",
-      "sha256": "c06e171d0fd5be4f0889fbea86ce2a9328b09e4653ca9efdc55f8c7d8e043907"
+      "sha256": "90ca34f84e780a7440e914efc88638574ef1893cf5f334f6b55e1ec5badc7bb3"
     },
     {
       "path": "scripts/lib/manifest.mjs",
@@ -223,7 +223,7 @@
     },
     {
       "path": "scripts/lib/project-inspection.mjs",
-      "sha256": "6f312e5a9fb2c17678cf9c82e0f3e064cb4ec8bb059ce06b61a57ab9577f5746"
+      "sha256": "d3c816177020680b1cced6229a8225548ff2464fe9c9390c026ce8df1f75a5a7"
     },
     {
       "path": "scripts/lib/project-scaffold.mjs",
@@ -248,6 +248,10 @@
     {
       "path": "scripts/lib/schemas.mjs",
       "sha256": "4afabb72fec11db9e8de8b977f348988b47a785dfb96869200a6fe2c337e1233"
+    },
+    {
+      "path": "scripts/lib/scope.mjs",
+      "sha256": "89e1812205cca056b208eabcf83a804426fb5e5016310efec099a56f3114b281"
     },
     {
       "path": "scripts/lib/setup-entry-files.mjs",
@@ -320,6 +324,10 @@
     {
       "path": "scripts/read.mjs",
       "sha256": "bc34c8afb97baec56d79007e244d545299aef046d332e535065a461ec9b4177b"
+    },
+    {
+      "path": "scripts/record-scope.mjs",
+      "sha256": "0d9a383e77779e2bbe20d3fec56b218e91b1f9fe1637e008fbd6ec998873357a"
     },
     {
       "path": "scripts/review-brief.mjs",

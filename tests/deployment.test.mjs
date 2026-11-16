@@ -86,7 +86,7 @@ test("setup carries self-contained preflight, validation, state, range, and inst
   );
 
   const nodeArgs = ["--no-warnings", "--experimental-loader", loader, "--require", preload];
-  for (const script of ["inspect-root.mjs", "scaffold-project.mjs", "initialize.mjs", "install-entry-files.mjs", "preflight.mjs", "check.mjs", "read.mjs", "set-pending.mjs", "validate.mjs", "status.mjs", "project-digest.mjs", "findings.mjs", "range.mjs", "doctor.mjs", "writes.mjs", "terminology.mjs", "scaffold-report.mjs", "review-brief.mjs", "coverage-index.mjs"]) {
+  for (const script of ["inspect-root.mjs", "scaffold-project.mjs", "initialize.mjs", "install-entry-files.mjs", "preflight.mjs", "check.mjs", "read.mjs", "set-pending.mjs", "validate.mjs", "status.mjs", "project-digest.mjs", "findings.mjs", "range.mjs", "doctor.mjs", "writes.mjs", "terminology.mjs", "scaffold-report.mjs", "review-brief.mjs", "coverage-index.mjs", "record-scope.mjs"]) {
     const result = spawnSync(
       process.execPath,
       [...nodeArgs, path.join(installedSetup, "scripts", script), "--help"],
@@ -189,6 +189,48 @@ test("setup carries self-contained preflight, validation, state, range, and inst
   assert.equal(scaffolded.valid, true);
   assert.equal(scaffolded.validation.valid, true);
   assert.equal(scaffolded.language, "zh-CN");
+
+  await writeFile(path.join(newProject, "manuscript", "chapter-01.md"), "安装版范围记录。\n");
+  const newProjectManifest = path.join(newProject, ".author-toolkit", "project.json");
+  const scopeProposal = spawnSync(
+    process.execPath,
+    [
+      ...nodeArgs,
+      path.join(installedSetup, "scripts", "record-scope.mjs"),
+      "--manifest",
+      newProjectManifest,
+      "--scope-id",
+      "scope-installation",
+      "--description",
+      "Installed CLI scope.",
+      "--status",
+      "proposed",
+      "--file",
+      "manuscript/chapter-01.md",
+      "--created-at",
+      "2026-11-16T01:00:00Z",
+    ],
+    { encoding: "utf8" },
+  );
+  assert.equal(scopeProposal.status, 0, scopeProposal.stderr);
+  assert.equal(JSON.parse(scopeProposal.stdout).current_scope.status, "proposed");
+  const scopeConfirmation = spawnSync(
+    process.execPath,
+    [
+      ...nodeArgs,
+      path.join(installedSetup, "scripts", "record-scope.mjs"),
+      "--manifest",
+      newProjectManifest,
+      "--scope-id",
+      "scope-installation",
+      "--confirm",
+      "--updated-at",
+      "2026-11-16T02:00:00Z",
+    ],
+    { encoding: "utf8" },
+  );
+  assert.equal(scopeConfirmation.status, 0, scopeConfirmation.stderr);
+  assert.equal(JSON.parse(scopeConfirmation.stdout).current_scope.status, "confirmed");
 
   const project = path.join(temporaryRoot, "writing-project");
   await cp(path.join(root, "examples", "fiction-revision-zh"), project, { recursive: true });
