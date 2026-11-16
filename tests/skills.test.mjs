@@ -124,6 +124,17 @@ test("setup reads a bounded reporting preset from the single installed source", 
   assert.match(instructions, /Do not copy contracts into the writing project/);
 });
 
+test("new-project setup proceeds without prompting for an optional title", async () => {
+  const newSetup = await readFile(
+    path.join(root, "skills/setup-author-toolkit/assets/setup/new-project.md"),
+    "utf8",
+  );
+  assert.match(
+    newSetup,
+    /The project title is optional: use one already supplied by the author, or proceed directly with an empty title\./,
+  );
+});
+
 test("deterministic initialization and semantic skills have one implementation each", async () => {
   const [setup, existingSetup, newSetup, project, operations, instructions, development] = await Promise.all([
     readFile(path.join(root, "skills/setup-author-toolkit/SKILL.md"), "utf8"),
