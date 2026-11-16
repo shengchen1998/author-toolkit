@@ -54,7 +54,9 @@ setup 技能在 `setup-author-toolkit/scripts/` 下提供自包含的安装检�
 作者未提供语言时可添加 `--language-sample`: 仅当一个未被省略的候选存在时,
 CLI 才读取其根目录文件或按字典序排列的首个直接稿件文件, 严格按 UTF-8 解码且最多返回
 300 个 Unicode 码点, 不读取整篇稿件. 候选不唯一或无稿件文件时不返回样本;
-无效 UTF-8 返回带文件路径的明确错误.
+无效 UTF-8 返回带文件路径的明确错误. 中文样本明确为简体或繁体时分别使用 `zh-Hans` 或 `zh-Hant`;
+只能确认中文而无法确定单一字形时使用 `zh`. setup 不仅凭样本推断 `zh-CN` 等地区标签;
+多语言混合或其他无法判断的文本使用 `und`.
 已有 v3.1 项目使用 `initialize.mjs`, 不重复根目录盘点.
 
 运行 `node <setup-skill-root>/scripts/scaffold-project.mjs --project-root <root> --author-project-root <setup-skill-root>/../author-project --language <tag> --json`

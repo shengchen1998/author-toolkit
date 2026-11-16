@@ -132,7 +132,10 @@ supplied a language, add `--language-sample`: only one unomitted candidate permi
 a sample from its root file or lexicographically first direct manuscript file,
 using strict UTF-8 and at most 300 Unicode code points without reading the whole
 manuscript. Non-unique or empty selections return no sample; invalid UTF-8 is an
-explicit file-path error. Existing v3.1 projects use
+explicit file-path error. For Chinese samples, setup uses `zh-Hans` for Simplified
+Chinese and `zh-Hant` for Traditional Chinese, or `zh` when no single script is
+established. It does not infer regional tags such as `zh-CN` from samples;
+mixed-language or otherwise inconclusive text uses `und`. Existing v3.1 projects use
 `initialize.mjs` instead of repeating root discovery.
 
 Run `node <setup-skill-root>/scripts/scaffold-project.mjs --project-root <root> --author-project-root <setup-skill-root>/../author-project --language <tag> --json`

@@ -438,7 +438,10 @@ test("setup discloses only the selected project branch", async () => {
   assert.match(newSetup, /only when exactly one unomitted candidate exists/);
   assert.match(newSetup, /lexicographically first direct manuscript file with strict UTF-8 decoding and at most 300 Unicode code points without reading the whole manuscript/);
   assert.match(newSetup, /A non-unique or empty candidate selection returns no text; invalid UTF-8 is an explicit file-path error/);
-  assert.match(newSetup, /use `und` for mixed or inconclusive text/);
+  assert.match(newSetup, /use `zh-Hans` for Simplified Chinese and `zh-Hant` for Traditional Chinese/);
+  assert.match(newSetup, /use `zh` when Chinese is clear but no single script is established/);
+  assert.match(newSetup, /Do not infer a regional tag such as `zh-CN` from a sample/);
+  assert.match(newSetup, /Use `und` for mixed-language or otherwise inconclusive text/);
   assert.match(newSetup, /built-in project validation gates the new manifest and skeleton files before entry-file installation/);
   assert.match(newSetup, /That check deliberately repeats project validation/);
   assert.doesNotMatch(newSetup, /--skip-doctor/);
