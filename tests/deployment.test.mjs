@@ -172,8 +172,6 @@ test("setup carries self-contained preflight, validation, state, range, and inst
       path.join(installedSetup, "scripts", "scaffold-project.mjs"),
       "--project-root",
       newProject,
-      "--author-project-root",
-      path.join(temporaryRoot, "author-project"),
       "--language",
       "zh-CN",
       "--title",

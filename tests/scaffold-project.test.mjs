@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import test from "node:test";
 
@@ -25,15 +25,13 @@ function argumentsFor(projectRoot, ...extra) {
   return [
     "--project-root",
     projectRoot,
-    "--author-project-root",
-    authorProjectRoot,
     "--created-at",
     timestamp,
     ...extra,
   ];
 }
 
-test("scaffold-project creates a complete default project with one timestamp", async (t) => {
+test("scaffold-project resolves repository templates by default and creates a complete project", async (t) => {
   const projectRoot = await fixture(t);
   const result = run(argumentsFor(projectRoot, "--language", "zh-CN", "--title", "示例 $& 书名", "--json"));
   assert.equal(result.status, 0, result.stderr);
@@ -81,6 +79,20 @@ test("scaffold-project creates a complete default project with one timestamp", a
   for (const directory of ["manuscript", "reports", "sessions", ".author-toolkit/backups", ".author-toolkit/handoffs", ".author-toolkit/creation"]) {
     assert.equal((await stat(path.join(projectRoot, directory))).isDirectory(), true);
   }
+});
+
+test("scaffold-project honors an explicit author-project root", async (t) => {
+  const projectRoot = await fixture(t);
+  const customRoot = path.join(path.dirname(projectRoot), "custom-author-project");
+  await cp(authorProjectRoot, customRoot, { recursive: true });
+  const templatePath = path.join(customRoot, "assets", "project-template.json");
+  const template = JSON.parse(await readFile(templatePath, "utf8"));
+  template.language = "en-GB";
+  await writeFile(templatePath, `${JSON.stringify(template, null, 2)}\n`);
+
+  const result = run(argumentsFor(projectRoot, "--author-project-root", customRoot, "--json"));
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(JSON.parse(result.stdout).language, "en-GB");
 });
 
 test("scaffold-project registers custom paths and preserves partial existing state", async (t) => {
@@ -232,10 +244,11 @@ test("scaffold-project reports validation failures and respects the shared write
 test("scaffold-project help and argument errors define the CLI contract", async () => {
   const help = run(["--help"]);
   assert.equal(help.status, 0, help.stderr);
-  assert.match(help.stdout, /--author-project-root DIR/);
+  assert.match(help.stdout, /\[--author-project-root DIR\]/);
+  assert.match(help.stdout, /defaults to the sibling author-project skill/);
   assert.match(help.stdout, /--project-root and use forward slashes\./);
   assert.match(help.stdout, /creates only missing directories and skeleton files/);
-  for (const args of [[], ["--project-root"], ["--unknown"], ["--project-root", "/tmp/project"]]) {
+  for (const args of [[], ["--project-root"], ["--author-project-root"], ["--unknown"]]) {
     const invalid = run(args);
     assert.equal(invalid.status, 2);
     assert.match(invalid.stdout, /Usage:/);

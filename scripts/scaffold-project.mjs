@@ -1,8 +1,10 @@
 #!/usr/bin/env node
 
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { scaffoldNewProject, validateRelativePath } from "./lib/index.mjs";
+import { resolveSetupRoot } from "./lib/setup-payload.mjs";
 
 function argumentError(message) {
   const error = new Error(message);
@@ -10,15 +12,22 @@ function argumentError(message) {
   return error;
 }
 
+function defaultAuthorProjectRoot() {
+  const scriptRoot = fileURLToPath(new URL("../", import.meta.url));
+  return path.resolve(resolveSetupRoot(scriptRoot), "..", "author-project");
+}
+
 function usage() {
   console.log(`Usage:
-  node scripts/scaffold-project.mjs --project-root DIR --author-project-root DIR
+  node scripts/scaffold-project.mjs --project-root DIR [--author-project-root DIR]
     [--language TAG] [--title TEXT] [--manuscript-root PATH]
     [--story-bible PATH] [--audit-tracker PATH] [--reports PATH]
     [--sessions PATH] [--backups PATH] [--handoffs PATH] [--creation PATH]
     [--created-at TIMESTAMP] [--json]
 
 Create a new v3.1 fiction project from the sibling author-project templates.
+--author-project-root defaults to the sibling author-project skill in the
+installed or repository layout; supply it to override a nonstandard layout.
 --manuscript-root and the paths supplied to --story-bible, --audit-tracker,
 --reports, --sessions, --backups, --handoffs, and --creation are relative to
 --project-root and use forward slashes.
@@ -61,10 +70,9 @@ function options(args) {
       throw argumentError(`unknown or incomplete argument: ${argument}`);
     }
   }
-  for (const field of ["projectRoot", "authorProjectRoot"]) {
-    if (!result[field]) throw argumentError(`${field} is required`);
-    result[field] = path.resolve(result[field]);
-  }
+  if (!result.projectRoot) throw argumentError("projectRoot is required");
+  result.projectRoot = path.resolve(result.projectRoot);
+  result.authorProjectRoot = path.resolve(result.authorProjectRoot ?? defaultAuthorProjectRoot());
   const projectPaths = [
     ["--manuscript-root", result.manuscriptRoot],
     ...Object.entries(pathNames).map(([argument, field]) => [argument, result.paths[field]]),

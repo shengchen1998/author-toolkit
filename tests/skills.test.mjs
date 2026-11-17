@@ -471,7 +471,7 @@ test("setup discloses only the selected project branch", async () => {
   assert.doesNotMatch(setup, /author-project\/references\/operations\.md|read-operations\.md/);
   assert.doesNotMatch(existingSetup, /author-project\/SKILL\.md|author-project\/references\/|read-operations\.md/);
   assert.doesNotMatch(newSetup, /author-project\/SKILL\.md|author-project\/references\//);
-  assert.match(newSetup, /--author-project-root <setup-skill-root>\/\.\.\/author-project/);
+  assert.doesNotMatch(newSetup, /--author-project-root/);
   assert.match(newSetup, /Register the detected or author-supplied language directly and report it in the final setup output/);
   assert.match(newSetup, /only when exactly one unomitted candidate exists/);
   assert.match(newSetup, /lexicographically first direct manuscript file with strict UTF-8 decoding and at most 300 Unicode code points without reading the whole manuscript/);

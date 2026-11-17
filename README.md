@@ -138,8 +138,10 @@ established. It does not infer regional tags such as `zh-CN` from samples;
 mixed-language or otherwise inconclusive text uses `und`. Existing v3.1 projects use
 `initialize.mjs` instead of repeating root discovery.
 
-Run `node <setup-skill-root>/scripts/scaffold-project.mjs --project-root <root> --author-project-root <setup-skill-root>/../author-project --language <tag> --json`
-as setup's sole new-project scaffolding implementation. Optional title and path
+Run `node <setup-skill-root>/scripts/scaffold-project.mjs --project-root <root> --language <tag> --json`
+as setup's sole new-project scaffolding implementation. It resolves the sibling
+`author-project` templates automatically; `--author-project-root` overrides their
+location for a nonstandard installation. Optional title and path
 arguments register the selected metadata and locations while retaining template
 defaults for omissions. The CLI creates only missing directories and skeleton
 files, preserves existing manuscript and skeleton content, refuses an existing

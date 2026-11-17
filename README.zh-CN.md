@@ -59,8 +59,9 @@ CLI 才读取其根目录文件或按字典序排列的首个直接稿件文件,
 多语言混合或其他无法判断的文本使用 `und`.
 已有 v3.1 项目使用 `initialize.mjs`, 不重复根目录盘点.
 
-运行 `node <setup-skill-root>/scripts/scaffold-project.mjs --project-root <root> --author-project-root <setup-skill-root>/../author-project --language <tag> --json`
-执行 setup 唯一的新项目脚手架实现. 可选标题和路径参数登记选定的元数据与位置, 省略项沿用模板默认值.
+运行 `node <setup-skill-root>/scripts/scaffold-project.mjs --project-root <root> --language <tag> --json`
+执行 setup 唯一的新项目脚手架实现. CLI 自动解析同级 `author-project` 模板;
+非标准安装可用 `--author-project-root` 覆盖其位置. 可选标题和路径参数登记选定的元数据与位置, 省略项沿用模板默认值.
 CLI 仅创建缺失目录和骨架文件, 保留已有正文与骨架内容, 拒绝已有 manifest, 为 manifest 和新 tracker 使用同一时间戳,
 并在成功前完整校验项目. 语言检测仍是执行该命令前的 setup 步骤; 检测或直接提供的语言会直接登记, 并在最终设置报告中说明.
 
