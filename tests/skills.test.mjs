@@ -596,6 +596,13 @@ test("revision strategies share one project and keep distinct evidence gates", a
   assert.match(state, /Keep nonblocking unknowns labeled as unknown/);
   assert.match(state, /`pending_action\.reason`/);
   assert.match(draft, /normally confirmation of the proposed scope/);
+  assert.match(draft, /persist the proposed `draft-baseline` artifact/);
+  assert.match(draftGates, /\.author-toolkit\/proposals\/<scope-id>-draft-baseline\.md/);
+  assert.match(draftGates, /`pending_action\.artifacts`/);
+  assert.match(draftGates, /non-authoritative working artifact/);
+  assert.match(draftGates, /reuse it only when its scope and input versions still match/);
+  assert.match(draftGates, /requires no `edit` approval/);
+  assert.match(draft, /Publishing or changing `draft-baseline\.md`.*uses its own `edit` approval/);
 });
 
 test("shared prose advances clean audits without weakening author gates", async () => {

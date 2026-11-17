@@ -43,7 +43,7 @@ Include only explicit author approvals. Link finding IDs and report paths rather
 - Manifest: `.author-toolkit/project.json`
 - Manuscript:
 - Story Bible:
-- Draft baseline:
+- Draft baseline or baseline proposal:
 - Audit tracker:
 - Revision or writing plan:
 - Current reports and coverage index:

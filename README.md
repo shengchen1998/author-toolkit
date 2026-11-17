@@ -337,8 +337,8 @@ A quick run looks like this:
    replacement in context. This is editorial judgment, not lint or permission to
    expand the edit or review scope. Planning, manuscript writes, creation acceptance,
    and restores have distinct approvals. A plan approval selects intended batches;
-   every manuscript, draft-baseline, or Story Bible write needs its own `edit`
-   approval for the actual operation, exact paths, actions, and input versions.
+   every manuscript, published draft-baseline, or Story Bible write needs its own
+   `edit` approval for the actual operation, exact paths, actions, and input versions.
 
 ### `write-fiction`: incremental creation
 
@@ -406,6 +406,13 @@ The mirrored nine operations are:
 9. `current-scope-review`: Review the target scope with three independent
    perspectives. Mark whole-book checks that do not apply as `skipped` with
    their scope rationale.
+
+`revise-draft` persists a new or refreshed baseline first at
+`.author-toolkit/proposals/<scope-id>-draft-baseline.md` and links it from
+`pending_action.artifacts` and the session note. This non-authoritative proposal
+requires no `edit` approval; on resume, its scope and input versions must still
+match before reuse. Baseline confirmation and publication of the formal
+baseline retain their separate author decision and `edit` approval gates.
 
 All four revision user entries share the character capability. The draft,
 incremental, and request-driven paths require current arcs and continuity; the
