@@ -11,6 +11,7 @@ import { validateProjectFiles, validateScopeCurrency, validateTracker } from "..
 
 const timestamp = "2026-11-09T00:00:00Z";
 const approvalTable = "| Approval ID | Type | Operation | Scope ID | Paths | Status | Reason | Updated |\n|---|---|---|---|---|---|---|---|";
+const auditRunTable = "| Stage | Scope | Report | Engine and fallback | Language coverage | Run at | Result |\n|---|---|---|---|---|---|---|";
 
 async function projectFixture(t) {
   const output = path.join(root, ".test-output");
@@ -60,7 +61,7 @@ async function projectFixture(t) {
   const populatedTracker = tracker
     .replace("- Manifest created at:", "- Manifest created at:\n- Next action: 确认 DIAG-001。")
     .replace(/^\| Finding ID[^\n]*\n\|[-|]+\|$/m, (header) => `${header}\n${finding}`)
-    .replace("## Audit runs", `## Audit runs\n\n| Stage | Scope | Report | Engine and fallback | Language coverage | Run at | Result |\n|---|---|---|---|---|---|---|\n| diagnostics | scope-request-001 | \`reports/diagnostics/legacy.md\` | \`conversational\` | full | ${timestamp} | Historical fallback. |`);
+    .replace(auditRunTable, `${auditRunTable}\n| diagnostics | scope-request-001 | \`reports/diagnostics/legacy.md\` | \`conversational\` | full | ${timestamp} | Historical fallback. |`);
 
   for (const directory of ["reports/diagnostics", "sessions", ".author-toolkit/revision-plan", ".author-toolkit/creation", ".author-toolkit/backups", ".author-toolkit/handoffs"]) {
     await mkdir(path.join(projectRoot, directory), { recursive: true });

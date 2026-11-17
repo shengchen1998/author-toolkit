@@ -91,7 +91,7 @@
     },
     {
       "path": "assets/references/terminology.md",
-      "sha256": "f661840d1e5f2ead5bbdc079bfed9c9b3cc859bb130137f8e8bbd6d228ad0968"
+      "sha256": "a8c8728bcea22a64992a3ee5da0ad0d073c5e0c0ef34fb552daddee347eee785"
     },
     {
       "path": "assets/references/workflow-reporting.md",
@@ -123,7 +123,7 @@
     },
     {
       "path": "scripts/findings.mjs",
-      "sha256": "5286051cd944e250248b0098d1c7e569643963f015e2870ef18283833eebd251"
+      "sha256": "043fa2873496c368f3848f5e02d95c7a5ad1a36d8d2b6ad29c7476e1317b7d1c"
     },
     {
       "path": "scripts/initialize.mjs",
@@ -187,11 +187,11 @@
     },
     {
       "path": "scripts/lib/findings.mjs",
-      "sha256": "97dda83112fcb68e94c1cab7e0d06820805765a20ba7cf1088040782528fc7e2"
+      "sha256": "6617c7f599aeab5f21ab812a6b5c46f8bf4209da6eb6dca56856f29612f8ea0b"
     },
     {
       "path": "scripts/lib/index.mjs",
-      "sha256": "90ca34f84e780a7440e914efc88638574ef1893cf5f334f6b55e1ec5badc7bb3"
+      "sha256": "41e076057323a9db67c838a4e755e6accb110a1795bcfc61e7985f665f663e33"
     },
     {
       "path": "scripts/lib/manifest.mjs",
@@ -203,7 +203,7 @@
     },
     {
       "path": "scripts/lib/markdown.mjs",
-      "sha256": "6ae56db9078545dd6db5a1fc70d34832d36a4fe9c1b216c93b81f17c944b52fd"
+      "sha256": "b01b3d8e97273a73a481e6bac07382ede5971db44cce7d617cc12ef2be4e1720"
     },
     {
       "path": "scripts/lib/navigation-cache.mjs",
@@ -275,7 +275,7 @@
     },
     {
       "path": "scripts/lib/tracker.mjs",
-      "sha256": "756698c6052679dee6084f413b6ccaacceb3bd3e0d1274e476b276cb672eb98a"
+      "sha256": "de7d71b598f285d0373f166fb60e2c3a76055e4671f9d41d3af1d464b8127a41"
     },
     {
       "path": "scripts/lib/write-lock.mjs",

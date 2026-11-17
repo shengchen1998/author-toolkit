@@ -555,8 +555,10 @@ Use `read.mjs --project-root <root>` for its bounded manifest projection,
   only in the manifest; new trackers do not duplicate them, and existing
   tracker summary lines remain untouched. `author-project next-finding-id` supplies
   unused consecutive ID blocks from tracker and report history. `record-findings`
-  validates and atomically upserts complete report batches, preserving existing
-  author decisions and timestamps rather than manually appending Markdown rows.
+  validates complete report batches and, under the shared write lock, atomically
+  upserts finding rows and one Audit runs row per report, including clean reports.
+  It preserves existing author decisions and timestamps and makes repeated report
+  imports idempotent rather than requiring manually appended Markdown rows.
 - `PROJECT_STATE.md` is a generated navigation cache. Invoke `author-project`
   with `status --digest` to regenerate it after shared-state writes and at
   resume. Generation requires the same complete project validation as preflight,

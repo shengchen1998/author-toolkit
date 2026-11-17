@@ -98,6 +98,13 @@ export function languageCoverageHeadingCount(markdown) {
   return count;
 }
 
+export function languageCoverageFromEngineNotes(notes) {
+  const text = String(notes ?? "");
+  const match = text.match(/\bcoverage\s*(?:[:=]|is)\s*(full|partial|skipped)\b/i) ??
+    text.match(/\b(full|partial|skipped)\b[^.\n]{0,120}\bcoverage\b/i);
+  return match?.[1]?.toLowerCase() ?? null;
+}
+
 export function validateMarkdownReport(markdown) {
   let envelope;
   try {
@@ -126,10 +133,7 @@ export function validateMarkdownReport(markdown) {
   }
 
   const engineNotes = envelope.engine?.notes ?? "";
-  const hasCoverageSummary =
-    /\bcoverage\s*(?:[:=]|is)\s*(full|partial|skipped)\b/i.test(engineNotes) ||
-    /\b(full|partial|skipped)\b[^.\n]{0,120}\bcoverage\b/i.test(engineNotes);
-  if (!hasCoverageSummary) {
+  if (!languageCoverageFromEngineNotes(engineNotes)) {
     errors.push({
       instancePath: "/engine/notes",
       keyword: "language-coverage",
@@ -150,8 +154,8 @@ function evidenceError(message) {
   };
 }
 
-function evidenceValue(notes, name) {
-  return notes.match(new RegExp(`(?:^|\\s)${name}=([^\\s]+)`))?.[1]?.replace(/;$/, "");
+export function reportEvidenceValue(notes, name) {
+  return String(notes ?? "").match(new RegExp(`(?:^|\\s)${name}=([^\\s]+)`))?.[1]?.replace(/;$/, "");
 }
 
 export function validateEvidenceReport(markdown) {
@@ -160,19 +164,19 @@ export function validateEvidenceReport(markdown) {
 
   const errors = [...result.errors];
   const notes = result.envelope.engine?.notes ?? "";
-  const scopeId = evidenceValue(notes, "scope_id");
+  const scopeId = reportEvidenceValue(notes, "scope_id");
   if (!scopeId || !/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(scopeId)) {
     errors.push(evidenceError("engine.notes must contain scope_id=<valid-scope-id>"));
   }
 
-  const operationCoverage = evidenceValue(notes, "operation_coverage");
+  const operationCoverage = reportEvidenceValue(notes, "operation_coverage");
   if (!["full", "partial", "skipped"].includes(operationCoverage)) {
     errors.push(
       evidenceError("engine.notes must contain operation_coverage=full, partial, or skipped"),
     );
   }
 
-  const reviewMode = evidenceValue(notes, "review_mode");
+  const reviewMode = reportEvidenceValue(notes, "review_mode");
   if (
     result.envelope.stage === "current-scope-review" &&
     result.envelope.created_at >= "2026-11-09T00:00:00Z" &&
@@ -186,7 +190,7 @@ export function validateEvidenceReport(markdown) {
 
   if (
     ["characters", "diagnostics", "current-scope-review"].includes(result.envelope.stage) &&
-    !evidenceValue(notes, "subchecks")
+    !reportEvidenceValue(notes, "subchecks")
   ) {
     errors.push(evidenceError(`engine.notes must contain non-empty subchecks for ${result.envelope.stage}`));
   }

@@ -24,6 +24,16 @@ const COLUMN_ALIASES = {
   reason: ["decision or stale reason", "decision reason"],
 };
 
+const AUDIT_RUN_COLUMNS = [
+  ["stage", "stage"],
+  ["scope", "scope"],
+  ["report", "report"],
+  ["engine", "engine and fallback"],
+  ["languageCoverage", "language coverage"],
+  ["runAt", "run at"],
+  ["result", "result"],
+];
+
 function trackerError(instancePath, message) {
   return { instancePath, keyword: "tracker", message, params: {} };
 }
@@ -104,6 +114,24 @@ function findingsSection(markdown) {
   return { lines: lines.slice(start, end), start };
 }
 
+function auditRunsSection(markdown) {
+  const lines = markdown.split(/\r?\n/);
+  const headings = lines.flatMap((line, index) =>
+    /^ {0,3}##[ \t]+Audit runs[ \t]*$/.test(line) ? [index] : [],
+  );
+  if (headings.length !== 1) return { lines, error: headings.length };
+
+  const start = headings[0] + 1;
+  let end = lines.length;
+  for (let index = start; index < lines.length; index += 1) {
+    if (/^ {0,3}##[ \t]+/.test(lines[index])) {
+      end = index;
+      break;
+    }
+  }
+  return { lines: lines.slice(start, end) };
+}
+
 export function trackerDecisions(markdown) {
   const lines = markdown.split(/\r?\n/);
   const start = lines.findIndex((line) => /^ {0,3}##[ \t]+Findings[ \t]*$/.test(line));
@@ -121,14 +149,14 @@ export function trackerDecisions(markdown) {
       id: cleanCell(row[0]),
       location: cleanCell(row[3]),
       status,
-      report: reportCell(row[5]),
+      report: trackerReportPath(row[5]),
       reason: cleanCell(row[7]),
     });
   }
   return decisions;
 }
 
-function reportCell(value) {
+export function trackerReportPath(value) {
   const link = value.match(/\[[^\]]+\]\(([^)]+)\)/);
   return cleanCell(link?.[1] ?? value);
 }
@@ -239,7 +267,7 @@ export async function validateTrackerMarkdown(markdown, projectRoot) {
     const get = (name) => cleanCell(row[columns[name]]);
     const id = get("id");
     const status = get("status").toLowerCase();
-    const report = reportCell(row[columns.report]);
+    const report = trackerReportPath(row[columns.report]);
     const reason = get("reason");
 
     if (row.length !== Object.keys(columns).length) {
@@ -287,6 +315,81 @@ export async function validateTrackerMarkdown(markdown, projectRoot) {
     }
   }
 
+  return { valid: errors.length === 0, errors };
+}
+
+export function validateAuditRunsMarkdown(markdown) {
+  const errors = [];
+  const section = auditRunsSection(markdown);
+  if (section.error === 0) return { valid: true, errors };
+  if (section.error !== undefined) {
+    return {
+      valid: false,
+      errors: [trackerError("/Audit runs", `expected exactly one ## Audit runs heading; found ${section.error}`)],
+    };
+  }
+
+  const tables = [];
+  for (let index = 0; index < section.lines.length - 1; index += 1) {
+    const header = splitTrackerRow(section.lines[index]);
+    const separator = splitTrackerRow(section.lines[index + 1]);
+    if (header && isSeparator(separator)) tables.push({ header, index });
+  }
+  if (tables.length !== 1) {
+    return {
+      valid: false,
+      errors: [trackerError("/Audit runs", `expected exactly one Audit runs table; found ${tables.length}`)],
+    };
+  }
+
+  const [{ header, index: headerIndex }] = tables;
+  const normalized = header.map(normalizeHeader);
+  const columns = Object.fromEntries(
+    AUDIT_RUN_COLUMNS.map(([name, label]) => [name, normalized.indexOf(label)]),
+  );
+  if (header.length !== AUDIT_RUN_COLUMNS.length || Object.values(columns).some((index) => index < 0)) {
+    return {
+      valid: false,
+      errors: [trackerError(
+        "/Audit runs",
+        "Audit runs table requires Stage, Scope, Report, Engine and fallback, Language coverage, Run at, and Result columns",
+      )],
+    };
+  }
+
+  const reports = new Set();
+  const dataLines = section.lines.slice(headerIndex + 2);
+  for (const [rowIndex, line] of dataLines.entries()) {
+    if (!line.trim()) continue;
+    const row = splitTrackerRow(line);
+    if (!row) break;
+    const rowPath = `/Audit runs/${rowIndex}`;
+    if (row.length !== AUDIT_RUN_COLUMNS.length) {
+      errors.push(trackerError(rowPath, "audit run row has the wrong number of columns"));
+      continue;
+    }
+    const get = (name) => cleanCell(row[columns[name]]);
+    for (const [name] of AUDIT_RUN_COLUMNS) {
+      if (!get(name)) errors.push(trackerError(`${rowPath}/${name}`, `${name} is required`));
+    }
+
+    const report = trackerReportPath(row[columns.report]);
+    if (report !== "none") {
+      if (!validateRelativePath(report).valid) {
+        errors.push(trackerError(`${rowPath}/report`, "audit run report must be a portable project-relative path or none"));
+      }
+      if (reports.has(report)) {
+        errors.push(trackerError(`${rowPath}/report`, `duplicate audit run report: ${report}`));
+      }
+      reports.add(report);
+    }
+    if (!["full", "partial", "skipped"].includes(get("languageCoverage").toLowerCase())) {
+      errors.push(trackerError(`${rowPath}/languageCoverage`, "language coverage must be full, partial, or skipped"));
+    }
+    if (!Number.isFinite(Date.parse(get("runAt")))) {
+      errors.push(trackerError(`${rowPath}/runAt`, "run at must be a valid timestamp"));
+    }
+  }
   return { valid: errors.length === 0, errors };
 }
 
@@ -458,8 +561,9 @@ export function validateApprovalsMarkdown(markdown) {
 
 export async function validateTrackerV3Markdown(markdown, projectRoot) {
   const findings = await validateTrackerMarkdown(markdown, projectRoot);
+  const auditRuns = validateAuditRunsMarkdown(markdown);
   const approvals = validateApprovalsMarkdown(markdown);
-  const errors = [...findings.errors, ...approvals.errors];
+  const errors = [...findings.errors, ...auditRuns.errors, ...approvals.errors];
   return { valid: errors.length === 0, errors };
 }
 

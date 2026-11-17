@@ -53,15 +53,19 @@ node <setup-skill-root>/scripts/findings.mjs next-finding-id STANDARD --manifest
 
 The JSON `ids` result starts after the highest occupied number for that prefix across tracker findings and every readable report-v2 envelope beneath the registered reports path, including stale reports and nonnumeric gaps. Pass the exact allocated block to the reviewer or callee; an isolated reviewer must not choose its own starting number. Allocation reads state and does not reserve IDs across concurrent processes, so assign the whole block before dispatch and reconcile conflicts when recording findings. Do not use fixed 1xx/2xx review-pass blocks.
 
-After the caller completes finding-identity reconciliation, record the complete new report set through the installed CLI rather than manually inserting tracker rows:
+After the caller completes finding-identity reconciliation, record the complete new report set, including clean reports, through the installed CLI rather than manually inserting tracker rows:
 
 ```bash
 node <setup-skill-root>/scripts/findings.mjs record-findings --manifest <project-root>/.author-toolkit/project.json --report <report-path> [--report <report-path>...]
 ```
 
-The command accepts only valid v3.1 manifests and reports beneath the registered reports path. It validates every input and the complete result before writing the tracker through a verified temporary sibling and atomic rename. A duplicate report ID, conflicting identity, malformed tracker row, missing current report, or invalid result leaves the tracker unchanged. Argument errors exit 2; validation and filesystem failures exit 1.
+The command accepts only valid v3.1 manifests and reports beneath the registered reports path. It acquires the shared write lock, rereads and compares the manifest, validates every input and the complete tracker result, then writes findings and Audit runs together through a verified temporary sibling and atomic rename. A duplicate report ID, conflicting identity, malformed tracker row, missing current report, invalid Audit runs table or row, active write lock, or concurrent manifest change leaves the tracker unchanged. Argument errors exit 2; validation and filesystem failures exit 1.
 
-A new finding enters as `open` with the report creation timestamp and `No author decision recorded.` An existing ID updates only its location and current report pointer after comparison with the tracker row's current report; preserve its status, author reason, and updated timestamp. Reimporting the same report does not append duplicate rows. Historical reports remain immutable: a changed rerun uses a new report file. The command does not perform semantic identity matching, reopen a decided finding, record author decisions, or refresh the review brief; the caller completes those steps and refreshes the navigation cache after the logical state operation.
+A new finding enters as `open` with the report creation timestamp and `No author decision recorded.` An existing ID updates only its location and current report pointer after comparison with the tracker row's current report; preserve its status, author reason, and updated timestamp. Historical reports remain immutable: a changed rerun uses a new report file.
+
+Each report also inserts or updates one Audit runs row keyed by its project-relative report path. The row records the report `stage`, `scope_id`, path, engine name, version and `degraded` state, language coverage, `created_at` as `Run at`, and `operation_coverage=<full|partial|skipped>; findings=<count>` as `Result`. A clean report records `findings=0` without creating finding rows. Reimporting the same report updates its existing audit run rather than appending a duplicate; JSON output separately lists inserted and updated finding IDs and the report paths for inserted and updated audit runs. Audit runs validation preserves historical and bounded-retention rows, permits the retention marker `none`, and does not require a historical report to remain on disk.
+
+Recording requires the standard Audit runs table. A legacy tracker without that table remains readable but must be repaired and validated before recording. Manual tracker edits are recovery-only; normal report ingestion uses this transaction. The command does not perform semantic identity matching, reopen a decided finding, record author decisions, establish evidence currency or operation completion, or refresh the review brief; the caller completes those steps and refreshes the navigation cache after the logical state operation.
 
 ## Scaffold report
 

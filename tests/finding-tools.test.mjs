@@ -175,15 +175,27 @@ test("batch upsert inserts escaped rows and preserves an existing author decisio
     report,
   ]);
   assert.equal(result.status, 0, result.stderr);
-  assert.deepEqual(JSON.parse(result.stdout).updated, envelope.findings.map((finding) => finding.id));
-  assert.deepEqual(JSON.parse(result.stdout).inserted, []);
+  const output = JSON.parse(result.stdout);
+  assert.deepEqual(output.updated, envelope.findings.map((finding) => finding.id));
+  assert.deepEqual(output.inserted, []);
+  assert.deepEqual(output.audit_runs, { inserted: ["evidence/report.md"], updated: [] });
   const tracker = await readFile(trackerFile, "utf8");
   assert.match(tracker, /\| dismissed \| `evidence\/report\.md` \| 2026-01-17T18:00:00Z \| Author intentionally kept the scene\. \|/);
   assert.match(tracker, /中文引用 \| `code`/);
   assert.match(tracker, /evidence\/report\.md/);
+  const auditRun = "| structure | scope-fixture | `evidence/report.md` | `conversational`, version `unknown`, degraded: true | full | 2026-01-17T18:00:00Z | operation_coverage=full; findings=2 |";
+  assert.ok(tracker.includes(auditRun), tracker);
+  await writeFile(
+    trackerFile,
+    tracker.replace(auditRun, auditRun.replace("`evidence/report.md`", "[report](evidence/report.md)")),
+    "utf8",
+  );
   const rerun = run(["record-findings", "--manifest", path.join(directory, ".author-toolkit", "project.json"), "--report", report]);
   assert.equal(rerun.status, 0, rerun.stderr);
-  assert.deepEqual(JSON.parse(rerun.stdout).inserted, []);
+  const rerunOutput = JSON.parse(rerun.stdout);
+  assert.deepEqual(rerunOutput.inserted, []);
+  assert.deepEqual(rerunOutput.audit_runs, { inserted: [], updated: ["evidence/report.md"] });
+  assert.equal((await readFile(trackerFile, "utf8")).split(auditRun).length - 1, 1);
 });
 
 test("batch upsert inserts new IDs with escaped Chinese paths", async (t) => {
@@ -203,6 +215,22 @@ test("batch upsert inserts new IDs with escaped Chinese paths", async (t) => {
   const tracker = await readFile(path.join(directory, "state", "custom-tracker.md"), "utf8");
   assert.match(tracker, /``稿件\/第`一`章\.md``/);
   assert.match(tracker, /`passage 引用 \| 内容`/);
+});
+
+test("record-findings indexes a clean report without inventing finding rows", async (t) => {
+  const { directory, report } = await fixture(t);
+  const envelope = extractReportEnvelope(await readFile(report, "utf8"));
+  envelope.findings = [];
+  await writeFile(report, markdown(envelope), "utf8");
+
+  const result = run(["record-findings", "--manifest", path.join(directory, ".author-toolkit", "project.json"), "--report", report]);
+  assert.equal(result.status, 0, result.stderr);
+  const output = JSON.parse(result.stdout);
+  assert.deepEqual(output.inserted, []);
+  assert.deepEqual(output.updated, []);
+  assert.deepEqual(output.audit_runs.inserted, ["evidence/report.md"]);
+  const tracker = await readFile(path.join(directory, "state", "custom-tracker.md"), "utf8");
+  assert.match(tracker, /\| structure \| scope-fixture \| `evidence\/report\.md` \| `conversational`, version `unknown`, degraded: true \| full \| 2026-01-17T18:00:00Z \| operation_coverage=full; findings=0 \|/);
 });
 
 test("manifest validation and upsert reject a conflicting historical report ID", async (t) => {
@@ -241,6 +269,50 @@ test("failed validation leaves the tracker byte-identical", async (t) => {
   assert.equal(await readFile(trackerFile, "utf8"), before);
   assert.equal(run(["record-findings", "--manifest", path.join(directory, ".author-toolkit", "project.json")]).status, 2);
   assert.equal(run(["unknown"]).status, 2);
+});
+
+test("an invalid existing Audit runs row leaves the tracker byte-identical", async (t) => {
+  const { directory, report } = await fixture(t);
+  const trackerFile = path.join(directory, "state", "custom-tracker.md");
+  const invalid = (await readFile(trackerFile, "utf8")).replace(
+    "| full | 2026-01-17T18:00:00Z | Handwritten fixture;",
+    "| full | not-a-time | Handwritten fixture;",
+  );
+  await writeFile(trackerFile, invalid, "utf8");
+
+  const result = run(["record-findings", "--manifest", path.join(directory, ".author-toolkit", "project.json"), "--report", report]);
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /run at must be a valid timestamp/);
+  assert.equal(await readFile(trackerFile, "utf8"), invalid);
+});
+
+test("record-findings requires an Audit runs table and preserves a legacy tracker", async (t) => {
+  const { directory, report } = await fixture(t);
+  const trackerFile = path.join(directory, "state", "custom-tracker.md");
+  const legacy = (await readFile(trackerFile, "utf8")).replace(
+    "| Stage | Scope | Report | Engine and fallback | Language coverage | Run at | Result |\n|---|---|---|---|---|---|---|\n",
+    "",
+  );
+  await writeFile(trackerFile, legacy, "utf8");
+
+  const result = run(["record-findings", "--manifest", path.join(directory, ".author-toolkit", "project.json"), "--report", report]);
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /Audit runs table requires a Stage header/);
+  assert.equal(await readFile(trackerFile, "utf8"), legacy);
+});
+
+test("record-findings honors the shared write lock without changing the tracker", async (t) => {
+  const { directory, manifest, report } = await fixture(t);
+  const backups = path.join(directory, manifest.paths.backups);
+  await mkdir(backups, { recursive: true });
+  await writeFile(path.join(backups, ".writes.lock"), "other-process\n", "utf8");
+  const trackerFile = path.join(directory, manifest.paths.audit_tracker);
+  const before = await readFile(trackerFile, "utf8");
+
+  const result = run(["record-findings", "--manifest", path.join(directory, ".author-toolkit", "project.json"), "--report", report]);
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /another project write is active/);
+  assert.equal(await readFile(trackerFile, "utf8"), before);
 });
 
 test("library updates only existing rows with the same finding identity", async () => {

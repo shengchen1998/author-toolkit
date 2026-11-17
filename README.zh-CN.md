@@ -329,8 +329,9 @@ AI, 作者和混合创作使用相同门禁. 每本书只保留一个活动创�
   当前范围和待处理操作仅由 manifest 保存, 新 tracker 不再复制这些字段;
   既有 tracker 的历史摘要行保持不变.
   `author-project next-finding-id` 根据 tracker 和报告历史分配未占用的连续 ID 区段;
-  `record-findings` 校验并以原子方式批量更新报告对应的发现项行, 保留已有作者决定和时间戳,
-  不再手工追加 Markdown 行.
+  `record-findings` 校验完整报告批次, 在共享写锁内以原子方式更新发现项行, 并为每份报告
+  更新或插入一条 Audit runs 行; 零发现项报告也会记录运行. 它保留已有作者决定和时间戳,
+  重复导入同一报告不会重复追加 Markdown 行.
 - `PROJECT_STATE.md`: 生成的导航缓存. 调用 `author-project` 的 `status --digest`, 在共享状态写入后及恢复时重新生成.
   生成前运行与 preflight 相同的完整项目校验, 包括当前稿件哈希, tracker 和备份索引中的执行证据.
   UTC `Generated at` 和 `Validation at generation: passed` 仅表示生成时快照, 不代表当前健康状态,

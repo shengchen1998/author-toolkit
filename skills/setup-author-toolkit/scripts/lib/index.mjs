@@ -1,6 +1,7 @@
 export {
   readReportFindings,
   reportFindingIdentities,
+  upsertTrackerAuditRuns,
   upsertTrackerFindings,
   validateFindingBatch,
 } from "./findings.mjs";
@@ -67,6 +68,7 @@ export {
   trackerFindingRows,
   trackerDecisions,
   validateApprovalsMarkdown,
+  validateAuditRunsMarkdown,
   validateTracker,
   validateTrackerFindingIds,
   validateTrackerMarkdown,

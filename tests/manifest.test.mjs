@@ -236,6 +236,27 @@ test("v3.1 file checks cover scope and pending artifacts without recomputing has
   );
 });
 
+test("v3 Audit runs validate their table without requiring historical reports on disk", async () => {
+  const template = await trackerTemplate();
+  const table = "| Stage | Scope | Report | Engine and fallback | Language coverage | Run at | Result |\n|---|---|---|---|---|---|---|";
+  const row = "| structure | scope-1 | `reports/retired.md` | `conversational`, version `unknown`, degraded: false | full | 2026-01-17T18:00:00Z | operation_coverage=full; findings=0 |";
+  const valid = template.replace(table, `${table}\n${row}`);
+  assert.equal((await validateTrackerV3Markdown(valid, root)).valid, true);
+
+  const duplicate = template.replace(table, `${table}\n${row}\n${row}`);
+  const duplicateResult = await validateTrackerV3Markdown(duplicate, root);
+  assert.equal(duplicateResult.valid, false);
+  assert.ok(duplicateResult.errors.some((error) => error.message.includes("duplicate audit run report")));
+
+  const unsafePath = valid.replace("`reports/retired.md`", "../outside.md");
+  const unsafeResult = await validateTrackerV3Markdown(unsafePath, root);
+  assert.equal(unsafeResult.valid, false);
+  assert.ok(unsafeResult.errors.some((error) => error.instancePath.endsWith("/report")));
+
+  const legacy = template.replace(/## Audit runs[\s\S]*?(?=## Approvals)/, "");
+  assert.equal((await validateTrackerV3Markdown(legacy, root)).valid, true);
+});
+
 test("v3 Approvals enforce their table and v2 still does not require the section", async () => {
   const template = await trackerTemplate();
   assert.equal((await validateTrackerV3Markdown(template, root)).valid, true);
@@ -269,6 +290,20 @@ test("v3 Approvals enforce their table and v2 still does not require the section
 
   const duplicateSection = `${valid}\n## Approvals\n\n${approvalTable}\n`;
   assert.equal((await validateTrackerV3Markdown(duplicateSection, root)).valid, false);
+});
+
+test("report validators reject non-string engine notes without throwing", async () => {
+  const source = await readReport();
+  const envelope = extractReportEnvelope(source);
+  envelope.engine.notes = 42;
+  const markdown = source.replace(
+    /```json\n[\s\S]*?\n```/,
+    `\`\`\`json\n${JSON.stringify(envelope, null, 2)}\n\`\`\``,
+  );
+  for (const result of [validateMarkdownReport(markdown), validateEvidenceReport(markdown)]) {
+    assert.equal(result.valid, false);
+    assert.ok(result.errors.some((error) => error.instancePath === "/engine/notes" && error.keyword === "type"));
+  }
 });
 
 test("new report stages keep the v2 envelope and use opt-in evidence semantics", async () => {

@@ -9,12 +9,14 @@ import {
   reportFindingIdentities,
   projectRootFromManifest,
   trackerFindingRows,
+  upsertTrackerAuditRuns,
   upsertTrackerFindings,
   trackerFindingHistory,
   validateManifest,
   validateTrackerV3Markdown,
   validateTrackerFindingIds,
 } from "./lib/index.mjs";
+import { withProjectWriteLock } from "./lib/write-lock.mjs";
 
 function argumentError(message) {
   const error = new Error(message);
@@ -28,7 +30,8 @@ function usage() {
   node scripts/findings.mjs record-findings --manifest FILE --report FILE...
 
 Allocate IDs from all tracker and immutable-report history. Record a complete
-report batch atomically, preserving existing finding decisions and timestamps.`);
+report batch under the shared write lock, atomically upserting finding and
+Audit runs rows while preserving finding decisions and timestamps.`);
 }
 
 function options(args) {
@@ -42,6 +45,55 @@ function options(args) {
     }
   }
   return result;
+}
+
+async function recordFindings(selection, manifest) {
+  const projectRoot = projectRootFromManifest(selection.manifest);
+  return withProjectWriteLock(selection.manifest, manifest, async () => {
+    const recordedManifest = JSON.parse(await readFile(selection.manifest, "utf8"));
+    if (!validateManifest(recordedManifest).valid || JSON.stringify(recordedManifest) !== JSON.stringify(manifest)) {
+      throw new Error("project manifest changed before finding recording; reread it before retrying");
+    }
+    const trackerPath = path.resolve(projectRoot, recordedManifest.paths.audit_tracker);
+    const tracker = await readFile(trackerPath, "utf8");
+    const trackerValidation = validateTrackerFindingIds(tracker);
+    if (!trackerValidation.valid) throw new Error(trackerValidation.errors.map((error) => error.message).join("; "));
+    const history = await reportFindingIdentities(projectRoot, recordedManifest.paths.reports);
+    const bounded = recordedManifest.evidence_retention?.mode === "bounded";
+    const reportsRoot = path.resolve(projectRoot, recordedManifest.paths.reports);
+    const reports = [];
+    for (const file of selection.reports) {
+      const report = await readReportFindings(file, projectRoot);
+      if (path.dirname(file) !== reportsRoot && !path.dirname(file).startsWith(`${reportsRoot}${path.sep}`)) {
+        throw new Error(`report must be beneath registered reports path: ${report.path}`);
+      }
+      reports.push(report);
+    }
+
+    const findings = upsertTrackerFindings(tracker, reports, history, { bounded });
+    const auditRuns = upsertTrackerAuditRuns(findings.markdown, reports);
+    const validation = await validateTrackerV3Markdown(auditRuns.markdown, projectRoot);
+    if (!validation.valid) throw new Error(validation.errors.map((error) => error.message).join("; "));
+    const temporary = `${trackerPath}.${process.pid}.tmp`;
+    try {
+      await writeFile(temporary, auditRuns.markdown, "utf8");
+      if (await readFile(temporary, "utf8") !== auditRuns.markdown) {
+        throw new Error("temporary tracker verification failed");
+      }
+      await rename(temporary, trackerPath);
+      if (await readFile(trackerPath, "utf8") !== auditRuns.markdown) {
+        throw new Error("published tracker verification failed");
+      }
+    } catch (error) {
+      await rm(temporary, { force: true });
+      throw error;
+    }
+    return {
+      inserted: findings.inserted,
+      updated: findings.updated,
+      audit_runs: { inserted: auditRuns.inserted, updated: auditRuns.updated },
+    };
+  });
 }
 
 async function main() {
@@ -70,14 +122,13 @@ async function main() {
   if (!validateManifest(manifest).valid) {
     throw new Error("findings tools require a valid v3.1 project manifest");
   }
-  const trackerPath = path.resolve(projectRoot, manifest.paths.audit_tracker);
-  const tracker = await readFile(trackerPath, "utf8");
-  const trackerValidation = validateTrackerFindingIds(tracker);
-  if (!trackerValidation.valid) throw new Error(trackerValidation.errors.map((error) => error.message).join("; "));
-  const history = await reportFindingIdentities(projectRoot, manifest.paths.reports);
-  const bounded = manifest.evidence_retention?.mode === "bounded";
-
   if (operation === "next-finding-id") {
+    const trackerPath = path.resolve(projectRoot, manifest.paths.audit_tracker);
+    const tracker = await readFile(trackerPath, "utf8");
+    const trackerValidation = validateTrackerFindingIds(tracker);
+    if (!trackerValidation.valid) throw new Error(trackerValidation.errors.map((error) => error.message).join("; "));
+    const history = await reportFindingIdentities(projectRoot, manifest.paths.reports);
+    const bounded = manifest.evidence_retention?.mode === "bounded";
     const occupied = [
       ...trackerFindingRows(tracker).map((row) => row.id),
       ...history.flatMap((report) => report.envelope.findings.map((finding) => finding.id)),
@@ -86,30 +137,8 @@ async function main() {
     console.log(JSON.stringify({ ids: allocateFindingIds(prefix, occupied, selection.count ?? 1) }, null, 2));
     return;
   }
-  const reportsRoot = path.resolve(projectRoot, manifest.paths.reports);
-  const reports = [];
-  for (const file of selection.reports) {
-    const report = await readReportFindings(file, projectRoot);
-    if (path.dirname(file) !== reportsRoot && !path.dirname(file).startsWith(`${reportsRoot}${path.sep}`)) {
-      throw new Error(`report must be beneath registered reports path: ${report.path}`);
-    }
-    reports.push(report);
-  }
-  const result = upsertTrackerFindings(tracker, reports, history, { bounded });
-  const validation = await validateTrackerV3Markdown(result.markdown, projectRoot);
-  if (!validation.valid) throw new Error(validation.errors.map((error) => error.message).join("; "));
-  const temporary = `${trackerPath}.${process.pid}.tmp`;
-  try {
-    await writeFile(temporary, result.markdown, "utf8");
-    if (await readFile(temporary, "utf8") !== result.markdown) {
-      throw new Error("temporary tracker verification failed");
-    }
-    await rename(temporary, trackerPath);
-  } catch (error) {
-    await rm(temporary, { force: true });
-    throw error;
-  }
-  console.log(JSON.stringify({ inserted: result.inserted, updated: result.updated }, null, 2));
+  const result = await recordFindings(selection, manifest);
+  console.log(JSON.stringify(result, null, 2));
 }
 
 try {

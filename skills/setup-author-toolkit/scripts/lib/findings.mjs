@@ -2,9 +2,13 @@ import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 
 import { findingIdentity, sameFindingIdentity, validateFindingIdentity } from "./finding-identity.mjs";
-import { validateEvidenceReport } from "./markdown.mjs";
+import {
+  languageCoverageFromEngineNotes,
+  reportEvidenceValue,
+  validateEvidenceReport,
+} from "./markdown.mjs";
 import { validateRelativePath } from "./schemas.mjs";
-import { splitTrackerRow, trackerFindingRows } from "./tracker.mjs";
+import { splitTrackerRow, trackerFindingRows, trackerReportPath } from "./tracker.mjs";
 import { syncTrackerFindingHistory, trackerFindingHistory } from "./tracker-history.mjs";
 
 export async function readReportFindings(file, projectRoot) {
@@ -100,14 +104,15 @@ function location(finding) {
   return `${cell(place.file, true)}, ${cell(`${scope}${quote}`)}`;
 }
 
-function trackerTable(lines) {
-  const start = lines.findIndex((line) => /^ {0,3}##[ \t]+Findings[ \t]*$/.test(line));
-  if (start === -1) throw new Error("tracker requires exactly one ## Findings heading");
+function trackerTable(lines, heading, firstHeader) {
+  const headingPattern = new RegExp(`^ {0,3}##[ \\t]+${heading}[ \\t]*$`);
+  const start = lines.findIndex((line) => headingPattern.test(line));
+  if (start === -1) throw new Error(`tracker requires exactly one ## ${heading} heading`);
   const end = lines.findIndex((line, index) => index > start && /^ {0,3}##[ \t]+/.test(line));
   const stop = end === -1 ? lines.length : end;
   for (let index = start + 1; index < stop - 1; index += 1) {
     const header = splitTrackerRow(lines[index]);
-    if (!header || header[0].toLowerCase() !== "finding id") continue;
+    if (!header || header[0].toLowerCase() !== firstHeader.toLowerCase()) continue;
     const rows = [];
     for (let rowIndex = index + 2; rowIndex < stop; rowIndex += 1) {
       const row = splitTrackerRow(lines[rowIndex]);
@@ -116,7 +121,7 @@ function trackerTable(lines) {
     }
     return { rows, end: rows.at(-1)?.index ?? index + 1 };
   }
-  throw new Error("tracker Findings table requires a Finding ID header");
+  throw new Error(`tracker ${heading} table requires a ${firstHeader} header`);
 }
 
 export function upsertTrackerFindings(markdown, reports, history = [], { bounded = false } = {}) {
@@ -126,7 +131,7 @@ export function upsertTrackerFindings(markdown, reports, history = [], { bounded
   }
   const newline = markdown.includes("\r\n") ? "\r\n" : "\n";
   const lines = markdown.split(/\r?\n/);
-  const table = trackerTable(lines);
+  const table = trackerTable(lines, "Findings", "Finding ID");
   const existing = trackerFindingRows(markdown);
   const rowIndexes = new Map(table.rows.map((row, index) => [existing[index]?.id, row]));
   const inserted = [];
@@ -174,4 +179,49 @@ export function upsertTrackerFindings(markdown, reports, history = [], { bounded
     inserted,
     updated,
   };
+}
+
+function auditRunCells(report) {
+  const { envelope } = report;
+  const notes = envelope.engine.notes;
+  const scopeId = reportEvidenceValue(notes, "scope_id");
+  const operationCoverage = reportEvidenceValue(notes, "operation_coverage");
+  const languageCoverage = languageCoverageFromEngineNotes(notes);
+  if (!scopeId || !["full", "partial", "skipped"].includes(operationCoverage) || !languageCoverage) {
+    throw new Error(`report lacks valid audit run metadata: ${report.path}`);
+  }
+  return [
+    cell(envelope.stage),
+    cell(scopeId),
+    cell(report.path, true),
+    `${cell(envelope.engine.name, true)}, version ${cell(envelope.engine.version, true)}, degraded: ${envelope.engine.degraded}`,
+    cell(languageCoverage),
+    cell(envelope.created_at),
+    cell(`operation_coverage=${operationCoverage}; findings=${envelope.findings.length}`),
+  ];
+}
+
+export function upsertTrackerAuditRuns(markdown, reports) {
+  const newline = markdown.includes("\r\n") ? "\r\n" : "\n";
+  const lines = markdown.split(/\r?\n/);
+  const table = trackerTable(lines, "Audit runs", "Stage");
+  const rowIndexes = new Map(
+    table.rows.map((row) => [trackerReportPath(row.cells[2]), row]),
+  );
+  const inserted = [];
+  const updated = [];
+  const rows = [];
+  for (const report of reports) {
+    const values = auditRunCells(report);
+    const target = rowIndexes.get(report.path);
+    if (target) {
+      lines[target.index] = `| ${values.join(" | ")} |`;
+      updated.push(report.path);
+    } else {
+      rows.push(`| ${values.join(" | ")} |`);
+      inserted.push(report.path);
+    }
+  }
+  lines.splice(table.end + 1, 0, ...rows);
+  return { markdown: lines.join(newline), inserted, updated };
 }

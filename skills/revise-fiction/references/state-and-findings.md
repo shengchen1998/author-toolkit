@@ -62,7 +62,7 @@ Reopen the finding as `open` only when the relevant quoted passage or location, 
 
 ## Living tracker
 
-After reconciling new observations with prior findings and decisions, run `author-project` with `record-findings` and the complete report set to batch upsert finding rows through the installed CLI. Do not hand-write batches of tracker rows. New IDs enter as `open`; a reused ID retains its status, author reason, and updated timestamp while its location and current report pointer change. Preserve historical reports in the default mode and refresh the review brief when applicable. The CLI rejects duplicate report IDs and conflicting identities but does not replace semantic identity reconciliation.
+After reconciling new observations with prior findings and decisions, run `author-project` with `record-findings` and the complete report set, including clean reports. Under the shared write lock, the installed CLI atomically upserts finding rows and one Audit runs row per report. New IDs enter as `open`; a reused ID retains its status, author reason, and updated timestamp while its location and current report pointer change. Reimporting a report updates its existing audit run by report path instead of appending a duplicate. Preserve historical reports in the default mode and refresh the review brief when applicable. The CLI rejects duplicate report IDs, conflicting identities, and invalid Audit runs rows but does not replace semantic identity reconciliation. Manual tracker edits are recovery-only and require subsequent validation; normal report ingestion uses this transaction.
 
 Use only these finding statuses:
 
@@ -74,7 +74,7 @@ Use only these finding statuses:
 | `dismissed` | The author judged it inapplicable or intentional; record the reason |
 | `stale` | Its input or scope changed, or an equivalent rerun no longer observes it without verified resolution |
 
-For each status change, update the tracker row with UTC time, current report path, and reason. Keep historical report paths in the audit-run table. Unknown future plot, an unwritten ending, and other open creative choices belong in baseline open questions; they become findings only when they cause a concrete problem in existing text.
+For each status change, update the tracker row with UTC time, current report path, and reason. Keep historical report paths in the Audit runs table. Unknown future plot, an unwritten ending, and other open creative choices belong in baseline open questions; they become findings only when they cause a concrete problem in existing text.
 
 ## Author decision loop
 
