@@ -26,6 +26,11 @@ test("fiction workshop loads its Chinese line reference and scopes English lengt
   );
   assert.match(skill, /English guideline only: < 2,000 words/);
   assert.match(skill, /author-approved character count or another author-approved length unit/);
+  assert.match(skill, /`wc -m` includes newlines, punctuation, and any Markdown markup/);
+  assert.match(
+    skill,
+    /raw inventory metadata unless the author approves that exact counting unit for workflow-fit/,
+  );
   assert.match(skill, /Do not derive a Chinese threshold through a fixed English-word conversion/);
   assert.doesNotMatch(skill, /\(< 2,000 words\)/);
 });

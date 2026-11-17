@@ -33,7 +33,7 @@ This skill is NOT for:
 - ❌ Technical writing, documentation, or academic papers
 - ❌ Business writing or marketing copy
 
-For Chinese work, use an author-approved character count or another author-approved length unit to decide whether the workflow fits. Do not derive a Chinese threshold through a fixed English-word conversion.
+For Chinese work, use an author-approved character count or another author-approved length unit to decide whether the workflow fits. `wc -m` includes newlines, punctuation, and any Markdown markup, so treat its output as raw inventory metadata unless the author approves that exact counting unit for workflow-fit. Do not derive a Chinese threshold through a fixed English-word conversion.
 
 For narrative nonfiction (memoir, self-help with story elements), use the `narrative-nonfiction` skill instead.
 
