@@ -3,7 +3,7 @@
   "files": [
     {
       "path": "SKILL.md",
-      "sha256": "8ada3a881d0af0b49ada2584434e33814d3fc4a83eb55b6528ece861563ee946"
+      "sha256": "8bee94c27d3026cbb942650a5125c8e33bcee60bc7d32c30800d0568b9349519"
     },
     {
       "path": "assets/AGENTS.md",
@@ -11,7 +11,7 @@
     },
     {
       "path": "assets/START_HERE.md",
-      "sha256": "8d8173270df175e2459399ce356c58d52c4142961964942ca162747cca3da05a"
+      "sha256": "ce9daffda51277a1719d413b4b0535a19134037c2a8827625177d859216a44c3"
     },
     {
       "path": "assets/references/avoid-ai-writing-adapter.md",
@@ -99,7 +99,7 @@
     },
     {
       "path": "assets/setup/existing-project.md",
-      "sha256": "c60136feb2157950a7c36c6f30d129fe378d2d406a0f1976ed1a55deb178b488"
+      "sha256": "59c349c123a2b6405d5915fb6081e5ebd59e4a53d4f48bfd3838d8803cd23ef0"
     },
     {
       "path": "assets/setup/new-project.md",

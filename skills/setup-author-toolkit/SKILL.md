@@ -22,6 +22,7 @@ Register one book project and prepare its shared persistent files. Accept only t
      - `AGENTS.md`.
      - relative `CLAUDE.md -> AGENTS.md` link.
      - created or preserved `START_HERE.md`.
+     - final `Navigation cache` result unless its JSON reports `navigation_cache.reusable` as `true`; an absent cache is expected until the first successful `--digest` refresh and does not fail installation or preflight, while a stale or unchecked cache is left unread in favor of the bounded command results.
      - validation of registered paths.
    - **Manuscript scope**:
      - manifest path.

@@ -233,8 +233,10 @@ Setup runs `check.mjs --project-root <root> --diagnose` once after initializatio
 and entry-file repair as its final installation and project-state verification,
 without a following doctor call or a repeated ordinary preflight. The strict
 execution gate remains a separate check. Setup reads `PROJECT_STATE.md` only
-after that check reports a reusable snapshot; a stale or unchecked cache is
-left unread in favor of the bounded command results.
+after that check reports a reusable snapshot. It reports any non-reusable
+navigation-cache state; absence before the first successful `--digest` refresh
+is expected and does not fail installation or preflight. An absent, stale, or
+unchecked cache is left unread in favor of the bounded command results.
 When validation fails, add `--diagnose` without `--digest` for one bounded
 read-only result containing the projection marked `recorded_unverified` and
 backup-index conflict fields. Its text displays up to 12 scope paths with their

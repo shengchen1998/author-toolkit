@@ -281,7 +281,7 @@ test("project digest is a generated navigation cache, not another source of trut
   assert.match(readOperations, /older cache, unreadable cache, or unsafe recorded route makes the cache `stale`/);
   assert.match(readOperations, /without reproducing it or rewriting the file/);
   assert.match(existingSetup, /After that check reports `Navigation cache: reusable snapshot only`, read `PROJECT_STATE\.md` for navigation only/);
-  assert.match(existingSetup, /When the check reports a stale cache or does not check the cache, use the bounded command results instead of reading the cache/);
+  assert.match(existingSetup, /When the check reports an absent or stale cache, or does not check the cache, use the bounded command results instead of reading the cache/);
   assert.match(startHere, /JSON `navigation_cache\.reusable` is `true`/);
 
   for (const skill of ["write-fiction", "revise-fiction", "revise-draft", "revise-increment", "revise-request"]) {
@@ -395,6 +395,10 @@ test("existing-project setup uses bounded inspection references and a categorize
   assert.match(setup, /toolkit is installed while the affected project-state or evidence-dependent operations are blocked/);
   assert.match(setup, /Distinguish mechanical execution evidence from operation-specific evidence/);
   assert.match(setup, /applicable scope hashes: without a `current_scope`, output `current scope hashes: not applicable` and do not compute manuscript hashes; with a `current_scope`, report its recorded hashes and validation status/);
+  assert.match(setup, /final `Navigation cache` result unless its JSON reports `navigation_cache\.reusable` as `true`/);
+  assert.match(setup, /an absent cache is expected until the first successful `--digest` refresh and does not fail installation or preflight/);
+  assert.match(readme, /It reports any non-reusable\s+navigation-cache state/);
+  assert.match(zhReadme, /setup 报告所有非可复用的导航缓存状态/);
 
   for (const command of ["initialize\\.mjs --project-root", "doctor\\.mjs", "read\\.mjs --project-root", "preflight\\.mjs --project-root", "validate\\.mjs --manifest", "status\\.mjs --manifest", "writes\\.mjs check-index --manifest", "--explain", "--scope-id", "--require-execution", "--digest", "--diagnose", "project-digest\\.mjs --project-root"]) {
     assert.match(readOperations, new RegExp(command));
