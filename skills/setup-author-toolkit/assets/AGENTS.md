@@ -1,6 +1,6 @@
 # Author Toolkit writing project
 
-Match the author's language. The active skill's `SKILL.md` and its references supply the full procedure. Resolve the installed `setup-author-toolkit` skill's root as `<setup-skill-root>` and read shared runtime contracts directly from `<setup-skill-root>/assets/references/`; use `<setup-skill-root>/assets/references/terminology.md` for shared terms and exact contract values. Do not copy contracts into the writing project.
+Match the author's language. The active skill's `SKILL.md` and its references supply the full procedure. Toolkit skills from one installation are siblings. For `setup-author-toolkit`, `<setup-skill-root>` is its own installed directory; from another toolkit skill, resolve it as `../setup-author-toolkit` relative to that skill's installed directory. Read shared runtime contracts directly from `<setup-skill-root>/assets/references/`; use `<setup-skill-root>/assets/references/terminology.md` for shared terms and exact contract values. Do not copy contracts into the writing project.
 
 ## Resolve and route skills
 

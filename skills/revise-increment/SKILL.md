@@ -6,7 +6,7 @@ disable-model-invocation: true
 
 # Revise Increment
 
-Coordinate revision after incremental manuscript growth. Use the current-draft operations and shared evidence to revise added or affected paths without treating creation acceptance as current-draft revision convergence. One manifest continues to represent one book. Resolve the installed `setup-author-toolkit` skill's root as `<setup-skill-root>` and use the controlled workflow terminology in `<setup-skill-root>/assets/references/terminology.md` for shared terms and exact contract values.
+Coordinate revision after incremental manuscript growth. Use the current-draft operations and shared evidence to revise added or affected paths without treating creation acceptance as current-draft revision convergence. One manifest continues to represent one book. Toolkit skills from one installation are siblings. Resolve `<setup-skill-root>` as `../setup-author-toolkit` relative to this skill's installed directory and use the controlled workflow terminology in `<setup-skill-root>/assets/references/terminology.md` for shared terms and exact contract values.
 
 ## Start or resume
 

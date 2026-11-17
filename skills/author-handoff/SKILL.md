@@ -5,7 +5,7 @@ description: Use when creating or restoring a concise author-toolkit session han
 
 # Author Handoff
 
-Create or restore a portable pointer to shared project state. Accept `create` or `restore`, a project root, and optionally a handoff path. Resolve the installed `setup-author-toolkit` skill's root as `<setup-skill-root>` and use the controlled workflow terminology in `<setup-skill-root>/assets/references/terminology.md` for shared terms and exact contract values. If `author-project` reports an incomplete toolkit installation, stop creation or restoration and report the missing installed files; do not deploy contracts into the project.
+Create or restore a portable pointer to shared project state. Accept `create` or `restore`, a project root, and optionally a handoff path. Toolkit skills from one installation are siblings. Resolve `<setup-skill-root>` as `../setup-author-toolkit` relative to this skill's installed directory and use the controlled workflow terminology in `<setup-skill-root>/assets/references/terminology.md` for shared terms and exact contract values. If `author-project` reports an incomplete toolkit installation, stop creation or restoration and report the missing installed files; do not deploy contracts into the project.
 
 ## Create
 

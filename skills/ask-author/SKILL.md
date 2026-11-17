@@ -6,7 +6,7 @@ disable-model-invocation: true
 
 # Ask Author
 
-Route the author to an explicit next command. This is a router, not an orchestrator. When using shared state, resolve the installed `setup-author-toolkit` skill's root as `<setup-skill-root>`. Use the controlled workflow terminology in `<setup-skill-root>/assets/references/terminology.md` for shared terms and exact contract values.
+Route the author to an explicit next command. This is a router, not an orchestrator. Toolkit skills from one installation are siblings. When using shared state, resolve `<setup-skill-root>` as `../setup-author-toolkit` relative to this skill's installed directory. Use the controlled workflow terminology in `<setup-skill-root>/assets/references/terminology.md` for shared terms and exact contract values.
 
 ## Route
 

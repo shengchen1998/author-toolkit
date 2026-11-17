@@ -935,7 +935,7 @@ test("shared workflows resolve installed setup references without project deploy
   assert.doesNotMatch(operations, /compare every packaged file|missing project-relative paths|reference-version-conflict/);
 
   for (const [index, text] of entries.entries()) {
-    assert.match(text, /resolve the installed `setup-author-toolkit` skill's root as `<setup-skill-root>`/i, callers[index]);
+    assert.match(text, /resolve `<setup-skill-root>` as `\.\.\/setup-author-toolkit` relative to this skill's installed directory/i, callers[index]);
     assert.match(text, /incomplete toolkit installation/, callers[index]);
     assert.doesNotMatch(text, /check the deployed shared references|valid manifest does not prove reference deployment/, callers[index]);
   }
@@ -950,7 +950,7 @@ test("shared workflows resolve installed setup references without project deploy
   );
 
   const review = entries[callers.indexOf("author-review")];
-  const rootResolution = review.indexOf("Resolve the installed `setup-author-toolkit`");
+  const rootResolution = review.indexOf("Resolve `<setup-skill-root>`");
   const contractRead = review.indexOf("Read the controlled workflow terminology");
   assert.ok(
     contractRead > rootResolution,

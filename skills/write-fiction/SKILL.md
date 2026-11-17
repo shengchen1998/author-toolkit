@@ -6,7 +6,7 @@ disable-model-invocation: true
 
 # Write Fiction
 
-Coordinate one reviewable creation batch from the shared project evidence. This skill owns sequence, staging, approvals, and recovery; `fiction-workshop` supplies the creative process. One manifest continues to represent one book. Resolve the installed `setup-author-toolkit` skill's root as `<setup-skill-root>` and use the controlled workflow terminology in `<setup-skill-root>/assets/references/terminology.md` for shared terms and exact contract values.
+Coordinate one reviewable creation batch from the shared project evidence. This skill owns sequence, staging, approvals, and recovery; `fiction-workshop` supplies the creative process. One manifest continues to represent one book. Toolkit skills from one installation are siblings. Resolve `<setup-skill-root>` as `../setup-author-toolkit` relative to this skill's installed directory and use the controlled workflow terminology in `<setup-skill-root>/assets/references/terminology.md` for shared terms and exact contract values.
 
 ## Start or resume
 

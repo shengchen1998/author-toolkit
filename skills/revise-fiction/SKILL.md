@@ -6,7 +6,7 @@ disable-model-invocation: true
 
 # Revise Fiction
 
-Coordinate full-book revision from the shared project evidence. This skill supplies sequence, gates, approvals, and persistence; the writing skills supply their craft rules. Resolve the installed `setup-author-toolkit` skill's root as `<setup-skill-root>` and use the controlled workflow terminology in `<setup-skill-root>/assets/references/terminology.md` for shared terms and exact contract values.
+Coordinate full-book revision from the shared project evidence. This skill supplies sequence, gates, approvals, and persistence; the writing skills supply their craft rules. Toolkit skills from one installation are siblings. Resolve `<setup-skill-root>` as `../setup-author-toolkit` relative to this skill's installed directory and use the controlled workflow terminology in `<setup-skill-root>/assets/references/terminology.md` for shared terms and exact contract values.
 
 ## Start or resume
 

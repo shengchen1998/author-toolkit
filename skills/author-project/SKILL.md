@@ -5,7 +5,7 @@ description: Use when reading, validating, or updating a neutral author-toolkit 
 
 # Author Project
 
-Manage persistent state for one book. The manifest is `<project-root>/.author-toolkit/project.json`; accept only schema v3.1 without resetting it. V3.1 registers `paths.creation` for shared creation state, batches, staging, and commit journals. Resolve the installed `setup-author-toolkit` skill's root as `<setup-skill-root>` and use the controlled workflow terminology in `<setup-skill-root>/assets/references/terminology.md` for shared terms and exact contract values.
+Manage persistent state for one book. The manifest is `<project-root>/.author-toolkit/project.json`; accept only schema v3.1 without resetting it. V3.1 registers `paths.creation` for shared creation state, batches, staging, and commit journals. Toolkit skills from one installation are siblings. Resolve `<setup-skill-root>` as `../setup-author-toolkit` relative to this skill's installed directory and use the controlled workflow terminology in `<setup-skill-root>/assets/references/terminology.md` for shared terms and exact contract values.
 
 This skill owns state, paths, validation, backup records, execution receipts, and commit bookkeeping. Manuscript prose and Story Bible creative content belong to the writing skills. `write-fiction`, `revise-fiction`, `revise-draft`, `revise-increment`, and `revise-request` are explicit author-selected strategies over this same state.
 

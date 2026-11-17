@@ -3,11 +3,11 @@
   "files": [
     {
       "path": "SKILL.md",
-      "sha256": "8bee94c27d3026cbb942650a5125c8e33bcee60bc7d32c30800d0568b9349519"
+      "sha256": "dc6416aa60ddc61fce9cd14375dee719a6e44201ecebe607c6eb2bac890b4cd9"
     },
     {
       "path": "assets/AGENTS.md",
-      "sha256": "41c9fc0439af7e80b7754e25fb4f49a1561592533e487833d729c0a81caafd15"
+      "sha256": "0d988537912941bcf161a1ae64fb5e42dd5ae2c6ab757814cc83a690b87e73e3"
     },
     {
       "path": "assets/START_HERE.md",

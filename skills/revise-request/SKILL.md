@@ -6,7 +6,7 @@ disable-model-invocation: true
 
 # Revise Request
 
-Coordinate an author-defined revision of existing manuscript content from a full-manuscript base scope that has reached current-draft revision convergence. The request selects the craft work and the default review covers only the declared request-review units. A separate author request for full-scope review is required before claiming that the full-manuscript target scope has reached current-draft revision convergence again. One manifest continues to represent one book. Resolve the installed `setup-author-toolkit` skill's root as `<setup-skill-root>` and use the controlled workflow terminology in `<setup-skill-root>/assets/references/terminology.md` for shared terms and exact contract values.
+Coordinate an author-defined revision of existing manuscript content from a full-manuscript base scope that has reached current-draft revision convergence. The request selects the craft work and the default review covers only the declared request-review units. A separate author request for full-scope review is required before claiming that the full-manuscript target scope has reached current-draft revision convergence again. One manifest continues to represent one book. Toolkit skills from one installation are siblings. Resolve `<setup-skill-root>` as `../setup-author-toolkit` relative to this skill's installed directory and use the controlled workflow terminology in `<setup-skill-root>/assets/references/terminology.md` for shared terms and exact contract values.
 
 ## Start or resume
 

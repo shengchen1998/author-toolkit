@@ -61,6 +61,32 @@ test("the inventory contains exactly 16 skills and seven user entries", async ()
   assert.equal(userEntries.size, 7);
 });
 
+test("shared skills resolve setup from their installed directories", async () => {
+  const siblingConsumers = [
+    "ask-author",
+    "revise-fiction",
+    "revise-draft",
+    "revise-increment",
+    "revise-request",
+    "write-fiction",
+    "author-project",
+    "author-handoff",
+    "author-review",
+  ];
+  const [setup, instructions] = await Promise.all([
+    readFile(path.join(root, "skills/setup-author-toolkit/SKILL.md"), "utf8"),
+    readFile(path.join(root, "skills/setup-author-toolkit/assets/AGENTS.md"), "utf8"),
+  ]);
+
+  assert.match(setup, /Toolkit skills from one installation are siblings\. For this skill, `<setup-skill-root>` is its own installed directory\./);
+  assert.match(instructions, /For `setup-author-toolkit`, `<setup-skill-root>` is its own installed directory; from another toolkit skill, resolve it as `\.\.\/setup-author-toolkit` relative to that skill's installed directory/);
+  for (const skill of siblingConsumers) {
+    const text = await readFile(path.join(root, "skills", skill, "SKILL.md"), "utf8");
+    assert.match(text, /Toolkit skills from one installation are siblings\./, skill);
+    assert.match(text, /`<setup-skill-root>` as `\.\.\/setup-author-toolkit` relative to this skill's installed directory/, skill);
+  }
+});
+
 test("setup assumes the five strategy entries are installed", async () => {
   const [setup, instructions, terminology, readme, zhReadme] = await Promise.all([
     readFile(path.join(root, "skills/setup-author-toolkit/SKILL.md"), "utf8"),
