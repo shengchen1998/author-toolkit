@@ -48,7 +48,8 @@ Use `engine.name: "conversational"` and record the actual execution path, versio
 - `scope_id=<actual-scope-id>`;
 - `review_mode=final|current-scope|request`;
 - actual `operation_coverage=full|partial|skipped`;
-- `subchecks=intent`, `subchecks=standards`, or `subchecks=fresh` for one perspective.
+- `subchecks=intent`, `subchecks=standards`, or `subchecks=fresh` for one perspective;
+- a language coverage summary with the actual status, for example `Language coverage: full (zh-CN)` or `coverage=full`.
 
 For a consolidated report containing all perspectives, use `subchecks=intent,standards,fresh` and the same scope ID. Preserve every finding ID and disagreement. `collect` validates the review job and coverage, including all units and syntheses and the fresh reader-state chain, before reporting consolidated or remaining coverage.
 

@@ -128,13 +128,15 @@ test("scaffold CLI fails before creating reports with missing evidence fields", 
   const source = clone(values.source);
   delete source.findings;
   delete source.inputs;
-  source.engine.notes = "no scope or coverage";
+  source.engine.notes = "identification full";
   await writeFile(values.envelopePath, JSON.stringify(source), "utf8");
 
   const result = run(argumentsFor(values));
   assert.equal(result.status, 1, result.stdout);
   assert.match(result.stderr, /required property 'inputs'/);
   assert.match(result.stderr, /scope_id/);
+  assert.match(result.stderr, /"Language coverage: full"/);
+  assert.match(result.stderr, /"coverage=full"/);
   await assert.rejects(readFile(path.join(values.project, "reports/current-scope-review/scaffold.md"), "utf8"), { code: "ENOENT" });
 });
 

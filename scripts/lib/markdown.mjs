@@ -133,7 +133,7 @@ export function validateMarkdownReport(markdown) {
     errors.push({
       instancePath: "/engine/notes",
       keyword: "language-coverage",
-      message: "engine.notes must contain a coverage summary: full, partial, or skipped",
+      message: "engine.notes must include a language coverage summary, for example \"Language coverage: full\" or \"coverage=full\" (full, partial, or skipped)",
       params: {},
     });
   }

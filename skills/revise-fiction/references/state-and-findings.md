@@ -18,7 +18,7 @@ Populate the actual v2 fields:
 - `inputs` lists every manuscript, baseline, plan, or prior-report input with its available content hash or other truthful version. Current v3 manuscript scopes require SHA-256 hashes.
 - `engine.name` is exactly `conversational` or `scriptorium`. Record the actual version or `unknown`, a truthful `degraded` boolean, and detailed notes containing the execution path, fallback, context profile, mode, and degradation.
 - `engine.notes` also contains `scope_id=<id>` and `operation_coverage=full|partial|skipped`. For `characters`, `diagnostics`, and `current-scope-review`, add `subchecks=` followed by the actual checks covered. For new `current-scope-review` reports, add `review_mode=current-scope|request`; historical reports without that field retain current-scope semantics. Operation coverage is distinct from language coverage.
-- Under `Language coverage`, mark each requested rule or category `full`, `partial`, or `skipped` with a reason. Repeat the concise language summary in `engine.notes`.
+- Under `Language coverage`, mark each requested rule or category `full`, `partial`, or `skipped` with a reason. Repeat the concise language summary in `engine.notes` with the actual status, for example `Language coverage: full (zh-CN)` or `coverage=full`.
 - Every finding has an uppercase audit-specific ID prefix and at least three digits, a nonempty `recommendation`, and the narrowest truthful `location.scope`. Do not invent a line or quotation for a broad issue.
 
 Use `confidence: "judgment"` for editorial interpretation and `deterministic` only for direct code-detected evidence. Finding status is tracker state and is not a finding v2 property.

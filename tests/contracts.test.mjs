@@ -268,6 +268,21 @@ test("Markdown reports require parsed language coverage and a matching engine su
   );
   assert.equal(naturalSummary.valid, true);
 
+  const equalsSummary = validateMarkdownReport(
+    english.replace(/Coverage: full - [^"\n]+/, "coverage=full"),
+  );
+  assert.equal(equalsSummary.valid, true);
+
+  const unclearSummary = validateMarkdownReport(
+    english.replace(/Coverage: full - [^"\n]+/, "identification full"),
+  );
+  assert.equal(unclearSummary.valid, false);
+  const coverageError = unclearSummary.errors.find(
+    (error) => error.keyword === "language-coverage" && error.instancePath === "/engine/notes",
+  );
+  assert.match(coverageError.message, /"Language coverage: full"/);
+  assert.match(coverageError.message, /"coverage=full"/);
+
   const withoutSummary = validateMarkdownReport(
     english.replace(/Coverage: full - [^"\n]+/, "No coverage summary"),
   );

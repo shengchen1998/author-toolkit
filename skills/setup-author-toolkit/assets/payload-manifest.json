@@ -203,7 +203,7 @@
     },
     {
       "path": "scripts/lib/markdown.mjs",
-      "sha256": "4d91a0f5765d5c7bb8d7c64e11b55c7f6acd8a7b47a5f3c8e42347deab5f3b26"
+      "sha256": "6ae56db9078545dd6db5a1fc70d34832d36a4fe9c1b216c93b81f17c944b52fd"
     },
     {
       "path": "scripts/lib/navigation-cache.mjs",
