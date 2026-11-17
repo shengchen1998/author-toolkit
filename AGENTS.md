@@ -4,7 +4,7 @@ This file guides coding agents working on the Author Toolkit repository. `CLAUDE
 
 ## Project overview
 
-Author Toolkit 3.1.0 contains 16 writing skills for coding-agent hosts and Node.js tools for their deterministic contracts. The production runtime is the host agent interpreting `skills/*/SKILL.md` and the references each skill selects. Node.js handles contract tests, JSON Schema validation, manuscript inventory, project-state inspection, and shared-state transactions. There is no server, database, frontend, application build, or long-running process.
+Author Toolkit 3.1.0 contains 16 writing skills and Node.js tools for deterministic contracts. The production runtime is the host agent interpreting `skills/*/SKILL.md` and selected references. Node.js handles contract tests, JSON Schema validation, manuscript inventory, project-state inspection, and shared-state transactions; there is no server, database, frontend, application build, or long-running process.
 
 The shared workflows support one single-book fiction project per manifest, Markdown or plain-text manuscripts, and English or Chinese as the core workflow languages. Narrative nonfiction uses the independent `narrative-nonfiction` skill; multi-book manifests are outside the supported 3.1 workflows.
 
@@ -19,7 +19,7 @@ The shared workflows support one single-book fiction project per manifest, Markd
 - `skills/setup-author-toolkit/scripts/`: generated, self-contained installed CLI mirror. Its bundled schema module includes the runtime packages needed by a writing project.
 - `skills/setup-author-toolkit/assets/payload-manifest.json`: authoritative installed-payload inventory and SHA-256 hashes.
 - `skills/author-project/assets/project-template.json`: neutral starting manifest for a new v3.1 project.
-- `examples/fiction-revision-en/` and `examples/fiction-revision-zh/`: handwritten v3.1 validation fixtures, including manuscripts, manifests, reports, trackers, sessions, and backup indexes. They are not model-run evidence.
+- `examples/fiction-revision-en/` and `examples/fiction-revision-zh/`: handwritten v3.1 validation fixtures, not model-run evidence.
 - `tests/`: Node.js contract, CLI, deployment, language-support, and scale tests. `tests/helpers.mjs` supplies common fixture access.
 - `docs/VALIDATION.md`: current verification evidence, historical results, and explicit unverified limits. `docs/agents/` contains issue-tracker, triage-label, and domain-documentation conventions.
 - `GLOSSARY.md`: shared domain vocabulary. Read it and any relevant `docs/adr/` entries before domain modeling or terminology changes; the directory may be absent.
@@ -39,14 +39,14 @@ npm test
 npm run validate
 ```
 
-`npm test` runs `node --test tests/*.test.mjs`. With no arguments, `npm run validate` checks every shipped schema, both localized v3.1 examples, their reports, and their on-disk state. Run one test file or a test-name pattern with:
+`npm test` runs `node --test tests/*.test.mjs`; default validation checks every shipped schema and both localized v3.1 examples, including reports and on-disk state. Run one test file or a test-name pattern with:
 
 ```bash
 node --test tests/creation-manifest.test.mjs
 node --test --test-name-pattern="schema" tests/manifest.test.mjs
 ```
 
-There is no application build, lint, formatter, coverage threshold, or repository CI workflow. The only generated runtime build is the checked-in setup mirror. After changing validation or digest implementation, regenerate it before testing:
+There is no lint, formatter, coverage threshold, or repository CI workflow; the checked-in setup mirror is the only generated runtime build. After changing validation or digest implementation, regenerate it before testing:
 
 ```bash
 npm run sync:setup-runtime
@@ -58,7 +58,7 @@ Check the mirror without changing it:
 node scripts/sync-setup-runtime.mjs --check
 ```
 
-The generator copies the repository CLIs, bundles `scripts/lib/schemas.mjs` for Node 22 with esbuild, preserves bundled dependency licenses, and regenerates the payload manifest from the installed scripts, shared references, project-entry templates, setup skill entry point, and setup branch references. Only Node built-ins may remain external in the generated schema bundle.
+The generator copies repository CLIs, bundles `scripts/lib/schemas.mjs` for Node 22 with esbuild, preserves dependency licenses, and regenerates the payload manifest from installed scripts, shared references, project-entry templates, the setup entry point, and setup branch references. Only Node built-ins may remain external in the schema bundle.
 
 ## CLI guide
 
@@ -71,25 +71,21 @@ Use each script's `--help` output as the exact argument contract. Repository scr
 - `install-entry-files.mjs --project-root DIR` verifies the payload and atomically installs both root agent entries. It preserves correct entries and any existing `START_HERE.md`, and rejects directories and special files.
 - `scaffold-project.mjs --project-root DIR --author-project-root DIR` is the sole new-project scaffolding implementation. It creates only missing content from the sibling skill's four templates under the shared write lock, refuses an existing manifest, applies one timestamp, and validates the complete project before succeeding.
 - `initialize.mjs --project-root DIR` is the sole existing-project initialization implementation. It preserves the manifest and history and creates only a missing backup index under the shared write lock. Project-state failures return a bounded `recorded_unverified` diagnosis (exit 3); invalid schemas create nothing (exit 1); argument errors exit 2.
-- `check.mjs --project-root DIR` aliases `preflight.mjs`, combining payload and entry-file checks, project validation, and status. Ordinary status uses the current scope and leaves unverified approvals non-blocking. Standalone `--require-execution` requires a scope ID. `--full` applies strict execution and read-only evidence validation. An absent review brief or coverage index and zero selected review jobs are non-blocking `not_applicable` checks; invalid existing artifacts, missing linked artifacts, and a selected scope with no immutable evidence report remain failures. `--digest` is a separate opt-in after read-only checks and cannot be combined with `--full` or `--diagnose`; with `--json`, it returns the validated bounded manifest projection after refreshing the cache. `--diagnose` returns bounded read-only diagnoses and an execution-recovery preview without repairing state; `--details` restores complete JSON details.
+- `check.mjs --project-root DIR` aliases `preflight.mjs`: payload and entry-file checks, project validation, and status. Ordinary status uses current scope and leaves unverified approvals non-blocking; standalone `--require-execution` requires a scope ID. `--full` enforces strict execution and read-only evidence validation. Missing review brief or coverage index and zero selected review jobs are non-blocking `not_applicable`; invalid existing or missing linked artifacts and a selected scope without an immutable evidence report fail. `--digest` is a separate post-check opt-in, incompatible with `--full` and `--diagnose`; with `--json`, it refreshes the cache and returns the validated bounded manifest projection. `--diagnose` returns bounded read-only diagnoses and an execution-recovery preview without repairs; `--details` restores complete JSON details.
 
-Setup's final `check --diagnose` verifies the installed payload and both project agent entries without another doctor call or a required `START_HERE.md` match. Entry-file failures do not stop project inspection, but fail preflight and prevent digest generation. Installation, project state, and strategy gate are independent results. Setup assumes the five strategy entries are installed and does not check their host visibility.
+Setup's final `check --diagnose` verifies the installed payload and both project agent entries without another doctor call or requiring `START_HERE.md` to match. Entry-file failures fail preflight and prevent digest generation but do not stop project inspection. Installation, project state, and strategy gate are independent; setup assumes the five strategy entries are installed without checking host visibility.
 
 ### Project inspection, validation, and writes
 
 ```bash
-node scripts/validate.mjs --help
 node scripts/validate.mjs --project-root /path/to/writing-project
 node scripts/validate.mjs --manifest /path/to/.author-toolkit/project.json
 node scripts/validate.mjs --report /path/to/report.md
 node scripts/status.mjs --manifest /path/to/.author-toolkit/project.json --scope-id scope-001
 node scripts/read.mjs --project-root /path/to/writing-project
-node scripts/set-pending.mjs --help
-node scripts/record-scope.mjs --help
-node scripts/writes.mjs --help
 ```
 
-The validator also accepts creation batches, commit journals, story state, coverage units and indexes, review jobs, review briefs, and reader state; its help defines the exact options. A review-brief check requires the tracker for decision comparison. Report validation rejects duplicate report IDs; repeated reports, `--tracker`, or `--manifest` enable batch or historical identity checks. Manifest validation also checks registered files, the tracker, and execution receipts; a v3.1 manifest with `current_scope` additionally checks current manuscript hashes. Validation failures exit nonzero and argument errors exit 2.
+The validator also accepts creation batches, commit journals, story state, coverage units and indexes, review jobs, review briefs, and reader state. A review-brief check requires the tracker for decision comparison. Report validation rejects duplicate report IDs; repeated reports, `--tracker`, or `--manifest` enable batch or historical identity checks. Manifest validation also checks registered files, the tracker, and execution receipts; a v3.1 manifest with `current_scope` additionally checks current manuscript hashes. Validation failures exit nonzero and argument errors exit 2.
 
 `read.mjs` returns a bounded validated manifest projection. Long displayed scope descriptions and pending artifact paths are capped without changing authoritative on-disk values. Failed validation returns bounded failed checks and diagnostics unless `--details` is supplied. `set-pending.mjs` validates pending-action updates; new actions retain at most eight unique inline artifacts and put longer complete lists in `.author-toolkit/pending-artifacts.json`. Legacy long inline lists remain valid without migration.
 
@@ -105,7 +101,7 @@ Generate the bounded, disposable `PROJECT_STATE.md` navigation cache for a valid
 node scripts/project-digest.mjs --project-root /path/to/writing-project
 ```
 
-`author-project status --digest` uses the installed setup CLI. Regenerate once after each logical shared-state operation. At routine strategy start or resume, use `author-project check --digest` for the combined projection, validation, ordinary status, and cache refresh. Generation requires complete project validation and records a UTC generation-time snapshot. Rerun preflight before reusing the cache; the manifest, tracker, and current evidence remain authoritative. Digest implementation changes also require `npm run sync:setup-runtime` before testing.
+`author-project status --digest` uses the installed setup CLI. Regenerate once after each logical shared-state operation. At routine strategy start or resume, use `author-project check --digest` for projection, validation, ordinary status, and cache refresh. Generation requires complete project validation and records a UTC snapshot. Rerun preflight before reusing the cache; the manifest, tracker, and current evidence remain authoritative.
 
 ### Evidence and navigation helpers
 
@@ -117,7 +113,7 @@ node scripts/project-digest.mjs --project-root /path/to/writing-project
 - `node scripts/range.mjs --project-root DIR "manuscript/1.md:1:56-71"` resolves an author-supplied character range. Positions are 1-based and inclusive and count Unicode code points. It reads one project-relative file, writes nothing, and does not inspect shared state.
 - `node scripts/terminology.mjs --section NAME [--section NAME]...` prints selected level-two sections from the installed controlled terminology. `--preset setup-report` reads the bounded rows used by setup reporting and entry routing; `--preset setup` retains the complete setup selection for diagnostics that need more definitions. The helper writes nothing and does not inspect project state.
 
-For `author-project` operations, use `skills/author-project/references/read-operations.md` for `read`, `validate`, `status`, `check --full`, `check --digest`, `status --digest`, and `check-index`; use the full `references/operations.md` for state-writing operations. New-project scaffolding belongs to `scaffold-project.mjs` and existing-project initialization to `initialize.mjs`, not `author-project` operations.
+For `author-project` operations, use `skills/author-project/references/read-operations.md` for `read`, `validate`, `status`, `check --full`, `check --digest`, `status --digest`, and `check-index`; use the full `references/operations.md` for state-writing operations. Scaffolding and initialization use their CLIs, not `author-project` operations.
 
 ## Architecture
 
@@ -135,7 +131,7 @@ The skills have three invocation modes:
 - Three shared orchestration capabilities: `author-project` owns state, paths, validation, backups, execution receipts, commits, and restores; `author-handoff` preserves resumable context; `author-review` performs manuscript reading and synthesis.
 - Six independent skills: `fiction-workshop`, `character-archetypes`, `story-structure`, `narrative-nonfiction`, `prose-mechanics`, and `avoid-ai-writing`. They work without setup, retain their standalone contracts, and leave shared state unchanged unless the author incorporates their output.
 
-`tests/skills.test.mjs` checks the complete inventory, matching directory and frontmatter names, invocation modes, and host-independent procedure bodies. Skill discovery and author-facing invocation follow the selected host; setup assumes the five strategy entries are installed.
+`tests/skills.test.mjs` checks skill inventory, names, invocation modes, and host-independent procedures. Skill discovery and author-facing invocation follow the selected host.
 
 ### Validation and module boundaries
 
@@ -195,9 +191,9 @@ Issues and specs live in GitHub Issues for `shengchen1998/author-toolkit`; use `
 
 Tests use `node:test`, `node:assert/strict`, and `tests/helpers.mjs`. Filesystem tests create temporary directories beneath `.test-output/` and register `t.after` cleanup. `.test-output/`, `node_modules/`, and `tests/.tmp/` are ignored; keep generated output out of commits.
 
-The suite covers repository contracts, CLIs, skills, language support, deployment, and scale. `tests/deployment.test.mjs` proves the installed CLI mirror is self-contained; `tests/scale.test.mjs` uses a synthetic million-character fixture for structural behavior, not creative-quality evidence.
+`tests/deployment.test.mjs` proves the installed CLI mirror is self-contained; `tests/scale.test.mjs` uses a synthetic million-character fixture for structural behavior, not creative-quality evidence.
 
-`npm test` and `npm run validate` verify repository contracts only. They do not prove host discovery, a complete creative run, or creative quality. `docs/VALIDATION.md` separates current 3.1 checks and limited host evidence from historical records and unverified paths. Never present fixture reports or the synthetic scale fixture as model-run evidence.
+`npm test` and `npm run validate` verify repository contracts, not host discovery, a complete creative run, or creative quality. `docs/VALIDATION.md` separates current 3.1 checks and limited host evidence from historical and unverified paths. Fixture reports and the synthetic scale fixture are not model-run evidence.
 
 ## Data integrity and security
 
@@ -227,6 +223,6 @@ npx skills check
 npx skills update
 ```
 
-The repository-root `references/` directory is the canonical development source. Keep it byte-identical to `skills/setup-author-toolkit/assets/references/`; also synchronize independent skills' finding schemas, the `prose-mechanics` AI-writing adapter mirror, and the `context-fit.md` copies in `fiction-workshop` and `prose-mechanics`. Installed skills must not depend on repository-root `references/`. Deployment tests enforce these mirrors and installed-reference independence.
+Keep `references/` byte-identical to `skills/setup-author-toolkit/assets/references/`; also synchronize independent skills' finding schemas, the `prose-mechanics` AI-writing adapter mirror, and the `context-fit.md` copies in `fiction-workshop` and `prose-mechanics`. Installed skills must not depend on repository-root `references/`. Deployment tests enforce these mirrors and installed-reference independence.
 
-`skills/avoid-ai-writing/` is vendored upstream content with its own license and recorded commit in `ATTRIBUTION.md`. Keep local integration in `references/avoid-ai-writing-adapter.md` and `references/avoid-ai-writing-zh-CN.md`; the vendored skill must not absorb local integration text. Standalone Chinese AI-Isms routes through `prose-mechanics`, while the upstream standalone skill remains English-specific. Bundled runtime dependency licenses are preserved in the generated setup scripts and recorded in `ATTRIBUTION.md`.
+`skills/avoid-ai-writing/` is vendored upstream content with its own license and recorded commit in `ATTRIBUTION.md`. Keep local integration in `references/avoid-ai-writing-adapter.md` and `references/avoid-ai-writing-zh-CN.md`; the vendored skill must not absorb local integration text. Standalone Chinese AI-Isms routes through `prose-mechanics`, while the upstream standalone skill remains English-specific.
