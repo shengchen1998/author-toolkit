@@ -86,7 +86,7 @@ test("setup carries self-contained preflight, validation, state, range, and inst
   );
 
   const nodeArgs = ["--no-warnings", "--experimental-loader", loader, "--require", preload];
-  for (const script of ["inspect-root.mjs", "scaffold-project.mjs", "initialize.mjs", "install-entry-files.mjs", "preflight.mjs", "check.mjs", "read.mjs", "set-pending.mjs", "validate.mjs", "status.mjs", "project-digest.mjs", "findings.mjs", "range.mjs", "doctor.mjs", "writes.mjs", "terminology.mjs", "scaffold-report.mjs", "review-brief.mjs", "coverage-index.mjs", "record-scope.mjs"]) {
+  for (const script of ["inspect-root.mjs", "scaffold-project.mjs", "initialize.mjs", "install-entry-files.mjs", "preflight.mjs", "check.mjs", "read.mjs", "set-pending.mjs", "validate.mjs", "status.mjs", "project-digest.mjs", "findings.mjs", "range.mjs", "doctor.mjs", "writes.mjs", "terminology.mjs", "setup-report.mjs", "scaffold-report.mjs", "review-brief.mjs", "coverage-index.mjs", "record-scope.mjs"]) {
     const result = spawnSync(
       process.execPath,
       [...nodeArgs, path.join(installedSetup, "scripts", script), "--help"],
@@ -164,12 +164,44 @@ test("setup carries self-contained preflight, validation, state, range, and inst
   assert.doesNotMatch(doctor.stdout, /Project entry failures:/);
   assert.doesNotMatch(doctor.stdout, /AGENTS\.md/);
 
+  const reportBegin = spawnSync(
+    process.execPath,
+    [...nodeArgs, path.join(installedSetup, "scripts", "setup-report.mjs"), "begin", "--json"],
+    { encoding: "utf8" },
+  );
+  assert.equal(reportBegin.status, 0, reportBegin.stderr);
+  const reportStore = JSON.parse(reportBegin.stdout).report_store;
+  const reportCapture = spawnSync(
+    process.execPath,
+    [
+      ...nodeArgs,
+      path.join(installedSetup, "scripts", "setup-report.mjs"),
+      "capture",
+      "--report-store",
+      reportStore,
+      "--kind",
+      "doctor",
+      "--",
+      "--require-sibling",
+      "author-project",
+    ],
+    { encoding: "utf8" },
+  );
+  assert.equal(reportCapture.status, 0, reportCapture.stderr);
+  assert.equal(JSON.parse(reportCapture.stdout).valid, true);
+
   const newProject = path.join(temporaryRoot, "new-project");
   const scaffolding = spawnSync(
     process.execPath,
     [
       ...nodeArgs,
-      path.join(installedSetup, "scripts", "scaffold-project.mjs"),
+      path.join(installedSetup, "scripts", "setup-report.mjs"),
+      "capture",
+      "--report-store",
+      reportStore,
+      "--kind",
+      "scaffold",
+      "--",
       "--project-root",
       newProject,
       "--language",
@@ -178,7 +210,6 @@ test("setup carries self-contained preflight, validation, state, range, and inst
       "安装测试",
       "--created-at",
       "2026-11-16T00:00:00Z",
-      "--json",
     ],
     { encoding: "utf8" },
   );
@@ -187,6 +218,53 @@ test("setup carries self-contained preflight, validation, state, range, and inst
   assert.equal(scaffolded.valid, true);
   assert.equal(scaffolded.validation.valid, true);
   assert.equal(scaffolded.language, "zh-CN");
+
+  const installedEntryCapture = spawnSync(
+    process.execPath,
+    [
+      ...nodeArgs,
+      path.join(installedSetup, "scripts", "setup-report.mjs"),
+      "capture",
+      "--report-store",
+      reportStore,
+      "--kind",
+      "entry-files",
+      "--",
+      "--project-root",
+      newProject,
+    ],
+    { encoding: "utf8" },
+  );
+  assert.equal(installedEntryCapture.status, 0, installedEntryCapture.stderr);
+  const installedCheckCapture = spawnSync(
+    process.execPath,
+    [
+      ...nodeArgs,
+      path.join(installedSetup, "scripts", "setup-report.mjs"),
+      "capture",
+      "--report-store",
+      reportStore,
+      "--kind",
+      "check",
+      "--",
+      "--project-root",
+      newProject,
+      "--diagnose",
+    ],
+    { encoding: "utf8" },
+  );
+  assert.equal(installedCheckCapture.status, 0, installedCheckCapture.stderr);
+  const installedReport = spawnSync(
+    process.execPath,
+    [...nodeArgs, path.join(installedSetup, "scripts", "setup-report.mjs"), "render", "--report-store", reportStore],
+    { encoding: "utf8" },
+  );
+  assert.equal(installedReport.status, 0, installedReport.stderr);
+  assert.match(installedReport.stdout, /## Installation payload\n/);
+  assert.match(installedReport.stdout, /Language: zh-CN/);
+  assert.match(installedReport.stdout, /Current scope hashes: not applicable/);
+  assert.match(installedReport.stdout, /Setup readiness: ready/);
+  await assert.rejects(readFile(reportStore, "utf8"), { code: "ENOENT" });
 
   await writeFile(path.join(newProject, "manuscript", "chapter-01.md"), "安装版范围记录。\n");
   const newProjectManifest = path.join(newProject, ".author-toolkit", "project.json");
@@ -799,11 +877,11 @@ test("setup repairs agent entries and only creates missing navigation", async ()
 
   assert.match(setup, /replaces `<project-root>\/AGENTS\.md` with a regular file containing `assets\/AGENTS\.md`/);
   assert.match(setup, /replaces any existing `CLAUDE\.md` file or symlink/);
-  assert.match(setup, /scripts\/install-entry-files\.mjs --project-root <project-root> --json/);
+  assert.match(setup, /setup-report\.mjs capture --report-store <report-store> --kind entry-files -- --project-root <project-root>/);
   assert.match(setup, /After successful entry-file installation, read `<project-root>\/AGENTS\.md` once; it is the entry contract for the next strategy/);
   assert.match(setup, /Do not rely on the host to inject it automatically/);
-  assert.match(setup, /reuse the install JSON's `claude\.target` and `start_here\.status` as the entry-file installation results/);
-  assert.match(setup, /after the final check passes entry-file verification, use these command results rather than another directory listing or metadata check of the entry files or registered directories/);
+  assert.match(setup, /captured doctor, initialize-or-scaffold, entry-file, and final-check JSON/);
+  assert.match(setup, /Use its command results rather than another directory listing or metadata check of the entry files or registered directories/);
   assert.match(setup, /checks both agent targets before writing/);
   assert.match(setup, /leaves correct entries unchanged/);
   assert.match(setup, /atomically replaces other regular files or symlinks/);
@@ -855,13 +933,13 @@ test("setup uses the authoritative payload inventory and bounded doctor", async 
     readFile(path.join(root, "README.md"), "utf8"),
     readFile(path.join(root, "README.zh-CN.md"), "utf8"),
   ]);
-  for (const text of [setup, operations, instructions]) {
+  for (const text of [operations, instructions]) {
     assert.match(text, /scripts\/doctor\.mjs/);
   }
   for (const text of [setup, operations]) {
     assert.match(text, /assets\/payload-manifest\.json/);
   }
-  assert.match(setup, /Run `node <setup-skill-root>\/scripts\/doctor\.mjs --require-sibling author-project` and report its payload and sibling summary/);
+  assert.match(setup, /setup-report\.mjs capture --report-store <report-store> --kind doctor -- --require-sibling author-project/);
   assert.match(setup, /Defer project-entry installation and verification to step 3/);
   assert.doesNotMatch(setup, /scripts\/doctor\.mjs --project-root <project-root>/);
   assert.match(setup, /If either installation check fails, report an incomplete toolkit installation and stop/);
@@ -873,7 +951,7 @@ test("setup uses the authoritative payload inventory and bounded doctor", async 
   assert.match(operations, /Use standalone `validate\.mjs` to diagnose a validation failure/);
   assert.match(operations, /--diagnose/);
   assert.match(operations, /recorded_unverified/);
-  assert.match(setup, /check\.mjs --project-root <project-root> --diagnose/);
+  assert.match(setup, /setup-report\.mjs capture --report-store <report-store> --kind check -- --project-root <project-root> --diagnose/);
   assert.match(existingSetup, /without rerunning preflight/);
   assert.match(existingSetup, /add `--scope-id <current-scope-id> --require-execution` to that same final diagnostic call/);
   assert.match(setup, /without repeating doctor or preflight/);
@@ -895,6 +973,8 @@ test("setup branch references are included in the authoritative payload manifest
   assert.ok(paths.has("assets/setup/new-project.md"));
   assert.ok(paths.has("scripts/scaffold-project.mjs"));
   assert.ok(paths.has("scripts/lib/project-scaffold.mjs"));
+  assert.ok(paths.has("scripts/setup-report.mjs"));
+  assert.ok(paths.has("scripts/lib/setup-report.mjs"));
 });
 
 test("setup mechanically prechecks sibling author-project dependencies before either branch", async () => {
@@ -905,7 +985,7 @@ test("setup mechanically prechecks sibling author-project dependencies before ei
       "utf8",
     ),
   ]);
-  assert.match(setup, /scripts\/doctor\.mjs --require-sibling author-project/);
+  assert.match(setup, /--kind doctor -- --require-sibling author-project/);
   assert.match(setup, /If either installation check fails/);
   assert.match(setup, /this check creates no project files/);
   assert.doesNotMatch(newProject, /Before step 1, verify|If any file is missing/);

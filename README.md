@@ -231,14 +231,23 @@ are marked stale and their recorded next action is withheld rather than repeated
 `node <setup-skill-root>/scripts/check.mjs` is the stable local alias with the
 same arguments and exit statuses. It reuses preflight rather than duplicating
 doctor, validation, or strict execution logic.
-Setup runs `check.mjs --project-root <root> --diagnose` once after initialization
-and entry-file repair as its final installation and project-state verification,
-without a following doctor call or a repeated ordinary preflight. The strict
+Setup captures `check.mjs --project-root <root> --diagnose` once through
+`setup-report.mjs` after initialization and entry-file repair as its final
+installation and project-state verification, without a following doctor call or
+a repeated ordinary preflight. The strict
 execution gate remains a separate check. Setup reads `PROJECT_STATE.md` only
 after that check reports a reusable snapshot. It reports any non-reusable
 navigation-cache state; absence before the first successful `--digest` refresh
 is expected and does not fail installation or preflight. An absent, stale, or
 unchecked cache is left unread in favor of the bounded command results.
+`setup-report.mjs begin` creates a private temporary store outside the writing
+project. Setup's `capture` subcommand runs only the selected sibling doctor,
+initialize-or-scaffold, entry-file, or check CLI, appends `--json`, and preserves
+its output and exit status. `render` combines those four captured results into
+the deterministic four-section setup report without repeating project inspection
+and removes the store; `cleanup` handles early stops. The model supplies only
+host-specific strategy commands and the selected branch's current-draft revision convergence routing,
+rather than assembling the fixed report fields.
 When validation fails, add `--diagnose` without `--digest` for one bounded
 read-only result containing the projection marked `recorded_unverified` and
 backup-index conflict fields. Its text displays up to 12 scope paths with their

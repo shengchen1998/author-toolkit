@@ -102,8 +102,6 @@ test("setup assumes the five strategy entries are installed", async () => {
 
   assert.match(setupStep, /Assume these entries are installed; do not check their host visibility or ask the author to confirm it/);
   assert.match(setupStep, /`ask-author` as the optional "help me choose" routing entry/);
-  assert.match(setupStep, /registered BCP 47 language/);
-  assert.match(setupStep, /new-project branch registers the detected or author-supplied language directly and reports it in the final setup output/);
   assert.match(setupStep, /Wait for the author's choice of a strategy or the `ask-author` routing entry/);
   assert.match(setup, /reuse that command syntax for these entries/);
   assert.match(readyRule, /installation and project state pass, and all selected paths are registered\./);
@@ -136,7 +134,7 @@ test("setup reads a bounded reporting preset from the single installed source", 
     readFile(path.join(root, "skills/setup-author-toolkit/assets/AGENTS.md"), "utf8"),
   ]);
   assert.match(setup, /scripts\/terminology\.mjs --preset setup-report/);
-  assert.match(setup, /setup reporting and entry routing/);
+  assert.match(setup, /setup report interpretation and entry routing/);
   assert.match(setup, /--preset setup` for the complete setup selection/);
   assert.match(setup, /do not read the full terminology file/);
   assert.match(setup, /scripts\/terminology\.mjs --section "Operation identifiers"/);
@@ -166,10 +164,10 @@ test("deterministic initialization and semantic skills have one implementation e
     readFile(path.join(root, "skills/setup-author-toolkit/assets/AGENTS.md"), "utf8"),
     readFile(path.join(root, "AGENTS.md"), "utf8"),
   ]);
-  assert.match(existingSetup, /scripts\/initialize\.mjs --project-root <project-root> --json/);
+  assert.match(existingSetup, /setup-report\.mjs capture --report-store <report-store> --kind initialize -- --project-root <project-root>/);
   assert.match(existingSetup, /only existing-project initialization implementation/);
   assert.match(existingSetup, /do not read `author-project`'s initialization references/);
-  assert.match(newSetup, /scripts\/scaffold-project\.mjs --project-root <project-root>/);
+  assert.match(newSetup, /setup-report\.mjs capture --report-store <report-store> --kind scaffold -- --project-root <project-root>/);
   assert.match(newSetup, /The CLI reads the four sibling templates/);
   assert.match(newSetup, /do not manually create state or repeat standalone validation after success/);
   assert.doesNotMatch(project, /\| `initialize` \|/);
@@ -306,7 +304,7 @@ test("project digest is a generated navigation cache, not another source of trut
   assert.match(readOperations, /withholds the recorded next action and shows `revise-draft`/);
   assert.match(readOperations, /older cache, unreadable cache, or unsafe recorded route makes the cache `stale`/);
   assert.match(readOperations, /without reproducing it or rewriting the file/);
-  assert.match(existingSetup, /After that check reports `Navigation cache: reusable snapshot only`, read `PROJECT_STATE\.md` for navigation only/);
+  assert.match(existingSetup, /After that check's captured JSON reports `navigation_cache\.reusable` as `true`, read `PROJECT_STATE\.md` for navigation only/);
   assert.match(existingSetup, /When the check reports an absent or stale cache, or does not check the cache, use the bounded command results instead of reading the cache/);
   assert.match(startHere, /JSON `navigation_cache\.reusable` is `true`/);
 
@@ -344,7 +342,7 @@ test("setup and routine navigation keep operational history listings bounded", a
   ]);
 
   assert.match(setup, /^1\. Check only whether `<project-root>\/\.author-toolkit\/project\.json` exists\./m);
-  assert.match(existingSetup, /For an existing v3\.1 manifest, run `node <setup-skill-root>\/scripts\/initialize\.mjs --project-root <project-root> --json` directly for the bounded projection/);
+  assert.match(existingSetup, /For an existing v3\.1 manifest, run `node <setup-skill-root>\/scripts\/setup-report\.mjs capture --report-store <report-store> --kind initialize -- --project-root <project-root>` for the bounded projection/);
   assert.match(setup, /print `payload-manifest\.json` or the complete manifest, or emit complete session or backup listings/);
   assert.match(setup, /inspect-root\.mjs --project-root <project-root> --json/);
   assert.match(setup, /the existing-project branch goes directly to initialization without manuscript or historical-directory discovery/);
@@ -398,7 +396,7 @@ test("existing-project setup uses bounded inspection references and a categorize
   assert.match(existingSetup, /doctor`, initialize, entry-file repair, and one diagnostic check/);
   assert.match(setup, /final installation and project-state verification/);
   assert.doesNotMatch(setup, /then the final doctor|Rerun the same doctor command/);
-  assert.match(setup, /check\.mjs --project-root <project-root> --diagnose/);
+  assert.match(setup, /setup-report\.mjs capture --report-store <report-store> --kind check -- --project-root <project-root> --diagnose/);
   assert.match(existingSetup, /without rerunning preflight/);
   assert.doesNotMatch(existingSetup, /run preflight again/);
   assert.match(existingSetup, /add `--scope-id <current-scope-id> --require-execution` to that same final diagnostic call/);
@@ -409,7 +407,7 @@ test("existing-project setup uses bounded inspection references and a categorize
   assert.match(existingSetup, /standalone `validate\.mjs` only when a validation failure requires its complete diagnostics/);
   assert.match(existingSetup, /endpoints do not imply a contiguous ID range/);
   assert.match(existingSetup, /default ordinary status uses the current scope ID/);
-  assert.match(existingSetup, /Prefer its text summary for status gates\. Add `--json` only for structured results, and add `--details` only when individual unverified approvals are needed\./);
+  assert.match(existingSetup, /outside setup, prefer the text summary for status gates, add `--json` only for structured results, and add `--details` only when individual unverified approvals are needed\./);
   assert.match(readOperations, /Prefer the bounded text output for status gates; add `--json` for structured results and `--details` only when complete failed checks or individual unverified approvals are needed\./);
   for (const heading of ["Installation payload", "Project entry files", "Manuscript scope", "Execution evidence"]) {
     assert.match(setup, new RegExp(`\\*\\*${heading}\\*\\*`));
@@ -418,15 +416,17 @@ test("existing-project setup uses bounded inspection references and a categorize
     assert.match(setup, new RegExp(`\\*\\*${status}\\*\\*`));
   }
   assert.match(setup, /A project-state or strategy-gate failure does not change that installation result/);
-  assert.match(setup, /toolkit is installed while the affected project-state or evidence-dependent operations are blocked/);
-  assert.match(setup, /Distinguish mechanical execution evidence from operation-specific evidence/);
-  assert.match(setup, /applicable scope hashes: without a `current_scope`, output `current scope hashes: not applicable` and do not compute manuscript hashes; with a `current_scope`, report its recorded hashes and validation status/);
-  assert.match(setup, /final `Navigation cache` result unless its JSON reports `navigation_cache\.reusable` as `true`/);
-  assert.match(setup, /an absent cache is expected until the first successful `--digest` refresh and does not fail installation or preflight/);
+  assert.match(setup, /failed requested gates as blockers for evidence-dependent operations/);
+  assert.match(setup, /Mechanical execution evidence remains distinct from operation completion and current-draft revision convergence/);
+  assert.match(setup, /includes recorded scope hashes and validation/);
+  assert.match(setup, /a reusable cache adds no detail and no recorded route/);
+  assert.match(setup, /every non-reusable navigation-cache result/);
+  assert.match(setup, /setup-report\.mjs render --report-store <report-store>/);
+  assert.match(setup, /rather than reconstructing its fields from the captured JSON/);
   assert.match(readme, /It reports any non-reusable\s+navigation-cache state/);
   assert.match(zhReadme, /setup 报告所有非可复用的导航缓存状态/);
 
-  for (const command of ["initialize\\.mjs --project-root", "doctor\\.mjs", "read\\.mjs --project-root", "preflight\\.mjs --project-root", "validate\\.mjs --manifest", "status\\.mjs --manifest", "writes\\.mjs check-index --manifest", "--explain", "--scope-id", "--require-execution", "--digest", "--diagnose", "project-digest\\.mjs --project-root"]) {
+  for (const command of ["--kind initialize", "doctor\\.mjs", "read\\.mjs --project-root", "preflight\\.mjs --project-root", "validate\\.mjs --manifest", "status\\.mjs --manifest", "writes\\.mjs check-index --manifest", "--explain", "--scope-id", "--require-execution", "--digest", "--diagnose", "project-digest\\.mjs --project-root"]) {
     assert.match(readOperations, new RegExp(command));
   }
   assert.match(readOperations, /operation-specific evidence, evidence reuse, and current-draft revision convergence/);

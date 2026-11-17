@@ -3,7 +3,7 @@
   "files": [
     {
       "path": "SKILL.md",
-      "sha256": "dc6416aa60ddc61fce9cd14375dee719a6e44201ecebe607c6eb2bac890b4cd9"
+      "sha256": "583db299313b980890162748fa7b3e348a1f559ecc81914cad3c52766fb7de03"
     },
     {
       "path": "assets/AGENTS.md",
@@ -99,11 +99,11 @@
     },
     {
       "path": "assets/setup/existing-project.md",
-      "sha256": "59c349c123a2b6405d5915fb6081e5ebd59e4a53d4f48bfd3838d8803cd23ef0"
+      "sha256": "e76ed2ee6902036b708618940eee360947659484d3f5cfb06141ca6123e53e55"
     },
     {
       "path": "assets/setup/new-project.md",
-      "sha256": "19a426961cdc53f7d9d96c5204d9176ffc377f524086530e62fc8658da9814e9"
+      "sha256": "378515449b8680074e226ce25daf45f99a4561e79149e89030cc1932d81790e7"
     },
     {
       "path": "scripts/check.mjs",
@@ -262,6 +262,10 @@
       "sha256": "8337cf1c6f8ffcbaa369ccb27c8ad0ccef8021c44cba521af1a92291b0609886"
     },
     {
+      "path": "scripts/lib/setup-report.mjs",
+      "sha256": "81925ab42159a4f67693e65bc6142fdc3fe506418164e26026fdc28cdccb8906"
+    },
+    {
       "path": "scripts/lib/state-files.mjs",
       "sha256": "5c855fc5f8f11f75c01264be9cff102e01e6e7f7432b57b9076f8504cb6b0844"
     },
@@ -344,6 +348,10 @@
     {
       "path": "scripts/set-pending.mjs",
       "sha256": "f99d403592cff4c8b17e15766cfcd18f6b1c7ec17437566f95073058bb70077e"
+    },
+    {
+      "path": "scripts/setup-report.mjs",
+      "sha256": "ec7698b06b8264bc2f946386d93d0ac343163b6c21b4f7bec3aeb1848f73b891"
     },
     {
       "path": "scripts/status.mjs",

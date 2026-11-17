@@ -118,11 +118,15 @@ JSON 默认同样使用按 operation 聚合的批准摘要和有界失败诊断;
 以及没有任何不可变证据报告的范围仍然失败. 检查不会为通过校验而生成缺失产物.
 `node <setup-skill-root>/scripts/check.mjs` 是参数和退出状态相同的稳定本地检查入口,
 直接复用 preflight, 不重复实现 doctor, 项目校验或严格执行门禁.
-setup 在初始化和入口文件修复后只运行一次 `check.mjs --project-root <root> --diagnose`,
+setup 在初始化和入口文件修复后通过 `setup-report.mjs` 捕获一次 `check.mjs --project-root <root> --diagnose`,
 作为最终安装与项目状态核验, 不再运行 doctor 或重复普通预检; 严格执行门禁仍是独立检查.
 仅当该检查报告缓存可复用时, setup 才读取 `PROJECT_STATE.md`. setup 报告所有非可复用的导航缓存状态;
 首次成功 `--digest` 刷新前缓存不存在属于正常情况, 不导致安装或 preflight 失败.
 缓存 absent、stale 或未检查时, 使用有界的命令结果而不读取缓存.
+`setup-report.mjs begin` 在写作项目之外创建私有临时存储. setup 的 `capture` 子命令只启动所选的同级
+doctor、初始化或脚手架、入口文件或 check CLI, 自动添加 `--json`, 并保留其输出与退出状态.
+`render` 将这四份捕获结果合成确定性的四段 setup 报告, 不重复检查项目, 随后删除临时存储;
+提前停止时由 `cleanup` 清理. 模型只补充宿主相关的策略命令和所选分支的当前草稿修订收敛路由, 不再手工拼装固定报告字段.
 校验失败后添加 `--diagnose` 且不带 `--digest`, 可在一次只读结果中获得标记为 `recorded_unverified` 的有界投影和备份索引冲突字段.
 文本最多显示 12 个范围路径及其记录哈希, JSON 投影保留全部范围文件.
 所列哈希为记录值; `scope` 检查通过时, 单独的当前哈希结果确认多少个现行文件与记录一致.
