@@ -1,6 +1,6 @@
 # Project inspection
 
-Use this reference for `read`, `validate`, `status`, `check --full`, `status --digest`, and `check-index`. For a new manifest or an operation that records or changes project state, follow [`operations.md`](operations.md) instead.
+Use this reference for `read`, `validate`, `status`, `check --full`, `check --digest`, `status --digest`, and `check-index`. For a new manifest or an operation that records or changes project state, follow [`operations.md`](operations.md) instead.
 
 Resolve the installed `setup-author-toolkit` skill's root as `<setup-skill-root>` and read shared runtime contracts directly from its `assets/references/` payload. Use its `terminology.md` for shared terms and exact contract values. A missing setup skill, required contract, or script is an incomplete toolkit installation; stop shared work and report the failure. Shared contracts remain installed with the setup skill, not in the writing project.
 
@@ -39,6 +39,14 @@ node <setup-skill-root>/scripts/preflight.mjs --project-root <project-root>
 ```
 
 `node <setup-skill-root>/scripts/check.mjs` accepts the same arguments and is the stable local alias for this combined check, including the strict execution mode below. It is a thin preflight entry point, not a second implementation.
+
+For routine strategy start or resume, run one combined inspection and cache refresh:
+
+```bash
+node <setup-skill-root>/scripts/check.mjs --project-root <project-root> --digest --json
+```
+
+After every read-only check passes and the cache refresh succeeds, the JSON result's `projection` field returns the same validated bounded manifest projection as `read.mjs`, including registered paths, current-scope hashes, and pending-artifact counts. Other preflight modes leave `projection` null, and the default text output remains a bounded summary without the projection. This single call supplies installation and entry-file checks, project validation, ordinary status, and the refreshed cache; use its result instead of separate doctor, `read`, `validate`, `status`, or standalone digest-generation calls during routine startup. Standalone commands remain available for targeted projections, independent artifact validation, strict execution gates, and detailed diagnostics. On failure, follow the single `--diagnose` recovery route below rather than repeating those commands.
 
 For one read-only evidence and execution check, run:
 
@@ -115,6 +123,6 @@ The CLI runs the same complete project validation as preflight before replacing 
 
 For routine navigation, use `PROJECT_STATE.md` pointers, targeted artifact reads, or aggregate counts rather than emitting complete file listings of the registered session or backup directories. Cache generation may scan those directories internally without emitting the list.
 
-The manifest, tracker, and current evidence remain authoritative; the cache grants no approval and does not replace evidence validation, manuscript reading, or an operation gate. A passed generation-time check says nothing about later state drift. Refresh it once after each logical shared-state operation or stopping point, after state writes, and at resume. Do not regenerate between individual commit-journal transitions. A refresh failure does not roll back completed state or manuscript writes.
+The manifest, tracker, and current evidence remain authoritative; the cache grants no approval and does not replace evidence validation, manuscript reading, or an operation gate. A passed generation-time check says nothing about later state drift. Refresh it once after each logical shared-state operation or stopping point, after state writes. At routine strategy start or resume, use `check --digest` instead of a separate `status --digest` call. Do not regenerate between individual commit-journal transitions. A refresh failure does not roll back completed state or manuscript writes.
 
 The latest session supplies `- Active plan: <project-relative-path>` and `- Next action: <concise action>`, or `none` when no active plan is recorded. An existing session without these fields yields `none recorded`; a legacy tracker `Next action` remains a fallback.

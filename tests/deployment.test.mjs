@@ -280,6 +280,19 @@ test("setup carries self-contained preflight, validation, state, range, and inst
   assert.equal(check.status, 0, check.stderr);
   assert.equal(check.stdout, preflight.stdout.replace("Navigation cache: refreshed PROJECT_STATE.md; snapshot only", "Navigation cache: reusable snapshot only; recorded next action remains unevaluated"));
 
+  const startup = spawnSync(
+    process.execPath,
+    [...nodeArgs, path.join(installedSetup, "scripts", "check.mjs"), "--project-root", project, "--digest", "--json"],
+    { encoding: "utf8" },
+  );
+  assert.equal(startup.status, 0, startup.stderr);
+  const startupResult = JSON.parse(startup.stdout);
+  assert.equal(startupResult.valid, true);
+  assert.deepEqual(startupResult.projection.current_scope.files, initialized.projection.current_scope.files);
+  assert.deepEqual(startupResult.projection.paths, initialized.projection.paths);
+  assert.equal(startupResult.digest.refreshed, true);
+  assert.equal(startupResult.navigation_cache.reusable, true);
+
   const fullProject = path.join(temporaryRoot, "full-project");
   await createEvidenceFixture(
     path.join(root, "examples", "fiction-revision-en"),
@@ -813,7 +826,7 @@ test("setup repairs agent entries and only creates missing navigation", async ()
   assert.match(navigation, /\[`AGENTS\.md`\]\(AGENTS\.md#run-creation-or-revision-from-shared-state\)/);
   assert.doesNotMatch(navigation, /check\.mjs --project-root/);
   assert.ok(navigation.indexOf("- Status check:") < navigation.indexOf("- Current navigation:"));
-  assert.match(navigation, /only when that check reports `Navigation cache: reusable snapshot only`/);
+  assert.match(navigation, /after a successful `--digest` refresh or when that check reports `Navigation cache: reusable snapshot only`/);
   assert.match(navigation, /When the cache is stale or unchecked, use the bounded command results instead/);
   assert.match(navigation, /Start `ask-author` through your host's skill command or skill picker/);
   assert.doesNotMatch(navigation, /\$ask-author\b/);
@@ -853,8 +866,8 @@ test("setup uses the authoritative payload inventory and bounded doctor", async 
   assert.doesNotMatch(setup, /scripts\/doctor\.mjs --project-root <project-root>/);
   assert.match(setup, /If either installation check fails, report an incomplete toolkit installation and stop/);
   assert.match(setup, /final installation and project-state verification/);
-  assert.match(instructions, /scripts\/check\.mjs --project-root <project-root>/);
-  assert.match(instructions, /rerun it with `--diagnose`/);
+  assert.match(instructions, /scripts\/check\.mjs --project-root <project-root> --digest --json/);
+  assert.match(instructions, /rerun it with `--diagnose` instead of `--digest`/);
   assert.match(instructions, /stop at the active strategy's author gate/);
   assert.match(operations, /at most eight operation groups/);
   assert.match(operations, /Use standalone `validate\.mjs` to diagnose a validation failure/);

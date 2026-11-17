@@ -53,7 +53,7 @@ export async function manifestProjection(manifest, projectRoot, { diagnostic = f
           ...manifest.current_scope,
           description: concise(manifest.current_scope.description),
           files: manifest.current_scope.files.map((file) => ({ ...file, path: concise(file.path) })),
-          excluded_files: manifest.current_scope.excluded_files.map(concise),
+          excluded_files: manifest.current_scope.excluded_files.map((file) => concise(file)),
         }
       : null,
     pending_action: pending
@@ -62,7 +62,7 @@ export async function manifestProjection(manifest, projectRoot, { diagnostic = f
           status: pending.status,
           scope_id: pending.scope_id ?? null,
           reason: concise(pending.reason),
-          artifacts: (pending.artifacts ?? []).slice(0, 2).map(concise),
+          artifacts: (pending.artifacts ?? []).slice(0, 2).map((artifact) => concise(artifact)),
           artifact_count: artifactCount,
           ...(artifactCountError ? { artifact_count_error: artifactCountError } : {}),
           artifact_index: pending.artifact_index ?? null,

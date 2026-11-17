@@ -7,11 +7,11 @@
     },
     {
       "path": "assets/AGENTS.md",
-      "sha256": "3aa4b9ef457fc9e05fc85e6fd5295768344b24689b3b277f38c23285b3b87149"
+      "sha256": "41c9fc0439af7e80b7754e25fb4f49a1561592533e487833d729c0a81caafd15"
     },
     {
       "path": "assets/START_HERE.md",
-      "sha256": "be6461bb71df2653ebc53460903b680d769d3c1e33238d0a35d5466632d9c0b4"
+      "sha256": "8d8173270df175e2459399ce356c58d52c4142961964942ca162747cca3da05a"
     },
     {
       "path": "assets/references/avoid-ai-writing-adapter.md",
@@ -91,7 +91,7 @@
     },
     {
       "path": "assets/references/terminology.md",
-      "sha256": "a8c8728bcea22a64992a3ee5da0ad0d073c5e0c0ef34fb552daddee347eee785"
+      "sha256": "777f64b7bc1b498b1cec4cd87db3b78387cf6ac4a099113deae059c02da4b1fc"
     },
     {
       "path": "assets/references/workflow-reporting.md",
@@ -231,7 +231,7 @@
     },
     {
       "path": "scripts/lib/read-projection.mjs",
-      "sha256": "fadf64121bebc53be94a318bd39cf340f1871b6782ada03e8a81c5cef858400c"
+      "sha256": "0f9e9fd17c97a226dd7f09eb8c9959c1ab8efa7c5ec64d50de1dd57826462cd1"
     },
     {
       "path": "scripts/lib/report-scaffold.mjs",
@@ -311,7 +311,7 @@
     },
     {
       "path": "scripts/preflight.mjs",
-      "sha256": "fdfcdcb89cacc4a68888bb4086addbf60e46b2eaa6ab4e20d127a4ab2d39b630"
+      "sha256": "08dd759fcbe65af84d3142a695501d96461360d638882986c0c9308e99d9294a"
     },
     {
       "path": "scripts/project-digest.mjs",

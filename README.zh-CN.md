@@ -311,13 +311,17 @@ AI, 作者和混合创作使用相同门禁. 每本书只保留一个活动创�
 必须运行 strict 检查. 已记录的该状态声明或 `current-scope-review` 待处理操作不能替代该检查. strict 失败时将受影响的
 待处理操作记录为 `blocked`; 不会改写批准状态或虚构执行回执.
 
-安装版 `preflight.mjs --project-root <root>` 将一次载荷与入口文件检查, 同一套项目校验和普通状态规则组合执行.
-只有显式提供 `--digest` 时才写入项目状态.
+策略常规启动或恢复时, 只运行一次安装版 `check.mjs --project-root <root> --digest --json`.
+它组合载荷与入口文件检查、项目校验和普通状态, 返回经过校验的有界 manifest 投影, 并刷新导航缓存.
+`preflight.mjs` 接受相同参数. 不带 `--digest` 时, 组合检查不写项目状态且 `projection` 为 null;
+默认文本输出仍是不含投影的有界摘要.
 其只读缓存格式检查会隐藏旧版 stale 缓存中的路由.
 校验失败后, `--diagnose` 提供有界的已记录未验证投影、范围路径与哈希、scope 检查通过时的当前哈希验证结果和索引差异, 无需重复其他检查命令或打印完整 manifest.
 存在未核对批准时, 即使项目校验通过, `--diagnose` 也会运行只读执行恢复审计. 它发现项目内 JSON 证据,
 以不写状态的方式预览对账, 并分别报告可对账与无可用证据的未核对批准数. 可对账数为零表示当前证据无法修复严格执行门禁.
 当前策略必须请作者选择继续寻找证据, 或结束恢复并明确该范围未达到当前草稿修订收敛; 不能把重跑修订、新范围或新基线当作执行证据的替代品.
+独立 `read.mjs`、`validate.mjs` 和 `status.mjs` 保留用于定向投影、独立产物校验、严格执行门禁和详细诊断;
+组合启动成功后不再重复调用它们.
 
 - `project.json`: 项目登记, 产物路径, 以及可选的 `current_scope` 和 `pending_action`.
 - `START_HERE.md`: setup 仅在缺失时创建的导航文件, 指向 manifest、可选导航缓存和状态命令.
@@ -338,7 +342,8 @@ AI, 作者和混合创作使用相同门禁. 每本书只保留一个活动创�
   `record-findings` 校验完整报告批次, 在共享写锁内以原子方式更新发现项行, 并为每份报告
   更新或插入一条 Audit runs 行; 零发现项报告也会记录运行. 它保留已有作者决定和时间戳,
   重复导入同一报告不会重复追加 Markdown 行.
-- `PROJECT_STATE.md`: 生成的导航缓存. 调用 `author-project` 的 `status --digest`, 在共享状态写入后及恢复时重新生成.
+- `PROJECT_STATE.md`: 生成的导航缓存. 调用 `author-project` 的 `status --digest`, 在共享状态写入后重新生成;
+  策略常规启动或恢复改用组合的 `check --digest` 操作.
   生成前运行与 preflight 相同的完整项目校验, 包括当前稿件哈希, tracker 和备份索引中的执行证据.
   UTC `Generated at` 和 `Validation at generation: passed` 仅表示生成时快照, 不代表当前健康状态,
   执行门禁或当前草稿修订收敛; 复用前重新运行 preflight.

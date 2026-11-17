@@ -28,6 +28,7 @@ test("read returns a bounded validated projection and leaves legacy artifacts un
   const original = await readFile(manifestPath, "utf8");
   const manifest = JSON.parse(original);
   manifest.pending_action.reason = "Confirm this decision. ".repeat(100);
+  manifest.current_scope.excluded_files = ["manuscript/cover.png"];
   manifest.pending_action.artifacts = Array.from({ length: 115 }, (_, index) => `reports/structure/2026-01-17_structure.md#${index}`);
   for (const artifact of manifest.pending_action.artifacts) {
     await writeFile(path.join(projectRoot, artifact), "Historical pointer\n");
@@ -38,7 +39,8 @@ test("read returns a bounded validated projection and leaves legacy artifacts un
   const result = run("read.mjs", ["--manifest", manifestPath]);
   assert.equal(result.status, 0, result.stderr);
   const projected = JSON.parse(result.stdout);
-  assert.equal(projected.pending_action.artifacts.length, 2);
+  assert.deepEqual(projected.pending_action.artifacts, manifest.pending_action.artifacts.slice(0, 2));
+  assert.deepEqual(projected.current_scope.excluded_files, manifest.current_scope.excluded_files);
   assert.equal(projected.pending_action.artifact_count, 115);
   assert.equal(projected.pending_action.artifact_index, null);
   assert.ok(projected.pending_action.reason.length <= 240);

@@ -41,7 +41,8 @@ prevent digest generation.
 --diagnose adds a read-only execution-recovery audit and, when validation fails,
 a bounded recorded-unverified projection and backup-index explanation. It
 previews evidence reconciliation without changing validation results or state.
---digest also refreshes PROJECT_STATE.md after the read-only checks pass.
+--digest also refreshes PROJECT_STATE.md after the read-only checks pass and
+includes the validated bounded manifest projection in JSON output.
 --full selects the current scope when no scope is explicit, applies the strict
 execution gate, and also checks the review brief, coverage index and its units,
 latest immutable reports by stage and audit, reports linked by those artifacts,
@@ -123,6 +124,7 @@ async function preflight(selection) {
       strategy_gate: selection.requireExecution || selection.full ? "blocked_by_project_state" : "not_requested",
     },
     validation: null,
+    projection: null,
     status: null,
     diagnosis: null,
     execution_gate: null,
@@ -240,6 +242,7 @@ async function preflight(selection) {
   }
 
   if (selection.digest && payload.entry_failures.length === 0 && result.execution_gate?.valid !== false) {
+    result.projection = await manifestProjection(validation.manifest, selection.projectRoot);
     const digest = await generateProjectDigest(selection.projectRoot);
     result.digest = { path: path.basename(digest.path), refreshed: true };
     result.navigation_cache = await inspectNavigationCache(selection.projectRoot);

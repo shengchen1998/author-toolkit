@@ -522,9 +522,13 @@ current-scope-review pending action does not replace that check. A failed strict
 check records a `blocked` pending action; it does not alter approvals or manufacture
 execution receipts.
 
-The installed `preflight.mjs --project-root <root>` combines one payload and
-entry-file inspection with the same validation and ordinary-status rules. It
-does not write project state unless `--digest` is explicitly supplied.
+For routine strategy start or resume, run the installed
+`check.mjs --project-root <root> --digest --json` once. It combines payload and
+entry-file inspection, project validation, and ordinary status; returns the
+validated bounded manifest projection; and refreshes the navigation cache.
+`preflight.mjs` accepts the same arguments. Without `--digest`, the combined
+check writes nothing and leaves `projection` null, while the default text output
+remains a bounded summary without the projection.
 Its read-only cache-format check withholds routes from stale legacy caches.
 After a validation failure, `--diagnose` supplies the bounded
 recorded-unverified projection, scope paths and hashes, current-hash verification
@@ -532,8 +536,10 @@ when the scope check passes, and index differences without repeating the other
 inspection commands or printing the complete manifest.
 Its execution recovery audit is read-only and never establishes current-draft
 revision convergence by itself.
-Use `read.mjs --project-root <root>` for its bounded manifest projection,
-`set-pending.mjs --help` for validated pending-action updates, and
+Use standalone `read.mjs`, `validate.mjs`, and `status.mjs` for targeted
+projections, independent artifact validation, strict execution gates, and
+detailed diagnostics rather than repeating them after a successful combined
+startup. Use `set-pending.mjs --help` for validated pending-action updates, and
 `record-scope.mjs --help` for proposed-scope recording and exact-record confirmation.
 
 - `project.json` records project registration, artifact locations, and optional
@@ -567,8 +573,9 @@ Use `read.mjs --project-root <root>` for its bounded manifest projection,
   It preserves existing author decisions and timestamps and makes repeated report
   imports idempotent rather than requiring manually appended Markdown rows.
 - `PROJECT_STATE.md` is a generated navigation cache. Invoke `author-project`
-  with `status --digest` to regenerate it after shared-state writes and at
-  resume. Generation requires the same complete project validation as preflight,
+  with `status --digest` to regenerate it after shared-state writes; routine
+  strategy start or resume instead uses the combined `check --digest` operation.
+  Generation requires the same complete project validation as preflight,
   including current manuscript hashes, the tracker, and backup-index execution
   evidence. Its UTC `Generated at` value and `Validation at generation: passed`
   line are a generation-time snapshot, not current health, an execution gate, or

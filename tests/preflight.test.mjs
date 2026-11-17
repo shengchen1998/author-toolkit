@@ -68,6 +68,7 @@ test("preflight defaults to current scope and refreshes the navigation cache onl
   assert.equal(parsed.status.execution.scope_id, scopeId);
   assert.equal(parsed.execution_gate, null);
   assert.equal(parsed.digest, null);
+  assert.equal(parsed.projection, null);
   assert.equal(parsed.navigation_cache.state, "absent");
   await assert.rejects(readFile(path.join(projectRoot, "PROJECT_STATE.md"), "utf8"), { code: "ENOENT" });
 
@@ -78,6 +79,25 @@ test("preflight defaults to current scope and refreshes the navigation cache onl
   const reuse = run(["--project-root", projectRoot, "--json"]);
   assert.equal(JSON.parse(reuse.stdout).navigation_cache.reusable, true);
   assert.match(reuse.stdout, /"next_action": "recorded_unevaluated"/);
+});
+
+test("preflight digest returns the validated bounded manifest projection in JSON", async (t) => {
+  const { projectRoot, manifestPath } = await fixture(t);
+  const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
+  const result = run(["--project-root", projectRoot, "--digest", "--json"]);
+  assert.equal(result.status, 0, result.stderr);
+  const parsed = JSON.parse(result.stdout);
+  assert.equal(parsed.valid, true);
+  assert.deepEqual(parsed.projection.paths, manifest.paths);
+  assert.equal(parsed.projection.language, manifest.language);
+  assert.deepEqual(parsed.projection.current_scope.files, manifest.current_scope.files);
+  assert.deepEqual(
+    parsed.projection.pending_action.artifacts,
+    manifest.pending_action.artifacts.slice(0, 2),
+  );
+  assert.equal(parsed.projection.pending_action.artifact_count, manifest.pending_action.artifacts.length);
+  assert.equal(parsed.digest.refreshed, true);
+  assert.equal(parsed.navigation_cache.reusable, true);
 });
 
 test("preflight marks legacy caches stale without reproducing their recorded routes", async (t) => {
@@ -377,6 +397,7 @@ test("preflight stops before status or digest when project validation fails", as
   assert.equal(parsed.validation.checks.find((check) => check.path === "scope").valid, false);
   assert.equal(parsed.status, null);
   assert.equal(parsed.digest, null);
+  assert.equal(parsed.projection, null);
   assert.ok(parsed.navigation_cache.issues.includes("current project validation failed"));
   assert.equal(await readFile(path.join(projectRoot, "PROJECT_STATE.md"), "utf8"), previous);
 });

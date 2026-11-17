@@ -258,12 +258,16 @@ test("backup and handoff writes resolve registered project paths", async () => {
 });
 
 test("project digest is a generated navigation cache, not another source of truth", async () => {
-  const [project, readOperations, existingSetup] = await Promise.all([
+  const [project, readOperations, existingSetup, startHere] = await Promise.all([
     readFile(path.join(root, "skills/author-project/SKILL.md"), "utf8"),
     readFile(path.join(root, "skills/author-project/references/read-operations.md"), "utf8"),
     readFile(path.join(root, "skills/setup-author-toolkit/assets/setup/existing-project.md"), "utf8"),
+    readFile(path.join(root, "skills/setup-author-toolkit/assets/START_HERE.md"), "utf8"),
   ]);
   assert.match(project, /`status --digest`/);
+  assert.match(project, /`check --digest`/);
+  assert.match(readOperations, /check\.mjs --project-root <project-root> --digest --json/);
+  assert.match(readOperations, /`projection` field returns the same validated bounded manifest projection as `read\.mjs`/);
   assert.match(readOperations, /project-digest\.mjs --project-root/);
   assert.match(readOperations, /PROJECT_STATE\.md/);
   assert.match(readOperations, /once after each logical shared-state operation/i);
@@ -278,10 +282,13 @@ test("project digest is a generated navigation cache, not another source of trut
   assert.match(readOperations, /without reproducing it or rewriting the file/);
   assert.match(existingSetup, /After that check reports `Navigation cache: reusable snapshot only`, read `PROJECT_STATE\.md` for navigation only/);
   assert.match(existingSetup, /When the check reports a stale cache or does not check the cache, use the bounded command results instead of reading the cache/);
+  assert.match(startHere, /JSON `navigation_cache\.reusable` is `true`/);
 
   for (const skill of ["write-fiction", "revise-fiction", "revise-draft", "revise-increment", "revise-request"]) {
     const text = await readFile(path.join(root, "skills", skill, "SKILL.md"), "utf8");
-    assert.match(text, /`status --digest`/, skill);
+    assert.match(text, /procedure once with `check --digest`/, skill);
+    assert.match(text, /single JSON result supplies the bounded projection/, skill);
+    assert.doesNotMatch(text, /procedures separately with `read`, `validate`, and `status --digest`/, skill);
     assert.match(text, /Read `PROJECT_STATE\.md` first/, skill);
     assert.match(text, /needed for the requested work/i, skill);
   }
@@ -350,7 +357,7 @@ test("existing-project setup uses bounded inspection references and a categorize
   ]);
 
   assert.match(project, /For `validate`, read only \[Read and validate\]\(references\/read-operations\.md#read-and-validate\)/);
-  assert.match(project, /For `read`, `status`, `check --full`, `status --digest`, and `check-index`, read \[`references\/read-operations\.md`\]/);
+  assert.match(project, /For `read`, `status`, `check --full`, `check --digest`, `status --digest`, and `check-index`, read \[`references\/read-operations\.md`\]/);
   assert.match(project, /Setup owns new-project registration through `<setup-skill-root>\/scripts\/scaffold-project\.mjs`/);
   assert.match(project, /For every record or write operation, read \[`references\/operations\.md`\]/);
   assert.doesNotMatch(project, /For every operation, read \[`references\/operations\.md`\]/);
