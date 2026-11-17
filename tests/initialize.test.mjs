@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import test from "node:test";
 
@@ -10,18 +10,78 @@ function run(args, installedTool = path.join(root, "scripts", "initialize.mjs"))
   return spawnSync(process.execPath, [installedTool, ...args], { cwd: root, encoding: "utf8" });
 }
 
-async function fixture(t) {
+async function fixture(t, { fresh = false } = {}) {
   await mkdir(path.join(root, ".test-output"), { recursive: true });
   const temporary = await mkdtemp(path.join(root, ".test-output", "initialize-"));
   t.after(() => rm(temporary, { recursive: true, force: true }));
   const projectRoot = path.join(temporary, "project");
-  await cp(exampleRoot("en"), projectRoot, { recursive: true });
+  if (fresh) {
+    const scaffolded = run([
+      "--project-root",
+      projectRoot,
+      "--author-project-root",
+      path.join(root, "skills", "author-project"),
+    ], path.join(root, "scripts", "scaffold-project.mjs"));
+    assert.equal(scaffolded.status, 0, scaffolded.stderr);
+  } else {
+    await cp(exampleRoot("en"), projectRoot, { recursive: true });
+  }
   const manifestPath = path.join(projectRoot, ".author-toolkit", "project.json");
   const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
   return { projectRoot, manifestPath, manifest };
 }
 
-test("initialize creates only a missing backup index and is idempotent", async (t) => {
+test("initialize restores empty registered directories lost in a git checkout", async (t) => {
+  const { projectRoot, manifestPath, manifest } = await fixture(t, { fresh: true });
+  const originalManifest = await readFile(manifestPath, "utf8");
+  const indexPath = path.join(projectRoot, manifest.paths.backups, "index.json");
+  const originalIndex = await readFile(indexPath, "utf8");
+  const directories = [
+    manifest.manuscript_root,
+    manifest.paths.reports,
+    manifest.paths.sessions,
+    manifest.paths.handoffs,
+    manifest.paths.creation,
+  ];
+  for (const directory of directories) {
+    await rm(path.join(projectRoot, directory), { recursive: true });
+  }
+
+  const initialized = run(["--project-root", projectRoot, "--json"]);
+  assert.equal(initialized.status, 0, initialized.stdout + initialized.stderr);
+  const result = JSON.parse(initialized.stdout);
+  assert.equal(result.valid, true);
+  assert.equal(result.backup_index.status, "preserved");
+  for (const directory of directories) {
+    assert.equal((await stat(path.join(projectRoot, directory))).isDirectory(), true);
+  }
+  assert.equal(await readFile(manifestPath, "utf8"), originalManifest);
+  assert.equal(await readFile(indexPath, "utf8"), originalIndex);
+
+  const validated = run(["--project-root", projectRoot], path.join(root, "scripts", "validate.mjs"));
+  assert.equal(validated.status, 0, validated.stdout + validated.stderr);
+});
+
+test("initialize preserves files at registered directory paths and reports them", async (t) => {
+  const { projectRoot, manifest } = await fixture(t, { fresh: true });
+  const reports = path.resolve(projectRoot, manifest.paths.reports);
+  const sessions = path.resolve(projectRoot, manifest.paths.sessions);
+  await rm(reports, { recursive: true });
+  await writeFile(reports, "Preserve this conflict.\n", "utf8");
+  await rm(sessions, { recursive: true });
+
+  const initialized = run(["--project-root", projectRoot, "--json"]);
+  assert.equal(initialized.status, 3, initialized.stdout + initialized.stderr);
+  const result = JSON.parse(initialized.stdout);
+  assert.equal(result.valid, false);
+  const files = result.validation.checks.find((check) => check.path === "files");
+  assert.ok(files.errors.some((error) =>
+    error.instancePath === "/paths/reports" && /not a directory/.test(error.message)));
+  assert.equal(await readFile(reports, "utf8"), "Preserve this conflict.\n");
+  assert.equal((await stat(sessions)).isDirectory(), true);
+});
+
+test("initialize creates a missing backup index and is idempotent", async (t) => {
   const { projectRoot, manifestPath, manifest } = await fixture(t);
   const originalManifest = await readFile(manifestPath, "utf8");
   const indexPath = path.join(projectRoot, manifest.paths.backups, "index.json");
@@ -109,7 +169,9 @@ test("initialize rejects missing, invalid, and unsupported manifests without cre
   const { projectRoot, manifestPath } = await fixture(t);
   const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
   const indexPath = path.join(projectRoot, manifest.paths.backups, "index.json");
+  const reports = path.resolve(projectRoot, manifest.paths.reports);
   await rm(indexPath);
+  await rm(reports, { recursive: true });
   manifest.schema_version = "3.0.0";
   await writeFile(manifestPath, JSON.stringify(manifest));
   const originalManifest = await readFile(manifestPath, "utf8");
@@ -123,6 +185,7 @@ test("initialize rejects missing, invalid, and unsupported manifests without cre
   assert.equal(parsed.projection, null);
   assert.equal(parsed.validation.checks[0].unsupported, true);
   await assert.rejects(readFile(indexPath, "utf8"), { code: "ENOENT" });
+  await assert.rejects(stat(reports), { code: "ENOENT" });
   assert.equal(await readFile(manifestPath, "utf8"), originalManifest);
 
   await rm(manifestPath);

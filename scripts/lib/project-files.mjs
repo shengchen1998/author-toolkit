@@ -36,13 +36,16 @@ export function isUninitializedProjectTemplate(manifest) {
   );
 }
 
-async function checkExists(root, instancePath, relativePath) {
+async function checkExists(root, instancePath, relativePath, directory = false) {
   if (!validateRelativePath(relativePath).valid) {
     return fileError(instancePath, "project path must be a portable project-relative path");
   }
 
   try {
-    await stat(path.resolve(root, relativePath));
+    const stats = await stat(path.resolve(root, relativePath));
+    if (directory && !stats.isDirectory()) {
+      return fileError(instancePath, `required project path is not a directory: ${relativePath}`);
+    }
     return null;
   } catch (error) {
     if (error.code === "ENOENT") {
@@ -58,9 +61,13 @@ export async function validateProjectFiles(manifest, manifestPath, { skipPending
     return { valid: true, errors: [], projectRoot };
   }
 
-  const checks = [["/manuscript_root", manifest.manuscript_root]];
+  const checks = [["/manuscript_root", manifest.manuscript_root, manifest.manuscript_root.endsWith("/")]];
   for (const name of OPERATIONAL_PATHS) {
-    checks.push([`/paths/${name}`, manifest.paths?.[name]]);
+    checks.push([
+      `/paths/${name}`,
+      manifest.paths?.[name],
+      !["story_bible", "audit_tracker"].includes(name),
+    ]);
   }
 
   if (!skipPendingArtifacts) {
@@ -75,8 +82,8 @@ export async function validateProjectFiles(manifest, manifestPath, { skipPending
   }
 
   const errors = [];
-  for (const [instancePath, relativePath] of checks) {
-    const error = await checkExists(projectRoot, instancePath, relativePath);
+  for (const [instancePath, relativePath, directory] of checks) {
+    const error = await checkExists(projectRoot, instancePath, relativePath, directory);
     if (error) errors.push(error);
   }
 

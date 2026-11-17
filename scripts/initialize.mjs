@@ -16,7 +16,8 @@ function usage() {
   node scripts/initialize.mjs --project-root DIR [--json]
 
 Initialize an existing v3.1 manifest without resetting its registration or
-history. Create only a missing backup index. Return its bounded projection,
+history. Restore missing registered directories and create only a missing backup
+index without replacing existing paths. Return its bounded projection,
 registered paths, current scope, pending action, and validation result. A
 schema-valid manifest with later validation errors returns a recorded_unverified
 projection and bounded backup-index diagnosis. Unsupported or schema-invalid

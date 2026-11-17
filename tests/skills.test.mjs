@@ -405,6 +405,7 @@ test("existing-project setup uses bounded inspection references and a categorize
   assert.match(readOperations, /entry-file repair follows an accepted v3\.1 schema even when later project-state validation fails/);
   assert.match(readOperations, /Unsupported or schema-invalid manifests create nothing/);
   assert.match(readOperations, /ordinary preflight leaves unverified approvals nonblocking/);
+  assert.match(readOperations, /restores missing registered directories/);
   assert.match(readOperations, /creates only a missing `<paths\.backups>\/index\.json`/);
   assert.doesNotMatch(readOperations, /## Backup and creation commit|## Record execution|## Restore/);
   assert.match(operations, /\[Digest\]\(read-operations\.md#digest\)/);

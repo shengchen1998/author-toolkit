@@ -99,7 +99,7 @@
     },
     {
       "path": "assets/setup/existing-project.md",
-      "sha256": "615d18f518bba06970ca5bb297b920b7d914277cee4722de522c8047b7bf3071"
+      "sha256": "c60136feb2157950a7c36c6f30d129fe378d2d406a0f1976ed1a55deb178b488"
     },
     {
       "path": "assets/setup/new-project.md",
@@ -127,7 +127,7 @@
     },
     {
       "path": "scripts/initialize.mjs",
-      "sha256": "4b567d624a65a527f42c6ae6440163c9352907c53bea5f9b1b81e68e9dd85c93"
+      "sha256": "9ed8bb8ecabc49ccb81ee3960dd6fe637ee6aae908206a5112e2792916780cc9"
     },
     {
       "path": "scripts/inspect-root.mjs",
@@ -215,11 +215,11 @@
     },
     {
       "path": "scripts/lib/project-files.mjs",
-      "sha256": "0a38426d2f2f94ce6370bf80b53eef0c0732a1fed442e5a11c9a19fe764ee42e"
+      "sha256": "485aa299b7e8601a56327dae191434bbeb18ace25fc5a8ef502e20f2e9ab3d6b"
     },
     {
       "path": "scripts/lib/project-initialization.mjs",
-      "sha256": "c291da2c420a67d9906b47f9594dcbc3435ca1a06474da2cbac46debcf0ca8cd"
+      "sha256": "33109937fe19dceff476906a8c2c97f34348b2a348209101191fa552eeee52bb"
     },
     {
       "path": "scripts/lib/project-inspection.mjs",

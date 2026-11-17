@@ -1,4 +1,4 @@
-import { mkdir, readFile } from "node:fs/promises";
+import { lstat, mkdir, readFile } from "node:fs/promises";
 import path from "node:path";
 
 import { explainBackupIndex } from "./backup-index-diagnostics.mjs";
@@ -43,6 +43,34 @@ async function backupIndexDiagnosis(manifest, manifestPath) {
   };
 }
 
+function registeredDirectories(projectRoot, manifest) {
+  return [
+    ...(manifest.manuscript_root.endsWith("/") ? [manifest.manuscript_root] : []),
+    ...["reports", "sessions", "backups", "handoffs", "creation"].map((name) => manifest.paths[name]),
+  ].map((directory) => path.resolve(projectRoot, directory));
+}
+
+async function isMissingDirectory(target) {
+  try {
+    await lstat(target);
+    return false;
+  } catch (error) {
+    if (error.code === "ENOENT") return true;
+    if (error.code === "ENOTDIR") return false;
+    throw error;
+  }
+}
+
+async function createMissingDirectories(directories) {
+  let created = false;
+  for (const directory of directories) {
+    if (!await isMissingDirectory(directory)) continue;
+    await mkdir(directory, { recursive: true });
+    created = true;
+  }
+  return created;
+}
+
 export async function initializeExistingProject(manifestPath) {
   let inspection = await inspectProjectManifest(manifestPath);
   if (!inspection.manifest || !validateManifest(inspection.manifest).valid) {
@@ -66,8 +94,18 @@ export async function initializeExistingProject(manifestPath) {
     if (error.code !== "ENOENT") throw error;
   }
 
-  let created = false;
-  const createIndex = async () => {
+  let indexCreated = false;
+  let directoriesCreated = false;
+  const directories = registeredDirectories(projectRoot, manifest);
+  let missingDirectory = false;
+  for (const directory of directories) {
+    if (await isMissingDirectory(directory)) {
+      missingDirectory = true;
+      break;
+    }
+  }
+  const initializeState = async () => {
+    directoriesCreated = await createMissingDirectories(directories);
     if (index !== undefined) return;
     await mkdir(path.dirname(indexPath), { recursive: true });
     await writeJsonAtomic(indexPath, {
@@ -76,12 +114,12 @@ export async function initializeExistingProject(manifestPath) {
       restorations: [],
       executions: [],
     });
-    created = true;
+    indexCreated = true;
   };
-  if (index === undefined) {
-    await withProjectWriteLock(manifestPath, manifest, createIndex);
+  if (index === undefined || missingDirectory) {
+    await withProjectWriteLock(manifestPath, manifest, initializeState);
   }
-  if (created) inspection = await inspectProjectManifest(manifestPath);
+  if (indexCreated || directoriesCreated) inspection = await inspectProjectManifest(manifestPath);
 
   const backupIndex = await backupIndexDiagnosis(manifest, manifestPath);
   const projection = await manifestProjection(manifest, projectRoot, { diagnostic: true });
@@ -92,7 +130,7 @@ export async function initializeExistingProject(manifestPath) {
     manifest_path: manifestPath,
     backup_index: {
       path: path.relative(projectRoot, indexPath).replaceAll(path.sep, "/"),
-      status: created ? "created" : "preserved",
+      status: indexCreated ? "created" : "preserved",
       valid: backupIndex.valid,
     },
     projection,

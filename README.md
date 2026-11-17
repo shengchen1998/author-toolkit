@@ -170,9 +170,11 @@ following `check --diagnose` verifies the installed payload and both agent
 entries without a second doctor call, but does not require `START_HERE.md`.
 
 Run `node <setup-skill-root>/scripts/initialize.mjs --project-root <root> --json`
-as setup's sole existing-project initialization implementation. It creates only
-a missing backup index and returns the bounded projection, registered paths,
-current scope, pending action, backup-index status, and validation result.
+as setup's sole existing-project initialization implementation. It restores
+missing registered directories, creates only a missing backup index, and returns
+the bounded projection, registered paths, current scope, pending action,
+backup-index status, and validation result. Existing paths and history are
+preserved; a file where a required directory belongs fails validation.
 Schema-valid state failures return a `recorded_unverified` projection and
 backup-index diagnosis without requiring ad hoc manifest parsing, and exit 3.
 That distinct status permits setup's entry-file repair while retaining the
