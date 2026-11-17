@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import test from "node:test";
@@ -10,8 +11,12 @@ import { exampleRoot, root } from "./helpers.mjs";
 const scopeId = "scope-example-revision";
 const timestamp = "2026-11-15T00:00:00Z";
 
+function runScript(script, args) {
+  return spawnSync(process.execPath, [path.join(root, "scripts", script), ...args], { cwd: root, encoding: "utf8" });
+}
+
 function run(args) {
-  return spawnSync(process.execPath, [path.join(root, "scripts", "check.mjs"), ...args], { cwd: root, encoding: "utf8" });
+  return runScript("check.mjs", args);
 }
 
 async function writeJson(projectRoot, relativePath, value) {
@@ -23,6 +28,82 @@ async function fixture(t) {
   const temporary = await mkdtemp(path.join(root, ".test-output", "evidence-inspection-"));
   t.after(() => rm(temporary, { recursive: true, force: true }));
   return createEvidenceFixture(exampleRoot("en"), path.join(root, "skills/setup-author-toolkit/assets"), path.join(temporary, "project"));
+}
+
+async function intakeFixture(t) {
+  await mkdir(path.join(root, ".test-output"), { recursive: true });
+  const temporary = await mkdtemp(path.join(root, ".test-output", "evidence-intake-"));
+  t.after(() => rm(temporary, { recursive: true, force: true }));
+  const projectRoot = path.join(temporary, "project");
+  const manifest = path.join(projectRoot, ".author-toolkit/project.json");
+  const succeed = (script, args) => {
+    const result = runScript(script, args);
+    assert.equal(result.status, 0, `${script}: ${result.stderr || result.stdout}`);
+  };
+
+  succeed("scaffold-project.mjs", [
+    "--project-root", projectRoot,
+    "--author-project-root", path.join(root, "skills/author-project"),
+    "--created-at", "2026-11-17T00:00:00Z",
+  ]);
+  succeed("install-entry-files.mjs", ["--project-root", projectRoot]);
+  const manuscript = "One chapter ready for intake.\n";
+  await writeFile(path.join(projectRoot, "manuscript/chapter-01.md"), manuscript);
+  succeed("record-scope.mjs", [
+    "--manifest", manifest,
+    "--scope-id", "scope-intake",
+    "--description", "Confirmed intake scope.",
+    "--status", "proposed",
+    "--file", "manuscript/chapter-01.md",
+    "--created-at", "2026-11-17T01:00:00Z",
+  ]);
+  succeed("record-scope.mjs", [
+    "--manifest", manifest,
+    "--scope-id", "scope-intake",
+    "--confirm",
+    "--updated-at", "2026-11-17T02:00:00Z",
+  ]);
+
+  const body = path.join(temporary, "intake-body.md");
+  const envelope = path.join(temporary, "intake-envelope.json");
+  const report = "reports/intake/2026-11-17_intake.md";
+  await writeFile(body, "# Intake\n\n## Language coverage\n\nCoverage: full (en).\n");
+  await writeJson(temporary, "intake-envelope.json", {
+    schema_version: "2.0.0",
+    report_id: "INTAKE-001",
+    audit: "revise-fiction-intake",
+    stage: "intake",
+    created_at: "2026-11-17T03:00:00Z",
+    language: "en",
+    skill: { name: "revise-fiction", version: "3.1.0" },
+    inputs: [{
+      path: "manuscript/chapter-01.md",
+      version: createHash("sha256").update(manuscript).digest("hex"),
+      version_type: "sha256",
+    }],
+    engine: {
+      name: "conversational",
+      version: "unknown",
+      degraded: false,
+      notes: "scope_id=scope-intake; operation_coverage=full; Language coverage: full (en).",
+    },
+  });
+  succeed("scaffold-report.mjs", [
+    "--manifest", manifest,
+    "--output", report,
+    "--body", body,
+    "--envelope", envelope,
+  ]);
+  succeed("set-pending.mjs", [
+    "--project-root", projectRoot,
+    "--operation", "intake",
+    "--status", "awaiting_author",
+    "--scope-id", "scope-intake",
+    "--reason", "Author confirmed the intake inventory.",
+    "--artifact", report,
+    "--updated-at", "2026-11-17T04:00:00Z",
+  ]);
+  return { projectRoot, report };
 }
 
 test("full check combines current evidence, reader state, and strict execution without writes", async (t) => {
@@ -65,6 +146,52 @@ test("full check combines current evidence, reader state, and strict execution w
   assert.equal(JSON.parse(strict.stdout).evidence.valid, true, strict.stdout || strict.stderr);
   assert.equal(JSON.parse(strict.stdout).execution_gate.valid, false);
   assert.match(run(["--project-root", projectRoot, "--full"]).stdout, /Preflight: failed/);
+});
+
+test("full check marks future review artifacts not applicable after intake", async (t) => {
+  const { projectRoot, report } = await intakeFixture(t);
+  const ordinary = run(["--project-root", projectRoot]);
+  assert.equal(ordinary.status, 0, ordinary.stderr || ordinary.stdout);
+
+  const result = run(["--project-root", projectRoot, "--full", "--json"]);
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  const parsed = JSON.parse(result.stdout);
+  assert.equal(parsed.valid, true);
+  assert.equal(parsed.validation.valid, true);
+  assert.equal(parsed.execution_gate.valid, true);
+  assert.equal(parsed.evidence.valid, true);
+  assert.equal(parsed.evidence.selection.latest_report, report);
+  assert.equal(parsed.evidence.selection.review_jobs, 0);
+  assert.equal(parsed.evidence.checks.some((check) => check.path === report && check.valid), true);
+  const notApplicable = parsed.evidence.checks.filter((check) => check.status === "not_applicable");
+  assert.deepEqual(notApplicable.map((check) => check.path).sort(), [
+    "evidence/review-jobs",
+    "reports/coverage-index.json",
+    "reports/review_brief.md",
+  ]);
+  assert.ok(notApplicable.every((check) => check.valid && check.errors.length === 0));
+  assert.equal(parsed.evidence.checks.some((check) => !check.valid), false);
+
+  const text = run(["--project-root", projectRoot, "--full"]);
+  assert.equal(text.status, 0, text.stderr || text.stdout);
+  assert.match(text.stdout, /Evidence validation: \d+ checks, 0 failures, 3 not applicable/);
+  assert.match(text.stdout, /Evidence not applicable: reports\/review_brief\.md/);
+  assert.match(text.stdout, /Evidence not applicable: reports\/coverage-index\.json/);
+  assert.match(text.stdout, /Evidence not applicable: evidence\/review-jobs/);
+  assert.doesNotMatch(text.stdout, /Blocking evidence error/);
+  assert.match(text.stdout, /Preflight: passed/);
+
+  const installed = spawnSync(process.execPath, [
+    path.join(root, "skills/setup-author-toolkit/scripts/check.mjs"),
+    "--project-root", projectRoot,
+    "--full", "--json",
+  ], { cwd: root, encoding: "utf8" });
+  assert.equal(installed.status, 0, installed.stderr || installed.stdout);
+  const installedEvidence = JSON.parse(installed.stdout).evidence;
+  assert.equal(installedEvidence.valid, true);
+  assert.equal(installedEvidence.checks.filter((check) => check.status === "not_applicable").length, 3);
+  await assert.rejects(readFile(path.join(projectRoot, "reports/review_brief.md")), { code: "ENOENT" });
+  await assert.rejects(readFile(path.join(projectRoot, "reports/coverage-index.json")), { code: "ENOENT" });
 });
 
 test("full check fails on selected evidence and ignores superseded report damage", async (t) => {

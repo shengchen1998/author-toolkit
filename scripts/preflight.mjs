@@ -45,9 +45,13 @@ previews evidence reconciliation without changing validation results or state.
 --full selects the current scope when no scope is explicit, applies the strict
 execution gate, and also checks the review brief, coverage index and its units,
 latest immutable reports by stage and audit, reports linked by those artifacts,
-latest review jobs by mode and perspective, and fresh reader-state. It performs
-no writes and does not infer evidence currency, operation completion, or
-current-draft revision convergence. It cannot be combined with --digest.
+latest review jobs by mode and perspective, and fresh reader-state. An absent
+review brief or coverage index and zero selected review jobs are non-blocking
+not_applicable checks. Present invalid artifacts, missing linked artifacts, and
+a selected scope with no immutable evidence report remain failures. It performs
+no writes, generates no missing artifacts, and does not infer evidence currency,
+operation completion, or current-draft revision convergence. It cannot be
+combined with --digest.
 The cache check recognizes the current format and marks older or failed-state
 caches stale without displaying their recorded next action or changing files.
 The text output is a bounded summary. --json also groups unverified approvals
@@ -352,16 +356,19 @@ function outputText(result, selection) {
     console.log(
       `Blocked pending action: ${status.recorded_blockers.blocked_pending_action ? "recorded in selected scope" : "none recorded"}`,
     );
-    console.log(result.evidence ? "Operation-specific evidence: validated artifacts; currency and operation gates not evaluated" : "Operation-specific evidence: not evaluated");
+    console.log(result.evidence ? "Operation-specific evidence: applicable artifacts validated; currency and operation gates not evaluated" : "Operation-specific evidence: not evaluated");
   }
   if (result.execution_gate) {
     console.log(`Execution gate: ${result.execution_gate.valid ? "passed" : "failed"}`);
   }
   if (result.evidence) {
     const { evidence } = result;
-    console.log(`Evidence validation: ${evidence.checks.length} checks, ${evidence.checks.filter((check) => !check.valid).length} failures; scope ${evidence.scope_id ?? "not selected"}`);
+    const notApplicable = evidence.checks.filter((check) => check.status === "not_applicable");
+    const failures = evidence.checks.filter((check) => !check.valid);
+    console.log(`Evidence validation: ${evidence.checks.length} checks, ${failures.length} failures${notApplicable.length > 0 ? `, ${notApplicable.length} not applicable` : ""}; scope ${evidence.scope_id ?? "not selected"}`);
     console.log(`Evidence selection: ${evidence.selection?.latest_reports_by_stage_and_audit ?? 0} latest stage/audit reports; ${evidence.selection?.linked_reports ?? 0} linked reports; ${evidence.selection?.review_jobs ?? 0} review jobs`);
-    for (const check of evidence.checks.filter((item) => !item.valid)) {
+    for (const check of notApplicable) console.log(`Evidence not applicable: ${check.path}`);
+    for (const check of failures) {
       console.log(`Blocking evidence error: ${check.path}: ${errorDetails(check.errors)}`);
       if (check.omitted_error_count) console.log(`  ... ${check.omitted_error_count} more errors; use --details for complete evidence diagnostics`);
     }

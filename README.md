@@ -205,7 +205,7 @@ unverified approval.
 The current scope is selected by default. Add `--require-execution` with an
 explicit `--scope-id` only for an execution gate; add `--digest` only when the
 navigation cache should be refreshed after successful read-only checks.
-For one read-only final evidence check, add `--full` instead. It selects the
+For one read-only selected-evidence and strict-execution check, add `--full` instead. It selects the
 current scope when no explicit scope is supplied, applies strict execution,
 validates the review brief, coverage index and its units, latest immutable
 reports by stage and audit, reports linked by the index and latest review jobs,
@@ -216,7 +216,11 @@ path; their reader-state paths remain authoritative. `--full` writes nothing,
 does not refresh the cache, and cannot be combined with `--digest`. It validates
 artifacts and their references, not evidence currency, semantic evidence reuse,
 operation completion, or current-draft revision convergence; the active strategy
-still evaluates those gates.
+still evaluates those gates. An absent review brief or coverage index and zero
+selected review jobs are non-blocking `not_applicable` checks, not blocking
+errors. Present invalid artifacts, missing linked artifacts, and a selected
+scope with no immutable evidence report still fail. The check does not generate
+missing artifacts.
 Preflight also checks the cache format read-only. Legacy or incomplete caches,
 and caches invalidated by project-validation or requested strict-gate failures,
 are marked stale and their recorded next action is withheld rather than repeated.

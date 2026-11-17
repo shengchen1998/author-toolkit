@@ -62,6 +62,10 @@ function failure(message) {
   return { valid: false, errors: [{ instancePath: "", keyword: "evidence-inspection", message, params: {} }] };
 }
 
+function notApplicable() {
+  return { valid: true, status: "not_applicable", errors: [] };
+}
+
 function latest(left, right) {
   const leftTime = Date.parse(left.updated_at ?? left.created_at ?? "");
   const rightTime = Date.parse(right.updated_at ?? right.created_at ?? "");
@@ -97,7 +101,12 @@ export async function inspectProjectEvidence(manifest, manifestPath, { scopeId, 
   const reportRecords = [];
   const linkedReports = new Set();
   const check = (relativePath, result) => {
-    checks.push({ path: relativePath, valid: result.valid, errors: result.errors });
+    checks.push({
+      path: relativePath,
+      valid: result.valid,
+      ...(result.status ? { status: result.status } : {}),
+      errors: result.errors,
+    });
     return result.valid;
   };
   const resolve = (relativePath) => {
@@ -136,7 +145,7 @@ export async function inspectProjectEvidence(manifest, manifestPath, { scopeId, 
   try {
     check(briefPath, validateReviewBrief(await readFile(resolve(briefPath), "utf8"), tracker));
   } catch (error) {
-    check(briefPath, failure(error.message));
+    check(briefPath, error.code === "ENOENT" ? notApplicable() : failure(error.message));
   }
 
   const indexPath = path.posix.join(manifest.paths.reports, "coverage-index.json");
@@ -181,7 +190,7 @@ export async function inspectProjectEvidence(manifest, manifestPath, { scopeId, 
       }
     }
   } catch (error) {
-    check(indexPath, failure(error.message));
+    check(indexPath, error.code === "ENOENT" ? notApplicable() : failure(error.message));
   }
 
   for (const file of await projectJobFiles(projectRoot, manifest)) {
@@ -278,7 +287,7 @@ export async function inspectProjectEvidence(manifest, manifestPath, { scopeId, 
     check(`${record.path}#finding-identity`, { valid: errors.length === 0, errors });
   }
   if (reportRecords.length === 0) check("evidence/reports", failure("no selected-scope immutable evidence reports were found"));
-  if (selectedJobs.length === 0) check("evidence/review-jobs", failure("no selected-scope review jobs were found"));
+  if (selectedJobs.length === 0) check("evidence/review-jobs", notApplicable());
 
   return {
     valid: checks.every((result) => result.valid),
@@ -289,7 +298,12 @@ export async function inspectProjectEvidence(manifest, manifestPath, { scopeId, 
       review_jobs: selectedJobs.length,
       linked_reports: linkedReports.size,
     },
-    checks: details ? checks : checks.map((result) => result.valid ? { path: result.path, valid: true, errors: [] } : {
+    checks: details ? checks : checks.map((result) => result.valid ? {
+      path: result.path,
+      valid: true,
+      ...(result.status ? { status: result.status } : {}),
+      errors: [],
+    } : {
       path: result.path,
       valid: false,
       errors: result.errors.slice(0, 12),

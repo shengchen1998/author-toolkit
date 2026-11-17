@@ -91,7 +91,7 @@
     },
     {
       "path": "assets/references/terminology.md",
-      "sha256": "eebb1215d8e28502450bedc652160e35c1a3d0df1051b4b4dde4fcfab6b0316f"
+      "sha256": "f661840d1e5f2ead5bbdc079bfed9c9b3cc859bb130137f8e8bbd6d228ad0968"
     },
     {
       "path": "assets/references/workflow-reporting.md",
@@ -163,7 +163,7 @@
     },
     {
       "path": "scripts/lib/evidence-inspection.mjs",
-      "sha256": "5675c584a05c8e844e87b9bcb65710ae4eded0f6e8a9ac010b8b33ef41606d57"
+      "sha256": "d80ca44627d2261fd4ce769eedb0c8dc1234912704d1454f568ffe8264fdc9d2"
     },
     {
       "path": "scripts/lib/evidence-retention.mjs",
@@ -311,7 +311,7 @@
     },
     {
       "path": "scripts/preflight.mjs",
-      "sha256": "bb9eb5792c22620d4c64c4a16ca8cf8b2d012e9c046cff14a69cf1e478d061f4"
+      "sha256": "fdfcdcb89cacc4a68888bb4086addbf60e46b2eaa6ab4e20d127a4ab2d39b630"
     },
     {
       "path": "scripts/project-digest.mjs",
