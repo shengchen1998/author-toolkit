@@ -6,7 +6,7 @@ This is the living status index. Linked reports are immutable while retained.
 
 - Project root:
 - Manifest created at:
-- Current state: use `author-project read` and `author-project status`.
+- Current state: use the `author-project` skill's `read` and `status` operations; follow the project `AGENTS.md` for routine checks.
 
 ## Findings
 
