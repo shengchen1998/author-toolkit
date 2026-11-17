@@ -81,6 +81,7 @@ function outputText(result) {
   console.log(`Manifest: ${result.manifest_path}`);
   console.log(`Language: ${result.language}`);
   console.log(`Created files: ${result.created.length}; preserved files: ${result.preserved.length}`);
+  console.log(`Created directories: ${result.created_directories.length}`);
   const failures = result.validation.checks.filter((check) => !check.valid);
   console.log(`Project validation: ${result.validation.checks.length} checks, ${failures.length} failures`);
   for (const check of failures) {

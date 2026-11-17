@@ -150,11 +150,20 @@ export async function scaffoldNewProject({
   );
   const created = [];
   const preserved = [];
+  const directories = [...new Set([
+    path.resolve(projectRoot, manifest.manuscript_root),
+    ...["reports", "sessions", "backups", "handoffs", "creation"].map(
+      (name) => path.resolve(projectRoot, manifest.paths[name]),
+    ),
+  ])];
+  const missingDirectories = new Set();
+  for (const directory of directories) {
+    if (!await pathExists(directory)) missingDirectories.add(directory);
+  }
   await withProjectWriteLock(manifestPath, manifest, async () => {
     await assertManifestAbsent(manifestPath);
-    await createDirectory(path.resolve(projectRoot, manifest.manuscript_root));
-    for (const name of ["reports", "sessions", "backups", "handoffs", "creation"]) {
-      await createDirectory(path.resolve(projectRoot, manifest.paths[name]));
+    for (const directory of directories) {
+      await createDirectory(directory);
     }
     await createMissingFile(
       path.resolve(projectRoot, manifest.paths.story_bible),
@@ -181,6 +190,9 @@ export async function scaffoldNewProject({
     created.push(".author-toolkit/project.json");
   });
 
+  const createdDirectories = [...missingDirectories]
+    .map((directory) => path.relative(projectRoot, directory).replaceAll(path.sep, "/"))
+    .sort();
   const inspection = await inspectProjectManifest(manifestPath);
   return {
     valid: inspection.valid,
@@ -190,6 +202,7 @@ export async function scaffoldNewProject({
     paths: manifest.paths,
     created_at: manifest.created_at,
     created,
+    created_directories: createdDirectories,
     preserved,
     validation: { valid: inspection.valid, checks: inspection.checks },
   };

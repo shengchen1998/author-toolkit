@@ -49,6 +49,14 @@ test("scaffold-project creates a complete default project with one timestamp", a
     ".author-toolkit/backups/index.json",
     ".author-toolkit/project.json",
   ]);
+  assert.deepEqual(output.created_directories, [
+    ".author-toolkit/backups",
+    ".author-toolkit/creation",
+    ".author-toolkit/handoffs",
+    "manuscript",
+    "reports",
+    "sessions",
+  ]);
   assert.deepEqual(output.preserved, []);
 
   const manifest = JSON.parse(await readFile(path.join(projectRoot, ".author-toolkit", "project.json"), "utf8"));
@@ -115,6 +123,12 @@ test("scaffold-project registers custom paths and preserves partial existing sta
     creation: "state/creation/",
   });
   assert.deepEqual(output.preserved, ["notes/story.md", "state/backups/index.json"]);
+  assert.deepEqual(output.created_directories, [
+    "reviews",
+    "state/creation",
+    "state/handoffs",
+    "state/sessions",
+  ]);
   assert.equal(await readFile(manuscript, "utf8"), "Existing manuscript\n");
   assert.equal(await readFile(storyBible, "utf8"), "# Existing Story Bible\n");
   assert.equal(await readFile(indexPath, "utf8"), index);
@@ -125,6 +139,7 @@ test("scaffold-project refuses an existing manifest without changing project fil
   const projectRoot = await fixture(t);
   const first = run(argumentsFor(projectRoot, "--language", "en"));
   assert.equal(first.status, 0, first.stderr);
+  assert.match(first.stdout, /^Created directories: 6$/m);
   const files = [
     ".author-toolkit/project.json",
     ".author-toolkit/backups/index.json",

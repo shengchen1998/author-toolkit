@@ -227,7 +227,7 @@
     },
     {
       "path": "scripts/lib/project-scaffold.mjs",
-      "sha256": "715580e91dcae5f21351a72588f2fa3756c7d34ef7c820ff80d83f1a7339bcac"
+      "sha256": "a661adb4457c94fe9c8e82a8e0282cf18271d52bc344024d5828ccc40291a99b"
     },
     {
       "path": "scripts/lib/read-projection.mjs",
@@ -335,7 +335,7 @@
     },
     {
       "path": "scripts/scaffold-project.mjs",
-      "sha256": "32fba95b74f613cd995346ef0e6f27bca569b4e0ec7637b04a1bed86ef33330a"
+      "sha256": "9cf54b34a488e1afc9676041e38a52fcf1df5f06aaf71097b1ee13c1553a45c7"
     },
     {
       "path": "scripts/scaffold-report.mjs",
