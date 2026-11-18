@@ -611,9 +611,10 @@ startup. Use `set-pending.mjs --help` for validated pending-action updates, and
   pointers, targeted artifact reads, or aggregate counts rather than emitting
   complete file listings of the registered session or backup directories. It
   reads current manuscript files and the backup index for validation without
-  reproducing their contents, and does not read full reports. Record `- Active plan: <project-relative-path>` and
-  `- Next action: <concise action>` in the latest session so the cache can
-  locate them. A legacy tracker `Next action` remains a fallback. Latest-file
+  reproducing their contents, and does not read full reports. Use the
+  [session note template](skills/author-project/assets/session-note-template.md)
+  for the registered session path, UTC filename, and fixed navigation fields.
+  A legacy tracker `Next action` remains a fallback. Latest-file
   selection prefers UTC filename timestamps and uses modification time for
   undated files. The report scan excludes the disposable `review_brief.md`
   decision summary. Its Read next section points to `author-project status` for

@@ -157,11 +157,11 @@ If `reconcilable_count` is positive, preview and apply those named evidence file
 
 ## Pending actions and session writes
 
-Record `- Operation: <operation>` in each session. In bounded projects, retain only the latest completed summary per operation after its replacement validates; keep unresolved, interrupted, and recovery-linked sessions. Never infer this cleanup from manuscript approval.
+In bounded projects, retain only the latest completed summary per operation after its replacement validates; keep unresolved, interrupted, and recovery-linked sessions. Never infer this cleanup from manuscript approval.
 
 The neutral manifest stores only the current scope and an optional shared pending action. A pending action records `operation`, `status`, `scope_id`, `reason`, `artifacts`, optional `artifact_index`, and `updated_at`; status is `in_progress`, `awaiting_author`, or `blocked`. It does not record which orchestration skill created it. Use `author-project set-pending` to retain at most eight inline artifacts and put longer complete lists in the linked pending artifact index. Legacy longer inline lists without an index remain valid.
 
-At each stop, update the manifest through `author-project`, then the tracker and a short session note. Record work performed, author decisions, report and backup paths, open questions, stale propagation, and the exact next action. Follow `author-project`'s navigation-cache contract for session navigation fields and cache refresh. On resume, rederive gates from current evidence rather than treating a pending action as permission to write. Read-only work may continue with an unrelated pending decision; reconcile conflicting writes first.
+At each stop, update the manifest through `author-project`, then the tracker and a short session note using [`../../author-project/assets/session-note-template.md`](../../author-project/assets/session-note-template.md). Follow `author-project`'s navigation-cache contract for cache refresh. On resume, rederive gates from current evidence rather than treating a pending action as permission to write. Read-only work may continue with an unrelated pending decision; reconcile conflicting writes first.
 
 Do not duplicate the manifest's current scope or pending action in the tracker or session note; follow `author-project`'s state and preservation contract for these fields.
 

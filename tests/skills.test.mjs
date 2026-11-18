@@ -299,6 +299,48 @@ test("author-project operation rows expose the installed CLI argument contracts"
   assert.match(operations, /The command always emits JSON without a `--json` option/);
 });
 
+test("shared session notes use one template and compatible UTC filenames", async () => {
+  const [project, readOperations, sharedState, template, readme, zhReadme] = await Promise.all([
+    readFile(path.join(root, "skills/author-project/SKILL.md"), "utf8"),
+    readFile(path.join(root, "skills/author-project/references/read-operations.md"), "utf8"),
+    readFile(path.join(root, "skills/revise-fiction/references/state-and-findings.md"), "utf8"),
+    readFile(path.join(root, "skills/author-project/assets/session-note-template.md"), "utf8"),
+    readFile(path.join(root, "README.md"), "utf8"),
+    readFile(path.join(root, "README.zh-CN.md"), "utf8"),
+  ]);
+
+  assert.match(template, /`<paths\.sessions>\/<YYYY-MM-DDTHHMMSSZ>_<operation>\.md`/);
+  const fields = [
+    "Operation",
+    "Active plan",
+    "Work performed",
+    "Author decisions",
+    "Artifacts",
+    "Open questions",
+    "Stale propagation",
+    "Next action",
+  ];
+  for (const field of fields) assert.match(template, new RegExp(`^- ${field}:`, "m"), field);
+  assert.match(template, /^  - Reports:/m);
+  assert.match(template, /^  - Backups:/m);
+  assert.ok(project.includes("assets/session-note-template.md"));
+  assert.ok(readOperations.includes("../assets/session-note-template.md"));
+  assert.ok(sharedState.includes("../../author-project/assets/session-note-template.md"));
+  assert.ok(readme.includes("(skills/author-project/assets/session-note-template.md)"));
+  assert.ok(zhReadme.includes("(skills/author-project/assets/session-note-template.md)"));
+
+  for (const language of ["en", "zh"]) {
+    const sessions = path.join(root, "examples", `fiction-revision-${language}`, "sessions");
+    const files = await readdir(sessions);
+    assert.ok(files.length > 0);
+    for (const file of files) {
+      assert.match(file, /^\d{4}-\d{2}-\d{2}T\d{6}Z_[a-z0-9-]+\.md$/, file);
+      const note = await readFile(path.join(sessions, file), "utf8");
+      for (const field of fields) assert.match(note, new RegExp(`^- ${field}:`, "m"), `${file}: ${field}`);
+    }
+  }
+});
+
 test("project digest is a generated navigation cache, not another source of truth", async () => {
   const [project, readOperations, existingSetup, startHere] = await Promise.all([
     readFile(path.join(root, "skills/author-project/SKILL.md"), "utf8"),
