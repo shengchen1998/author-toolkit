@@ -134,6 +134,8 @@ Read, validation, status, and navigation-cache procedures live in [`read-operati
 
 ## Record scope
 
+Scope IDs are local to the project manifest and must match `^[A-Za-z0-9][A-Za-z0-9._-]*$`; use a readable value such as `scope-1`.
+
 Record a proposed scope with:
 
 ```bash
