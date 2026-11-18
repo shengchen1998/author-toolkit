@@ -486,6 +486,18 @@ test("setup discloses only the selected project branch", async () => {
   assert.doesNotMatch(newSetup, /existing-project\.md/);
 });
 
+test("new-project setup reports both convergence-dependent entry gates", async () => {
+  const [setup, newSetup] = await Promise.all([
+    readFile(path.join(root, "skills/setup-author-toolkit/SKILL.md"), "utf8"),
+    readFile(path.join(root, "skills/setup-author-toolkit/assets/setup/new-project.md"), "utf8"),
+  ]);
+
+  assert.match(setup, /for `revise-request` and `revise-increment`, apply the selected branch's routing rules for their required scopes and current-draft revision convergence/);
+  assert.match(newSetup, /When existing manuscript is registered, the final setup report must name the registered manuscript root/);
+  assert.match(newSetup, /`revise-request` and `revise-increment` are not currently eligible because their required base scope or previous scope has not been verified/);
+  assert.match(newSetup, /Offer `write-fiction` for continued creation, or `revise-draft` to establish the initial revision scope and reach current-draft revision convergence/);
+});
+
 test("convergence gates run strict execution checks without gating ordinary inspection", async () => {
   const [setup, existingSetup, project, readOperations, state, increment, request, handoff, readme, zhReadme] =
     await Promise.all([
