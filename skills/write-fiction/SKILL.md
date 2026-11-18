@@ -53,7 +53,7 @@ A staged draft may remain while the author uses a revision entry. On return, com
 
 Use the artifact contracts and living state rules in [`references/creation-state.md`](references/creation-state.md). Creation batches, commit journals, coverage units, coverage indexes, review jobs, and reader state are distinct artifacts. Story state is human-readable Markdown with one validated JSON envelope. Accepted batch records and review reports are immutable; current story state and the coverage index are living artifacts.
 
-Shared diagnostic and review reports retain report v2 and finding v2. Read [`../revise-fiction/references/state-and-findings.md`](../revise-fiction/references/state-and-findings.md) before changing findings, approvals, stale evidence, or report files. Do not add creation operations to the closed report v2 stage enum.
+Shared diagnostic and review reports retain report v2 and finding v2. Read only the applicable row and linked sections in [Task-based reading](../revise-fiction/references/state-and-findings.md#task-based-reading) before writing a report, changing finding or approval status, propagating stale evidence, or recording a stopping point. Do not add creation operations to the closed report v2 stage enum.
 
 Validate newly written artifacts with the installed setup skill's `scripts/validate.mjs` options. Record actual coverage and validation results in the session note.
 

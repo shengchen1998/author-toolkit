@@ -50,7 +50,7 @@ Story Bible changes require author confirmation and remain consistent with the a
 
 ## Reports and shared state
 
-Before writing any report or changing finding or approval status, read [`references/state-and-findings.md`](references/state-and-findings.md). Every workflow report is Markdown with exactly one JSON envelope conforming to `<setup-skill-root>/assets/references/report-schema-v2.json` and the finding v2 schema it references. Record `scope_id`, `operation_coverage`, and applicable `subchecks` in `engine.notes`.
+Read only the applicable row and linked sections in [Task-based reading](references/state-and-findings.md#task-based-reading) before writing a report, changing finding or approval status, propagating stale evidence, or recording a stopping point. Every workflow report is Markdown with exactly one JSON envelope conforming to `<setup-skill-root>/assets/references/report-schema-v2.json` and the finding v2 schema it references. Record `scope_id`, `operation_coverage`, and applicable `subchecks` in `engine.notes`.
 
 Prose is blocked while structure is unstable. The author may explicitly override that block for a named scope; record an approved `prose-override` in the shared tracker with the reason, scope, input versions, and unresolved structural state. The override does not make the structure evidence current. A later structural change exhausts it.
 

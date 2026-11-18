@@ -442,7 +442,8 @@ test("existing-project setup uses bounded inspection references and a categorize
   assert.match(project, /For `validate`, read only \[Read and validate\]\(references\/read-operations\.md#read-and-validate\)/);
   assert.match(project, /For `read`, `status`, `check --full`, `check --digest`, `status --digest`, and `check-index`, read \[`references\/read-operations\.md`\]/);
   assert.match(project, /Setup owns new-project registration through `<setup-skill-root>\/scripts\/scaffold-project\.mjs`/);
-  assert.match(project, /For every record or write operation, read \[`references\/operations\.md`\]/);
+  assert.match(project, /### Operation reference routes/);
+  assert.doesNotMatch(project, /For every record or write operation, read \[`references\/operations\.md`\]/);
   assert.doesNotMatch(project, /For every operation, read \[`references\/operations\.md`\]/);
   assert.match(existingSetup, /Once initialization's manifest-schema check passes, perform step 3's entry-file replacement even if later project-state validation fails/);
   assert.match(existingSetup, /Initialization exits 3 for this schema-valid project-validation failure/);
@@ -516,6 +517,54 @@ test("existing-project setup uses bounded inspection references and a categorize
   assert.match(zhReadme, /安装载荷、项目入口文件、稿件范围、执行证据/);
   assert.match(readme, /Three independent `Installation`, `Project state`, and `Strategy gate` states/);
   assert.match(zhReadme, /`Installation`、`Project state`、`Strategy gate` 三项独立状态/);
+});
+
+test("author-project routes operations to targeted reference sections", async () => {
+  const [project, operations, readOperations] = await Promise.all([
+    readFile(path.join(root, "skills/author-project/SKILL.md"), "utf8"),
+    readFile(path.join(root, "skills/author-project/references/operations.md"), "utf8"),
+    readFile(path.join(root, "skills/author-project/references/read-operations.md"), "utf8"),
+  ]);
+  const routes = project.split("### Operation reference routes")[1]?.split("## Invocation boundary")[0];
+  assert.ok(routes);
+  assert.match(routes, /read the \[opening project-operation rules\].*and only the linked sections/);
+  assert.match(routes, /Do not read unrelated operation sections/);
+  assert.match(routes, /\[Digest\]\(references\/read-operations\.md#digest\)/);
+  assert.match(readOperations, /^### Digest$/m);
+
+  const operationNames = [
+    "next-finding-id",
+    "record-findings",
+    "scaffold-report",
+    "coverage-index",
+    "evidence-retention",
+    "review-brief",
+    "set-pending",
+    "record-scope",
+    "record-backup",
+    "complete-write",
+    "record-execution",
+    "reconcile-executions",
+    "record-restore",
+  ];
+  for (const operation of operationNames) {
+    assert.ok(routes.includes(`\`${operation}\``), `Missing reference route for ${operation}`);
+  }
+
+  const headings = new Set(
+    [...operations.matchAll(/^#{1,6} (.+)$/gm)].map((match) =>
+      match[1].toLowerCase().replace(/[^a-z0-9 -]/g, "").replace(/ /g, "-")
+    ),
+  );
+  for (const match of project.matchAll(/references\/operations\.md#([a-z0-9-]+)/g)) {
+    assert.ok(headings.has(match[1]), `Missing operations.md heading for #${match[1]}`);
+  }
+
+  const completeWriteRoute = routes.split("\n").find((line) => line.startsWith("| `complete-write` |"));
+  assert.ok(completeWriteRoute);
+  for (const anchor of ["shared-scope-and-evidence", "tracker-and-approvals", "backup-and-creation-commit", "complete-write"]) {
+    assert.ok(completeWriteRoute.includes(`#${anchor}`), `Complete write must read #${anchor}`);
+  }
 });
 
 test("setup discloses only the selected project branch", async () => {
@@ -623,6 +672,41 @@ test("unrecoverable execution evidence ends at an author decision without waivin
   assert.match(readOperations, /never appends receipts, changes approvals, opens the backup gate, or writes files/);
   assert.match(operations, /do not loop reconciliation or bypass the backup gate/);
   assert.match(existingSetup, /not as a promise that rerunning revision will repair missing evidence/);
+});
+
+test("shared state references use task-based reading", async () => {
+  const [state, reporting, review, ...strategies] = await Promise.all([
+    readFile(path.join(root, "skills/revise-fiction/references/state-and-findings.md"), "utf8"),
+    readFile(path.join(root, "references/workflow-reporting.md"), "utf8"),
+    readFile(path.join(root, "skills/author-review/SKILL.md"), "utf8"),
+    ...["write-fiction", "revise-fiction", "revise-draft", "revise-increment", "revise-request"].map((skill) =>
+      readFile(path.join(root, "skills", skill, "SKILL.md"), "utf8")
+    ),
+  ]);
+
+  assert.match(state, /^## Task-based reading$/m);
+  for (const task of ["Writing a report", "Changing finding status", "Changing approval status", "Propagating stale evidence", "Recording a stopping point"]) {
+    assert.ok(state.includes(`| ${task} |`), `Missing state-reading route for ${task}`);
+  }
+  assert.match(reporting, /only the applicable row and linked sections under `Task-based reading`/);
+  assert.match(review, /state-and-findings\.md#report-envelope/);
+  assert.match(review, /state-and-findings\.md#finding-identity-across-reruns/);
+
+  const headings = new Set(
+    [...state.matchAll(/^#{1,6} (.+)$/gm)].map((match) =>
+      match[1].toLowerCase().replace(/[^a-z0-9 -]/g, "").replace(/ /g, "-")
+    ),
+  );
+  for (const match of state.matchAll(/\]\(#([a-z0-9-]+)\)/g)) {
+    assert.ok(headings.has(match[1]), `Missing state-and-findings.md heading for #${match[1]}`);
+  }
+  for (const strategy of strategies) {
+    assert.match(strategy, /Read only the applicable row and linked sections in \[Task-based reading\]\([^\n]*state-and-findings\.md#task-based-reading\)/);
+    assert.doesNotMatch(strategy, /Before writing any report or changing finding or approval status/);
+  }
+  for (const match of [state, ...strategies, review].join("\n").matchAll(/state-and-findings\.md#([a-z0-9-]+)/g)) {
+    assert.ok(headings.has(match[1]), `Missing state-and-findings.md heading for #${match[1]}`);
+  }
 });
 
 test("workflow reporting pointers do not form a cycle", async () => {

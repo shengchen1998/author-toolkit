@@ -2,6 +2,18 @@
 
 Use the controlled workflow terminology in `<setup-skill-root>/assets/references/terminology.md` for shared names, contract values, and their boundaries.
 
+## Task-based reading
+
+Read only the rows needed for the current task and their linked sections. Direct operation and author-gate pointers may require additional sections.
+
+| Task | Required sections |
+|---|---|
+| Writing a report | [Report envelope](#report-envelope); [Finding identity across reruns](#finding-identity-across-reruns); [Scope and input currency](#scope-and-input-currency); add [Coverage units and synthesis](#coverage-units-and-synthesis) when creating or reusing coverage units or a synthesis |
+| Changing finding status | [Review brief and decision reuse](#review-brief-and-decision-reuse); [Living tracker](#living-tracker); [Author decision loop](#author-decision-loop); [Scope and input currency](#scope-and-input-currency); [Stale propagation](#stale-propagation) |
+| Changing approval status | [Author approvals](#author-approvals); [Author decision loop](#author-decision-loop); [Scope and input currency](#scope-and-input-currency); [Stale propagation](#stale-propagation) |
+| Propagating stale evidence | [Scope and input currency](#scope-and-input-currency); [Stale propagation](#stale-propagation); [Evidence reuse across skills](#evidence-reuse-across-skills); [Coverage units and synthesis](#coverage-units-and-synthesis) |
+| Recording a stopping point | [Pending actions and session writes](#pending-actions-and-session-writes) |
+
 ## Report envelope
 
 Use `<setup-skill-root>/assets/references/report-schema-v2.json` as the authoritative envelope contract and resolve its reference to `finding-schema-v2.json`. Read both schemas before writing. Do not infer v2 from the legacy `finding-schema.json`.
