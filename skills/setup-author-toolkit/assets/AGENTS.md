@@ -8,7 +8,7 @@ Read each semantic skill's installed `SKILL.md` and applicable references, then 
 
 For author-facing entries, use the current host's skill command or skill picker with the exact unqualified registered skill name, such as `write-fiction`.
 
-`ask-author`, `setup-author-toolkit`, `write-fiction`, `revise-fiction`, `revise-draft`, `revise-increment`, and `revise-request` are explicit author entry points. When one is needed, display its exact host command, or its exact registered skill name when the host uses only a skill picker, and wait for the author; do not start it as an internal callee. Setup, routing, validation, and handoff restoration never start a strategy automatically. Read the installed `ask-author` skill's `SKILL.md` before selecting among shared strategies or independent skills; when the route is unclear, show its host command or registered skill name and the relevant choices.
+`ask-author`, `setup-author-toolkit`, `write-fiction`, `revise-fiction`, `revise-draft`, `revise-increment`, and `revise-request` are explicit author entry points. When one is needed, display its exact host command, or its exact registered skill name when the host uses only a skill picker, and wait for the author; do not start it as an internal callee. Setup, routing, validation, and handoff restoration never start a strategy automatically. When the route is unclear, show the `ask-author` host command or registered skill name and wait; `ask-author` owns strategy selection.
 
 For shared fiction creation or revision, locate `.author-toolkit/project.json`:
 

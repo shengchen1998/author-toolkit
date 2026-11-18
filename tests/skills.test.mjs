@@ -215,6 +215,7 @@ test("author-facing entries use host-independent skill invocation", async () => 
   }
   assert.match(setup, /current host's skill command or skill picker/);
   assert.match(setup, /Do not add a qualifier to these unqualified registered skill names/);
+  assert.match(setup, /Read only the \*\*Author-facing commands\*\* table in `\.\.\/ask-author\/SKILL\.md` and use its \*\*Need\*\* labels as the descriptions for the five strategy entries/);
   assert.match(ask, /\| Need \| Registered skill \|/);
   assert.match(instructions, /current host's skill command or skill picker/);
   assert.match(instructions, /`write-fiction`/);
@@ -241,7 +242,8 @@ test("project instructions defer detailed routing and write procedures", async (
   ]);
 
   assert.match(instructions, /Match the author's language/);
-  assert.match(instructions, /Read the installed `ask-author` skill's `SKILL\.md` before selecting among shared strategies or independent skills/);
+  assert.match(instructions, /When the route is unclear, show the `ask-author` host command or registered skill name and wait; `ask-author` owns strategy selection/);
+  assert.doesNotMatch(instructions, /Read the installed `ask-author` skill's `SKILL\.md` before selecting/);
   assert.match(instructions, /Manuscript edits require explicit approval of the exact operation, scope, paths, actions, and input versions/);
   assert.match(instructions, /Restores require separate approval/);
   assert.match(instructions, /Follow the active strategy and `author-project` for complete write procedures/);
