@@ -215,7 +215,7 @@ test("author-facing entries use host-independent skill invocation", async () => 
   }
   assert.match(setup, /current host's skill command or skill picker/);
   assert.match(setup, /Do not add a qualifier to these unqualified registered skill names/);
-  assert.match(setup, /Read only the \*\*Author-facing commands\*\* table in `\.\.\/ask-author\/SKILL\.md` and use its \*\*Need\*\* labels as the descriptions for the five strategy entries/);
+  assert.match(setup, /Read `\.\.\/ask-author\/SKILL\.md` once and use only the \*\*Need\*\* labels from its \*\*Author-facing commands\*\* table as the descriptions for the five strategy entries/);
   assert.match(ask, /\| Need \| Registered skill \|/);
   assert.match(instructions, /current host's skill command or skill picker/);
   assert.match(instructions, /`write-fiction`/);
@@ -346,8 +346,7 @@ test("setup and routine navigation keep operational history listings bounded", a
   assert.match(setup, /^1\. Check only whether `<project-root>\/\.author-toolkit\/project\.json` exists\./m);
   assert.match(existingSetup, /For an existing v3\.1 manifest, run `node <setup-skill-root>\/scripts\/setup-report\.mjs capture --report-store <report-store> --kind initialize -- --project-root <project-root>` for the bounded projection/);
   assert.match(setup, /print `payload-manifest\.json` or the complete manifest, or emit complete session or backup listings/);
-  assert.match(setup, /inspect-root\.mjs --project-root <project-root> --json/);
-  assert.match(setup, /the existing-project branch goes directly to initialization without manuscript or historical-directory discovery/);
+  assert.doesNotMatch(setup, /inspect-root\.mjs/);
   assert.match(newSetup, /at most 12 candidate manuscript paths with an omitted count/);
   assert.match(newSetup, /recursive historical regular-file counts without historical artifact paths/);
   assert.match(newSetup, /Run `node <setup-skill-root>\/scripts\/inspect-root\.mjs --project-root <project-root> --json`/);
