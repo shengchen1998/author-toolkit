@@ -4,20 +4,18 @@ This file guides coding agents working on the Author Toolkit repository. `CLAUDE
 
 ## Project overview
 
-Author Toolkit 3.1.0 contains 16 writing skills and Node.js tools for deterministic contracts. The production runtime is the host agent interpreting `skills/*/SKILL.md` and selected references. Node.js handles contract tests, JSON Schema validation, manuscript inventory, project-state inspection, and shared-state transactions; there is no server, database, frontend, application build, or long-running process.
+Author Toolkit 3.1.0 contains 16 writing skills and Node.js tools for deterministic contracts. The host agent interprets `skills/*/SKILL.md` and selected references; Node.js handles contract tests, JSON Schema validation, manuscript inventory, project-state inspection, and shared-state transactions. There is no server, database, frontend, application build, or long-running process.
 
-The shared workflows support one single-book fiction project per manifest, Markdown or plain-text manuscripts, and English or Chinese as the core workflow languages. Narrative nonfiction uses the independent `narrative-nonfiction` skill; multi-book manifests are outside the supported 3.1 workflows.
+Shared workflows support one single-book fiction project per manifest, Markdown or plain-text manuscripts, and English or Chinese. Narrative nonfiction uses the independent `narrative-nonfiction` skill; multi-book manifests are unsupported in 3.1.
 
-`package.json` and `package-lock.json` define and lock the private native-ESM package, which requires Node.js 22+ and uses Ajv, ajv-formats, and esbuild for development. The generic skills installer requires Node.js 22.20+. No other language toolchains are used.
+The private native-ESM package requires Node.js 22+ (22.20+ for the generic skills installer) and uses Ajv, ajv-formats, and esbuild for development; see `package.json` and `package-lock.json`. No other language toolchains are used.
 
 ## Repository map
 
 - `skills/`: the 16 skill packages. Each has a `SKILL.md`; progressive-disclosure references, templates, and assets live inside the owning skill.
 - `scripts/`: repository CLI entry points. `scripts/lib/` contains their shared implementation, and `scripts/lib/index.mjs` is the library export surface.
-- `references/`: canonical development sources for shared schemas and workflow contracts. This directory is not an installed runtime dependency.
-- `skills/setup-author-toolkit/assets/references/`: installed mirror of the shared runtime contracts.
-- `skills/setup-author-toolkit/scripts/`: generated, self-contained installed CLI mirror. Its bundled schema module includes the runtime packages needed by a writing project.
-- `skills/setup-author-toolkit/assets/payload-manifest.json`: authoritative installed-payload inventory and SHA-256 hashes.
+- `references/`: canonical shared schemas and workflow contracts; not an installed runtime dependency.
+- `skills/setup-author-toolkit/`: installed runtime. `assets/references/` mirrors shared contracts; `scripts/` is the generated, self-contained CLI mirror with bundled runtime packages; `assets/payload-manifest.json` records payload files and SHA-256 hashes.
 - `skills/author-project/assets/project-template.json`: neutral starting manifest for a new v3.1 project.
 - `examples/fiction-revision-en/` and `examples/fiction-revision-zh/`: handwritten v3.1 validation fixtures, not model-run evidence.
 - `tests/`: Node.js contract, CLI, deployment, language-support, and scale tests. `tests/helpers.mjs` supplies common fixture access.
@@ -69,12 +67,12 @@ Use each script's `--help` output as the exact argument contract. Repository scr
 - `doctor.mjs` checks installation; `--require-sibling author-project` checks the seven setup files, not project state.
 - `inspect-root.mjs --project-root DIR` performs bounded, read-only new-project discovery without following symlinks or reading file contents. Existing v3.1 projects use `initialize.mjs`, not repeated root discovery.
 - `install-entry-files.mjs --project-root DIR` verifies the payload and atomically installs both root agent entries. It preserves correct entries and any existing `START_HERE.md`, and rejects directories and special files.
-- `setup-report.mjs` creates a private temporary report store, captures the existing doctor, initialize-or-scaffold, entry-file, and final-check CLIs while relaying their JSON and exit statuses, and renders the deterministic four-section setup report without another project inspection. `render` removes the temporary store; `cleanup` handles early stops. Host-specific strategy commands and current-draft revision convergence routing remain semantic setup decisions.
+- `setup-report.mjs` captures doctor, initialize-or-scaffold, entry-file, and final-check results in a private temporary store, relays their JSON and exit statuses, and renders the deterministic four-section setup report without another project inspection. `render` removes the store; `cleanup` handles early stops. Host-specific strategy commands and current-draft revision convergence routing remain semantic setup decisions.
 - `scaffold-project.mjs --project-root DIR [--author-project-root DIR]` is the sole new-project scaffolding implementation. It resolves the sibling skill's four templates by default, accepts an explicit root for nonstandard layouts, creates only missing content under the shared write lock, refuses an existing manifest, applies one timestamp, and validates the complete project before succeeding.
 - `initialize.mjs --project-root DIR` is the sole existing-project initialization implementation. It preserves the manifest, history, and existing paths, restores missing registered directories, and creates only a missing backup index under the shared write lock. A file where a required directory belongs is preserved and fails validation. Project-state failures return a bounded `recorded_unverified` diagnosis (exit 3); invalid schemas create nothing (exit 1); argument errors exit 2.
 - `check.mjs --project-root DIR` aliases `preflight.mjs`: payload and entry-file checks, project validation, and status. Ordinary status uses current scope and leaves unverified approvals non-blocking; standalone `--require-execution` requires a scope ID. `--full` enforces strict execution and read-only evidence validation. Missing review brief or coverage index and zero selected review jobs are non-blocking `not_applicable`; invalid existing or missing linked artifacts and a selected scope without an immutable evidence report fail. `--digest` is a separate post-check opt-in, incompatible with `--full` and `--diagnose`; with `--json`, it refreshes the cache and returns the validated bounded manifest projection. `--diagnose` returns bounded read-only diagnoses and an execution-recovery preview without repairs; `--details` restores complete JSON details.
 
-Setup captures its final `check --diagnose` through `setup-report.mjs`, which verifies the installed payload and both project agent entries without another doctor call or requiring `START_HERE.md` to match. The renderer consumes the four captured results rather than asking the model to assemble the report fields. Entry-file failures fail preflight and prevent digest generation but do not stop project inspection. Installation, project state, and strategy gate are independent; setup assumes the five strategy entries are installed without checking host visibility.
+The final `check --diagnose` verifies the installed payload and both project agent entries without another doctor call or requiring `START_HERE.md` to match; the renderer consumes only the four captured results. Entry-file failures fail preflight and digest generation but not project inspection. Installation, project state, and strategy gate are independent; setup assumes the five strategy entries are installed without checking host visibility.
 
 ### Project inspection, validation, and writes
 
