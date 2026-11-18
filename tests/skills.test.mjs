@@ -283,6 +283,22 @@ test("backup and handoff writes resolve registered project paths", async () => {
   assert.match(review, /paths\.handoffs/);
 });
 
+test("author-project operation rows expose the installed CLI argument contracts", async () => {
+  const [project, operations] = await Promise.all([
+    readFile(path.join(root, "skills/author-project/SKILL.md"), "utf8"),
+    readFile(path.join(root, "skills/author-project/references/operations.md"), "utf8"),
+  ]);
+  const commands = [
+    "node <setup-skill-root>/scripts/status.mjs --manifest <project-root>/.author-toolkit/project.json",
+    "node <setup-skill-root>/scripts/check.mjs --project-root <project-root> --full [--scope-id <scope-id>]",
+    "node <setup-skill-root>/scripts/check.mjs --project-root <project-root> --digest --json",
+    "node <setup-skill-root>/scripts/project-digest.mjs --project-root <project-root>",
+  ];
+  for (const command of commands) assert.ok(project.includes(command), command);
+  assert.match(operations, /Both forms always emit JSON without a `--json` option/);
+  assert.match(operations, /The command always emits JSON without a `--json` option/);
+});
+
 test("project digest is a generated navigation cache, not another source of truth", async () => {
   const [project, readOperations, existingSetup, startHere] = await Promise.all([
     readFile(path.join(root, "skills/author-project/SKILL.md"), "utf8"),
@@ -515,7 +531,7 @@ test("convergence gates run strict execution checks without gating ordinary insp
       readFile(path.join(root, "README.zh-CN.md"), "utf8"),
     ]);
 
-  assert.match(project, /current-draft revision convergence or previous\/base-scope execution gate, target scope ID and `--require-execution`/);
+  assert.match(project, /add `--scope-id <target-scope-id> --require-execution` for a current-draft revision convergence or previous\/base-scope execution gate/);
   assert.match(existingSetup, /default ordinary status uses the current scope ID/);
   assert.match(existingSetup, /Before relying on a recorded current-draft revision convergence statement/);
   assert.match(existingSetup, /a project-validation failure prevents the later status and execution-gate stages/);

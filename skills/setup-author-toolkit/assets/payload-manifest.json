@@ -159,7 +159,7 @@
     },
     {
       "path": "scripts/lib/digest.mjs",
-      "sha256": "09708c509f80cee11f232bb37d7d19168ac8d8239ec3fd45cd4f7647680353c0"
+      "sha256": "46e0b98e51c836000a77b5950c0d0e586bbdecdeab92b6014fad0d517bc09a42"
     },
     {
       "path": "scripts/lib/evidence-inspection.mjs",
@@ -355,7 +355,7 @@
     },
     {
       "path": "scripts/status.mjs",
-      "sha256": "04a384c76883ea4d35d613797d90ae9a8a09d6f167ee3f96f01a6ef93d00be1f"
+      "sha256": "7949bb490aa0a489cc331ebf4c45e371ae1ae44744efd0a0d9d5543e3ca91e68"
     },
     {
       "path": "scripts/terminology.mjs",

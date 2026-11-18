@@ -495,7 +495,7 @@ test("status reports bounded recorded blockers without implying evidence complet
   assert.match(text.stdout, /2 more; use --json for the complete list/);
   assert.match(text.stdout, /Blocked pending action: structure \(scope-old\)/);
   assert.match(text.stdout, /Operation-specific evidence: not evaluated/);
-  assert.match(text.stdout, /Navigation: use author-project status --digest and PROJECT_STATE\.md/);
+  assert.match(text.stdout, /Navigation: use author-project status --digest \(project-digest\.mjs --project-root <project-root>\) and PROJECT_STATE\.md/);
   assert.ok(text.stdout.trimEnd().split("\n").length <= 20);
   assert.ok(text.stdout.split("\n").every((line) => [...line].length <= 400));
 

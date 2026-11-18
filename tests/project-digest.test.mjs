@@ -122,6 +122,7 @@ test("project digest generates a bounded navigation cache from shared state", as
   assert.ok(lines.length >= 20 && lines.length <= 50, `${lines.length} lines`);
   assert.match(output, /navigation cache/i);
   assert.match(output, /manifest, tracker, and current evidence remain authoritative/i);
+  assert.match(output, /> Regenerate with `author-project status --digest` \(`project-digest\.mjs --project-root <project-root>`\); do not hand-maintain this file\./);
   assert.match(output, /Generated at: `\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z`/);
   assert.match(output, /Validation at generation: passed \(project validation only; not an execution gate or current-draft revision convergence claim\)/);
   assert.match(output, /Freshness: generation-time snapshot only; rerun preflight before reuse\./);

@@ -74,7 +74,7 @@ function outputText(result) {
     `Blocked pending action: ${blocked ? `${blocked.operation} (${blocked.scope_id}): ${concise(blocked.reason)}` : result.execution.scope_id ? "none recorded in selected scope" : "none recorded"}`,
   );
   console.log("Operation-specific evidence: not evaluated; use validate and the active strategy's operation gates");
-  console.log("Navigation: use author-project status --digest and PROJECT_STATE.md");
+  console.log("Navigation: use author-project status --digest (project-digest.mjs --project-root <project-root>) and PROJECT_STATE.md");
 }
 
 function validationMessage(result) {

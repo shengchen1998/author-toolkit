@@ -163,7 +163,7 @@ export async function renderProjectDigest({ manifest, tracker, latestReport, lat
     "# Project State",
     "",
     "> Generated navigation cache. The manifest, tracker, and current evidence remain authoritative.",
-    "> Regenerate with `author-project status --digest`; do not hand-maintain this file.",
+    "> Regenerate with `author-project status --digest` (`project-digest.mjs --project-root <project-root>`); do not hand-maintain this file.",
     `- Generated at: ${code(new Date().toISOString())}`,
     "- Validation at generation: passed (project validation only; not an execution gate or current-draft revision convergence claim).",
     "- Freshness: generation-time snapshot only; rerun preflight before reuse.",

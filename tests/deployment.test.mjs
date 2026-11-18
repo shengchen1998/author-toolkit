@@ -693,6 +693,7 @@ test("setup carries self-contained preflight, validation, state, range, and inst
   const cache = await readFile(path.join(project, "PROJECT_STATE.md"), "utf8");
   assert.ok(cache.trimEnd().split("\n").length <= 50);
   assert.match(cache, /Generated navigation cache/);
+  assert.match(cache, /> Regenerate with `author-project status --digest` \(`project-digest\.mjs --project-root <project-root>`\); do not hand-maintain this file\./);
   assert.match(cache, /Generated at: `\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z`/);
   assert.match(cache, /Validation at generation: passed/);
   assert.match(cache, /rerun preflight before reuse/);
