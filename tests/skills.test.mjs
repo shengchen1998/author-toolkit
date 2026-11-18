@@ -496,6 +496,7 @@ test("new-project setup reports both convergence-dependent entry gates", async (
   assert.match(setup, /for `revise-request` and `revise-increment`, apply the selected branch's routing rules for their required scopes and current-draft revision convergence/);
   assert.match(newSetup, /When existing manuscript is registered, the final setup report must name the registered manuscript root/);
   assert.match(newSetup, /`revise-request` and `revise-increment` are not currently eligible because their required base scope or previous scope has not been verified/);
+  assert.match(newSetup, /When the five strategy entries are presented in a table, include a status column and mark the `revise-request` and `revise-increment` rows as `not currently eligible`, keeping that status in each row rather than only in surrounding prose/);
   assert.match(newSetup, /Offer `write-fiction` for continued creation, or `revise-draft` to establish the initial revision scope and reach current-draft revision convergence/);
 });
 
