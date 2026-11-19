@@ -791,6 +791,11 @@ test("revision strategies share one project and keep distinct evidence gates", a
   assert.match(state, /`pending_action\.reason`/);
   assert.match(draft, /normally confirmation of the proposed scope/);
   assert.match(draft, /persist the proposed `draft-baseline` artifact/);
+  const draftBaselineRoute = draft.match(/^\| `draft-baseline` \| (.+) \|$/m)?.[1];
+  assert.ok(draftBaselineRoute);
+  assert.match(draftBaselineRoute, /^Execute the local \[Draft baseline\]\(references\/stage-gates\.md#2-draft-baseline\) procedure with `assets\/draft-baseline-template\.md`/);
+  assert.match(draftBaselineRoute, /optional editorial reference: \[developmental editing\]\(\.\.\/fiction-workshop\/references\/developmental-editing\.md\)/);
+  assert.doesNotMatch(draftBaselineRoute, /`fiction-workshop`/);
   assert.match(draftGates, /\.author-toolkit\/proposals\/<scope-id>-draft-baseline\.md/);
   assert.match(draftGates, /`pending_action\.artifacts`/);
   assert.match(draftGates, /non-authoritative working artifact/);

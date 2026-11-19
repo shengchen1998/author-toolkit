@@ -29,7 +29,7 @@ For each diagnostic callee, supply the operation identifier, destination report 
 | Operation | Delegation |
 |---|---|
 | `intake` | `author-project` plus manuscript inventory |
-| `draft-baseline` | `fiction-workshop`, current-text summary using the local baseline template |
+| `draft-baseline` | Execute the local [Draft baseline](references/stage-gates.md#2-draft-baseline) procedure with `assets/draft-baseline-template.md`; optional editorial reference: [developmental editing](../fiction-workshop/references/developmental-editing.md) |
 | `diagnostics` | `fiction-workshop` Developmental Editor, scene and chapter scope only |
 | `characters` | Character Consultant and Continuity Tracker; `character-archetypes` when requested or when profiles already exist |
 | `revision-plan` | Consolidate accepted findings using the shared plan template |
