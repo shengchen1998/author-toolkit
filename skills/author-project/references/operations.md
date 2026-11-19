@@ -77,6 +77,8 @@ node <setup-skill-root>/scripts/scaffold-report.mjs --manifest <project-root>/.a
 
 The body file supplies the human-readable report and its `Language coverage` section without fenced code blocks. The envelope file supplies the actual report v2 fields and findings; `created_at` may come from either the envelope or the matching `--created-at` option. When `findings` is omitted, the CLI supplies `findings: []` for a clean report. It validates the complete report before writing and publishes it create-only through a verified temporary sibling. It rejects invalid findings, missing or invalid inputs and notes, evidence-semantic failures, a destination outside the registered reports path, special-file inputs, and every existing destination without writing a report. Argument errors exit 2; validation and filesystem failures exit 1.
 
+When the caller creates body or envelope files solely for the invocation, it places them at unique paths beneath `<project-root>/.author-toolkit/.tmp/`. Cleanup belongs to the caller: remove those invocation-owned files after either success or failure and preserve pre-existing or reusable inputs.
+
 The empty array is a structural default for a completed clean review, not evidence that the reviewer found nothing. The semantic skill supplies the actual body, findings, input versions, engine notes, scope, coverage, and parent-child links; the CLI does not infer them or update review jobs, coverage indexes, manuscript hashes, or downstream syntheses. Only a successfully scaffolded report may be cited by a new coverage registration or synthesis.
 
 ## Coverage index
