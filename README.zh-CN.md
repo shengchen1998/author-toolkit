@@ -371,8 +371,9 @@ manifest 投影, 并仅在安装通过后刷新导航缓存. `preflight.mjs` 接
   使用[会话笔记模板](skills/author-project/assets/session-note-template.md)确定已登记会话路径、UTC 文件名和固定导航字段.
   旧 tracker 中的 `Next action` 保留为回退. 最新文件优先使用文件名开头的 UTC 时间戳,
   无时间戳文件使用修改时间. 最新报告扫描排除可丢弃的 `review_brief.md` 决定摘要.
-  Read next 部分指向 `author-project status` 以查看已记录阻塞和执行证据,
-  并指向 `validate` 以检查当前哈希和缺失路径. 未由缓存链接的注册报告和会话是按需读取的历史记录,
+  Targeted follow-up after routine `check --digest` 部分仅在需要针对性后续检查时,
+  指向 `author-project status` 以查看已记录阻塞和执行证据, 并指向 `validate` 以检查当前哈希和缺失路径.
+  未由缓存链接的注册报告和会话是按需读取的历史记录,
   不是废弃产物; 报告仍可能是可复用证据. `status` 不把缓存作为数据源.
 - `reports/`: 诊断上下文和机器可读结果. 重新审计生成新报告, 不覆盖已交付报告. 可复用
   覆盖单元和持续更新的覆盖索引也保存在登记的 reports 路径下. `review_brief.md` 是从 tracker 的

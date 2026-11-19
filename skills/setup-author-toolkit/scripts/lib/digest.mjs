@@ -171,7 +171,7 @@ export async function renderProjectDigest({ manifest, tracker, latestReport, lat
     `- Next action: ${nextAction}`,
     ...evidenceLinks,
     "",
-    "## Read next",
+    "## Targeted follow-up after routine `check --digest`",
     "",
     "- Manifest: use `author-project read` for the bounded manifest projection and scope hashes.",
     "- Status: use `author-project status` for recorded blockers and execution evidence.",

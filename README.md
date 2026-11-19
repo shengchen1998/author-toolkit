@@ -625,9 +625,10 @@ startup. Use `set-pending.mjs --help` for validated pending-action updates, and
   A legacy tracker `Next action` remains a fallback. Latest-file
   selection prefers UTC filename timestamps and uses modification time for
   undated files. The report scan excludes the disposable `review_brief.md`
-  decision summary. Its Read next section points to `author-project status` for
-  recorded blockers and execution evidence, and to `validate` for current hashes
-  and missing paths. It identifies unlinked registered reports and sessions as
+  decision summary. Its Targeted follow-up after routine `check --digest` section
+  points to `author-project status` for recorded blockers and execution evidence,
+  and to `validate` for current hashes and missing paths only when targeted
+  follow-up is needed. It identifies unlinked registered reports and sessions as
   historical records for targeted reading, not obsolete artifacts; reports may
   remain reusable evidence. Status does not use the cache as a data source.
 - `reports/` preserves diagnostic context and machine-readable results. A rerun

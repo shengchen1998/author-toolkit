@@ -159,7 +159,7 @@
     },
     {
       "path": "scripts/lib/digest.mjs",
-      "sha256": "a1917e4c3a0438301e6aace28a8ea37a33035b188b996d8527e343c64f705628"
+      "sha256": "74cea9657e8771bec7cb76787a0f4981ab54279542b3dae5f40db1e8f9f19aaa"
     },
     {
       "path": "scripts/lib/evidence-inspection.mjs",

@@ -137,6 +137,7 @@ test("project digest generates a bounded navigation cache from shared state", as
   assert.match(output, /Coverage index: none recorded/);
   assert.match(output, /Review jobs: none recorded \(recorded pointers, evidence not evaluated\)/);
   assert.match(output, /Next action: 确认 DIAG-001。 \(recorded; strategy gates not evaluated\)/);
+  assert.match(output, /## Targeted follow-up after routine `check --digest`/);
   assert.match(output, /Tracker: `audit-tracker.md` -> `## Findings`, `## Audit runs`, `## Approved decisions`/);
   assert.match(output, /Status: use `author-project status` for recorded blockers and execution evidence\./);
   assert.match(output, /Validation: use `author-project validate` for current hashes and missing paths\./);
