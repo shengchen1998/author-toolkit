@@ -16,13 +16,13 @@ Read only the rows needed for the current task and their linked sections. Direct
 
 ## Report envelope
 
-Use `<setup-skill-root>/assets/references/report-schema-v2.json` as the authoritative envelope contract and resolve its reference to `finding-schema-v2.json`. Read both schemas before writing. Do not infer v2 from the legacy `finding-schema.json`.
+Use `<setup-skill-root>/assets/references/report-schema-v2.json` as the authoritative envelope contract and resolve its reference to `finding-schema-v2.json`. Read both schemas before supplying a complete envelope without a preset. With a preset, the CLI applies the report envelope contract; read `finding-schema-v2.json` only when supplying findings rather than the clean-report default. Do not infer v2 from the legacy `finding-schema.json`.
 
 Write each report beneath the registered shared `reports/` path using an operation directory and a unique UTC-stamped filename. Include human-readable context, a `Language coverage` heading, and exactly one fenced `json` block containing one report v2 object.
 
-Use `author-project scaffold-report` to assemble and validate the complete report before its create-only publication. Supply the body and all actual envelope fields; the CLI supplies `findings: []` when that field is omitted for a clean report. Do not hand-assemble the envelope or manually append findings to the immutable result. The scaffold does not establish actual coverage, input currency, or synthesis dependencies.
+Use `author-project scaffold-report` to assemble and validate the complete report before its create-only publication. For a report over current-scope manuscript, supply `--preset <stage>` and `--scope-id <id>`; repeat `--input <path>` to select scope files or omit it to select all. The preset supplies `schema_version`, `stage`, manifest `language`, recorded scope SHA-256 inputs, and `scope_id` in `engine.notes`. The smaller envelope still supplies `report_id`, `audit`, `skill`, actual engine details and coverage notes, any additional non-scope `inputs`, and findings. Without a preset, supply all actual envelope fields. The CLI supplies `findings: []` when that field is omitted for a clean report. Do not hand-assemble the final envelope or manually append findings to the immutable result. The scaffold does not establish actual coverage, input currency, or synthesis dependencies.
 
-Populate the actual v2 fields:
+Populate the actual v2 fields not supplied by the selected preset:
 
 - `skill.name` and `skill.version` identify the executing skill; use its declared version or `unversioned`.
 - `stage` identifies the operation, not the orchestration skill that invoked it. Valid project operations are `intake`, `story-bible`, `draft-baseline`, `structure`, `characters`, `diagnostics`, `revision-plan`, `chapter-revision`, `prose`, `ai-cleanup`, `current-scope-review`, and `final-review`.

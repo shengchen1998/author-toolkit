@@ -525,6 +525,8 @@ test("existing-project setup uses bounded inspection references and a categorize
   assert.match(operations, /## Scaffold report/);
   assert.match(operations, /scaffold-report\.mjs --manifest/);
   assert.match(operations, /When `findings` is omitted, the CLI supplies `findings: \[\]`/);
+  assert.match(operations, /--preset <stage> --scope-id <scope-id>/);
+  assert.match(operations, /additional non-scope `inputs`/);
   assert.match(project, /\| `coverage-index` \|/);
   assert.match(operations, /## Coverage index/);
   assert.match(operations, /coverage-index\.mjs --manifest/);

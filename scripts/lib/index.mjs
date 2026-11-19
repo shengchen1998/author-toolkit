@@ -83,6 +83,7 @@ export {
   validateMarkdownReport,
 } from "./markdown.mjs";
 export {
+  REPORT_STAGES,
   validateCoverageIndexSchema,
   validateCoverageUnitSchema,
   validateCoverageUnitSchema as validateCoverageUnit,

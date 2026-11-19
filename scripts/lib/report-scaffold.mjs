@@ -3,7 +3,11 @@ import { copyFile, lstat, mkdir, readFile, rm, writeFile } from "node:fs/promise
 import path from "node:path";
 import { randomUUID } from "node:crypto";
 
-import { validateEvidenceReport, validateMarkdownReport } from "./markdown.mjs";
+import {
+  reportEvidenceValue,
+  validateEvidenceReport,
+  validateMarkdownReport,
+} from "./markdown.mjs";
 import { validateRelativePath } from "./schemas.mjs";
 
 function reportError(message) {
@@ -40,6 +44,69 @@ export function scaffoldReport({ body, envelope, createdAt }) {
       : validateMarkdownReport(markdown),
   );
   return { markdown, envelope: validation.envelope };
+}
+
+export function applyReportPreset({ manifest, envelope, preset, scopeId, inputPaths = [] }) {
+  const scope = manifest.current_scope;
+  if (!scope) throw reportError("report preset requires a current scope in the manifest");
+  if (scope.scope_id !== scopeId) {
+    throw reportError("--scope-id must match the manifest's current scope");
+  }
+
+  const scopeFiles = new Map(scope.files.map((file) => [file.path, file]));
+  const selectedPaths = inputPaths.length > 0 ? inputPaths : scope.files.map((file) => file.path);
+  const seen = new Set();
+  const scopeInputs = selectedPaths.map((inputPath) => {
+    if (!validateRelativePath(inputPath).valid) {
+      throw reportError("--input must be a portable project-relative path");
+    }
+    if (seen.has(inputPath)) throw reportError(`duplicate report input: ${inputPath}`);
+    seen.add(inputPath);
+    const file = scopeFiles.get(inputPath);
+    if (!file) throw reportError(`--input is not in the current scope: ${inputPath}`);
+    return { path: file.path, version: file.sha256, version_type: "sha256" };
+  });
+
+  const additionalInputs = envelope.inputs ?? [];
+  if (!Array.isArray(additionalInputs)) {
+    throw reportError("envelope.inputs must be an array of additional inputs with --preset");
+  }
+  for (const input of additionalInputs) {
+    if (input && typeof input === "object" && typeof input.path === "string") {
+      if (seen.has(input.path)) throw reportError(`duplicate report input: ${input.path}`);
+      seen.add(input.path);
+    }
+  }
+
+  const generated = {
+    schema_version: "2.0.0",
+    stage: preset,
+    language: manifest.language,
+  };
+  for (const [field, value] of Object.entries(generated)) {
+    if (field in envelope && envelope[field] !== value) {
+      throw reportError(`envelope.${field} conflicts with --preset`);
+    }
+  }
+
+  let engine = envelope.engine;
+  if (engine && typeof engine === "object" && !Array.isArray(engine) && typeof engine.notes === "string") {
+    const recordedScope = reportEvidenceValue(engine.notes, "scope_id");
+    if (recordedScope && recordedScope !== scopeId) {
+      throw reportError("envelope.engine.notes scope_id conflicts with --scope-id");
+    }
+    engine = {
+      ...engine,
+      notes: recordedScope ? engine.notes : `scope_id=${scopeId}; ${engine.notes}`,
+    };
+  }
+
+  return {
+    ...envelope,
+    ...generated,
+    inputs: [...scopeInputs, ...additionalInputs],
+    ...(engine ? { engine } : {}),
+  };
 }
 
 export function resolveReportDestination(projectRoot, manifest, destination) {
@@ -82,6 +149,9 @@ export async function writeScaffoldedReport({
   bodyFile,
   envelopeFile,
   createdAt,
+  preset,
+  scopeId,
+  inputPaths,
 }) {
   const { reportsRoot, target } = resolveReportDestination(projectRoot, manifest, destination);
   await Promise.all([assertAbsent(target), assertRegularInput(bodyFile), assertRegularInput(envelopeFile)]);
@@ -105,7 +175,10 @@ export async function writeScaffoldedReport({
   if ("created_at" in envelope && createdAt !== undefined && envelope.created_at !== createdAt) {
     throw reportError("--created-at conflicts with envelope.created_at");
   }
-  const result = scaffoldReport({ body, envelope, createdAt });
+  const resolvedEnvelope = preset
+    ? applyReportPreset({ manifest, envelope, preset, scopeId, inputPaths })
+    : envelope;
+  const result = scaffoldReport({ body, envelope: resolvedEnvelope, createdAt });
 
   await assertAbsent(target);
   await mkdir(path.dirname(target), { recursive: true });

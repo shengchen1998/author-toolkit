@@ -8087,6 +8087,7 @@ var relativePathSchema = readSchema("relative-path-schema.json");
 var projectV31Schema = readSchema("project-schema-v3.1.json");
 var pendingArtifactsSchema = readSchema("pending-artifacts-schema.json");
 var reportSchema = readSchema("report-schema-v2.json");
+var REPORT_STAGES = Object.freeze([...reportSchema.properties.stage.enum]);
 var storyStateSchema = readSchema("story-state-schema.json");
 var creationBatchSchema = readSchema("creation-batch-schema.json");
 var creationCommitSchema = readSchema("creation-commit-schema.json");
@@ -8216,6 +8217,7 @@ function validateSchemaDefinitions() {
   return { valid: errors.length === 0, errors };
 }
 export {
+  REPORT_STAGES,
   validateBackupIndexSchema,
   validateCoverageIndexSchema,
   validateCoverageUnitSchema,

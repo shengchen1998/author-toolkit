@@ -5,6 +5,7 @@ import path from "node:path";
 
 import {
   projectRootFromManifest,
+  REPORT_STAGES,
   validateManifest,
 } from "./lib/index.mjs";
 import { writeScaffoldedReport } from "./lib/report-scaffold.mjs";
@@ -18,32 +19,43 @@ function argumentError(message) {
 function usage() {
   console.log(`Usage:
   node scripts/scaffold-report.mjs --manifest FILE --output PATH
-    --body FILE --envelope FILE [--created-at TIMESTAMP] [--json]
+    --body FILE --envelope FILE [--created-at TIMESTAMP]
+    [--preset STAGE --scope-id ID [--input PATH ...]] [--json]
 
 Create one report v2 beneath the manifest's registered reports path.
 The body supplies the human-readable report and Language coverage section;
 the envelope supplies the actual findings, or the CLI defaults a missing
-findings field to []. created_at is optional. The CLI validates the complete
-report before publication and refuses to overwrite any existing destination.
-It does not infer findings, source hashes, parent-child links, or coverage.
-Argument errors exit 2; validation and filesystem failures exit 1.`);
+findings field to []. created_at is optional. A stage preset supplies
+schema_version, stage, project language, current-scope SHA-256 inputs, and
+scope_id in engine.notes. Repeat --input to select scope files; otherwise all
+are selected. envelope.inputs supplies additional non-scope inputs. The CLI
+validates the complete report before publication and refuses to overwrite any
+existing destination. It does not infer findings, coverage, parent-child links,
+or non-scope input versions. Argument errors exit 2; validation and filesystem
+failures exit 1.`);
 }
 
 function options(args) {
-  const result = { json: false };
+  const result = { json: false, inputPaths: [] };
   const names = {
     "--manifest": "manifest",
     "--output": "output",
     "--body": "body",
     "--envelope": "envelope",
     "--created-at": "createdAt",
+    "--preset": "preset",
+    "--scope-id": "scopeId",
+    "--input": "inputPaths",
   };
   for (let index = 0; index < args.length; index += 1) {
     const argument = args[index];
     if (argument === "--json") {
       result.json = true;
     } else if (names[argument] && args[index + 1] && !args[index + 1].startsWith("-")) {
-      result[names[argument]] = args[++index];
+      const field = names[argument];
+      const value = args[++index];
+      if (field === "inputPaths") result.inputPaths.push(value);
+      else result[field] = value;
     } else {
       throw argumentError(`unknown or incomplete argument: ${argument}`);
     }
@@ -53,6 +65,15 @@ function options(args) {
   }
   for (const field of ["manifest", "body", "envelope"]) {
     result[field] = path.resolve(result[field]);
+  }
+  if (result.preset && !REPORT_STAGES.includes(result.preset)) {
+    throw argumentError(`--preset must be one of: ${REPORT_STAGES.join(", ")}`);
+  }
+  if (result.preset && !result.scopeId) {
+    throw argumentError("--scope-id is required with --preset");
+  }
+  if (!result.preset && (result.scopeId || result.inputPaths.length > 0)) {
+    throw argumentError("--scope-id and --input require --preset");
   }
   if (result.createdAt && !Number.isFinite(Date.parse(result.createdAt))) {
     throw argumentError("--created-at must be a valid timestamp");
@@ -77,6 +98,9 @@ try {
       bodyFile: selection.body,
       envelopeFile: selection.envelope,
       createdAt: selection.createdAt,
+      preset: selection.preset,
+      scopeId: selection.scopeId,
+      inputPaths: selection.inputPaths,
     });
     if (selection.json) {
       console.log(JSON.stringify({ valid: true, ...result }, null, 2));

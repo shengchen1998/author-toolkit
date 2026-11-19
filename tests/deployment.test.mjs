@@ -547,19 +547,15 @@ test("setup carries self-contained preflight, validation, state, range, and inst
   const scaffoldEnvelope = path.join(temporaryRoot, "scaffold-envelope.json");
   await writeFile(scaffoldBody, "# Report\n\n## Language coverage\n\nfull\n", "utf8");
   await writeFile(scaffoldEnvelope, JSON.stringify({
-    schema_version: "2.0.0",
     report_id: "SCAFFOLD-DEPLOYMENT-001",
     audit: "scaffold-deployment",
-    stage: "current-scope-review",
     created_at: "2026-11-15T00:00:00Z",
-    language: "en",
     skill: { name: "author-review", version: "unversioned" },
-    inputs: [{ path: "manuscript/chapter-01.md", version: "a".repeat(64), version_type: "sha256" }],
     engine: {
       name: "conversational",
       version: "unknown",
       degraded: false,
-      notes: "scope_id=scope-example-revision; review_mode=current-scope; operation_coverage=full; subchecks=standards; Language coverage: full (en); unit=chapter-01.",
+      notes: "review_mode=current-scope; operation_coverage=full; subchecks=standards; Language coverage: full (en); unit=chapter-01.",
     },
   }), "utf8");
   const scaffold = spawnSync(
@@ -575,6 +571,12 @@ test("setup carries self-contained preflight, validation, state, range, and inst
       scaffoldBody,
       "--envelope",
       scaffoldEnvelope,
+      "--preset",
+      "current-scope-review",
+      "--scope-id",
+      "scope-example-revision",
+      "--input",
+      "manuscript/chapter-01.md",
       "--json",
     ],
     { encoding: "utf8" },

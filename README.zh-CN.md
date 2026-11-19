@@ -530,8 +530,10 @@ node scripts/range.mjs --project-root /path/to/writing-project "manuscript/1.md:
 
 `range.mjs` 解析作者给出的行内字符区间; 行号和字符位置均从 1 开始且包含端点, 字符按 Unicode 码点计数.
 
-`scaffold-report.mjs --help` 说明不可覆盖的共享报告生成命令. 它在未提供 `findings` 字段时
-补充 `findings: []`, 并在发布前校验完整报告; 不推断复核发现项, 实际覆盖度, 输入哈希或综合报告依赖.
+`scaffold-report.mjs --help` 说明不可覆盖的共享报告生成命令. 可选的阶段预设会填充确定性的
+信封字段和当前 scope 中记录的哈希; 调用者仍提供语义字段和非 scope 输入版本. 它在未提供
+`findings` 字段时补充 `findings: []`, 并在发布前校验完整报告; 不推断复核发现项, 实际覆盖度,
+输入时效性或综合报告依赖.
 
 `evidence-retention.mjs --help` 说明可选的有界证据保留. 默认项目保留所有历史证据.
 只有显式 `--enable --apply` 才迁移发现项身份并删除无引用的旧审计产物;

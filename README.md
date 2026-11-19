@@ -817,9 +817,11 @@ node scripts/range.mjs --project-root /path/to/writing-project "manuscript/1.md:
 ```
 
 `scaffold-report.mjs --help` describes the create-only shared report generator.
-It supplies `findings: []` when that field is omitted and validates the complete
-report before publication; it does not infer reviewer findings, coverage, input
-hashes, or synthesis dependencies.
+Its optional stage preset fills deterministic envelope fields and recorded
+current-scope hashes while the caller supplies semantic fields and any non-scope
+input versions. It supplies `findings: []` when that field is omitted and validates
+the complete report before publication; it does not infer reviewer findings,
+coverage, input currency, or synthesis dependencies.
 
 `review-brief.mjs --help` describes the deterministic review brief generator.
 It copies every resolved and dismissed tracker location, decision reason, and

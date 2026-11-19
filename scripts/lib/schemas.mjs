@@ -18,6 +18,7 @@ const relativePathSchema = readSchema("relative-path-schema.json");
 const projectV31Schema = readSchema("project-schema-v3.1.json");
 const pendingArtifactsSchema = readSchema("pending-artifacts-schema.json");
 const reportSchema = readSchema("report-schema-v2.json");
+export const REPORT_STAGES = Object.freeze([...reportSchema.properties.stage.enum]);
 const storyStateSchema = readSchema("story-state-schema.json");
 const creationBatchSchema = readSchema("creation-batch-schema.json");
 const creationCommitSchema = readSchema("creation-commit-schema.json");

@@ -91,11 +91,11 @@
     },
     {
       "path": "assets/references/terminology.md",
-      "sha256": "777f64b7bc1b498b1cec4cd87db3b78387cf6ac4a099113deae059c02da4b1fc"
+      "sha256": "6c84bbdc2f4546a43123a840531ec2d713b4899ccd6837825d41e7534b7e9926"
     },
     {
       "path": "assets/references/workflow-reporting.md",
-      "sha256": "bccf4b7dd827374370ea10678579dbd66a5cc37c0302690b05b6f12b8eb440f3"
+      "sha256": "c6d749373d4b5c231a1327b3239c55e86a7cf4451dfd472b496b83def53fcc63"
     },
     {
       "path": "assets/setup/existing-project.md",
@@ -191,7 +191,7 @@
     },
     {
       "path": "scripts/lib/index.mjs",
-      "sha256": "42cdff02e15ba7b15696a2b2f009af9dd9ce75b7bd1632aa409445e618fa575d"
+      "sha256": "8a0b91afab1af476602d37a0f0b5a63e4b1e879508f864c44ea508cb0c67c24a"
     },
     {
       "path": "scripts/lib/manifest.mjs",
@@ -239,7 +239,7 @@
     },
     {
       "path": "scripts/lib/report-scaffold.mjs",
-      "sha256": "a62246fd0c8aefb21c6c1ab87a1210a3c5aed76cdddcc0e174e7a1717b0f1e31"
+      "sha256": "e5fd52a1c4e6e07c8be5557ca7e7483cea75f04be6060e678fd143112e1f3f13"
     },
     {
       "path": "scripts/lib/review-brief.mjs",
@@ -251,7 +251,7 @@
     },
     {
       "path": "scripts/lib/schemas.mjs",
-      "sha256": "4afabb72fec11db9e8de8b977f348988b47a785dfb96869200a6fe2c337e1233"
+      "sha256": "8b8c58a77e74729b06f18f5f9e9ec39a0d5a1d85f93ff26c225ef6d4c3d76f31"
     },
     {
       "path": "scripts/lib/scope.mjs",
@@ -347,7 +347,7 @@
     },
     {
       "path": "scripts/scaffold-report.mjs",
-      "sha256": "16c61268fc8e3563277a16d4511579ce9334de9996d8ff54d1ae54410badcc99"
+      "sha256": "12fc98c129972ea18856be23c5b6a764e8ac65d821992e0212c32946b9668cfe"
     },
     {
       "path": "scripts/set-pending.mjs",

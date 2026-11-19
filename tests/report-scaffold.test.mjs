@@ -30,6 +30,9 @@ async function fixture(t) {
       await readFile(path.join(example, ".author-toolkit", "project.json"), "utf8"),
     ),
   ]);
+  const manifest = JSON.parse(
+    await readFile(path.join(project, ".author-toolkit", "project.json"), "utf8"),
+  );
   const source = extractReportEnvelope(await readReport());
   source.stage = "current-scope-review";
   source.audit = "author-review-standards";
@@ -44,7 +47,7 @@ async function fixture(t) {
     writeFile(bodyPath, body, "utf8"),
     writeFile(envelopePath, JSON.stringify(source, null, 2), "utf8"),
   ]);
-  return { directory, project, source, body, bodyPath, envelopePath };
+  return { directory, project, manifest, source, body, bodyPath, envelopePath };
 }
 
 function run(args) {
@@ -123,6 +126,97 @@ test("scaffold CLI creates a validated clean report with every required field", 
   assert.match(markdown, /## Review coverage/);
 });
 
+test("scaffold CLI preset fills deterministic fields from the current scope", async (t) => {
+  const values = await fixture(t);
+  const source = clone(values.source);
+  const additionalInput = { path: "story-bible.md", version: "fixture-v1", version_type: "author" };
+  for (const field of ["schema_version", "stage", "created_at", "language", "findings"]) {
+    delete source[field];
+  }
+  source.inputs = [additionalInput];
+  source.engine.notes = source.engine.notes.replace(/^scope_id=[^;]+; /, "");
+  await writeFile(values.envelopePath, JSON.stringify(source), "utf8");
+  const selected = values.manifest.current_scope.files[0];
+
+  const result = run([
+    ...argumentsFor(values),
+    "--preset",
+    "current-scope-review",
+    "--scope-id",
+    values.manifest.current_scope.scope_id,
+    "--input",
+    selected.path,
+  ]);
+  assert.equal(result.status, 0, result.stderr);
+  const markdown = await readFile(
+    path.join(values.project, "reports/current-scope-review/scaffold.md"),
+    "utf8",
+  );
+  assert.equal(validateEvidenceReport(markdown).valid, true);
+  const envelope = extractReportEnvelope(markdown);
+  assert.equal(envelope.schema_version, "2.0.0");
+  assert.equal(envelope.stage, "current-scope-review");
+  assert.equal(envelope.language, values.manifest.language);
+  assert.deepEqual(envelope.inputs, [
+    { path: selected.path, version: selected.sha256, version_type: "sha256" },
+    additionalInput,
+  ]);
+  assert.equal(envelope.engine.notes.match(/scope_id=/g).length, 1);
+  assert.match(envelope.engine.notes, new RegExp(`^scope_id=${values.manifest.current_scope.scope_id};`));
+  assert.deepEqual(envelope.findings, []);
+});
+
+test("scaffold CLI preset selects all scope files by default", async (t) => {
+  const values = await fixture(t);
+  const source = clone(values.source);
+  for (const field of ["schema_version", "stage", "language", "inputs"]) delete source[field];
+  source.engine.notes = source.engine.notes.replace(/^scope_id=[^;]+; /, "");
+  await writeFile(values.envelopePath, JSON.stringify(source), "utf8");
+
+  const result = run([
+    ...argumentsFor(values),
+    "--preset",
+    "current-scope-review",
+    "--scope-id",
+    values.manifest.current_scope.scope_id,
+  ]);
+  assert.equal(result.status, 0, result.stderr);
+  const envelope = extractReportEnvelope(await readFile(
+    path.join(values.project, "reports/current-scope-review/scaffold.md"),
+    "utf8",
+  ));
+  assert.deepEqual(envelope.inputs, values.manifest.current_scope.files.map((file) => ({
+    path: file.path,
+    version: file.sha256,
+    version_type: "sha256",
+  })));
+});
+
+test("scaffold CLI preset rejects scope and generated-field conflicts", async (t) => {
+  const values = await fixture(t);
+  const base = [
+    ...argumentsFor(values),
+    "--preset",
+    "current-scope-review",
+    "--scope-id",
+    values.manifest.current_scope.scope_id,
+  ];
+  const wrongScope = run(base.map((argument) =>
+    argument === values.manifest.current_scope.scope_id ? "scope-other" : argument));
+  assert.equal(wrongScope.status, 1, wrongScope.stdout);
+  assert.match(wrongScope.stderr, /current scope/);
+
+  const unknownInput = run([...base, "--input", "manuscript/not-in-scope.md"]);
+  assert.equal(unknownInput.status, 1, unknownInput.stdout);
+  assert.match(unknownInput.stderr, /not in the current scope/);
+
+  await writeFile(values.envelopePath, JSON.stringify({ ...values.source, stage: "structure", inputs: [] }), "utf8");
+  const conflictingStage = run(base);
+  assert.equal(conflictingStage.status, 1, conflictingStage.stdout);
+  assert.match(conflictingStage.stderr, /envelope\.stage conflicts/);
+  await assert.rejects(readFile(path.join(values.project, "reports/current-scope-review/scaffold.md"), "utf8"), { code: "ENOENT" });
+});
+
 test("scaffold CLI fails before creating reports with missing evidence fields", async (t) => {
   const values = await fixture(t);
   const source = clone(values.source);
@@ -191,5 +285,23 @@ test("scaffold CLI uses exit 2 for argument errors", async (t) => {
   const result = run([...argumentsFor(values), "--created-at"]);
   assert.equal(result.status, 2, result.stdout);
   assert.match(result.stderr, /unknown or incomplete argument/);
+
+  const missingScope = run([...argumentsFor(values), "--preset", "intake"]);
+  assert.equal(missingScope.status, 2, missingScope.stdout);
+  assert.match(missingScope.stderr, /--scope-id is required/);
+
+  const inputWithoutPreset = run([...argumentsFor(values), "--input", "manuscript/chapter-01.md"]);
+  assert.equal(inputWithoutPreset.status, 2, inputWithoutPreset.stdout);
+  assert.match(inputWithoutPreset.stderr, /require --preset/);
+
+  const invalidPreset = run([
+    ...argumentsFor(values),
+    "--preset",
+    "unknown",
+    "--scope-id",
+    values.manifest.current_scope.scope_id,
+  ]);
+  assert.equal(invalidPreset.status, 2, invalidPreset.stdout);
+  assert.match(invalidPreset.stderr, /--preset must be one of/);
   assert.equal(run(["--help"]).status, 0);
 });
