@@ -905,7 +905,7 @@ test("setup repairs agent entries and only creates missing navigation", async ()
   assert.match(navigation, /\[`AGENTS\.md`\]\(AGENTS\.md#run-creation-or-revision-from-shared-state\)/);
   assert.doesNotMatch(navigation, /check\.mjs --project-root/);
   assert.ok(navigation.indexOf("- Status check:") < navigation.indexOf("- Current navigation:"));
-  assert.match(navigation, /does not exist until the first successful `--digest` refresh/);
+  assert.match(navigation, /A successful `--digest` refresh creates or replaces the optional `PROJECT_STATE\.md` cache/);
   assert.match(navigation, /Read it only after that refresh or when a later check reports `Navigation cache: reusable snapshot only`/);
   assert.match(navigation, /When the cache is absent, stale, or unchecked, use the bounded command results instead/);
   assert.doesNotMatch(navigation, /\[`PROJECT_STATE\.md`\]\(PROJECT_STATE\.md\)/);
