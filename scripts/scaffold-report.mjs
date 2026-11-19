@@ -23,14 +23,15 @@ function usage() {
     [--preset STAGE --scope-id ID [--input PATH ...]] [--json]
 
 Create one report v2 beneath the manifest's registered reports path.
-The body supplies the human-readable report and Language coverage section;
-the envelope supplies the actual findings, or the CLI defaults a missing
-findings field to []. created_at is optional. A stage preset supplies
-schema_version, stage, project language, current-scope SHA-256 inputs, and
-scope_id in engine.notes. Repeat --input to select scope files; otherwise all
-are selected. envelope.inputs supplies additional non-scope inputs. The CLI
-validates the complete report before publication and refuses to overwrite any
-existing destination. It does not infer findings, coverage, parent-child links,
+The body supplies the human-readable report and Language coverage section.
+The body must not contain fenced code blocks; the CLI appends the single
+fenced report v2 \`json\` block. The envelope supplies report fields and findings;
+the CLI defaults a missing findings field to []. created_at is optional. A stage
+preset supplies schema_version, stage, project language, current-scope SHA-256
+inputs, and scope_id in engine.notes. Repeat --input to select scope files;
+otherwise all are selected. envelope.inputs supplies additional non-scope inputs.
+The CLI validates the complete report before publication and refuses to overwrite
+any existing destination. It does not infer findings, coverage, parent-child links,
 or non-scope input versions. Argument errors exit 2; validation and filesystem
 failures exit 1.`);
 }

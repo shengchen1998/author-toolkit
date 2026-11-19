@@ -451,12 +451,13 @@ test("setup and routine navigation keep operational history listings bounded", a
 });
 
 test("existing-project setup uses bounded inspection references and a categorized summary", async () => {
-  const [project, setup, existingSetup, readOperations, operations, readme, zhReadme] = await Promise.all([
+  const [project, setup, existingSetup, readOperations, operations, state, readme, zhReadme] = await Promise.all([
     readFile(path.join(root, "skills/author-project/SKILL.md"), "utf8"),
     readFile(path.join(root, "skills/setup-author-toolkit/SKILL.md"), "utf8"),
     readFile(path.join(root, "skills/setup-author-toolkit/assets/setup/existing-project.md"), "utf8"),
     readFile(path.join(root, "skills/author-project/references/read-operations.md"), "utf8"),
     readFile(path.join(root, "skills/author-project/references/operations.md"), "utf8"),
+    readFile(path.join(root, "skills/revise-fiction/references/state-and-findings.md"), "utf8"),
     readFile(path.join(root, "README.md"), "utf8"),
     readFile(path.join(root, "README.zh-CN.md"), "utf8"),
   ]);
@@ -524,9 +525,12 @@ test("existing-project setup uses bounded inspection references and a categorize
   assert.match(project, /\| `scaffold-report` \|/);
   assert.match(operations, /## Scaffold report/);
   assert.match(operations, /scaffold-report\.mjs --manifest/);
-  assert.match(operations, /When `findings` is omitted, the CLI supplies `findings: \[\]`/);
+  assert.match(operations, /\[Report envelope\]\(\.\.\/\.\.\/revise-fiction\/references\/state-and-findings\.md#report-envelope\)/);
   assert.match(operations, /--preset <stage> --scope-id <scope-id>/);
-  assert.match(operations, /additional non-scope `inputs`/);
+  assert.match(state, /body file supplies human-readable context and its `Language coverage` section without fenced code blocks/);
+  assert.match(state, /CLI appends exactly one fenced `json` block/);
+  assert.match(state, /The CLI supplies `findings: \[\]` when that field is omitted/);
+  assert.match(state, /additional non-scope `inputs`/);
   assert.match(project, /\| `coverage-index` \|/);
   assert.match(operations, /## Coverage index/);
   assert.match(operations, /coverage-index\.mjs --manifest/);

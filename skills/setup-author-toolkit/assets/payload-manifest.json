@@ -347,7 +347,7 @@
     },
     {
       "path": "scripts/scaffold-report.mjs",
-      "sha256": "12fc98c129972ea18856be23c5b6a764e8ac65d821992e0212c32946b9668cfe"
+      "sha256": "47d8d44cd86bb9d0ffacc4950f967abbb14f5f30931ddb7eb1bbbb09790e86da"
     },
     {
       "path": "scripts/set-pending.mjs",

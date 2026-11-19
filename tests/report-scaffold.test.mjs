@@ -280,6 +280,26 @@ test("scaffold CLI confines reports to the registered path and rejects special f
   assert.match(result.stderr, /regular file/);
 });
 
+test("scaffold CLI rejects fenced body input without publishing a report", async (t) => {
+  const values = await fixture(t);
+  await writeFile(values.bodyPath, `${values.body}\n\n\`\`\`json\n{}\n\`\`\`\n`);
+
+  const result = run(argumentsFor(values));
+  assert.equal(result.status, 1, result.stdout);
+  assert.match(result.stderr, /report body must not contain fenced code blocks; the CLI adds the report envelope/);
+  await assert.rejects(
+    readFile(path.join(values.project, "reports/current-scope-review/scaffold.md"), "utf8"),
+    { code: "ENOENT" },
+  );
+});
+
+test("scaffold CLI help documents body input and the generated envelope", () => {
+  const result = run(["--help"]);
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /The body must not contain fenced code blocks/);
+  assert.match(result.stdout, /CLI appends the single\s+fenced report v2 `json` block/);
+});
+
 test("scaffold CLI uses exit 2 for argument errors", async (t) => {
   const values = await fixture(t);
   const result = run([...argumentsFor(values), "--created-at"]);
@@ -303,5 +323,4 @@ test("scaffold CLI uses exit 2 for argument errors", async (t) => {
   ]);
   assert.equal(invalidPreset.status, 2, invalidPreset.stdout);
   assert.match(invalidPreset.stderr, /--preset must be one of/);
-  assert.equal(run(["--help"]).status, 0);
 });
