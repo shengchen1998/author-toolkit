@@ -81,6 +81,64 @@ test("preflight defaults to current scope and refreshes the navigation cache onl
   assert.match(reuse.stdout, /"next_action": "recorded_unevaluated"/);
 });
 
+test("preflight marks caches generated before manifest creation or updates stale", async (t) => {
+  for (const field of ["created_at", "updated_at"]) {
+    const { projectRoot, manifestPath } = await fixture(t);
+    const generated = run(["--project-root", projectRoot, "--digest", "--json"]);
+    assert.equal(generated.status, 0, generated.stderr);
+    const generatedAt = JSON.parse(generated.stdout).navigation_cache.generated_at;
+    const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
+    manifest[field] = new Date(Date.parse(generatedAt) + 1000).toISOString();
+    await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
+
+    const result = run(["--project-root", projectRoot, "--diagnose", "--json"]);
+    assert.equal(result.status, 0, result.stderr);
+    const output = JSON.parse(result.stdout);
+    assert.equal(output.validation.valid, true);
+    assert.equal(output.navigation_cache.format_valid, true);
+    assert.equal(output.navigation_cache.state, "stale");
+    assert.equal(output.navigation_cache.reusable, false);
+    assert.equal(output.navigation_cache.next_action, "withheld");
+    assert.ok(output.navigation_cache.issues.includes(`cache generated before manifest ${field}`));
+  }
+});
+
+test("preflight compares cache scope and pending fields with the current manifest", async (t) => {
+  for (const change of ["scope", "pending"]) {
+    const { projectRoot, manifestPath } = await fixture(t);
+    const generated = run(["--project-root", projectRoot, "--digest", "--json"]);
+    assert.equal(generated.status, 0, generated.stderr);
+    const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
+    if (change === "scope") {
+      manifest.current_scope.scope_id = "scope-example-replacement";
+      manifest.pending_action.scope_id = "scope-example-replacement";
+    } else {
+      manifest.pending_action.reason = "A different current pending reason after the cache was generated.";
+    }
+    await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
+
+    const result = run(["--project-root", projectRoot, "--diagnose", "--json"]);
+    assert.equal(result.status, 0, result.stderr);
+    const output = JSON.parse(result.stdout);
+    assert.equal(output.validation.valid, true);
+    assert.equal(output.navigation_cache.format_valid, true);
+    assert.equal(output.navigation_cache.state, "stale");
+    assert.equal(output.navigation_cache.reusable, false);
+    const issue = change === "scope" ? "cache scope differs from current manifest" : "cache pending action differs from current manifest";
+    assert.ok(output.navigation_cache.issues.includes(issue));
+  }
+
+  const { projectRoot, manifestPath } = await fixture(t);
+  const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
+  manifest.pending_action.reason = `A long pending reason with \`code\` and a backslash \\. ${"x".repeat(300)}`;
+  await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
+  const generated = run(["--project-root", projectRoot, "--digest", "--json"]);
+  assert.equal(generated.status, 0, generated.stderr);
+  const reuse = run(["--project-root", projectRoot, "--json"]);
+  assert.equal(reuse.status, 0, reuse.stderr);
+  assert.equal(JSON.parse(reuse.stdout).navigation_cache.reusable, true);
+});
+
 test("preflight digest returns the validated bounded manifest projection in JSON", async (t) => {
   const { projectRoot, manifestPath } = await fixture(t);
   const manifest = JSON.parse(await readFile(manifestPath, "utf8"));

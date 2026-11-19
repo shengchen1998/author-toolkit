@@ -53,8 +53,9 @@ a selected scope with no immutable evidence report remain failures. It performs
 no writes, generates no missing artifacts, and does not infer evidence currency,
 operation completion, or current-draft revision convergence. It cannot be
 combined with --digest.
-The cache check recognizes the current format and marks older or failed-state
-caches stale without displaying their recorded next action or changing files.
+The cache check recognizes the current format, compares manifest timestamps
+and scope/pending fields, and marks stale or failed-state caches without
+displaying their recorded next action or changing files.
 The text output is a bounded summary. --json also groups unverified approvals
 by operation and bounds failed-check diagnostics. --details restores complete
 failed checks and every unverified approval in JSON without changing text output.
@@ -135,7 +136,6 @@ async function preflight(selection) {
   if (payload.payload_failures.length > 0) return result;
   result.setup.installation = payload.entry_failures.length === 0 ? "passed" : "failed";
 
-  result.navigation_cache = await inspectNavigationCache(selection.projectRoot);
   let inspectionScopeId = selection.scopeId;
   if (!inspectionScopeId) {
     try {
@@ -144,6 +144,7 @@ async function preflight(selection) {
     } catch {}
   }
   const validation = await inspectProjectManifest(manifestPath, { scopeId: inspectionScopeId });
+  result.navigation_cache = await inspectNavigationCache(selection.projectRoot, validation.manifest);
   const displayedChecks = selection.json && selection.details
     ? validation.checks
     : validation.checks.map((check) => check.valid ? { path: check.path, valid: true, errors: [] } : failedCheck(check, false));
@@ -245,7 +246,7 @@ async function preflight(selection) {
     result.projection = await manifestProjection(validation.manifest, selection.projectRoot);
     const digest = await generateProjectDigest(selection.projectRoot);
     result.digest = { path: path.basename(digest.path), refreshed: true };
-    result.navigation_cache = await inspectNavigationCache(selection.projectRoot);
+    result.navigation_cache = await inspectNavigationCache(selection.projectRoot, validation.manifest);
   }
   result.valid = payload.entry_failures.length === 0 && result.execution_gate?.valid !== false && result.evidence?.valid !== false;
   return result;

@@ -3,7 +3,7 @@
   "files": [
     {
       "path": "SKILL.md",
-      "sha256": "38182f3062887a2a1651606f4ee4a3e66dca4ebbbff73a83522ea460cab3fbb3"
+      "sha256": "0a1678088ef1f50d9c6f1f0586bb504efbc32010b15fcb9dadc4ddd849ae4a83"
     },
     {
       "path": "assets/AGENTS.md",
@@ -159,7 +159,7 @@
     },
     {
       "path": "scripts/lib/digest.mjs",
-      "sha256": "46e0b98e51c836000a77b5950c0d0e586bbdecdeab92b6014fad0d517bc09a42"
+      "sha256": "a1917e4c3a0438301e6aace28a8ea37a33035b188b996d8527e343c64f705628"
     },
     {
       "path": "scripts/lib/evidence-inspection.mjs",
@@ -207,7 +207,11 @@
     },
     {
       "path": "scripts/lib/navigation-cache.mjs",
-      "sha256": "b0b3aeda8285c8431db864f1d7f635169897b0c0aead1847961dec52829ef5d6"
+      "sha256": "414244f7bf8c46aab5ed9b05162c7108e19e7ea118a3bfa3e56ac83bf9a4f18f"
+    },
+    {
+      "path": "scripts/lib/navigation-fields.mjs",
+      "sha256": "19d2496e9360a5b4990926d5c14049ca5513a63ec3de53676cb44b3ed02c7865"
     },
     {
       "path": "scripts/lib/pending-artifacts.mjs",
@@ -315,7 +319,7 @@
     },
     {
       "path": "scripts/preflight.mjs",
-      "sha256": "08dd759fcbe65af84d3142a695501d96461360d638882986c0c9308e99d9294a"
+      "sha256": "d76ff9e331211ff2de06fe19440cb4c515108743ac2e018391108fcfe3f83481"
     },
     {
       "path": "scripts/project-digest.mjs",

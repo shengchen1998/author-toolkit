@@ -8,19 +8,7 @@ import { splitTrackerRow, TRACKER_STATUSES } from "./tracker.mjs";
 import { readPendingArtifactIndex } from "./pending-artifacts.mjs";
 import { validateManifest } from "./manifest.mjs";
 import { validateCoverageIndex } from "./artifacts.mjs";
-
-function markdown(value) {
-  return value.replaceAll("\\", "\\\\").replaceAll("`", "\\`").replaceAll("\r", " ").replaceAll("\n", " ").trim();
-}
-
-function concise(value, limit = 240) {
-  const characters = [...markdown(value)];
-  return characters.length > limit ? `${characters.slice(0, limit - 1).join("")}…` : characters.join("");
-}
-
-function code(value) {
-  return `\`${markdown(value)}\``;
-}
+import { code, concise, manifestNavigationFields } from "./navigation-fields.mjs";
 
 function section(markdownText, name) {
   const match = markdownText.match(new RegExp(`^ {0,3}## ${name}[ \\t]*$`, "m"));
@@ -159,6 +147,7 @@ export async function renderProjectDigest({ manifest, tracker, latestReport, lat
       ? reviewJobs.map((job) => `${code(job.mode)}/${code(job.perspective)} ${code(job.path)}`).join("; ")
       : "none recorded"} (recorded pointers, evidence not evaluated)`,
   ];
+  const manifestFields = manifestNavigationFields(manifest);
   const lines = [
     "# Project State",
     "",
@@ -168,11 +157,11 @@ export async function renderProjectDigest({ manifest, tracker, latestReport, lat
     "- Validation at generation: passed (project validation only; not an execution gate or current-draft revision convergence claim).",
     "- Freshness: generation-time snapshot only; rerun preflight before reuse.",
     "",
-    `- Scope: ${scope ? `${code(scope.scope_id)} (${scope.status}; ${scope.files.length} file${scope.files.length === 1 ? "" : "s"})` : "none recorded"}`,
+    manifestFields.scope,
     `- Scope hashes: ${scope ? `${code(".author-toolkit/project.json")} -> ${code("current_scope.files")}` : "none recorded"}`,
-    `- Pending action: ${pending ? `${code(pending.operation)} (${pending.status})` : "none recorded"}`,
-    `- Pending scope: ${pending?.scope_id ? code(pending.scope_id) : "none recorded"}`,
-    `- Pending reason: ${pending ? concise(pending.reason) : "none recorded"}`,
+    manifestFields.pendingAction,
+    manifestFields.pendingScope,
+    manifestFields.pendingReason,
     `- Pending artifacts: ${await pendingArtifacts(pending, projectRoot)}`,
     `- Findings: ${Object.entries(counts).map(([status, count]) => `${status}=${count}`).join(", ")}`,
     `- Execution evidence: ${executionEvidence(execution, scope?.scope_id)}`,

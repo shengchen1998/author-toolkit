@@ -225,9 +225,11 @@ selected review jobs are non-blocking `not_applicable` checks, not blocking
 errors. Present invalid artifacts, missing linked artifacts, and a selected
 scope with no immutable evidence report still fail. The check does not generate
 missing artifacts.
-Preflight also checks the cache format read-only. Legacy or incomplete caches,
-and caches invalidated by project-validation or requested strict-gate failures,
-are marked stale and their recorded next action is withheld rather than repeated.
+Preflight also checks the cache read-only. Legacy or incomplete caches, caches
+generated before the manifest's `created_at` or `updated_at`, caches whose
+scope/pending fields differ from the current manifest, and caches invalidated by
+project-validation or requested strict-gate failures are marked stale; their
+recorded next action is withheld rather than repeated.
 `node <setup-skill-root>/scripts/check.mjs` is the stable local alias with the
 same arguments and exit statuses. It reuses preflight rather than duplicating
 doctor, validation, or strict execution logic.
@@ -544,7 +546,7 @@ validated bounded manifest projection; and refreshes the navigation cache.
 `preflight.mjs` accepts the same arguments. Without `--digest`, the combined
 check writes nothing and leaves `projection` null, while the default text output
 remains a bounded summary without the projection.
-Its read-only cache-format check withholds routes from stale legacy caches.
+Its read-only cache check withholds routes from stale legacy or manifest-mismatched caches.
 After a validation failure, `--diagnose` supplies the bounded
 recorded-unverified projection, scope paths and hashes, current-hash verification
 when the scope check passes, and index differences without repeating the other

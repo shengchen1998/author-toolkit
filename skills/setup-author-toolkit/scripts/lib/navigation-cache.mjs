@@ -1,12 +1,37 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 
+import { manifestNavigationFields } from "./navigation-fields.mjs";
+
 const generatedAtPattern = /^- Generated at: `([^`]+)`$/m;
 const validationPattern = /^- Validation at generation: passed \(project validation only; not an execution gate or current-draft revision convergence claim\)\.$/m;
 const freshnessPattern = /^- Freshness: generation-time snapshot only; rerun preflight before reuse\.$/m;
 const executionPattern = /^- Execution evidence: \d+\/\d+ verified; \d+ unverified(?: in scope `[^`\r\n]+`| across all scopes)(?:; strict execution gate would fail)?$/m;
 
-export async function inspectNavigationCache(projectRoot) {
+function cacheField(text, name) {
+  return text.split("\n").find((line) => line.startsWith(`- ${name}: `)) ?? null;
+}
+
+function compareManifest(text, result, manifest) {
+  const generatedTime = Date.parse(result.generated_at);
+  for (const field of ["created_at", "updated_at"]) {
+    const manifestTime = Date.parse(manifest[field]);
+    if (Number.isFinite(manifestTime) && generatedTime < manifestTime) {
+      markNavigationCacheStale(result, `cache generated before manifest ${field}`);
+    }
+  }
+  const expected = manifestNavigationFields(manifest);
+  for (const [name, field, issue] of [
+    ["Scope", "scope", "cache scope differs from current manifest"],
+    ["Pending action", "pendingAction", "cache pending action differs from current manifest"],
+    ["Pending scope", "pendingScope", "cache pending action differs from current manifest"],
+    ["Pending reason", "pendingReason", "cache pending action differs from current manifest"],
+  ]) {
+    if (cacheField(text, name) !== expected[field]) markNavigationCacheStale(result, issue);
+  }
+}
+
+export async function inspectNavigationCache(projectRoot, manifest = null) {
   const result = {
     path: "PROJECT_STATE.md",
     present: false,
@@ -46,6 +71,7 @@ export async function inspectNavigationCache(projectRoot) {
     result.state = "usable_snapshot";
     result.reusable = true;
     result.next_action = "recorded_unevaluated";
+    if (manifest) compareManifest(text, result, manifest);
   }
   return result;
 }

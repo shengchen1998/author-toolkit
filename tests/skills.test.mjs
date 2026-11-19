@@ -362,7 +362,9 @@ test("project digest is a generated navigation cache, not another source of trut
   assert.match(readOperations, /not an execution gate or a current-draft revision convergence claim/);
   assert.match(readOperations, /current-scope execution evidence/);
   assert.match(readOperations, /withholds the recorded next action and shows `revise-draft`/);
-  assert.match(readOperations, /older cache, unreadable cache, or unsafe recorded route makes the cache `stale`/);
+  assert.match(readOperations, /compares `generated_at` with the valid manifest's `created_at` and `updated_at`/);
+  assert.match(readOperations, /scope\/pending mismatch makes the cache `stale`/);
+  assert.match(readOperations, /not proof of complete freshness or an execution gate/);
   assert.match(readOperations, /without reproducing it or rewriting the file/);
   assert.match(existingSetup, /After that check's captured JSON reports `navigation_cache\.reusable` as `true`, read `PROJECT_STATE\.md` for navigation only/);
   assert.match(existingSetup, /When the check reports an absent or stale cache, or does not check the cache, use the bounded command results instead of reading the cache/);

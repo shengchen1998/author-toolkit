@@ -120,6 +120,38 @@ test("setup report renders an existing scope and omits a reusable cache detail",
   assert.doesNotMatch(report, /recorded_unevaluated/);
 });
 
+test("setup report exposes a format-valid cache whose pending state is stale", async (t) => {
+  const { projectRoot } = await fixture(t, { existing: true });
+  const reportStore = begin();
+  captureDoctor(reportStore);
+  capture(reportStore, "initialize", ["--project-root", projectRoot]);
+  capture(reportStore, "entry-files", ["--project-root", projectRoot]);
+  const digest = spawnSync(process.execPath, [
+    path.join(root, "scripts", "project-digest.mjs"),
+    "--project-root",
+    projectRoot,
+  ], { cwd: root, encoding: "utf8" });
+  assert.equal(digest.status, 0, digest.stderr);
+  const manifestPath = path.join(projectRoot, ".author-toolkit", "project.json");
+  const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
+  manifest.pending_action.reason = "Current state changed after cache generation.";
+  await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
+  const check = capture(reportStore, "check", [
+    "--project-root",
+    projectRoot,
+    "--diagnose",
+    "--scope-id",
+    scopeId,
+    "--require-execution",
+  ]);
+  assert.equal(check.valid, true);
+  assert.equal(check.navigation_cache.format_valid, true);
+  assert.equal(check.navigation_cache.reusable, false);
+
+  const report = render(reportStore);
+  assert.match(report, /Navigation cache: stale \(cache pending action differs from current manifest\); recorded next action withheld/);
+});
+
 test("setup report preserves a failed strict gate and grouped unverified approvals", async (t) => {
   const { projectRoot } = await fixture(t, { existing: true });
   const manifest = JSON.parse(await readFile(path.join(projectRoot, ".author-toolkit", "project.json"), "utf8"));
