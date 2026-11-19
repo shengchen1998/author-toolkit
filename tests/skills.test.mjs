@@ -341,6 +341,13 @@ test("shared session notes use one template and compatible UTC filenames", async
   }
 });
 
+test("fiction-workshop separates standalone and shared session notes", async () => {
+  const skill = await readFile(path.join(root, "skills/fiction-workshop/SKILL.md"), "utf8");
+  assert.match(skill, /Without `\.author-toolkit\/project\.json`, write a brief note at `sessions\/YYYY-MM-DD_topic-slug\.md`/);
+  assert.match(skill, /return the stopping point to the caller for its `author-project` session note/);
+  assert.match(skill, /standalone work in a toolkit project leaves registered sessions unchanged/);
+});
+
 test("project digest is a generated navigation cache, not another source of truth", async () => {
   const [project, readOperations, existingSetup, startHere] = await Promise.all([
     readFile(path.join(root, "skills/author-project/SKILL.md"), "utf8"),

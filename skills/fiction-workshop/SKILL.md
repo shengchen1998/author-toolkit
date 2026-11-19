@@ -12,7 +12,7 @@ Editorial workflow for collaborative fiction writing in three stages: Story Bibl
 Novel projects span weeks or months, and agent sessions do not reliably preserve context. The applicable Story Bible or current-draft baseline is persistent creative state; `.author-toolkit/project.json`, when present, locates shared project artifacts.
 
 - **At session start:** Read the baseline named by the caller, or `story-bible.md` in a standalone project. Skim recent files in `sessions/` for unresolved threads.
-- **At session end:** Write a brief note at `sessions/YYYY-MM-DD_topic-slug.md` summarizing what was done, decisions made, backups created, and the stopping point. Two to five sentences is enough.
+- **At session end:** Without `.author-toolkit/project.json`, write a brief note at `sessions/YYYY-MM-DD_topic-slug.md` summarizing what was done, decisions made, backups created, and the stopping point. Two to five sentences is enough. In workflow work, return the stopping point to the caller for its `author-project` session note; standalone work in a toolkit project leaves registered sessions unchanged.
 - **When foundations shift:** Record approved changes to premise, character bios, world rules, or major plot turns promptly. Standalone work asks the author to confirm the update; workflow work returns the proposed change to `write-fiction`, `revise-fiction`, `revise-draft`, `revise-increment`, or `revise-request` for approval and writing to the applicable baseline or story state.
 - **Surface unresolved questions:** At the start of new work, list questions left open from prior sessions and ask the user which to address before continuing.
 
