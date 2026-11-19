@@ -675,9 +675,10 @@ test("unrecoverable execution evidence ends at an author decision without waivin
 });
 
 test("shared state references use task-based reading", async () => {
-  const [state, reporting, review, ...strategies] = await Promise.all([
+  const [state, reporting, instructions, review, ...strategies] = await Promise.all([
     readFile(path.join(root, "skills/revise-fiction/references/state-and-findings.md"), "utf8"),
     readFile(path.join(root, "references/workflow-reporting.md"), "utf8"),
+    readFile(path.join(root, "skills/setup-author-toolkit/assets/AGENTS.md"), "utf8"),
     readFile(path.join(root, "skills/author-review/SKILL.md"), "utf8"),
     ...["write-fiction", "revise-fiction", "revise-draft", "revise-increment", "revise-request"].map((skill) =>
       readFile(path.join(root, "skills", skill, "SKILL.md"), "utf8")
@@ -689,6 +690,8 @@ test("shared state references use task-based reading", async () => {
     assert.ok(state.includes(`| ${task} |`), `Missing state-reading route for ${task}`);
   }
   assert.match(reporting, /only the applicable row and linked sections under `Task-based reading`/);
+  assert.match(instructions, /reference routes to selected sections, use the host's heading search and bounded line-range reads/);
+  assert.match(instructions, /ending each section before the next same-level heading/);
   assert.match(review, /state-and-findings\.md#report-envelope/);
   assert.match(review, /state-and-findings\.md#finding-identity-across-reruns/);
 
