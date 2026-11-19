@@ -814,6 +814,10 @@ test("revision strategies share one project and keep distinct evidence gates", a
   assert.match(state, /explicitly request batch handling/);
   assert.match(state, /Keep nonblocking unknowns labeled as unknown/);
   assert.match(state, /`pending_action\.reason`/);
+  assert.match(
+    draft,
+    /read the shared preamble and the \[Intake\]\(references\/stage-gates\.md#1-intake\) and \[Draft baseline\]\(references\/stage-gates\.md#2-draft-baseline\) sections, stopping before `## 3\. Diagnostics`/,
+  );
   assert.match(draft, /normally confirmation of the proposed scope/);
   assert.match(draft, /persist the proposed `draft-baseline` artifact/);
   const draftBaselineRoute = draft.match(/^\| `draft-baseline` \| (.+) \|$/m)?.[1];
