@@ -20,7 +20,7 @@ For shared fiction creation or revision, locate `.author-toolkit/project.json`:
 
 ## Run creation or revision from shared state
 
-At routine strategy start or resume, run `node <setup-skill-root>/scripts/check.mjs --project-root <project-root> --digest --json`. Use its bounded projection, validation, ordinary status, and refreshed cache instead of repeating standalone inspection commands. If it fails, rerun it with `--diagnose` instead of `--digest`, report the failure, and stop at the active strategy's author gate.
+At routine strategy start or resume, run `node <setup-skill-root>/scripts/check.mjs --project-root <project-root> --digest --json` with the active strategy's required `--require-sibling NAME` arguments. Use its bounded projection, validation, ordinary status, and refreshed cache instead of repeating standalone inspection commands. If it fails, rerun it with the same sibling arguments and `--diagnose` instead of `--digest`, report the failure, and stop at the active strategy's author gate.
 
 Use one manifest per book and resolve registered artifacts through its `paths`. Run one evidence-gated operation and stop at its author gate; a pending action never authorizes a manuscript write or publication. Follow the active strategy for stable operation gates, shared state, and ownership of state operations and creative content.
 

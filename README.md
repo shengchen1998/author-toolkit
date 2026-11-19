@@ -154,7 +154,9 @@ Run `node <setup-skill-root>/scripts/doctor.mjs` for a bounded installation
 summary and only the failed paths. It verifies the skill's regular payload files,
 including internal CLI modules, against `assets/payload-manifest.json`. Add
 `--require-sibling author-project` to verify the seven regular files setup needs from
-that sibling skill; setup runs this check before either project branch. Add
+that sibling skill; setup runs this check before either project branch. Repeat
+`--require-sibling NAME` to check the declared startup files in `revise-fiction`
+and `revise-draft` as well. Add
 `--project-root <root>` to verify the writing project's `AGENTS.md` and relative
 `CLAUDE.md -> AGENTS.md` link; project-state validation remains a separate check.
 Its text and JSON output distinguish installed-payload,
@@ -189,7 +191,8 @@ combine the payload and entry-file check with project validation and ordinary
 status. It shares their library implementation and prints a bounded summary.
 `Payload failures` excludes project-entry failures; `Entry files: pass` confirms
 both entries independently of project validation. An entry mismatch still
-allows project inspection, but exits 1 and prevents digest generation.
+allows project inspection, but exits 1 and prevents digest generation. A requested
+sibling failure likewise marks installation failed and prevents digest generation.
 Three independent `Installation`, `Project state`, and `Strategy gate` states,
 also available in JSON under `setup`, prevent an evidence failure from being
 reported as an incomplete toolkit installation. The five strategy entries are
@@ -540,9 +543,12 @@ check records a `blocked` pending action; it does not alter approvals or manufac
 execution receipts.
 
 For routine strategy start or resume, run the installed
-`check.mjs --project-root <root> --digest --json` once. It combines payload and
-entry-file inspection, project validation, and ordinary status; returns the
-validated bounded manifest projection; and refreshes the navigation cache.
+`check.mjs --project-root <root> --digest --json` once, adding the active strategy's
+repeated `--require-sibling NAME` arguments. All five strategies request
+`author-project` and `revise-fiction`; `revise-increment` and `revise-request` also
+request `revise-draft`. The check combines payload, requested-sibling, and entry-file
+inspection, project validation, and ordinary status; returns the validated bounded
+manifest projection; and refreshes the navigation cache only when installation passes.
 `preflight.mjs` accepts the same arguments. Without `--digest`, the combined
 check writes nothing and leaves `projection` null, while the default text output
 remains a bounded summary without the projection.

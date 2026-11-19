@@ -946,7 +946,7 @@ test("setup uses the authoritative payload inventory and bounded doctor", async 
   assert.match(setup, /If either installation check fails, report an incomplete toolkit installation and stop/);
   assert.match(setup, /final installation and project-state verification/);
   assert.match(instructions, /scripts\/check\.mjs --project-root <project-root> --digest --json/);
-  assert.match(instructions, /rerun it with `--diagnose` instead of `--digest`/);
+  assert.match(instructions, /rerun it with the same sibling arguments and `--diagnose` instead of `--digest`/);
   assert.match(instructions, /stop at the active strategy's author gate/);
   assert.match(operations, /at most eight operation groups/);
   assert.match(operations, /Use standalone `validate\.mjs` to diagnose a validation failure/);

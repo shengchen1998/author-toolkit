@@ -26,6 +26,9 @@ async function fixture(t) {
   await cp(installedSource, setupRoot, { recursive: true });
   const siblingRoot = path.join(temporary, "author-project");
   await cp(siblingSource, siblingRoot, { recursive: true });
+  for (const name of ["revise-fiction", "revise-draft"]) {
+    await cp(path.join(root, "skills", name), path.join(temporary, name), { recursive: true });
+  }
   const projectRoot = path.join(temporary, "writing-project");
   await mkdir(projectRoot);
   await cp(path.join(setupRoot, "assets", "AGENTS.md"), path.join(projectRoot, "AGENTS.md"));
@@ -53,6 +56,8 @@ test("doctor reports a bounded summary for a complete installed payload", async 
   assert.equal(parsed.valid, true);
   assert.equal(parsed.payload_manifest, "payload-manifest.json");
   assert.equal(parsed.clis, 22);
+  assert.deepEqual(parsed.sibling, { checked: false, name: null, files: 0 });
+  assert.deepEqual(parsed.siblings, []);
   assert.equal(parsed.project.agents, "ok");
   assert.equal(parsed.project.claude, "ok");
   assert.deepEqual(parsed.failures, []);
@@ -73,7 +78,7 @@ test("doctor optionally checks the required author-project sibling files", async
   const args = ["--require-sibling", "author-project"];
   const help = run(["--help"], { tool: installedTool });
   assert.equal(help.status, 0, help.stderr);
-  assert.match(help.stdout, /also verify its seven required regular files/);
+  assert.match(help.stdout, /Repeat --require-sibling to verify required regular files/);
   const complete = run(args, { tool: installedTool });
   assert.equal(complete.status, 0, complete.stderr);
   assert.match(
@@ -85,6 +90,7 @@ test("doctor optionally checks the required author-project sibling files", async
   assert.equal(json.status, 0, json.stderr);
   const parsed = JSON.parse(json.stdout);
   assert.deepEqual(parsed.sibling, { checked: true, name: "author-project", files: 7 });
+  assert.deepEqual(parsed.siblings, [{ name: "author-project", files: 7 }]);
   assert.deepEqual(parsed.sibling_failures, []);
 
   await rm(path.join(siblingRoot, "references", "operations.md"));
@@ -108,6 +114,47 @@ test("doctor optionally checks the required author-project sibling files", async
   assert.deepEqual(missingParsed.entry_failures, []);
   assert.deepEqual(missingParsed.failures, missingParsed.sibling_failures);
   assert.equal(missingParsed.sibling_failures.length, 1);
+});
+
+test("doctor checks every requested strategy sibling and deduplicates repeated names", async (t) => {
+  const { temporary, setupRoot } = await fixture(t);
+  const installedTool = path.join(setupRoot, "scripts", "doctor.mjs");
+  const args = [
+    "--require-sibling", "author-project",
+    "--require-sibling", "revise-fiction",
+    "--require-sibling", "revise-fiction",
+    "--require-sibling", "revise-draft",
+  ];
+  const complete = run([...args, "--json"], { tool: installedTool });
+  assert.equal(complete.status, 0, complete.stderr);
+  assert.deepEqual(JSON.parse(complete.stdout).siblings, [
+    { name: "author-project", files: 7 },
+    { name: "revise-fiction", files: 2 },
+    { name: "revise-draft", files: 2 },
+  ]);
+
+  await rm(path.join(temporary, "revise-fiction"), { recursive: true });
+  await rm(path.join(temporary, "revise-draft", "references", "stage-gates.md"));
+  await rm(path.join(temporary, "revise-draft", "assets", "draft-baseline-template.md"));
+  const missing = run([...args, "--json"], { tool: installedTool });
+  assert.equal(missing.status, 1, missing.stderr);
+  const parsed = JSON.parse(missing.stdout);
+  assert.equal(parsed.valid, false);
+  assert.deepEqual(parsed.payload_failures, []);
+  assert.deepEqual(parsed.entry_failures, []);
+  assert.deepEqual(parsed.sibling_failures.map((failure) => failure.path), [
+    "sibling:revise-fiction/references/state-and-findings.md",
+    "sibling:revise-fiction/assets/revision-plan-template.md",
+    "sibling:revise-draft/references/stage-gates.md",
+    "sibling:revise-draft/assets/draft-baseline-template.md",
+  ]);
+
+  const text = run(args, { tool: installedTool });
+  assert.equal(text.status, 1, text.stderr);
+  assert.match(text.stdout, /Sibling author-project failures: 0/);
+  assert.match(text.stdout, /Sibling revise-fiction: 2 required files\nSibling revise-fiction failures: 2/);
+  assert.match(text.stdout, /Sibling revise-draft: 2 required files\nSibling revise-draft failures: 2/);
+  assert.match(text.stdout, /Exit reason: incomplete toolkit installation; stop setup/);
 });
 
 test("doctor reports only failed payload paths, including missing internal modules and drift", async (t) => {
@@ -250,7 +297,8 @@ test("doctor exposes help and argument errors", async (t) => {
   const help = run(["--help"], { tool: installedTool });
   assert.equal(help.status, 0, help.stderr);
   assert.match(help.stdout, /payload-manifest\.json/);
-  assert.match(help.stdout, /--require-sibling author-project/);
+  assert.match(help.stdout, /--require-sibling NAME/);
+  assert.match(help.stdout, /author-project, revise-draft, revise-fiction/);
   assert.match(help.stdout, /writes nothing/);
   for (const args of [
     ["--project-root"],

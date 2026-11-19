@@ -14,7 +14,19 @@ const REQUIRED_SIBLINGS = {
     "assets/story-bible-template.md",
     "assets/audit-tracker-template.md",
   ],
+  "revise-draft": [
+    "references/stage-gates.md",
+    "assets/draft-baseline-template.md",
+  ],
+  "revise-fiction": [
+    "references/state-and-findings.md",
+    "assets/revision-plan-template.md",
+  ],
 };
+
+export function requiredSiblingNames() {
+  return Object.keys(REQUIRED_SIBLINGS);
+}
 
 export function resolveSetupRoot(scriptRoot) {
   return existsSync(path.join(scriptRoot, PAYLOAD_MANIFEST))
@@ -95,7 +107,7 @@ async function readPayloadManifest(setupRoot) {
   return { manifest: value, failures: [] };
 }
 
-export async function inspectSetupPayload(setupRoot, { projectRoot, requireSibling } = {}) {
+export async function inspectSetupPayload(setupRoot, { projectRoot, requireSiblings = [] } = {}) {
   const { manifest, failures } = await readPayloadManifest(setupRoot);
   let references = 0;
   let clis = 0;
@@ -127,27 +139,29 @@ export async function inspectSetupPayload(setupRoot, { projectRoot, requireSibli
     }
   }
 
-  const sibling = {
-    checked: requireSibling !== undefined,
-    name: requireSibling ?? null,
-    files: 0,
-  };
-  if (requireSibling !== undefined) {
-    const requiredFiles = REQUIRED_SIBLINGS[requireSibling];
-    if (!requiredFiles) throw new Error(`Unsupported required sibling: ${requireSibling}`);
-    sibling.files = requiredFiles.length;
+  const siblings = [];
+  for (const name of new Set(requireSiblings)) {
+    const requiredFiles = REQUIRED_SIBLINGS[name];
+    if (!requiredFiles) throw new Error(`Unsupported required sibling: ${name}`);
+    siblings.push({ name, files: requiredFiles.length });
     for (const relative of requiredFiles) {
       try {
-        const stats = await lstat(path.join(setupRoot, "..", requireSibling, relative));
+        const stats = await lstat(path.join(setupRoot, "..", name, relative));
         if (!stats.isFile()) throw new Error("not a regular file");
       } catch (error) {
         failures.push({
-          path: `sibling:${requireSibling}/${relative}`,
+          path: `sibling:${name}/${relative}`,
           reason: `missing or unreadable: ${error.message}`,
         });
       }
     }
   }
+
+  const sibling = {
+    checked: siblings.length > 0,
+    name: siblings[0]?.name ?? null,
+    files: siblings[0]?.files ?? 0,
+  };
 
   const project = { checked: false, agents: null, claude: null };
   if (projectRoot !== undefined) {
@@ -198,6 +212,7 @@ export async function inspectSetupPayload(setupRoot, { projectRoot, requireSibli
     references,
     clis,
     sibling,
+    siblings,
     project,
     failures,
     payload_failures: failures.filter((failure) =>

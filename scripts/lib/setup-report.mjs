@@ -231,9 +231,10 @@ export async function renderSetupReport(reportStore) {
     `- Initial doctor payload: ${payloadSummary(doctor)}`,
   ];
   failureDetails(lines, doctor.payload_failures);
-  if (doctor.sibling?.checked) {
-    lines.push(`- Initial doctor sibling ${doctor.sibling.name}: ${doctor.sibling.files} required files; failures: ${doctor.sibling_failures.length}`);
-    failureDetails(lines, doctor.sibling_failures);
+  for (const sibling of doctor.siblings) {
+    const failures = doctor.sibling_failures.filter((failure) => failure.path.startsWith(`sibling:${sibling.name}/`));
+    lines.push(`- Initial doctor sibling ${sibling.name}: ${sibling.files} required files; failures: ${failures.length}`);
+    failureDetails(lines, failures);
   }
   lines.push(`- Final diagnostic-check payload: ${payloadSummary(finalPayload)}`);
   failureDetails(lines, finalPayload.payload_failures);

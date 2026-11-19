@@ -68,7 +68,8 @@ CLI 仅创建缺失目录和骨架文件, 保留已有正文与骨架内容, 拒
 运行 `node <setup-skill-root>/scripts/doctor.mjs` 可获得有界安装摘要和失败路径.
 它按 `assets/payload-manifest.json` 核对技能的普通载荷文件, 包括 CLI 内部模块.
 添加 `--require-sibling author-project` 可核对 setup 所需的该兄弟技能的 7 个普通文件;
-setup 在进入任一项目分支前执行此检查. 添加 `--project-root <root>` 可同时核对写作项目的
+setup 在进入任一项目分支前执行此检查. 重复 `--require-sibling NAME` 还可核对策略声明的
+`revise-fiction` 和 `revise-draft` 启动文件. 添加 `--project-root <root>` 可同时核对写作项目的
 `AGENTS.md` 和相对符号链接 `CLAUDE.md -> AGENTS.md`; 项目状态校验仍是独立检查.
 文本和 JSON 输出分别列出安装载荷、必需兄弟技能与可修复项目入口的失败, 并明确显示退出原因.
 
@@ -92,7 +93,8 @@ schema 有效但后续状态校验失败时返回 `recorded_unverified` 投影�
 运行 `node <setup-skill-root>/scripts/preflight.mjs --project-root <root>` 可一次完成载荷和入口文件检查,
 项目校验及普通状态汇总; 它复用相同的库实现并输出有界摘要.
 `Payload failures` 仅统计安装载荷失败; `Entry files: pass` 独立确认两个入口文件均通过.
-入口不匹配不阻断项目检查, 但使命令退出 1 并禁止生成导航缓存.
+入口不匹配不阻断项目检查, 但使命令退出 1 并禁止生成导航缓存. 请求的同级技能文件缺失也会使安装失败,
+使命令退出 1 并禁止生成导航缓存.
 `Installation`、`Project state`、`Strategy gate` 三项独立状态也位于 JSON 的 `setup` 对象中,
 避免将证据失败误报为工具包安装不完整; 五个策略入口始终假定已安装, CLI 不检查宿主可见性.
 文本以 `Blocking error` 标注载荷、入口文件和项目校验错误, 以 `Non-blocking unverified approvals` 区分普通执行状态.
@@ -319,9 +321,11 @@ AI, 作者和混合创作使用相同门禁. 每本书只保留一个活动创�
 必须运行 strict 检查. 已记录的该状态声明或 `current-scope-review` 待处理操作不能替代该检查. strict 失败时将受影响的
 待处理操作记录为 `blocked`; 不会改写批准状态或虚构执行回执.
 
-策略常规启动或恢复时, 只运行一次安装版 `check.mjs --project-root <root> --digest --json`.
-它组合载荷与入口文件检查、项目校验和普通状态, 返回经过校验的有界 manifest 投影, 并刷新导航缓存.
-`preflight.mjs` 接受相同参数. 不带 `--digest` 时, 组合检查不写项目状态且 `projection` 为 null;
+策略常规启动或恢复时, 只运行一次安装版 `check.mjs --project-root <root> --digest --json`,
+并添加当前策略要求的重复 `--require-sibling NAME` 参数. 五个策略都请求 `author-project` 和
+`revise-fiction`; `revise-increment` 和 `revise-request` 还请求 `revise-draft`.
+检查组合载荷、请求的同级技能文件与入口文件检查、项目校验和普通状态, 返回经过校验的有界
+manifest 投影, 并仅在安装通过后刷新导航缓存. `preflight.mjs` 接受相同参数. 不带 `--digest` 时, 组合检查不写项目状态且 `projection` 为 null;
 默认文本输出仍是不含投影的有界摘要.
 其只读缓存检查会隐藏旧版或与当前 manifest 不一致的 stale 缓存中的路由.
 校验失败后, `--diagnose` 提供有界的已记录未验证投影、范围路径与哈希、scope 检查通过时的当前哈希验证结果和索引差异, 无需重复其他检查命令或打印完整 manifest.

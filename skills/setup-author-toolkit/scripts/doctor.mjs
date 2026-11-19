@@ -3,7 +3,7 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { inspectSetupPayload, resolveSetupRoot } from "./lib/setup-payload.mjs";
+import { inspectSetupPayload, requiredSiblingNames, resolveSetupRoot } from "./lib/setup-payload.mjs";
 
 function argumentError(message) {
   const error = new Error(message);
@@ -13,10 +13,11 @@ function argumentError(message) {
 
 function usage() {
   console.log(`Usage:
-  node scripts/doctor.mjs [--project-root DIR] [--require-sibling author-project] [--json]
+  node scripts/doctor.mjs [--project-root DIR] [--require-sibling NAME]... [--json]
 
 Verify the installed setup skill's regular files against payload-manifest.json.
-With --require-sibling author-project, also verify its seven required regular files.
+Repeat --require-sibling to verify required regular files in each named sibling.
+Supported siblings: ${requiredSiblingNames().join(", ")}.
 With --project-root, also verify that AGENTS.md matches the installed template
 and CLAUDE.md is a relative symlink to AGENTS.md. Project manifests, manuscript,
 and historical evidence are not checked. The five strategy entries are assumed
@@ -30,15 +31,16 @@ function outputFailures(label, failures) {
 }
 
 function options(args) {
-  const result = { json: false };
+  const result = { json: false, requireSiblings: [] };
   for (let index = 0; index < args.length; index += 1) {
     if (args[index] === "--project-root" && args[index + 1]) {
       result.projectRoot = path.resolve(args[++index]);
     } else if (args[index] === "--require-sibling" && args[index + 1]) {
-      if (args[index + 1] !== "author-project") {
-        throw argumentError(`Unsupported required sibling: ${args[index + 1]}`);
+      const name = args[++index];
+      if (!requiredSiblingNames().includes(name)) {
+        throw argumentError(`Unsupported required sibling: ${name}`);
       }
-      result.requireSibling = args[++index];
+      result.requireSiblings.push(name);
     } else if (args[index] === "--json") {
       result.json = true;
     } else {
@@ -64,9 +66,12 @@ try {
         `Setup payload: ${result.files} files (${result.references} references, ${result.clis} CLIs)${project}`,
       );
       outputFailures("Payload failures", result.payload_failures);
-      if (result.sibling.checked) {
-        console.log(`Sibling ${result.sibling.name}: ${result.sibling.files} required files`);
-        outputFailures(`Sibling ${result.sibling.name} failures`, result.sibling_failures);
+      for (const sibling of result.siblings) {
+        console.log(`Sibling ${sibling.name}: ${sibling.files} required files`);
+        outputFailures(
+          `Sibling ${sibling.name} failures`,
+          result.sibling_failures.filter((failure) => failure.path.startsWith(`sibling:${sibling.name}/`)),
+        );
       }
       if (result.project.checked) {
         outputFailures("Project entry failures", result.entry_failures);

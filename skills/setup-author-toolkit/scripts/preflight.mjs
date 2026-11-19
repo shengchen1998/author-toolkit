@@ -15,7 +15,7 @@ import {
   inspectProjectStatus,
 } from "./lib/project-inspection.mjs";
 import { concise, failedCheck, manifestProjection } from "./lib/read-projection.mjs";
-import { inspectSetupPayload } from "./lib/setup-payload.mjs";
+import { inspectSetupPayload, requiredSiblingNames } from "./lib/setup-payload.mjs";
 
 const diagnosticLimit = 12;
 
@@ -28,8 +28,8 @@ function argumentError(message) {
 function usage() {
   console.log(`Usage:
   node scripts/${path.basename(process.argv[1])} --project-root DIR [--scope-id ID]
-                             [--require-execution] [--full] [--digest] [--diagnose]
-                             [--json] [--details]
+                             [--require-sibling NAME]... [--require-execution]
+                             [--full] [--digest] [--diagnose] [--json] [--details]
 
 Check the installed payload, project entry files, registered paths, current
 manuscript hashes, tracker, execution receipts, and recorded blockers. Without
@@ -37,7 +37,9 @@ manuscript hashes, tracker, execution receipts, and recorded blockers. Without
 reports unverified approvals without failing. --require-execution turns those
 approvals into a failed execution gate and requires an explicit --scope-id.
 Project entry failures do not stop project inspection, but fail preflight and
-prevent digest generation.
+prevent digest generation. Repeat --require-sibling to verify required strategy
+files in each named sibling; missing siblings fail installation and prevent
+digest generation. Supported siblings: ${requiredSiblingNames().join(", ")}.
 --diagnose adds a read-only execution-recovery audit and, when validation fails,
 a bounded recorded-unverified projection and backup-index explanation. It
 previews evidence reconciliation without changing validation results or state.
@@ -67,12 +69,18 @@ installed; this command does not check their host visibility.`);
 }
 
 function options(args) {
-  const result = { details: false, digest: false, diagnose: false, full: false, json: false, requireExecution: false };
+  const result = { details: false, digest: false, diagnose: false, full: false, json: false, requireExecution: false, requireSiblings: [] };
   for (let index = 0; index < args.length; index += 1) {
     if (args[index] === "--project-root" && args[index + 1]) {
       result.projectRoot = path.resolve(args[++index]);
     } else if (args[index] === "--scope-id" && args[index + 1]) {
       result.scopeId = args[++index];
+    } else if (args[index] === "--require-sibling" && args[index + 1]) {
+      const name = args[++index];
+      if (!requiredSiblingNames().includes(name)) {
+        throw argumentError(`Unsupported required sibling: ${name}`);
+      }
+      result.requireSiblings.push(name);
     } else if (args[index] === "--require-execution") {
       result.requireExecution = true;
     } else if (args[index] === "--full") {
@@ -114,7 +122,10 @@ function setupRoot() {
 }
 
 async function preflight(selection) {
-  const payload = await inspectSetupPayload(setupRoot(), { projectRoot: selection.projectRoot });
+  const payload = await inspectSetupPayload(setupRoot(), {
+    projectRoot: selection.projectRoot,
+    requireSiblings: selection.requireSiblings,
+  });
   const manifestPath = path.join(selection.projectRoot, ".author-toolkit", "project.json");
   const result = {
     valid: false,
@@ -134,7 +145,9 @@ async function preflight(selection) {
     navigation_cache: null,
   };
   if (payload.payload_failures.length > 0) return result;
-  result.setup.installation = payload.entry_failures.length === 0 ? "passed" : "failed";
+  result.setup.installation = payload.sibling_failures.length === 0 && payload.entry_failures.length === 0
+    ? "passed"
+    : "failed";
 
   let inspectionScopeId = selection.scopeId;
   if (!inspectionScopeId) {
@@ -145,6 +158,9 @@ async function preflight(selection) {
   }
   const validation = await inspectProjectManifest(manifestPath, { scopeId: inspectionScopeId });
   result.navigation_cache = await inspectNavigationCache(selection.projectRoot, validation.manifest);
+  if (payload.sibling_failures.length > 0) {
+    markNavigationCacheStale(result.navigation_cache, "required sibling installation check failed");
+  }
   const displayedChecks = selection.json && selection.details
     ? validation.checks
     : validation.checks.map((check) => check.valid ? { path: check.path, valid: true, errors: [] } : failedCheck(check, false));
@@ -242,13 +258,13 @@ async function preflight(selection) {
     }
   }
 
-  if (selection.digest && payload.entry_failures.length === 0 && result.execution_gate?.valid !== false) {
+  if (selection.digest && payload.valid && result.execution_gate?.valid !== false) {
     result.projection = await manifestProjection(validation.manifest, selection.projectRoot);
     const digest = await generateProjectDigest(selection.projectRoot);
     result.digest = { path: path.basename(digest.path), refreshed: true };
     result.navigation_cache = await inspectNavigationCache(selection.projectRoot, validation.manifest);
   }
-  result.valid = payload.entry_failures.length === 0 && result.execution_gate?.valid !== false && result.evidence?.valid !== false;
+  result.valid = payload.valid && result.execution_gate?.valid !== false && result.evidence?.valid !== false;
   return result;
 }
 
@@ -259,6 +275,15 @@ function outputText(result, selection) {
   );
   console.log(`Payload failures: ${payload.payload_failures.length}`);
   for (const failure of payload.payload_failures) console.log(`Blocking payload error: ${failure.path}: ${failure.reason}`);
+  for (const sibling of payload.siblings) {
+    console.log(`Sibling ${sibling.name}: ${sibling.files} required files`);
+  }
+  if (payload.siblings.length > 0) {
+    console.log(`Sibling failures: ${payload.sibling_failures.length}`);
+    for (const failure of payload.sibling_failures) {
+      console.log(`Blocking sibling error: ${failure.path}: ${failure.reason}`);
+    }
+  }
   console.log(`Entry files: ${payload.entry_failures.length === 0 ? "pass" : "fail"}`);
   for (const failure of payload.entry_failures) console.log(`Blocking entry-file error: ${failure.path}: ${failure.reason}`);
   console.log(`Installation: ${result.setup.installation}`);

@@ -19,6 +19,9 @@ async function fixture(t, cache = null) {
   t.after(() => rm(temporary, { recursive: true, force: true }));
   const setupRoot = path.join(temporary, "setup-author-toolkit");
   await cp(path.join(root, "skills", "setup-author-toolkit"), setupRoot, { recursive: true });
+  for (const name of ["author-project", "revise-fiction", "revise-draft"]) {
+    await cp(path.join(root, "skills", name), path.join(temporary, name), { recursive: true });
+  }
   const projectRoot = path.join(temporary, "project");
   await cp(exampleRoot("en"), projectRoot, { recursive: true });
   await cp(
@@ -29,6 +32,7 @@ async function fixture(t, cache = null) {
   await symlink("AGENTS.md", path.join(projectRoot, "CLAUDE.md"));
   if (cache !== null) await writeFile(path.join(projectRoot, "PROJECT_STATE.md"), cache);
   return {
+    temporary,
     setupRoot,
     projectRoot,
     manifestPath: path.join(projectRoot, ".author-toolkit", "project.json"),
@@ -156,6 +160,63 @@ test("preflight digest returns the validated bounded manifest projection in JSON
   assert.equal(parsed.projection.pending_action.artifact_count, manifest.pending_action.artifacts.length);
   assert.equal(parsed.digest.refreshed, true);
   assert.equal(parsed.navigation_cache.reusable, true);
+});
+
+test("preflight checks every requested sibling before refreshing the digest", async (t) => {
+  const { setupRoot, projectRoot } = await fixture(t);
+  const result = run([
+    "--project-root", projectRoot,
+    "--require-sibling", "author-project",
+    "--require-sibling", "revise-fiction",
+    "--require-sibling", "revise-draft",
+    "--digest",
+    "--json",
+  ], path.join(setupRoot, "scripts", "preflight.mjs"));
+  assert.equal(result.status, 0, result.stderr);
+  const parsed = JSON.parse(result.stdout);
+  assert.equal(parsed.valid, true);
+  assert.equal(parsed.setup.installation, "passed");
+  assert.deepEqual(parsed.payload.siblings, [
+    { name: "author-project", files: 7 },
+    { name: "revise-fiction", files: 2 },
+    { name: "revise-draft", files: 2 },
+  ]);
+  assert.deepEqual(parsed.payload.sibling_failures, []);
+  assert.equal(parsed.digest.refreshed, true);
+});
+
+test("preflight sibling failures fail installation and preserve the cache in digest and diagnose modes", async (t) => {
+  for (const mode of ["--digest", "--diagnose"]) {
+    const { temporary, setupRoot, projectRoot } = await fixture(t, "previous cache\n");
+    await rm(path.join(temporary, "revise-fiction", "references", "state-and-findings.md"));
+    const args = [
+      "--project-root", projectRoot,
+      "--require-sibling", "author-project",
+      "--require-sibling", "revise-fiction",
+      mode,
+      "--json",
+    ];
+    const result = run(args, path.join(setupRoot, "scripts", "preflight.mjs"));
+    assert.equal(result.status, 1, `${mode}: ${result.stderr}`);
+    const parsed = JSON.parse(result.stdout);
+    assert.equal(parsed.valid, false, mode);
+    assert.equal(parsed.payload.valid, false, mode);
+    assert.equal(parsed.setup.installation, "failed", mode);
+    assert.equal(parsed.setup.project_state, "passed", mode);
+    assert.deepEqual(parsed.payload.siblings, [
+      { name: "author-project", files: 7 },
+      { name: "revise-fiction", files: 2 },
+    ]);
+    assert.deepEqual(parsed.payload.sibling_failures.map((failure) => failure.path), [
+      "sibling:revise-fiction/references/state-and-findings.md",
+    ]);
+    assert.equal(parsed.digest, null, mode);
+    assert.equal(parsed.projection, null, mode);
+    assert.equal(parsed.navigation_cache.next_action, "withheld", mode);
+    assert.ok(parsed.navigation_cache.issues.includes("required sibling installation check failed"), mode);
+    if (mode === "--diagnose") assert.notEqual(parsed.diagnosis, null);
+    assert.equal(await readFile(path.join(projectRoot, "PROJECT_STATE.md"), "utf8"), "previous cache\n");
+  }
 });
 
 test("preflight marks legacy caches stale without reproducing their recorded routes", async (t) => {
@@ -658,7 +719,15 @@ test("preflight reports malformed manifests and argument errors", async (t) => {
   const help = run(["--help"]);
   assert.equal(help.status, 0, help.stderr);
   assert.match(help.stdout, /--digest/);
-  for (const args of [[], ["--unknown"], ["--project-root"], ["--project-root", projectRoot, "extra"]]) {
+  assert.match(help.stdout, /--require-sibling NAME/);
+  for (const args of [
+    [],
+    ["--unknown"],
+    ["--project-root"],
+    ["--project-root", projectRoot, "extra"],
+    ["--project-root", projectRoot, "--require-sibling"],
+    ["--project-root", projectRoot, "--require-sibling", "author-review"],
+  ]) {
     const invalid = run(args);
     assert.equal(invalid.status, 2);
     assert.match(invalid.stdout, /Usage:/);

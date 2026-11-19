@@ -46,6 +46,7 @@ export { inspectManifestValue, inspectProjectManifest, inspectProjectStatus } fr
 export { initializeExistingProject } from "./project-initialization.mjs";
 export { scaffoldNewProject } from "./project-scaffold.mjs";
 export { inspectNavigationCache, markNavigationCacheStale } from "./navigation-cache.mjs";
+export { requiredSiblingNames } from "./setup-payload.mjs";
 export {
   checkReviewCoverage,
   validateReaderState,
