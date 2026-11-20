@@ -839,6 +839,24 @@ test("revision strategies share one project and keep distinct evidence gates", a
   assert.match(draft, /Publishing or changing `draft-baseline\.md`.*uses its own `edit` approval/);
 });
 
+test("revise-draft intake uses a stable human-readable report template", async () => {
+  const [gates, template] = await Promise.all([
+    readFile(path.join(root, "skills/revise-draft/references/stage-gates.md"), "utf8"),
+    readFile(path.join(root, "skills/revise-draft/assets/intake-report-template.md"), "utf8"),
+  ]);
+
+  assert.match(gates, /assets\/intake-report-template\.md` as the `--body` input/);
+  assert.match(gates, /`scaffold-report` and `--preset intake`/);
+  assert.match(template, /\| Order \| Path \| Characters \| SHA-256 \|/);
+  assert.match(template, /Reading order:/);
+  assert.match(template, /Chapter identifiers:/);
+  assert.match(template, /Exclusions:/);
+  assert.match(template, /Language: BCP 47 tag/);
+  assert.match(template, /Current author goal: unknown/);
+  assert.equal((template.match(/^## Language coverage$/gm) ?? []).length, 1);
+  assert.doesNotMatch(template, /```/);
+});
+
 test("shared prose advances clean audits without weakening author gates", async () => {
   const [prose, reporting, fictionGates, draftGates, increment, chineseRules, adapter] =
     await Promise.all([

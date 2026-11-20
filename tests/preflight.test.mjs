@@ -179,7 +179,7 @@ test("preflight checks every requested sibling before refreshing the digest", as
   assert.deepEqual(parsed.payload.siblings, [
     { name: "author-project", files: 7 },
     { name: "revise-fiction", files: 2 },
-    { name: "revise-draft", files: 2 },
+    { name: "revise-draft", files: 3 },
   ]);
   assert.deepEqual(parsed.payload.sibling_failures, []);
   assert.equal(parsed.digest.refreshed, true);

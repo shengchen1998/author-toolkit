@@ -17,6 +17,7 @@ const REQUIRED_SIBLINGS = {
   "revise-draft": [
     "references/stage-gates.md",
     "assets/draft-baseline-template.md",
+    "assets/intake-report-template.md",
   ],
   "revise-fiction": [
     "references/state-and-findings.md",

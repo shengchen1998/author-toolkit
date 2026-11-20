@@ -263,7 +263,7 @@
     },
     {
       "path": "scripts/lib/setup-payload.mjs",
-      "sha256": "bc48cc658d79ff7c1e46fd86858fa5277332f045b6ea6b07921b70118f66acc2"
+      "sha256": "a98c316260cc52dfba78b2de11ac7c040e7634e8f11b8dd04fda7808a2370dd9"
     },
     {
       "path": "scripts/lib/setup-report.mjs",

@@ -130,12 +130,13 @@ test("doctor checks every requested strategy sibling and deduplicates repeated n
   assert.deepEqual(JSON.parse(complete.stdout).siblings, [
     { name: "author-project", files: 7 },
     { name: "revise-fiction", files: 2 },
-    { name: "revise-draft", files: 2 },
+    { name: "revise-draft", files: 3 },
   ]);
 
   await rm(path.join(temporary, "revise-fiction"), { recursive: true });
   await rm(path.join(temporary, "revise-draft", "references", "stage-gates.md"));
   await rm(path.join(temporary, "revise-draft", "assets", "draft-baseline-template.md"));
+  await rm(path.join(temporary, "revise-draft", "assets", "intake-report-template.md"));
   const missing = run([...args, "--json"], { tool: installedTool });
   assert.equal(missing.status, 1, missing.stderr);
   const parsed = JSON.parse(missing.stdout);
@@ -147,13 +148,14 @@ test("doctor checks every requested strategy sibling and deduplicates repeated n
     "sibling:revise-fiction/assets/revision-plan-template.md",
     "sibling:revise-draft/references/stage-gates.md",
     "sibling:revise-draft/assets/draft-baseline-template.md",
+    "sibling:revise-draft/assets/intake-report-template.md",
   ]);
 
   const text = run(args, { tool: installedTool });
   assert.equal(text.status, 1, text.stderr);
   assert.match(text.stdout, /Sibling author-project failures: 0/);
   assert.match(text.stdout, /Sibling revise-fiction: 2 required files\nSibling revise-fiction failures: 2/);
-  assert.match(text.stdout, /Sibling revise-draft: 2 required files\nSibling revise-draft failures: 2/);
+  assert.match(text.stdout, /Sibling revise-draft: 3 required files\nSibling revise-draft failures: 3/);
   assert.match(text.stdout, /Exit reason: incomplete toolkit installation; stop setup/);
 });
 
