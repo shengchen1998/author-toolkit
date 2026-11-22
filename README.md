@@ -827,8 +827,11 @@ from that installed skill's `SKILL.md` declaration and rejects a conflicting
 supplied version. Its optional stage preset fills deterministic envelope fields
 and recorded current-scope hashes while the caller supplies semantic fields and
 any non-scope input versions. It supplies `findings: []` when that field is omitted
-and validates the complete report before publication; it does not infer reviewer
-findings, coverage, input currency, or synthesis dependencies.
+and validates the complete report before publication. With `--preset intake` and
+`skill.name` set to `revise-draft`, it also requires every bullet label and level-two
+heading from the installed intake report template, in any order; this shape check
+does not establish inventory completeness. The CLI does not infer reviewer findings,
+coverage, input currency, or synthesis dependencies.
 
 `review-brief.mjs --help` describes the deterministic review brief generator.
 It copies every resolved and dismissed tracker location, decision reason, and

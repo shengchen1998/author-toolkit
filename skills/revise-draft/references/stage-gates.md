@@ -8,7 +8,7 @@ At a stable operation gate, the author may switch to `write-fiction`, `revise-fi
 
 **Inputs:** A v3 project root and at least one readable manuscript file.
 
-**Work:** Inventory all manuscript files in reading order, recording character counts and SHA-256 versions. Record missing or duplicate chapter identifiers, language, exclusions, and the current author goal when known; total length, outline, ending, and requested outcome may remain open. Confirm the current `scope_id` with the author. Use a filled copy of `assets/intake-report-template.md` as the `--body` input and publish through `author-project` with `scaffold-report` and `--preset intake`; the template does not replace the report v2 envelope or validation.
+**Work:** Inventory all manuscript files in reading order, recording character counts and SHA-256 versions. Record missing or duplicate chapter identifiers, language, exclusions, and the current author goal when known; total length, outline, ending, and requested outcome may remain open. Confirm the current `scope_id` with the author. Use a filled copy of `assets/intake-report-template.md` as the `--body` input and publish through `author-project` with `scaffold-report` and `--preset intake`; the template does not replace the report v2 envelope or validation. For this executing skill and preset, the scaffold requires every template bullet label and level-two heading in any order. This shape check does not establish inventory completeness or actual coverage.
 
 **Gate:** Manifest and tracker validate, every file is accounted for, paths are readable, exclusions are named, and the author confirms the scope. Write an intake report in `reports/intake/`. Missing metadata does not block current-text work.
 

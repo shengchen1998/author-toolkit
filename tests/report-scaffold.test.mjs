@@ -70,6 +70,27 @@ function argumentsFor(fixtureValues, output = "reports/current-scope-review/scaf
   ];
 }
 
+async function intakeArguments(values, skillName = "revise-draft", language = "en") {
+  const source = clone(values.source);
+  for (const field of ["schema_version", "stage", "created_at", "language"]) delete source[field];
+  Object.assign(source, {
+    report_id: "INTAKE-SCAFFOLD-001",
+    audit: "intake",
+    skill: { name: skillName },
+    inputs: [],
+    findings: [],
+  });
+  source.engine.notes = `execution=interactive; operation_coverage=full; coverage=full (${language})`;
+  await writeFile(values.envelopePath, JSON.stringify(source), "utf8");
+  return [
+    ...argumentsFor(values, "reports/intake/scaffold.md"),
+    "--preset",
+    "intake",
+    "--scope-id",
+    values.manifest.current_scope.scope_id,
+  ];
+}
+
 test("scaffold defaults omitted findings and preserves supplied finding v2 objects", async () => {
   const source = extractReportEnvelope(await readReport());
   delete source.created_at;
@@ -90,6 +111,74 @@ test("scaffold defaults omitted findings and preserves supplied finding v2 objec
     () => scaffoldReport({ body: "# Report\n\n## Language coverage\n\nfull", envelope: { ...source, findings: "none" } }),
     /findings must be an array/,
   );
+});
+
+test("scaffold CLI requires every revise-draft intake template label and level-two heading", async (t) => {
+  const values = await fixture(t);
+  const template = await readFile(
+    path.join(root, "skills/revise-draft/assets/intake-report-template.md"),
+    "utf8",
+  );
+  const lines = template.split("\n");
+  const markers = lines.filter((line) => /^- [^:]+:/.test(line) || /^## \S/.test(line));
+  assert.equal(markers.length, 8);
+  const args = await intakeArguments(values);
+  const destination = path.join(values.project, "reports/intake/scaffold.md");
+
+  for (const marker of markers) {
+    await writeFile(values.bodyPath, lines.filter((line) => line !== marker).join("\n"), "utf8");
+    const result = run(args);
+    const expected = marker.match(/^- [^:]+:/)?.[0] ?? marker;
+    assert.equal(result.status, 1, `intake body without ${expected} should fail`);
+    assert.ok(result.stderr.includes(expected), result.stderr);
+    await assert.rejects(readFile(destination, "utf8"), { code: "ENOENT" });
+  }
+});
+
+test("scaffold CLI accepts reordered revise-draft intake headings and Chinese content", async (t) => {
+  const values = await fixture(t);
+  const manifest = { ...values.manifest, language: "zh-CN" };
+  await writeFile(
+    path.join(values.project, ".author-toolkit", "project.json"),
+    JSON.stringify(manifest),
+    "utf8",
+  );
+  const args = await intakeArguments(values, "revise-draft", "zh-CN");
+  await writeFile(values.bodyPath, `# 草稿接收
+
+## Language coverage
+
+full (zh-CN)：已清点全部稿件。
+
+- Current author goal: 尚未决定
+- Language: zh-CN
+- Exclusions: None
+- Chapter identifiers: 每章标识均已记录
+- Reading order: 见下表
+- Scope ID: ${values.manifest.current_scope.scope_id}
+
+## Manuscript inventory
+
+| Order | Path | Characters | SHA-256 |
+|---|---|---:|---|
+`);
+
+  const result = run(args);
+  assert.equal(result.status, 0, result.stderr);
+  const markdown = await readFile(path.join(values.project, "reports/intake/scaffold.md"), "utf8");
+  assert.equal(extractReportEnvelope(markdown).language, "zh-CN");
+  assert.match(markdown, /- Chapter identifiers: 每章标识均已记录/);
+});
+
+test("scaffold CLI does not apply the revise-draft intake template to revise-fiction", async (t) => {
+  const values = await fixture(t);
+  const args = await intakeArguments(values, "revise-fiction");
+  await writeFile(values.bodyPath, "# Intake\n\n## Language coverage\n\nfull (en)\n");
+
+  const result = run(args);
+  assert.equal(result.status, 0, result.stderr);
+  const markdown = await readFile(path.join(values.project, "reports/intake/scaffold.md"), "utf8");
+  assert.equal(extractReportEnvelope(markdown).skill.name, "revise-fiction");
 });
 
 test("scaffold CLI preserves valid nonempty findings", async (t) => {
@@ -323,6 +412,8 @@ test("scaffold CLI help documents body input and the generated envelope", () => 
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /The body must not contain fenced code blocks/);
   assert.match(result.stdout, /CLI appends the single\s+fenced report v2 `json` block/);
+  assert.match(result.stdout, /revise-draft with --preset intake/);
+  assert.match(result.stdout, /every bullet label\s+and level-two heading/);
 });
 
 test("scaffold CLI uses exit 2 for argument errors", async (t) => {

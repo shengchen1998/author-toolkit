@@ -170,6 +170,32 @@ async function resolveSkill(envelope, setupRoot) {
   return { ...envelope, skill: { ...skill, version } };
 }
 
+async function assertReviseDraftIntakeBody(body, setupRoot) {
+  const templateFile = path.join(setupRoot, "..", "revise-draft", "assets", "intake-report-template.md");
+  let template;
+  try {
+    const stats = await lstat(templateFile);
+    if (!stats.isFile()) throw new Error("not a regular file");
+    template = await readFile(templateFile, "utf8");
+  } catch (error) {
+    throw reportError(`revise-draft intake template is missing or unreadable: ${error.message}`);
+  }
+
+  const markers = template.split(/\r?\n/).flatMap((line) => {
+    const label = line.match(/^- [^:]+:/)?.[0];
+    return label ? [label] : /^## \S/.test(line) ? [line] : [];
+  });
+  if (markers.length === 0) {
+    throw reportError("revise-draft intake template declares no body labels or level-two headings");
+  }
+  const bodyLines = body.split(/\r?\n/);
+  const missing = markers.filter((marker) => !bodyLines.some((line) =>
+    marker.startsWith("- ") ? line.startsWith(marker) : line.trimEnd() === marker));
+  if (missing.length > 0) {
+    throw reportError(`revise-draft intake body is missing required template markers: ${missing.join("; ")}`);
+  }
+}
+
 export async function writeScaffoldedReport({
   projectRoot,
   setupRoot,
@@ -202,6 +228,9 @@ export async function writeScaffoldedReport({
     throw reportError("envelope must be one JSON object");
   }
   const versionedEnvelope = await resolveSkill(envelope, setupRoot);
+  if (preset === "intake" && versionedEnvelope.skill.name === "revise-draft") {
+    await assertReviseDraftIntakeBody(body, setupRoot);
+  }
   if ("created_at" in envelope && createdAt !== undefined && envelope.created_at !== createdAt) {
     throw reportError("--created-at conflicts with envelope.created_at");
   }

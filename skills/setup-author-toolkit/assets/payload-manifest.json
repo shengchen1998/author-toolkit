@@ -240,7 +240,7 @@
     },
     {
       "path": "scripts/lib/report-scaffold.mjs",
-      "sha256": "fee2de4903798f80012d297538c96efea42a262043f75ad337f647c7f4e3e6b1"
+      "sha256": "c0859f8865a93ea70ec7d38e18b038988906de93cfad3bf6dd7399f1899b94f7"
     },
     {
       "path": "scripts/lib/review-brief.mjs",
@@ -348,7 +348,7 @@
     },
     {
       "path": "scripts/scaffold-report.mjs",
-      "sha256": "2bf9d181c5967e32b87e930a91a09e48f41879c4eb2e30a886451316c9ceeb90"
+      "sha256": "6c3ea06ae7e4f7b670dc3f430da118d0f89b67856d3679e035d432e28981d2be"
     },
     {
       "path": "scripts/set-pending.mjs",

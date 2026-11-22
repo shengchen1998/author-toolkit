@@ -536,8 +536,10 @@ node scripts/range.mjs --project-root /path/to/writing-project "manuscript/1.md:
 `scaffold-report.mjs --help` 说明不可覆盖的共享报告生成命令. 对每份报告, 调用者提供
 `skill.name`; CLI 从该安装技能的 `SKILL.md` 声明填充 `skill.version`, 并拒绝不一致的已填版本.
 可选的阶段预设会填充确定性的信封字段和当前 scope 中记录的哈希; 调用者仍提供语义字段和非
-scope 输入版本. 它在未提供 `findings` 字段时补充 `findings: []`, 并在发布前校验完整报告;
-不推断复核发现项, 实际覆盖度, 输入时效性或综合报告依赖.
+scope 输入版本. 它在未提供 `findings` 字段时补充 `findings: []`, 并在发布前校验完整报告.
+使用 `--preset intake` 且 `skill.name` 为 `revise-draft` 时, 正文还必须按任意顺序包含已安装
+intake 报告模板中的每个项目符号标签和二级标题; 这种形状检查不证明库存完整.
+CLI 不推断复核发现项, 实际覆盖度, 输入时效性或综合报告依赖.
 
 `evidence-retention.mjs --help` 说明可选的有界证据保留. 默认项目保留所有历史证据.
 只有显式 `--enable --apply` 才迁移发现项身份并删除无引用的旧审计产物;
