@@ -1,6 +1,7 @@
 ---
 name: author-project
 description: Use when reading, validating, or updating a neutral author-toolkit v3.1 project, recording its current scope or pending action, and recording manuscript backups, execution receipts, and restores.
+version: 3.1.0
 ---
 
 # Author Project
@@ -23,7 +24,7 @@ Accept one operation per invocation:
 | `status --digest` | `node <setup-skill-root>/scripts/project-digest.mjs --project-root <project-root>` | Generate the bounded `PROJECT_STATE.md` navigation cache after complete project validation, with a UTC generation-time snapshot, finding counts, current-scope execution evidence, latest pointers, and the recorded next action when execution evidence permits; otherwise show the reconciliation route |
 | `next-finding-id` | Uppercase audit prefix and positive batch count | Return an unused consecutive ID block after all tracker and immutable-report history |
 | `record-findings` | Project root and one or more immutable report paths beneath the registered reports path | Under the shared write lock, validate and atomically insert or update finding rows and one Audit runs row per report while preserving author decisions |
-| `scaffold-report` | Project manifest, create-only report destination, human-readable body, and report v2 envelope or semantic fields for a stage preset | Fill preset fields from the current scope, default omitted findings to `findings: []`, validate the complete report before writing, and preserve existing reports |
+| `scaffold-report` | Project manifest, create-only report destination, human-readable body, executing skill name, and report v2 envelope or semantic fields for a stage preset | Fill the declared skill version and preset fields, default omitted findings to `findings: []`, validate the complete report before writing, and preserve existing reports |
 | `coverage-index` | Project manifest and one complete operation entry | Validate the referenced full local coverage units and reports, preserve other operations, and atomically update the living coverage index |
 | `evidence-retention` | Project root; optional operation; explicit enable and apply for migration | Preview bounded audit-evidence retention or migrate and apply it while protecting current and recovery references |
 | `review-brief` | Project root, living tracker, and optional output path | Regenerate every resolved and dismissed tracker decision with exact locations, reasons, and report paths; validate and atomically replace the disposable brief |

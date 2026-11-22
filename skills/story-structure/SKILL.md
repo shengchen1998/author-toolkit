@@ -1,6 +1,7 @@
 ---
 name: story-structure
 description: "Use when planning or diagnosing a novel's macro plot structure. Trigger on: 'story structure', 'plot point', 'inciting event', 'midpoint', 'structure audit', 'structure map', 'signpost scene', 'mirror moment', or macro-structure analysis."
+version: 3.1.0
 ---
 
 # Story Structure

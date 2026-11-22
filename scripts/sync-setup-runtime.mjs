@@ -70,6 +70,7 @@ async function main() {
 }
 
 async function writePayloadManifest(generated) {
+  const packageManifest = JSON.parse(await readFile(path.join(root, "package.json"), "utf8"));
   const files = (await Promise.all([
     filesUnder(generated, "scripts/"),
     filesUnder(path.join(setupRoot, "assets", "references"), "assets/references/"),
@@ -85,7 +86,10 @@ async function writePayloadManifest(generated) {
       sha256: createHash("sha256").update(await readFile(source)).digest("hex"),
     };
   }));
-  await writeFile(payloadManifest, `${JSON.stringify({ schema_version: "1.0", files: entries }, null, 2)}\n`);
+  await writeFile(
+    payloadManifest,
+    `${JSON.stringify({ schema_version: "1.1", version: packageManifest.version, files: entries }, null, 2)}\n`,
+  );
 }
 
 function assertOnlyNodeBuiltinsAreExternal(metafile) {

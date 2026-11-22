@@ -142,8 +142,37 @@ async function assertRegularInput(file) {
   return file;
 }
 
+async function resolveSkill(envelope, setupRoot) {
+  const skill = envelope.skill;
+  if (!skill || typeof skill !== "object" || Array.isArray(skill) || typeof skill.name !== "string") {
+    throw reportError("envelope.skill.name must identify the executing skill");
+  }
+  if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(skill.name)) {
+    throw reportError("envelope.skill.name must be a lowercase hyphenated skill name");
+  }
+  const skillFile = path.join(setupRoot, "..", skill.name, "SKILL.md");
+  let text;
+  try {
+    const stats = await lstat(skillFile);
+    if (!stats.isFile()) throw new Error("not a regular file");
+    text = await readFile(skillFile, "utf8");
+  } catch (error) {
+    throw reportError(`executing skill metadata is missing or unreadable: ${skill.name}: ${error.message}`);
+  }
+  const frontmatter = text.match(/^---\n([\s\S]*?)\n---\n/);
+  const version = frontmatter?.[1].match(/^version: ([^\s]+)$/m)?.[1];
+  if (!version) {
+    throw reportError(`executing skill must declare version in SKILL.md frontmatter: ${skill.name}`);
+  }
+  if ("version" in skill && skill.version !== version) {
+    throw reportError(`envelope.skill.version conflicts with the installed ${skill.name} version ${version}`);
+  }
+  return { ...envelope, skill: { ...skill, version } };
+}
+
 export async function writeScaffoldedReport({
   projectRoot,
+  setupRoot,
   manifest,
   destination,
   bodyFile,
@@ -172,12 +201,13 @@ export async function writeScaffoldedReport({
   if (!envelope || typeof envelope !== "object" || Array.isArray(envelope)) {
     throw reportError("envelope must be one JSON object");
   }
+  const versionedEnvelope = await resolveSkill(envelope, setupRoot);
   if ("created_at" in envelope && createdAt !== undefined && envelope.created_at !== createdAt) {
     throw reportError("--created-at conflicts with envelope.created_at");
   }
   const resolvedEnvelope = preset
-    ? applyReportPreset({ manifest, envelope, preset, scopeId, inputPaths })
-    : envelope;
+    ? applyReportPreset({ manifest, envelope: versionedEnvelope, preset, scopeId, inputPaths })
+    : versionedEnvelope;
   const result = scaffoldReport({ body, envelope: resolvedEnvelope, createdAt });
 
   await assertAbsent(target);

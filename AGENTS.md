@@ -15,7 +15,7 @@ The private native-ESM package requires Node.js 22+ (22.20+ for the generic skil
 - `skills/`: the 16 skill packages. Each has a `SKILL.md`; progressive-disclosure references, templates, and assets live inside the owning skill.
 - `scripts/`: repository CLI entry points. `scripts/lib/` contains their shared implementation, and `scripts/lib/index.mjs` is the library export surface.
 - `references/`: canonical shared schemas and workflow contracts; not an installed runtime dependency.
-- `skills/setup-author-toolkit/`: installed runtime. `assets/references/` mirrors shared contracts; `scripts/` is the generated, self-contained CLI mirror with bundled runtime packages; `assets/payload-manifest.json` records payload files and SHA-256 hashes.
+- `skills/setup-author-toolkit/`: installed runtime. `assets/references/` mirrors shared contracts; `scripts/` is the generated, self-contained CLI mirror with bundled runtime packages; `assets/payload-manifest.json` records the toolkit version, payload files, and SHA-256 hashes.
 - `skills/author-project/assets/project-template.json`: neutral starting manifest for a new v3.1 project.
 - `examples/fiction-revision-en/` and `examples/fiction-revision-zh/`: handwritten v3.1 validation fixtures, not model-run evidence.
 - `tests/`: Node.js contract, CLI, deployment, language-support, and scale tests. `tests/helpers.mjs` supplies common fixture access.
@@ -56,7 +56,7 @@ Check the mirror without changing it:
 node scripts/sync-setup-runtime.mjs --check
 ```
 
-The generator copies repository CLIs, bundles `scripts/lib/schemas.mjs` for Node 22 with esbuild, preserves dependency licenses, and regenerates the payload manifest from installed scripts, shared references, project-entry templates, the setup entry point, and setup branch references. Only Node built-ins may remain external in the schema bundle.
+The generator copies repository CLIs, bundles `scripts/lib/schemas.mjs` for Node 22 with esbuild, preserves dependency licenses, and regenerates the payload manifest with the `package.json` toolkit version and hashes of installed scripts, shared references, project-entry templates, the setup entry point, and setup branch references. Only Node built-ins may remain external in the schema bundle.
 
 ## CLI guide
 
@@ -105,7 +105,7 @@ node scripts/project-digest.mjs --project-root /path/to/writing-project
 ### Evidence and navigation helpers
 
 - `node scripts/findings.mjs next-finding-id STANDARD --manifest FILE --count 35` allocates a consecutive unused ID block from tracker and report history. `node scripts/findings.mjs record-findings --manifest FILE --report FILE` validates a complete report batch and, under the shared write lock, atomically upserts finding rows and one Audit runs row per report while preserving existing decisions and timestamps. Clean reports record an audit run without adding findings. Neither transaction replaces semantic finding reconciliation or author decisions.
-- `node scripts/scaffold-report.mjs --help` describes create-only report v2 generation. An optional stage preset fills deterministic fields and recorded current-scope hashes; omitted findings become `findings: []`. The complete report is validated before writing and existing reports are preserved. The semantic skill supplies actual findings, non-scope input versions, coverage, and synthesis dependencies.
+- `node scripts/scaffold-report.mjs --help` describes create-only report v2 generation. The CLI fills `skill.version` from the executing skill's installed `SKILL.md` declaration and rejects conflicts. An optional stage preset fills deterministic fields and recorded current-scope hashes; omitted findings become `findings: []`. The complete report is validated before writing and existing reports are preserved. The semantic skill supplies actual findings, non-scope input versions, coverage, and synthesis dependencies.
 - `node scripts/review-brief.mjs --project-root DIR [--tracker PATH] [--out PATH] [--updated-at TIMESTAMP] [--json]` regenerates the disposable resolved/dismissed decision summary from a valid v3.1 tracker. It preserves complete locations, reasons, and current reports, validates the result, and atomically replaces only the brief.
 - `node scripts/coverage-index.mjs --manifest FILE --entry FILE [--updated-at TIMESTAMP] [--json]` registers one complete operation entry in the living coverage index. It validates full local coverage units, source and synthesis reports, confirmed current scope, and the complete index before an atomic replacement under the shared write lock. Other operations are preserved. Argument errors exit 2; validation and filesystem failures exit 1.
 - `node scripts/evidence-retention.mjs --project-root DIR [--operation ID] [--enable --apply]` previews or applies explicitly bounded audit-evidence retention. First migration requires `--enable --apply`; current and recovery references are protected. Backups, batches, creation records, execution evidence, and manuscript are never candidates.
@@ -130,7 +130,7 @@ The skills have three invocation modes:
 - Three shared orchestration capabilities: `author-project` owns state, paths, validation, backups, execution receipts, commits, and restores; `author-handoff` preserves resumable context; `author-review` performs manuscript reading and synthesis.
 - Six independent skills: `fiction-workshop`, `character-archetypes`, `story-structure`, `narrative-nonfiction`, `prose-mechanics`, and `avoid-ai-writing`. They work without setup, retain their standalone contracts, and leave shared state unchanged unless the author incorporates their output.
 
-`tests/skills.test.mjs` checks skill inventory, names, invocation modes, and host-independent procedures. Skill discovery and author-facing invocation follow the selected host.
+`tests/skills.test.mjs` checks skill inventory, names, declared versions, invocation modes, and host-independent procedures. Skill discovery and author-facing invocation follow the selected host.
 
 ### Validation and module boundaries
 
@@ -182,7 +182,7 @@ Use native ESM with named imports, two-space indentation, double quotes, semicol
 
 Preserve closed JSON Schema contracts and their `additionalProperties` rules. Stored machine identifiers, field names, report headings, tracker columns, and enum values are versioned contracts, not prose to localize. Keep exact relative links valid from each skill's installed location.
 
-Keep user-facing workflow changes synchronized across skill references, `README.md`, `README.zh-CN.md`, schemas, examples, and tests. Update `docs/VALIDATION.md` after real host validation, not after merely running repository fixtures. Release metadata lives in `package.json`; inspect it when changing versions.
+Keep user-facing workflow changes synchronized across skill references, `README.md`, `README.zh-CN.md`, schemas, examples, and tests. Update `docs/VALIDATION.md` after real host validation, not after merely running repository fixtures. Release metadata lives in `package.json`; when changing versions, update every first-party skill's declared version to match and regenerate the payload manifest. Vendored skills retain their independent versions.
 
 Issues and specs live in GitHub Issues for `shengchen1998/author-toolkit`; use `gh` and follow `docs/agents/issue-tracker.md`. Preserve the canonical triage-label strings in `docs/agents/triage-labels.md`. Use `GLOSSARY.md` and relevant ADRs as described by `docs/agents/domain.md`.
 

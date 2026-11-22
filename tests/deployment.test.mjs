@@ -59,6 +59,11 @@ test("setup carries self-contained preflight, validation, state, range, and inst
     path.join(temporaryRoot, "author-project"),
     { recursive: true },
   );
+  await cp(
+    path.join(root, "skills", "author-review"),
+    path.join(temporaryRoot, "author-review"),
+    { recursive: true },
+  );
   const loader = path.join(temporaryRoot, "block-runtime-packages.mjs");
   await writeFile(
     loader,
@@ -550,7 +555,7 @@ test("setup carries self-contained preflight, validation, state, range, and inst
     report_id: "SCAFFOLD-DEPLOYMENT-001",
     audit: "scaffold-deployment",
     created_at: "2026-11-15T00:00:00Z",
-    skill: { name: "author-review", version: "unversioned" },
+    skill: { name: "author-review" },
     engine: {
       name: "conversational",
       version: "unknown",
@@ -584,6 +589,7 @@ test("setup carries self-contained preflight, validation, state, range, and inst
   assert.equal(scaffold.status, 0, scaffold.stderr);
   assert.equal(JSON.parse(scaffold.stdout).finding_count, 0);
   const scaffoldedReport = await readFile(path.join(scaffoldProject, "reports/current-scope-review/scaffold.md"), "utf8");
+  assert.match(scaffoldedReport, /"skill": \{\n\s+"name": "author-review",\n\s+"version": "3\.1\.0"\n\s+\}/);
   assert.match(scaffoldedReport, /"findings": \[\]/);
   const scaffoldValidation = spawnSync(
     process.execPath,
@@ -972,6 +978,9 @@ test("setup branch references are included in the authoritative payload manifest
     path.join(root, "skills", "setup-author-toolkit", "assets", "payload-manifest.json"),
     "utf8",
   ));
+  const packageManifest = JSON.parse(await readFile(path.join(root, "package.json"), "utf8"));
+  assert.equal(payload.schema_version, "1.1");
+  assert.equal(payload.version, packageManifest.version);
   const paths = new Set(payload.files.map((entry) => entry.path));
   assert.ok(paths.has("assets/setup/existing-project.md"));
   assert.ok(paths.has("assets/setup/new-project.md"));

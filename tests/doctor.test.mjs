@@ -55,6 +55,7 @@ test("doctor reports a bounded summary for a complete installed payload", async 
   const parsed = JSON.parse(json.stdout);
   assert.equal(parsed.valid, true);
   assert.equal(parsed.payload_manifest, "payload-manifest.json");
+  assert.equal(parsed.version, "3.1.0");
   assert.equal(parsed.clis, 22);
   assert.deepEqual(parsed.sibling, { checked: false, name: null, files: 0 });
   assert.deepEqual(parsed.siblings, []);
@@ -281,11 +282,27 @@ test("doctor rejects unsupported manifest shapes and unsafe paths", async () => 
     ]) {
       await writeFile(
         path.join(temporary, "assets", "payload-manifest.json"),
-        JSON.stringify({ schema_version: "1.0", files }),
+        JSON.stringify({ schema_version: "1.1", version: "3.1.0", files }),
       );
       const result = await inspectSetupPayload(temporary);
       assert.equal(result.valid, false);
       assert.equal(result.files, 0);
+      assert.ok(result.failures.every((failure) => failure.path === "assets/payload-manifest.json"));
+    }
+    const files = [{ path: "assets/AGENTS.md", sha256: "a".repeat(64) }];
+    for (const manifest of [
+      { schema_version: "1.0", version: "3.1.0", files },
+      { schema_version: "1.1", files },
+      { schema_version: "1.1", version: "unversioned", files },
+      { schema_version: "1.1", version: "3.1.0", files, extra: true },
+    ]) {
+      await writeFile(
+        path.join(temporary, "assets", "payload-manifest.json"),
+        JSON.stringify(manifest),
+      );
+      const result = await inspectSetupPayload(temporary);
+      assert.equal(result.valid, false);
+      assert.equal(result.version, null);
       assert.ok(result.failures.every((failure) => failure.path === "assets/payload-manifest.json"));
     }
   } finally {

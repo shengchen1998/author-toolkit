@@ -1,6 +1,7 @@
 ---
 name: author-review
 description: Use when running independent final or current-scope manuscript reviews for intent and consistency, writing standards, and a fresh target reader, or preparing separate review handoffs when subagents are unavailable.
+version: 3.1.0
 ---
 
 # Author Review

@@ -38,7 +38,7 @@ Coverage: full. 这份 handwritten fixture 代表全部三章中文正文和全�
   "language": "zh-CN",
   "skill": {
     "name": "story-structure",
-    "version": "unversioned"
+    "version": "3.1.0"
   },
   "inputs": [
     {

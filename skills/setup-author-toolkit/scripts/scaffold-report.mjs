@@ -2,6 +2,7 @@
 
 import { readFile } from "node:fs/promises";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 import {
   projectRootFromManifest,
@@ -9,6 +10,7 @@ import {
   validateManifest,
 } from "./lib/index.mjs";
 import { writeScaffoldedReport } from "./lib/report-scaffold.mjs";
+import { resolveSetupRoot } from "./lib/setup-payload.mjs";
 
 function argumentError(message) {
   const error = new Error(message);
@@ -26,9 +28,11 @@ Create one report v2 beneath the manifest's registered reports path.
 The body supplies the human-readable report and Language coverage section.
 The body must not contain fenced code blocks; the CLI appends the single
 fenced report v2 \`json\` block. The envelope supplies report fields and findings;
-the CLI defaults a missing findings field to []. created_at is optional. A stage
-preset supplies schema_version, stage, project language, current-scope SHA-256
-inputs, and scope_id in engine.notes. Repeat --input to select scope files;
+skill.name selects the installed sibling SKILL.md whose declared version fills
+skill.version. A conflicting supplied skill.version is rejected. The CLI defaults
+a missing findings field to []. created_at is optional. A stage preset supplies
+schema_version, stage, project language, current-scope SHA-256 inputs, and
+scope_id in engine.notes. Repeat --input to select scope files;
 otherwise all are selected. envelope.inputs supplies additional non-scope inputs.
 The CLI validates the complete report before publication and refuses to overwrite
 any existing destination. It does not infer findings, coverage, parent-child links,
@@ -92,8 +96,10 @@ try {
     if (!validateManifest(manifest).valid) {
       throw new Error("report scaffolding requires a valid v3.1 project manifest");
     }
+    const scriptRoot = fileURLToPath(new URL("../", import.meta.url));
     const result = await writeScaffoldedReport({
       projectRoot: projectRootFromManifest(selection.manifest),
+      setupRoot: resolveSetupRoot(scriptRoot),
       manifest,
       destination: selection.output,
       bodyFile: selection.body,

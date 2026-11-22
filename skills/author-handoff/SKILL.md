@@ -1,6 +1,7 @@
 ---
 name: author-handoff
 description: Use when creating or restoring a concise author-toolkit session handoff for a new chat or another host without copying manuscript, Story Bible, creation state, draft-baseline, or fresh reader-state content.
+version: 3.1.0
 ---
 
 # Author Handoff

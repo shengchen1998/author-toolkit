@@ -2,6 +2,7 @@
 name: revise-draft
 description: Coordinate an existing manuscript through nine evidence-gated revision operations without requiring a full-book outline, structure, or ending.
 disable-model-invocation: true
+version: 3.1.0
 ---
 
 # Revise Draft

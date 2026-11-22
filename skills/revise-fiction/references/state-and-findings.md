@@ -21,7 +21,7 @@ Use `<setup-skill-root>/assets/references/report-schema-v2.json` as the authorit
 Write each report beneath the registered shared `reports/` path using an operation directory and a unique UTC-stamped filename. The scaffold accepts separate inputs and produces one immutable Markdown report:
 
 - The body file supplies human-readable context and its `Language coverage` section without fenced code blocks.
-- The envelope file supplies one JSON object. Without a preset, it supplies all actual report v2 fields and findings. With `--preset`, it supplies `report_id`, `audit`, `skill`, actual engine details and coverage notes, optional additional non-scope `inputs`, and findings; the CLI supplies `schema_version`, `stage`, manifest `language`, recorded current-scope SHA-256 inputs, and `scope_id` in `engine.notes`.
+- The envelope file supplies one JSON object and the executing `skill.name`. Without a preset, it supplies the other actual report v2 fields and findings. With `--preset`, it supplies `report_id`, `audit`, actual engine details and coverage notes, optional additional non-scope `inputs`, and findings; the CLI supplies `schema_version`, `stage`, manifest `language`, recorded current-scope SHA-256 inputs, and `scope_id` in `engine.notes`. For both forms, the CLI fills `skill.version` from the executing skill's installed `SKILL.md` declaration.
 - The CLI appends exactly one fenced `json` block containing the resolved report v2 object. The published report consists of the human-readable body followed by that block.
 
 For example, a clean current-scope `intake` report with full English coverage can use these inputs:
@@ -42,7 +42,7 @@ Envelope:
 {
   "report_id": "INTAKE-20260118T000000Z",
   "audit": "intake",
-  "skill": { "name": "revise-fiction", "version": "unversioned" },
+  "skill": { "name": "revise-fiction" },
   "engine": {
     "name": "conversational",
     "version": "unknown",
@@ -52,11 +52,11 @@ Envelope:
 }
 ```
 
-Use `author-project scaffold-report` to assemble and validate the complete report before its create-only publication. For a report over current-scope manuscript, supply `--preset <stage>` and `--scope-id <id>`; repeat `--input <path>` to select scope files or omit it to select all. The CLI supplies `findings: []` when that field is omitted for a clean report. Adjust the example's identifiers, execution details, and coverage to the actual run. Do not hand-assemble the final envelope or manually append findings to the immutable result. The scaffold does not establish actual coverage, input currency, or synthesis dependencies.
+Use `author-project scaffold-report` to assemble and validate the complete report before its create-only publication. For a report over current-scope manuscript, supply `--preset <stage>` and `--scope-id <id>`; repeat `--input <path>` to select scope files or omit it to select all. The CLI supplies `findings: []` when that field is omitted for a clean report and resolves the declared skill version for every report. Adjust the example's identifiers, execution details, and coverage to the actual run. Do not hand-assemble the final envelope or manually append findings to the immutable result. The scaffold does not establish actual coverage, input currency, or synthesis dependencies.
 
 Populate the actual v2 fields not supplied by the selected preset:
 
-- `skill.name` and `skill.version` identify the executing skill; use its declared version or `unversioned`.
+- `skill.name` identifies the executing skill. The CLI copies its declared version from the installed `SKILL.md` into `skill.version` and rejects a conflicting supplied version. Historical reports may retain `unversioned`; new scaffolded reports use the installed declaration.
 - `stage` identifies the operation, not the orchestration skill that invoked it. Valid project operations are `intake`, `story-bible`, `draft-baseline`, `structure`, `characters`, `diagnostics`, `revision-plan`, `chapter-revision`, `prose`, `ai-cleanup`, `current-scope-review`, and `final-review`.
 - `language` is the BCP 47 tag of the evaluated text. Split reports when one tag cannot describe mixed coverage truthfully.
 - `inputs` lists every manuscript, baseline, plan, or prior-report input with its available content hash or other truthful version. Current v3 manuscript scopes require SHA-256 hashes.

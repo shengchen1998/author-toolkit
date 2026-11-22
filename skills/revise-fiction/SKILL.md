@@ -2,6 +2,7 @@
 name: revise-fiction
 description: Coordinate an existing fiction manuscript through nine evidence-gated revision operations, including mid-workflow resume.
 disable-model-invocation: true
+version: 3.1.0
 ---
 
 # Revise Fiction

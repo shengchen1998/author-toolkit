@@ -18,7 +18,7 @@ function report(reportId, audit, createdAt) {
     stage: "current-scope-review",
     created_at: createdAt,
     language: "en",
-    skill: { name: "author-review", version: "unversioned" },
+    skill: { name: "author-review", version: "3.1.0" },
     inputs: [{ path: "manuscript/chapter-01.md", version: "a".repeat(64), version_type: "sha256" }],
     engine: {
       name: "conversational",

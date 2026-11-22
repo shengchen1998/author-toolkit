@@ -51,11 +51,17 @@ function validateManifestShape(value) {
   const keys = value && typeof value === "object" && !Array.isArray(value)
     ? Object.keys(value).sort()
     : [];
-  if (JSON.stringify(keys) !== JSON.stringify(["files", "schema_version"])) {
-    errors.push("payload manifest must contain only schema_version and files");
+  if (JSON.stringify(keys) !== JSON.stringify(["files", "schema_version", "version"])) {
+    errors.push("payload manifest must contain only schema_version, version, and files");
   }
-  if (value?.schema_version !== "1.0") {
-    errors.push("payload manifest schema_version must be 1.0");
+  if (value?.schema_version !== "1.1") {
+    errors.push("payload manifest schema_version must be 1.1");
+  }
+  if (
+    typeof value?.version !== "string" ||
+    !/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/.test(value.version)
+  ) {
+    errors.push("payload manifest version must be a semantic version");
   }
   if (!Array.isArray(value?.files) || value.files.length === 0) {
     errors.push("payload manifest files must be a non-empty array");
@@ -209,6 +215,7 @@ export async function inspectSetupPayload(setupRoot, { projectRoot, requireSibli
     valid: failures.length === 0,
     setup_root: setupRoot,
     payload_manifest: manifest ? path.basename(PAYLOAD_MANIFEST) : null,
+    version: manifest?.version ?? null,
     files: manifest?.files.length ?? 0,
     references,
     clis,

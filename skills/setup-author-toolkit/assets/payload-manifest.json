@@ -1,9 +1,10 @@
 {
-  "schema_version": "1.0",
+  "schema_version": "1.1",
+  "version": "3.1.0",
   "files": [
     {
       "path": "SKILL.md",
-      "sha256": "0a1678088ef1f50d9c6f1f0586bb504efbc32010b15fcb9dadc4ddd849ae4a83"
+      "sha256": "6741691803190357225379b46e79f02a8eaa53306d705fd6076997a4a15b999e"
     },
     {
       "path": "assets/AGENTS.md",
@@ -91,11 +92,11 @@
     },
     {
       "path": "assets/references/terminology.md",
-      "sha256": "6c84bbdc2f4546a43123a840531ec2d713b4899ccd6837825d41e7534b7e9926"
+      "sha256": "32c1e95f2225c7bd16ec9108d4f8589adb556e4dae827f988d3a77214677f569"
     },
     {
       "path": "assets/references/workflow-reporting.md",
-      "sha256": "1c5dcbdd016e0228f69a9c2035303ec4736cfc9e5e624946cd76c5b203a7cde1"
+      "sha256": "760cd6820f1d6430a2a48f55af2123da234dcb9910f150538cae71174b3e3761"
     },
     {
       "path": "assets/setup/existing-project.md",
@@ -239,7 +240,7 @@
     },
     {
       "path": "scripts/lib/report-scaffold.mjs",
-      "sha256": "e5fd52a1c4e6e07c8be5557ca7e7483cea75f04be6060e678fd143112e1f3f13"
+      "sha256": "fee2de4903798f80012d297538c96efea42a262043f75ad337f647c7f4e3e6b1"
     },
     {
       "path": "scripts/lib/review-brief.mjs",
@@ -263,7 +264,7 @@
     },
     {
       "path": "scripts/lib/setup-payload.mjs",
-      "sha256": "a98c316260cc52dfba78b2de11ac7c040e7634e8f11b8dd04fda7808a2370dd9"
+      "sha256": "9a2a972b2d8766390d97981f0dde8d7e3d347c3e13f48028ffe111d37d6993d7"
     },
     {
       "path": "scripts/lib/setup-report.mjs",
@@ -347,7 +348,7 @@
     },
     {
       "path": "scripts/scaffold-report.mjs",
-      "sha256": "47d8d44cd86bb9d0ffacc4950f967abbb14f5f30931ddb7eb1bbbb09790e86da"
+      "sha256": "2bf9d181c5967e32b87e930a91a09e48f41879c4eb2e30a886451316c9ceeb90"
     },
     {
       "path": "scripts/set-pending.mjs",

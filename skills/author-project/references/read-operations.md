@@ -32,7 +32,7 @@ Run the installed doctor before each `read`, `validate`, or `status` operation:
 node <setup-skill-root>/scripts/doctor.mjs
 ```
 
-This checks the installed setup payload against `assets/payload-manifest.json`. Setup separately supplies `--project-root` when checking project entry files. Stop on an installed-payload failure.
+This checks the installed setup payload against `assets/payload-manifest.json`. JSON returns the toolkit version as `payload.version`. Setup separately supplies `--project-root` when checking project entry files. Stop on an installed-payload failure.
 
 To combine that payload check, project validation, and ordinary status after initialization, run:
 

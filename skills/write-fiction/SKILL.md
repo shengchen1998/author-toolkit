@@ -2,6 +2,7 @@
 name: write-fiction
 description: Coordinate incremental fiction creation from a new or existing shared project.
 disable-model-invocation: true
+version: 3.1.0
 ---
 
 # Write Fiction

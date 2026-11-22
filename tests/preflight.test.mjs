@@ -150,6 +150,7 @@ test("preflight digest returns the validated bounded manifest projection in JSON
   assert.equal(result.status, 0, result.stderr);
   const parsed = JSON.parse(result.stdout);
   assert.equal(parsed.valid, true);
+  assert.equal(parsed.payload.version, "3.1.0");
   assert.deepEqual(parsed.projection.paths, manifest.paths);
   assert.equal(parsed.projection.language, manifest.language);
   assert.deepEqual(parsed.projection.current_scope.files, manifest.current_scope.files);

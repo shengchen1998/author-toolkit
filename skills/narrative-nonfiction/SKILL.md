@@ -1,6 +1,7 @@
 ---
 name: narrative-nonfiction
 description: "Use when writing self-help books, memoirs, or prescriptive guides with story elements. Trigger on: 'self-help book', 'transformation arc', 'metaphor consistency', 'reader journey', 'exercise design', or narrative nonfiction projects."
+version: 3.1.0
 ---
 
 # Narrative Nonfiction Workshop

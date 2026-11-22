@@ -2,6 +2,7 @@
 name: ask-author
 description: Show the right author-toolkit command and the current shared creation or revision state for a book project.
 disable-model-invocation: true
+version: 3.1.0
 ---
 
 # Ask Author

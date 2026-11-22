@@ -1,7 +1,8 @@
 # Author Toolkit 中文快速上手
 
 Author Toolkit 3.1.0 提供增量小说创作, 四个小说修订策略和六个独立写作技能. 创作与修订共享
-同一项目证据模型, 可用于支持技能的编码代理宿主. 完整说明见 [英文 README](README.md),
+同一项目证据模型, 可用于支持技能的编码代理宿主. 每个第一方技能都在 `SKILL.md` 声明该工具包版本;
+vendored 技能保留自己的独立版本. 完整说明见 [英文 README](README.md),
 共享用语见 [受控术语表](references/terminology.md).
 
 ## 包含的 16 个技能
@@ -72,6 +73,7 @@ setup 在进入任一项目分支前执行此检查. 重复 `--require-sibling N
 `revise-fiction` 和 `revise-draft` 启动文件. 添加 `--project-root <root>` 可同时核对写作项目的
 `AGENTS.md` 和相对符号链接 `CLAUDE.md -> AGENTS.md`; 项目状态校验仍是独立检查.
 文本和 JSON 输出分别列出安装载荷、必需兄弟技能与可修复项目入口的失败, 并明确显示退出原因.
+doctor 的 JSON 以 `version` 返回工具包发布版本; `check` 和 preflight 以 `payload.version` 返回.
 
 运行 `node <setup-skill-root>/scripts/install-entry-files.mjs --project-root <root> --json`,
 在载荷检查通过后修复两个项目代理入口文件.
@@ -531,10 +533,11 @@ node scripts/range.mjs --project-root /path/to/writing-project "manuscript/1.md:
 
 `range.mjs` 解析作者给出的行内字符区间; 行号和字符位置均从 1 开始且包含端点, 字符按 Unicode 码点计数.
 
-`scaffold-report.mjs --help` 说明不可覆盖的共享报告生成命令. 可选的阶段预设会填充确定性的
-信封字段和当前 scope 中记录的哈希; 调用者仍提供语义字段和非 scope 输入版本. 它在未提供
-`findings` 字段时补充 `findings: []`, 并在发布前校验完整报告; 不推断复核发现项, 实际覆盖度,
-输入时效性或综合报告依赖.
+`scaffold-report.mjs --help` 说明不可覆盖的共享报告生成命令. 对每份报告, 调用者提供
+`skill.name`; CLI 从该安装技能的 `SKILL.md` 声明填充 `skill.version`, 并拒绝不一致的已填版本.
+可选的阶段预设会填充确定性的信封字段和当前 scope 中记录的哈希; 调用者仍提供语义字段和非
+scope 输入版本. 它在未提供 `findings` 字段时补充 `findings: []`, 并在发布前校验完整报告;
+不推断复核发现项, 实际覆盖度, 输入时效性或综合报告依赖.
 
 `evidence-retention.mjs --help` 说明可选的有界证据保留. 默认项目保留所有历史证据.
 只有显式 `--enable --apply` 才迁移发现项身份并删除无引用的旧审计产物;

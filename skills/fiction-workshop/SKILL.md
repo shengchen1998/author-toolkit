@@ -1,6 +1,7 @@
 ---
 name: fiction-workshop
 description: "Use when writing or editing novels, short stories, or any fiction manuscript. Trigger on: 'write fiction', 'edit my novel', 'developmental edit', 'line edit', 'character voice', 'plot hole', 'brainstorm', or fiction writing tasks."
+version: 3.1.0
 ---
 
 # Fiction Workshop

@@ -40,10 +40,16 @@ async function frontmatter(skill) {
 }
 
 for (const skill of expectedSkills) {
-  test(`${skill} has the expected name and invocation mode`, async () => {
+  test(`${skill} has the expected name, version, and invocation mode`, async () => {
     const metadata = await frontmatter(skill);
     assert.match(metadata, new RegExp(`^name: ${skill}$`, "m"));
     assert.match(metadata, /^description: .+$/m);
+    const version = metadata.match(/^version: ([^\s]+)$/m)?.[1];
+    assert.ok(version, `${skill} declares a version`);
+    if (skill !== "avoid-ai-writing") {
+      const packageManifest = JSON.parse(await readFile(path.join(root, "package.json"), "utf8"));
+      assert.equal(version, packageManifest.version);
+    }
     const userOnly = /^disable-model-invocation: true$/m.test(metadata);
     assert.equal(userOnly, userEntries.has(skill));
   });

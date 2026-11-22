@@ -233,7 +233,7 @@ test("Markdown reports require parsed language coverage and a matching engine su
     const result = validateMarkdownReport(markdown);
     assert.deepEqual(result.errors, []);
     assert.equal(result.valid, true);
-    assert.equal(result.envelope.skill.version, "unversioned");
+    assert.equal(result.envelope.skill.version, "3.1.0");
     assert.equal(result.envelope.engine.version, "unknown");
   }
 

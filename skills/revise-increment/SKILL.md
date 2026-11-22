@@ -2,6 +2,7 @@
 name: revise-increment
 description: Bring added or affected paths to current-draft revision convergence for the target scope while reusing full local coverage units from unchanged paths.
 disable-model-invocation: true
+version: 3.1.0
 ---
 
 # Revise Increment

@@ -108,6 +108,7 @@ test("scaffold CLI creates a validated clean report with every required field", 
   const source = clone(values.source);
   delete source.created_at;
   delete source.findings;
+  delete source.skill.version;
   await writeFile(values.envelopePath, JSON.stringify(source), "utf8");
 
   const result = run(argumentsFor(values));
@@ -121,6 +122,7 @@ test("scaffold CLI creates a validated clean report with every required field", 
   const envelope = extractReportEnvelope(markdown);
   assert.deepEqual(envelope.findings, []);
   assert.equal(envelope.created_at, "2026-11-15T00:00:00Z");
+  assert.equal(envelope.skill.version, "3.1.0");
   assert.ok(envelope.inputs.length > 0);
   assert.ok(envelope.engine.notes.includes("subchecks=standards"));
   assert.match(markdown, /## Review coverage/);
@@ -133,6 +135,7 @@ test("scaffold CLI preset fills deterministic fields from the current scope", as
   for (const field of ["schema_version", "stage", "created_at", "language", "findings"]) {
     delete source[field];
   }
+  delete source.skill.version;
   source.inputs = [additionalInput];
   source.engine.notes = source.engine.notes.replace(/^scope_id=[^;]+; /, "");
   await writeFile(values.envelopePath, JSON.stringify(source), "utf8");
@@ -157,6 +160,7 @@ test("scaffold CLI preset fills deterministic fields from the current scope", as
   assert.equal(envelope.schema_version, "2.0.0");
   assert.equal(envelope.stage, "current-scope-review");
   assert.equal(envelope.language, values.manifest.language);
+  assert.equal(envelope.skill.version, "3.1.0");
   assert.deepEqual(envelope.inputs, [
     { path: selected.path, version: selected.sha256, version_type: "sha256" },
     additionalInput,
@@ -164,6 +168,27 @@ test("scaffold CLI preset fills deterministic fields from the current scope", as
   assert.equal(envelope.engine.notes.match(/scope_id=/g).length, 1);
   assert.match(envelope.engine.notes, new RegExp(`^scope_id=${values.manifest.current_scope.scope_id};`));
   assert.deepEqual(envelope.findings, []);
+});
+
+test("scaffold CLI preserves the vendored skill version and rejects version conflicts", async (t) => {
+  const values = await fixture(t);
+  const source = clone(values.source);
+  source.skill = { name: "avoid-ai-writing" };
+  await writeFile(values.envelopePath, JSON.stringify(source), "utf8");
+
+  const result = run(argumentsFor(values));
+  assert.equal(result.status, 0, result.stderr);
+  const reportPath = path.join(values.project, "reports/current-scope-review/scaffold.md");
+  const envelope = extractReportEnvelope(await readFile(reportPath, "utf8"));
+  assert.equal(envelope.skill.version, "3.3.1");
+
+  await rm(reportPath);
+  source.skill.version = "3.1.0";
+  await writeFile(values.envelopePath, JSON.stringify(source), "utf8");
+  const conflict = run(argumentsFor(values));
+  assert.equal(conflict.status, 1, conflict.stdout);
+  assert.match(conflict.stderr, /envelope\.skill\.version conflicts/);
+  await assert.rejects(readFile(reportPath, "utf8"), { code: "ENOENT" });
 });
 
 test("scaffold CLI preset selects all scope files by default", async (t) => {

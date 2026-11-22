@@ -1,6 +1,7 @@
 ---
 name: prose-mechanics
 description: "Use when auditing prose at the sentence level on stabilized drafts. Trigger on: 'audit prose', 'active voice', 'sentence variance', 'passive voice pass', 'parallel structure check', 'readability audit', 'prose mechanics', or sentence-level diagnostic work on fiction or nonfiction."
+version: 3.1.0
 ---
 
 # Prose Mechanics

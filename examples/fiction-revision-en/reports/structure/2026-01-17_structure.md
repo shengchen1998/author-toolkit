@@ -38,7 +38,7 @@ The envelope below is the sole machine-readable report in this Markdown file. Ex
   "language": "en",
   "skill": {
     "name": "story-structure",
-    "version": "unversioned"
+    "version": "3.1.0"
   },
   "inputs": [
     {

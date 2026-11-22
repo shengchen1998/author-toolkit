@@ -1,6 +1,7 @@
 ---
 name: character-archetypes
 description: "Use when identifying, auditing, or tracking character archetypes in fiction. Trigger on: 'character archetype', 'archetype audit', 'what archetype is this character', 'archetype conformance', 'Hero's Journey character role', 'Jungian archetype', or archetype-based character analysis."
+version: 3.1.0
 ---
 
 # Character Archetypes

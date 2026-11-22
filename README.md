@@ -8,7 +8,9 @@ project evidence model, plus six independent writing skills for coding agents.
 
 ## What is included
 
-Version 3.1.0 contains 16 skills in three groups.
+Version 3.1.0 contains 16 skills in three groups. Every first-party skill declares
+this toolkit version in its `SKILL.md`; vendored skills retain their independent
+versions.
 
 ### User entry points
 
@@ -161,6 +163,8 @@ and `revise-draft` as well. Add
 `CLAUDE.md -> AGENTS.md` link; project-state validation remains a separate check.
 Its text and JSON output distinguish installed-payload,
 required-sibling, and repairable project-entry failures, with an explicit exit reason.
+JSON exposes the toolkit release as `version`; `check` and `preflight` expose it as
+`payload.version`.
 
 Run `node <setup-skill-root>/scripts/install-entry-files.mjs --project-root <root> --json`
 to repair the two project agent entry files after a successful payload check. It
@@ -818,11 +822,13 @@ node scripts/range.mjs --project-root /path/to/writing-project "manuscript/1.md:
 ```
 
 `scaffold-report.mjs --help` describes the create-only shared report generator.
-Its optional stage preset fills deterministic envelope fields and recorded
-current-scope hashes while the caller supplies semantic fields and any non-scope
-input versions. It supplies `findings: []` when that field is omitted and validates
-the complete report before publication; it does not infer reviewer findings,
-coverage, input currency, or synthesis dependencies.
+For every report, the caller supplies `skill.name`; the CLI fills `skill.version`
+from that installed skill's `SKILL.md` declaration and rejects a conflicting
+supplied version. Its optional stage preset fills deterministic envelope fields
+and recorded current-scope hashes while the caller supplies semantic fields and
+any non-scope input versions. It supplies `findings: []` when that field is omitted
+and validates the complete report before publication; it does not infer reviewer
+findings, coverage, input currency, or synthesis dependencies.
 
 `review-brief.mjs --help` describes the deterministic review brief generator.
 It copies every resolved and dismissed tracker location, decision reason, and

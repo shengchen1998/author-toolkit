@@ -2,6 +2,7 @@
 name: revise-request
 description: Apply an author-requested revision to existing manuscript from a full-manuscript base scope that reached current-draft revision convergence, reviewing only the request and affected text unless the author requests full-scope review.
 disable-model-invocation: true
+version: 3.1.0
 ---
 
 # Revise Request
