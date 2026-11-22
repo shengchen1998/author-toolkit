@@ -2,7 +2,15 @@
 
 import path from "node:path";
 
-import { completeWrite, explainBackupIndex, reconcileExecutions, recordBackup, recordExecution } from "./lib/index.mjs";
+import {
+  completeWrite,
+  explainBackupIndex,
+  projectRootFromManifest,
+  reconcileExecutions,
+  recordBackup,
+  recordExecution,
+  resolveProjectInput,
+} from "./lib/index.mjs";
 import { readJson } from "./lib/state-files.mjs";
 import { withProjectWriteLock } from "./lib/write-lock.mjs";
 
@@ -37,7 +45,9 @@ Evidence follows execution-evidence-schema.json. Backup refuses every new edit
 batch while any unverified approval remains. Reconciliation is a dry run unless
 --write is present; rejected evidence never creates a receipt. check-index
 --explain is read-only and explains backup and approval identity differences
-without selecting a historical repair or changing project state.`);
+without selecting a historical repair or changing project state. Relative --batch
+and --commit paths resolve against the manifest's project root; absolute paths
+are preserved.`);
 }
 
 function options(args) {
@@ -105,6 +115,10 @@ try {
       throw argumentError("expected record-backup, complete-write, record-execution, check-index, or reconcile-executions, plus --manifest FILE");
     }
     selection.manifest = path.resolve(selection.manifest);
+    const projectRoot = projectRootFromManifest(selection.manifest);
+    for (const field of ["batch", "commit"]) {
+      if (selection[field]) selection[field] = resolveProjectInput(projectRoot, selection[field]);
+    }
     selection.recordedAt ??= new Date().toISOString();
     if (!Number.isFinite(Date.parse(selection.recordedAt))) throw argumentError("--recorded-at must be a valid timestamp");
     const result = operation === "check-index"

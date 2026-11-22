@@ -42,6 +42,7 @@ export {
 } from "./coverage-index.mjs";
 export { validateManifest } from "./manifest.mjs";
 export { recordScope } from "./scope.mjs";
+export { resolveProjectInput } from "./state-files.mjs";
 export { inspectManifestValue, inspectProjectManifest, inspectProjectStatus } from "./project-inspection.mjs";
 export { initializeExistingProject } from "./project-initialization.mjs";
 export { scaffoldNewProject } from "./project-scaffold.mjs";

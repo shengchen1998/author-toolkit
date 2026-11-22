@@ -8,7 +8,7 @@ import { validateManifest } from "./manifest.mjs";
 import { projectRootFromManifest, validateProjectFiles, validateScopeCurrency } from "./project-files.mjs";
 import { validateExecutionEvidenceSchema, validateRelativePath } from "./schemas.mjs";
 import { parseApprovalsMarkdown } from "./tracker.mjs";
-import { portablePath, readJson, sha256, writeJsonAtomic } from "./state-files.mjs";
+import { portablePath, readJson, resolveProjectInput, sha256, writeJsonAtomic } from "./state-files.mjs";
 import { injectTestFailure } from "./test-hooks.mjs";
 
 const ACTIONS = new Set(["create", "modify", "delete", "reorder"]);
@@ -150,7 +150,7 @@ export async function recordBackup(manifestPath, selection) {
 }
 
 export async function readExecutionEvidence(projectRoot, evidencePath) {
-  const absolute = path.isAbsolute(evidencePath) ? evidencePath : path.resolve(projectRoot, evidencePath);
+  const absolute = resolveProjectInput(projectRoot, evidencePath);
   const relative = portablePath(projectRoot, absolute);
   if (!validateRelativePath(relative).valid) throw writeError("evidence must be inside the project root");
   const contents = await readFile(path.resolve(projectRoot, relative));

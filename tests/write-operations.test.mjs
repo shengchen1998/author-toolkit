@@ -220,7 +220,7 @@ test("a create-only batch remains gated until its execution receipt clears its p
   assert.equal(index.executions[0].approval_id, "CREATE-001");
 });
 
-async function publicationFixture(t, { creation = false } = {}) {
+async function publicationFixture(t, { creation = false, projectRelative = false } = {}) {
   const project = await fixture(t, { approvals: false });
   const operation = creation ? "creation-commit" : "chapter-revision";
   const approvalId = creation ? "CREATE-001" : "EDIT-001";
@@ -242,7 +242,9 @@ async function publicationFixture(t, { creation = false } = {}) {
   await writeFile(batchPath, `${JSON.stringify({ files }, null, 2)}\n`);
   const backupResult = run([
     "record-backup", "--manifest", project.manifestPath, "--operation", operation,
-    "--scope-id", scopeId, "--approval-id", approvalId, "--batch", backupPath, "--recorded-at", timestamp,
+    "--scope-id", scopeId, "--approval-id", approvalId,
+    "--batch", projectRelative ? path.relative(project.projectRoot, backupPath) : backupPath,
+    "--recorded-at", timestamp,
   ]);
   assert.equal(backupResult.status, 0, backupResult.stderr);
   const backupId = JSON.parse(backupResult.stdout).backup_id;
@@ -262,14 +264,17 @@ async function publicationFixture(t, { creation = false } = {}) {
       updated_at: timestamp,
     }));
   }
-  return { ...project, operation, approvalId, files, batchPath, backupId, commitPath };
+  return { ...project, operation, approvalId, files, batchPath, backupId, commitPath, projectRelative };
 }
 
 function complete(project, args = []) {
+  const input = (file) => project.projectRelative ? path.relative(project.projectRoot, file) : file;
+  const batch = input(project.batchPath);
+  const commit = project.commitPath ? input(project.commitPath) : null;
   return run([
     "complete-write", "--manifest", project.manifestPath, "--operation", project.operation,
-    "--scope-id", scopeId, "--approval-id", project.approvalId, "--batch", project.batchPath,
-    ...(project.commitPath ? ["--commit", project.commitPath] : []),
+    "--scope-id", scopeId, "--approval-id", project.approvalId, "--batch", batch,
+    ...(commit ? ["--commit", commit] : []),
     "--recorded-at", timestamp, ...args,
   ]);
 }
@@ -281,6 +286,13 @@ function completeWithFailure(project, failure) {
     "--batch", project.batchPath, ...(project.commitPath ? ["--commit", project.commitPath] : []), "--recorded-at", timestamp,
   ], { cwd: root, encoding: "utf8", env: { ...process.env, AUTHOR_TOOLKIT_TEST_FAILURE: failure } });
 }
+
+test("write commands resolve project-relative batch and commit inputs outside the project cwd", async (t) => {
+  const project = await publicationFixture(t, { creation: true, projectRelative: true });
+  const result = complete(project);
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(JSON.parse(result.stdout).commit_journal, ".author-toolkit/creation/batches/commit-001.json");
+});
 
 test("complete-write publishes exact content and generates immutable evidence and its receipt", async (t) => {
   const project = await publicationFixture(t);

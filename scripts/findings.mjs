@@ -8,6 +8,7 @@ import {
   readReportFindings,
   reportFindingIdentities,
   projectRootFromManifest,
+  resolveProjectInput,
   trackerFindingRows,
   upsertTrackerAuditRuns,
   upsertTrackerFindings,
@@ -31,7 +32,9 @@ function usage() {
 
 Allocate IDs from all tracker and immutable-report history. Record a complete
 report batch under the shared write lock, atomically upserting finding and
-Audit runs rows while preserving finding decisions and timestamps.`);
+Audit runs rows while preserving finding decisions and timestamps. Relative
+--report paths resolve against the manifest's project root; absolute paths are
+preserved.`);
 }
 
 function options(args) {
@@ -39,7 +42,7 @@ function options(args) {
   for (let index = 0; index < args.length; index += 1) {
     if (args[index] === "--manifest" && args[index + 1]) result.manifest = path.resolve(args[++index]);
     else if (args[index] === "--count" && args[index + 1]) result.count = Number(args[++index]);
-    else if (args[index] === "--report" && args[index + 1]) result.reports.push(path.resolve(args[++index]));
+    else if (args[index] === "--report" && args[index + 1]) result.reports.push(args[++index]);
     else {
       throw argumentError(`Unknown or incomplete argument: ${args[index]}`);
     }
@@ -122,6 +125,7 @@ async function main() {
   if (!validateManifest(manifest).valid) {
     throw new Error("findings tools require a valid v3.1 project manifest");
   }
+  selection.reports = selection.reports.map((report) => resolveProjectInput(projectRoot, report));
   if (operation === "next-finding-id") {
     const trackerPath = path.resolve(projectRoot, manifest.paths.audit_tracker);
     const tracker = await readFile(trackerPath, "utf8");

@@ -14,6 +14,10 @@ export function portablePath(projectRoot, target) {
   return path.relative(projectRoot, path.resolve(target)).replaceAll(path.sep, "/");
 }
 
+export function resolveProjectInput(projectRoot, value) {
+  return path.isAbsolute(value) ? path.resolve(value) : path.resolve(projectRoot, value);
+}
+
 export async function readJson(file) {
   return JSON.parse(await readFile(file, "utf8"));
 }

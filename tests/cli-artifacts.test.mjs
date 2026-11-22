@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import test from "node:test";
 
@@ -197,6 +197,40 @@ test("the public CLI accepts repeated options for every new artifact", async (t)
   ]);
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /8 checks, 0 failures/);
+});
+
+test("validator resolves project artifacts from an outside cwd and preserves standalone cwd inputs", async (t) => {
+  const directory = await temporaryDirectory(t);
+  const projectRoot = path.join(directory, "project");
+  await cp(path.join(root, "examples", "fiction-revision-en"), projectRoot, { recursive: true });
+  const values = artifacts();
+  const files = {};
+  for (const name of ["batch", "commit", "unit", "index", "job", "story"]) {
+    files[name] = await writeJson(projectRoot, `${name}.json`, values[name]);
+  }
+  files.reader = path.join(projectRoot, "reader.md");
+  await writeFile(
+    files.reader,
+    `# Reader state\n\n\`\`\`json\n${JSON.stringify(values.reader, null, 2)}\n\`\`\`\n`,
+    "utf8",
+  );
+
+  const result = runValidator([
+    "--manifest", path.join(projectRoot, ".author-toolkit", "project.json"),
+    "--report", "reports/structure/2026-01-17_structure.md",
+    "--tracker", "audit-tracker.md",
+    "--creation-batch", "batch.json",
+    "--creation-commit", "commit.json",
+    "--coverage-unit", "unit.json",
+    "--coverage-index", "index.json",
+    "--review-job", "job.json",
+    "--reader-state", "reader.md",
+    "--story-state", "story.json",
+  ]);
+  assert.equal(result.status, 0, result.stderr);
+
+  const standalone = runValidator(["--creation-batch", path.relative(root, files.batch)]);
+  assert.equal(standalone.status, 0, standalone.stderr);
 });
 
 test("review brief CLI validates resolved and dismissed decisions against the tracker", async (t) => {

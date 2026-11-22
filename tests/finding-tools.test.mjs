@@ -12,6 +12,7 @@ import {
 import { readReport, readTracker, root } from "./helpers.mjs";
 
 const tool = path.join(root, "scripts", "findings.mjs");
+const scaffoldTool = path.join(root, "scripts", "scaffold-report.mjs");
 
 async function fixture(t) {
   const output = path.join(root, ".test-output");
@@ -231,6 +232,33 @@ test("record-findings indexes a clean report without inventing finding rows", as
   assert.deepEqual(output.audit_runs.inserted, ["evidence/report.md"]);
   const tracker = await readFile(path.join(directory, "state", "custom-tracker.md"), "utf8");
   assert.match(tracker, /\| structure \| scope-fixture \| `evidence\/report\.md` \| `conversational`, version `unknown`, degraded: true \| full \| 2026-01-17T18:00:00Z \| operation_coverage=full; findings=0 \|/);
+});
+
+test("a scaffolded project-relative report path records from an outside project cwd", async (t) => {
+  const { directory, manifestPath, report } = await fixture(t);
+  const envelope = extractReportEnvelope(await readFile(report, "utf8"));
+  envelope.report_id = "relative-project-report";
+  envelope.findings = [];
+  const bodyPath = path.join(directory, ".author-toolkit", "relative-body.md");
+  const envelopePath = path.join(directory, ".author-toolkit", "relative-envelope.json");
+  await writeFile(bodyPath, "# Structure\n\n## Language coverage\n\nfull\n", "utf8");
+  await writeFile(envelopePath, JSON.stringify(envelope), "utf8");
+
+  const scaffolded = spawnSync(process.execPath, [
+    scaffoldTool,
+    "--manifest", manifestPath,
+    "--output", "evidence/relative.md",
+    "--body", bodyPath,
+    "--envelope", envelopePath,
+    "--json",
+  ], { cwd: root, encoding: "utf8" });
+  assert.equal(scaffolded.status, 0, scaffolded.stderr);
+  const output = JSON.parse(scaffolded.stdout);
+  assert.equal(output.path, "evidence/relative.md");
+
+  const result = run(["record-findings", "--manifest", manifestPath, "--report", output.path]);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout).audit_runs.inserted, ["evidence/relative.md"]);
 });
 
 test("manifest validation and upsert reject a conflicting historical report ID", async (t) => {

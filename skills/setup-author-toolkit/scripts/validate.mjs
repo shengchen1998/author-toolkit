@@ -23,6 +23,7 @@ import {
   validateStoryState,
   validateStoryStateMarkdown,
   projectRootFromManifest,
+  resolveProjectInput,
   validateTracker,
 } from "./lib/index.mjs";
 
@@ -62,7 +63,10 @@ function usage() {
   node scripts/validate.mjs [--coverage-unit FILE] [--coverage-index FILE]...
   node scripts/validate.mjs [--review-job FILE] [--review-brief FILE --tracker FILE] [--reader-state FILE] [--story-state FILE]...
 
-With no options, all schemas, example manifests, and reports are checked.`);
+With no options, all schemas, example manifests, and reports are checked.
+With one selected project, relative artifact and tracker paths resolve against
+its root; standalone inputs resolve against the current working directory.
+Manifest and project-root arguments always resolve against the current directory.`);
 }
 
 async function readJson(file) {
@@ -106,7 +110,8 @@ function parseArguments(args) {
     if (!destination || !args[index + 1]) {
       throw new Error(`Unknown or incomplete argument: ${argument}`);
     }
-    selection[destination].push(path.resolve(args[index + 1]));
+    const value = args[index + 1];
+    selection[destination].push(["manifests", "projectRoots"].includes(destination) ? path.resolve(value) : value);
     index += 1;
   }
   return selection;
@@ -121,6 +126,14 @@ async function main() {
   selection.manifests.push(...selection.projectRoots.map((projectRoot) =>
     path.join(projectRoot, ".author-toolkit", "project.json"),
   ));
+  const selectedProjectRoot = selection.manifests.length === 1
+    ? projectRootFromManifest(selection.manifests[0])
+    : null;
+  for (const key of ["reports", "trackers", ...artifactTypes.map(({ key }) => key)]) {
+    selection[key] = selection[key].map((file) => selectedProjectRoot
+      ? resolveProjectInput(selectedProjectRoot, file)
+      : path.resolve(file));
+  }
   if (
     selection.trackers.length > 1 ||
     (selection.reviewBriefs.length > 0 && selection.trackers.length !== 1) ||

@@ -124,7 +124,7 @@
     },
     {
       "path": "scripts/findings.mjs",
-      "sha256": "043fa2873496c368f3848f5e02d95c7a5ad1a36d8d2b6ad29c7476e1317b7d1c"
+      "sha256": "a049b701b42d90508e73ea2524e9130f1d310897d7e1049e7eac1b30d888a2e2"
     },
     {
       "path": "scripts/initialize.mjs",
@@ -192,7 +192,7 @@
     },
     {
       "path": "scripts/lib/index.mjs",
-      "sha256": "8a0b91afab1af476602d37a0f0b5a63e4b1e879508f864c44ea508cb0c67c24a"
+      "sha256": "569a84fd71c9578ded71de1f44c3bc8993a461b7e3e04e1f9d1a5c68dd8efd8c"
     },
     {
       "path": "scripts/lib/manifest.mjs",
@@ -272,7 +272,7 @@
     },
     {
       "path": "scripts/lib/state-files.mjs",
-      "sha256": "5c855fc5f8f11f75c01264be9cff102e01e6e7f7432b57b9076f8504cb6b0844"
+      "sha256": "92076bafc1f7a59bf4db4f91723759759473393b6b04af67e801f5dc0eb2b590"
     },
     {
       "path": "scripts/lib/test-hooks.mjs",
@@ -292,7 +292,7 @@
     },
     {
       "path": "scripts/lib/write-operations.mjs",
-      "sha256": "fd8b03186670d47799cd0393bdbc4b752d0c7edb1eaba80227b3e230f34e8265"
+      "sha256": "03ab9a55e436f9b8ad2b2b88ea0bac663ddd3d5ed5e02c54c064e5513c5b7003"
     },
     {
       "path": "scripts/licenses/ajv-formats.txt",
@@ -368,11 +368,11 @@
     },
     {
       "path": "scripts/validate.mjs",
-      "sha256": "26794f3f85c176f8d0c29eaa4be17d4ded115bdb1c79b0e7d14cc554f358af6d"
+      "sha256": "a32eb9bbbaef4bfaa538cceff923226dfe6a5cd1bf92096ee9644fdd44ec7f5f"
     },
     {
       "path": "scripts/writes.mjs",
-      "sha256": "03334bf6024d699b667d4bf12d0bde0c55b5b7168594e71576d2bf6da22625fa"
+      "sha256": "d87a6b41d2bb7cf12eb8bac3de8ef29bb5a805251e26e4a1543e26aa5fc295d3"
     }
   ]
 }
