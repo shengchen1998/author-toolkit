@@ -40,6 +40,39 @@ async function markdownFiles(directory) {
   return files.filter((file) => file.endsWith(".md"));
 }
 
+test("setup runtime check rejects a stale payload manifest without rewriting it", async (t) => {
+  await mkdir(path.join(root, ".test-output"), { recursive: true });
+  const temporaryRoot = await mkdtemp(path.join(root, ".test-output", "setup-runtime-check-"));
+  t.after(() => rm(temporaryRoot, { recursive: true, force: true }));
+  const sourceRoot = path.join(temporaryRoot, "source");
+  await mkdir(path.join(sourceRoot, "skills"), { recursive: true });
+  await Promise.all([
+    cp(path.join(root, "scripts"), path.join(sourceRoot, "scripts"), { recursive: true }),
+    cp(
+      path.dirname(path.dirname(setupReferences)),
+      path.join(sourceRoot, "skills", "setup-author-toolkit"),
+      { recursive: true },
+    ),
+    cp(path.join(root, "package.json"), path.join(sourceRoot, "package.json")),
+    symlink(path.join(root, "node_modules"), path.join(sourceRoot, "node_modules"), "dir"),
+  ]);
+
+  const synchronizer = path.join(sourceRoot, "scripts", "sync-setup-runtime.mjs");
+  const initialized = spawnSync(process.execPath, [synchronizer], { encoding: "utf8" });
+  assert.equal(initialized.status, 0, initialized.stderr);
+
+  const manifestPath = path.join(sourceRoot, "skills", "setup-author-toolkit", "assets", "payload-manifest.json");
+  const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
+  manifest.files[0].sha256 = "0".repeat(64);
+  const staleManifest = `${JSON.stringify(manifest, null, 2)}\n`;
+  await writeFile(manifestPath, staleManifest);
+
+  const checked = spawnSync(process.execPath, [synchronizer, "--check"], { encoding: "utf8" });
+  assert.equal(checked.status, 1, checked.stderr);
+  assert.match(checked.stderr, /changed assets\/payload-manifest\.json/);
+  assert.equal(await readFile(manifestPath, "utf8"), staleManifest);
+});
+
 test("setup carries self-contained preflight, validation, state, range, and installation CLIs", async (t) => {
   await mkdir(path.join(root, ".test-output"), { recursive: true });
   const temporaryRoot = await mkdtemp(path.join(root, ".test-output", "setup-cli-"));

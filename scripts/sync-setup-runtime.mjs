@@ -47,19 +47,27 @@ async function main() {
     });
     assertOnlyNodeBuiltinsAreExternal(result.metafile);
     await copyLicenses(generated);
-    await writePayloadManifest(generated);
+    const expectedPayloadManifest = await createPayloadManifest(generated);
 
     if (checkOnly) {
       const differences = await compareDirectories(destination, generated);
+      try {
+        const actual = await readFile(payloadManifest, "utf8");
+        if (actual !== expectedPayloadManifest) differences.push("changed assets/payload-manifest.json");
+      } catch (error) {
+        if (error.code !== "ENOENT") throw error;
+        differences.push("missing assets/payload-manifest.json");
+      }
       if (differences.length > 0) {
         console.error("Setup runtime mirror is stale:");
-        for (const difference of differences) console.error(`  ${difference}`);
+        for (const difference of differences.sort()) console.error(`  ${difference}`);
         console.error("Run npm run sync:setup-runtime.");
         process.exitCode = 1;
       } else {
         console.log("Setup runtime mirror is current.");
       }
     } else {
+      await writeFile(payloadManifest, expectedPayloadManifest);
       await rm(destination, { recursive: true, force: true });
       await rename(generated, destination);
       console.log(`Wrote ${path.relative(root, destination)}.`);
@@ -69,7 +77,7 @@ async function main() {
   }
 }
 
-async function writePayloadManifest(generated) {
+async function createPayloadManifest(generated) {
   const packageManifest = JSON.parse(await readFile(path.join(root, "package.json"), "utf8"));
   const files = (await Promise.all([
     filesUnder(generated, "scripts/"),
@@ -86,10 +94,7 @@ async function writePayloadManifest(generated) {
       sha256: createHash("sha256").update(await readFile(source)).digest("hex"),
     };
   }));
-  await writeFile(
-    payloadManifest,
-    `${JSON.stringify({ schema_version: "1.1", version: packageManifest.version, files: entries }, null, 2)}\n`,
-  );
+  return `${JSON.stringify({ schema_version: "1.1", version: packageManifest.version, files: entries }, null, 2)}\n`;
 }
 
 function assertOnlyNodeBuiltinsAreExternal(metafile) {
