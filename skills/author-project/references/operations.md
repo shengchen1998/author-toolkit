@@ -67,6 +67,19 @@ Each report also inserts or updates one Audit runs row keyed by its project-rela
 
 Recording requires the standard Audit runs table. A legacy tracker without that table remains readable but must be repaired and validated before recording. Manual tracker edits are recovery-only; normal report ingestion uses this transaction. The command does not perform semantic identity matching, reopen a decided finding, record author decisions, establish evidence currency or operation completion, or refresh the review brief; the caller completes those steps and refreshes the navigation cache after the logical state operation.
 
+## Intake inventory
+
+Run the installed read-only inventory command with exactly one project selector:
+
+```bash
+node <setup-skill-root>/scripts/intake-inventory.mjs --project-root <project-root>
+node <setup-skill-root>/scripts/intake-inventory.mjs --manifest <project-root>/.author-toolkit/project.json
+```
+
+The command requires a schema-valid v3.1 manifest and reads only that manifest and current manuscript inventory. It writes nothing and does not require `current_scope`, inspect the tracker, or establish operation completion. Its JSON contains `valid`, `manuscript_root`, `files`, and `excluded_files`. Each file entry contains `path`, `characters`, and `sha256`. Files must be valid UTF-8; counts include every decoded Unicode code point, including whitespace, Markdown markup, and a leading BOM. Hashes cover exact file bytes. Exclusions contain non-manuscript and operational entries discovered beneath the manuscript root.
+
+The result uses deterministic inventory order, not author-confirmed reading order. Use the active strategy and `record-scope` to establish scope membership and reading order. Scope recording still computes fresh hashes inside the shared write lock; an earlier inventory result supplies neither scope confirmation nor a substitute for that check. Argument errors exit 2; validation, UTF-8 decoding, and filesystem failures exit 1.
+
 ## Scaffold report
 
 Create every shared report v2 through the installed scaffold rather than hand-assembling its JSON envelope:
@@ -77,9 +90,11 @@ node <setup-skill-root>/scripts/scaffold-report.mjs --manifest <project-root>/.a
 
 Use the separate body and envelope inputs and the published-report contract defined under [Report envelope](../../revise-fiction/references/state-and-findings.md#report-envelope). The envelope's `skill.name` identifies the executing skill; the CLI fills `skill.version` from its installed `SKILL.md` declaration and rejects a conflicting supplied version. Repeat `--input` to select an ordered subset of current-scope files, or omit it to select all. The scope ID must match `current_scope`; conflicting generated fields, duplicate inputs, and out-of-scope selections fail. Additional inputs retain their explicitly supplied versions. `created_at` may come from either the envelope or the matching `--created-at` option. The CLI validates the complete report before writing and publishes it create-only through a verified temporary sibling. It rejects invalid findings, missing or invalid inputs and notes, evidence-semantic failures, a destination outside the registered reports path, special-file inputs, and every existing destination without writing a report. Argument errors exit 2; validation and filesystem failures exit 1.
 
+For `revise-draft` with `--preset intake`, omit `--input`: intake requires every current-scope file. The scaffold checks current scope membership and hashes against the manuscript inventory and validates the body's Manuscript inventory table against current-scope reading order, current Unicode code-point counts, and current SHA-256 hashes. Empty, missing, duplicate, extra, reordered, or inaccurate rows fail before publication. Path cells support escaped pipes and code spans. Additional non-scope `envelope.inputs`, such as a Story Bible, remain accepted. The template labels, chapter identifiers, exclusions, language coverage, and author goal remain semantic report content.
+
 When the caller creates body or envelope files solely for the invocation, it places them at unique paths beneath `<project-root>/.author-toolkit/.tmp/`. Cleanup belongs to the caller: remove those invocation-owned files after either success or failure and preserve pre-existing or reusable inputs.
 
-The empty array is a structural default for a completed clean review, not evidence that the reviewer found nothing. The semantic skill supplies the actual body, findings, non-scope input versions, execution and coverage notes, scope selection, and parent-child links; the CLI copies recorded scope hashes without establishing their currency and does not update review jobs, coverage indexes, manuscript hashes, or downstream syntheses. Only a successfully scaffolded report may be cited by a new coverage registration or synthesis.
+The empty array is a structural default for a completed clean review, not evidence that the reviewer found nothing. The semantic skill supplies the actual body, findings, non-scope input versions, execution and coverage notes, scope selection, and parent-child links. For presets other than `revise-draft` intake, the CLI copies recorded scope hashes without establishing their currency. It does not update review jobs, coverage indexes, manuscript hashes, or downstream syntheses. Only a successfully scaffolded report may be cited by a new coverage registration or synthesis.
 
 ## Coverage index
 

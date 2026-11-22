@@ -8,7 +8,10 @@ import {
   validateEvidenceReport,
   validateMarkdownReport,
 } from "./markdown.mjs";
+import { readIntakeInventory } from "./intake-inventory.mjs";
+import { validateScopeCurrency } from "./project-files.mjs";
 import { validateRelativePath } from "./schemas.mjs";
+import { splitTrackerRow } from "./tracker.mjs";
 
 function reportError(message) {
   const error = new Error(message);
@@ -196,8 +199,111 @@ async function assertReviseDraftIntakeBody(body, setupRoot) {
   }
 }
 
+function intakeInventoryRows(body) {
+  const lines = body.split(/\r?\n/);
+  const start = lines.findIndex((line) => line.trimEnd() === "## Manuscript inventory");
+  let end = lines.length;
+  for (let index = start + 1; index < lines.length; index += 1) {
+    if (/^## \S/.test(lines[index])) {
+      end = index;
+      break;
+    }
+  }
+  const section = lines.slice(start + 1, end);
+  const expectedHeader = ["order", "path", "characters", "sha-256"];
+  const headers = section.flatMap((line, index) => {
+    const row = splitTrackerRow(line);
+    return row?.map((cell) => cell.trim().toLowerCase()).join("|") === expectedHeader.join("|")
+      ? [index]
+      : [];
+  });
+  if (headers.length !== 1) {
+    throw reportError("revise-draft intake body must contain exactly one manuscript inventory table");
+  }
+  const header = headers[0];
+  const separator = splitTrackerRow(section[header + 1] ?? "");
+  if (separator?.length !== 4 || !separator.every((cell) => /^:?-{3,}:?$/.test(cell.trim()))) {
+    throw reportError("revise-draft intake manuscript inventory table has an invalid separator");
+  }
+  return section.slice(header + 2).flatMap((line) => {
+    const row = splitTrackerRow(line);
+    if (!row) return [];
+    if (row.length !== 4) {
+      throw reportError("revise-draft intake manuscript inventory rows must have four cells");
+    }
+    return [row];
+  });
+}
+
+function intakeInventoryPath(cell) {
+  const trimmed = cell.trim();
+  const delimiter = trimmed.match(/^`+/)?.[0];
+  if (!delimiter) return trimmed.replace(/\\\|/g, "|");
+  if (!trimmed.endsWith(delimiter) || trimmed.length < delimiter.length * 2) {
+    throw reportError("revise-draft intake manuscript inventory has an unclosed path code span");
+  }
+  let value = trimmed.slice(delimiter.length, -delimiter.length);
+  if (delimiter.length > 1 && value.startsWith(" ") && value.endsWith(" ")) {
+    value = value.slice(1, -1);
+  }
+  return value.replace(/\\\|/g, "|");
+}
+
+async function assertReviseDraftIntakeInventory({
+  body,
+  projectRoot,
+  manifestPath,
+  manifest,
+  inputPaths,
+}) {
+  if (inputPaths.length > 0) {
+    throw reportError("revise-draft intake requires every current-scope file; omit --input");
+  }
+  const scope = manifest.current_scope;
+  const currency = await validateScopeCurrency(manifest, manifestPath);
+  if (!currency.valid) {
+    throw reportError(`revise-draft intake current scope is stale: ${currency.errors.map((error) => error.message).join("; ")}`);
+  }
+  const inventory = await readIntakeInventory({ projectRoot, manifest });
+  const currentFiles = new Map(inventory.files.map((file) => [file.path, file]));
+  if (inventory.files.length !== scope.files.length || scope.files.some((file) => !currentFiles.has(file.path))) {
+    throw reportError("revise-draft intake current scope does not match the current manuscript inventory");
+  }
+  for (const file of scope.files) {
+    if (currentFiles.get(file.path).sha256 !== file.sha256) {
+      throw reportError(`revise-draft intake manuscript changed during report scaffolding: ${file.path}`);
+    }
+  }
+
+  const rows = intakeInventoryRows(body);
+  const seen = new Set();
+  for (const row of rows) {
+    const file = intakeInventoryPath(row[1]);
+    if (seen.has(file)) throw reportError(`duplicate revise-draft intake manuscript row: ${file}`);
+    seen.add(file);
+  }
+  if (rows.length !== scope.files.length) {
+    throw reportError(`revise-draft intake manuscript row count does not match current scope: expected ${scope.files.length}, received ${rows.length}`);
+  }
+  for (const [index, row] of rows.entries()) {
+    const expected = scope.files[index];
+    const current = currentFiles.get(expected.path);
+    const actualPath = intakeInventoryPath(row[1]);
+    if (row[0].trim() !== `${index + 1}` || actualPath !== expected.path) {
+      throw reportError(`revise-draft intake manuscript row ${index + 1} does not match current-scope reading order and path: ${expected.path}`);
+    }
+    if (row[2].trim() !== `${current.characters}`) {
+      throw reportError(`revise-draft intake character count does not match current manuscript: ${expected.path}`);
+    }
+    if (row[3].trim() !== current.sha256) {
+      throw reportError(`revise-draft intake SHA-256 does not match current manuscript: ${expected.path}`);
+    }
+  }
+}
+
 export async function writeScaffoldedReport({
   projectRoot,
+  manifestPath,
   setupRoot,
   manifest,
   destination,
@@ -228,15 +334,22 @@ export async function writeScaffoldedReport({
     throw reportError("envelope must be one JSON object");
   }
   const versionedEnvelope = await resolveSkill(envelope, setupRoot);
-  if (preset === "intake" && versionedEnvelope.skill.name === "revise-draft") {
-    await assertReviseDraftIntakeBody(body, setupRoot);
-  }
   if ("created_at" in envelope && createdAt !== undefined && envelope.created_at !== createdAt) {
     throw reportError("--created-at conflicts with envelope.created_at");
   }
   const resolvedEnvelope = preset
     ? applyReportPreset({ manifest, envelope: versionedEnvelope, preset, scopeId, inputPaths })
     : versionedEnvelope;
+  if (preset === "intake" && versionedEnvelope.skill.name === "revise-draft") {
+    await assertReviseDraftIntakeBody(body, setupRoot);
+    await assertReviseDraftIntakeInventory({
+      body,
+      projectRoot,
+      manifestPath,
+      manifest,
+      inputPaths,
+    });
+  }
   const result = scaffoldReport({ body, envelope: resolvedEnvelope, createdAt });
 
   await assertAbsent(target);

@@ -36,10 +36,13 @@ scope_id in engine.notes. Repeat --input to select scope files;
 otherwise all are selected. envelope.inputs supplies additional non-scope inputs.
 For revise-draft with --preset intake, the body must contain every bullet label
 and level-two heading from the installed intake report template, in any order.
-The CLI validates the complete report before publication and refuses to overwrite
-any existing destination. It does not infer findings, coverage, parent-child links,
-or non-scope input versions. Argument errors exit 2; validation and filesystem
-failures exit 1.`);
+Its manuscript inventory table must contain exactly the current-scope paths in
+reading order with current Unicode code-point counts and SHA-256 hashes. This
+intake mode checks scope currency and rejects --input; additional non-scope
+envelope.inputs remain accepted. The CLI validates the complete report before
+publication and refuses to overwrite any existing destination. It does not infer
+findings, coverage, parent-child links, or non-scope input versions. Argument
+errors exit 2; validation and filesystem failures exit 1.`);
 }
 
 function options(args) {
@@ -101,6 +104,7 @@ try {
     const scriptRoot = fileURLToPath(new URL("../", import.meta.url));
     const result = await writeScaffoldedReport({
       projectRoot: projectRootFromManifest(selection.manifest),
+      manifestPath: selection.manifest,
       setupRoot: resolveSetupRoot(scriptRoot),
       manifest,
       destination: selection.output,

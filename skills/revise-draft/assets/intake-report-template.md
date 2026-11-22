@@ -9,7 +9,7 @@
 
 ## Manuscript inventory
 
-Count Unicode code points in each decoded file, including whitespace and Markdown markup.
+Count Unicode code points in each decoded file, including whitespace and Markdown markup. Use `intake-inventory` values and current-scope reading order. Escape a literal `|` in a path as `\|`; code spans may enclose paths containing backticks.
 
 | Order | Path | Characters | SHA-256 |
 |---|---|---:|---|

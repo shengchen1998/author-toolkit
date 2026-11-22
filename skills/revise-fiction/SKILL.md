@@ -29,7 +29,7 @@ For each diagnostic callee, supply the operation identifier, destination report 
 
 | Operation | Delegation |
 |---|---|
-| `intake` | `author-project` plus manuscript inventory |
+| `intake` | `author-project` with `intake-inventory`, current scope, and semantic intake fields |
 | `story-bible` | `fiction-workshop`, Story Bible Building |
 | `structure` | `story-structure`, Audit mode over the full selected scope |
 | `characters` | `character-archetypes` plus `fiction-workshop` Character Consultant and Continuity Tracker |

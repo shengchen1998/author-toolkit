@@ -818,8 +818,15 @@ node scripts/validate.mjs --manifest /path/to/.author-toolkit/project.json
 node scripts/validate.mjs --report /path/to/report.md
 node scripts/status.mjs --manifest /path/to/.author-toolkit/project.json --scope-id scope-001
 node scripts/writes.mjs check-index --manifest /path/to/.author-toolkit/project.json --explain
+node scripts/intake-inventory.mjs --project-root /path/to/writing-project
 node scripts/range.mjs --project-root /path/to/writing-project "manuscript/1.md:1:56-71"
 ```
+
+`intake-inventory.mjs` returns read-only JSON with every manuscript path, Unicode
+code-point count, raw-byte SHA-256 hash, and non-manuscript exclusion. Files must
+be valid UTF-8. Its deterministic inventory order does not establish reading order
+or scope confirmation; `record-scope` still computes fresh hashes under the shared
+write lock.
 
 `scaffold-report.mjs --help` describes the create-only shared report generator.
 For every report, the caller supplies `skill.name`; the CLI fills `skill.version`
@@ -829,9 +836,11 @@ and recorded current-scope hashes while the caller supplies semantic fields and
 any non-scope input versions. It supplies `findings: []` when that field is omitted
 and validates the complete report before publication. With `--preset intake` and
 `skill.name` set to `revise-draft`, it also requires every bullet label and level-two
-heading from the installed intake report template, in any order; this shape check
-does not establish inventory completeness. The CLI does not infer reviewer findings,
-coverage, input currency, or synthesis dependencies.
+heading from the installed intake report template, in any order. This intake mode
+checks current scope currency and requires exactly one accurate manuscript table
+row per scope file in reading order. It rejects `--input` subsets while retaining
+additional non-scope inputs. The CLI does not infer reviewer findings, semantic
+coverage, or synthesis dependencies; other presets retain recorded-hash semantics.
 
 `review-brief.mjs --help` describes the deterministic review brief generator.
 It copies every resolved and dismissed tracker location, decision reason, and

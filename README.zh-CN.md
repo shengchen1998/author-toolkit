@@ -528,8 +528,12 @@ node scripts/validate.mjs --manifest /path/to/.author-toolkit/project.json
 node scripts/validate.mjs --report /path/to/report.md
 node scripts/status.mjs --manifest /path/to/.author-toolkit/project.json --scope-id scope-001
 node scripts/writes.mjs check-index --manifest /path/to/.author-toolkit/project.json --explain
+node scripts/intake-inventory.mjs --project-root /path/to/writing-project
 node scripts/range.mjs --project-root /path/to/writing-project "manuscript/1.md:1:56-71"
 ```
+
+`intake-inventory.mjs` 以只读 JSON 返回全部正文路径, Unicode 码点数, 原始字节 SHA-256 和非正文排除项.
+文件必须是合法 UTF-8. 确定性的盘点顺序不代表阅读顺序或 scope 确认; `record-scope` 仍在共享写锁内重新计算哈希.
 
 `range.mjs` 解析作者给出的行内字符区间; 行号和字符位置均从 1 开始且包含端点, 字符按 Unicode 码点计数.
 
@@ -538,8 +542,9 @@ node scripts/range.mjs --project-root /path/to/writing-project "manuscript/1.md:
 可选的阶段预设会填充确定性的信封字段和当前 scope 中记录的哈希; 调用者仍提供语义字段和非
 scope 输入版本. 它在未提供 `findings` 字段时补充 `findings: []`, 并在发布前校验完整报告.
 使用 `--preset intake` 且 `skill.name` 为 `revise-draft` 时, 正文还必须按任意顺序包含已安装
-intake 报告模板中的每个项目符号标签和二级标题; 这种形状检查不证明库存完整.
-CLI 不推断复核发现项, 实际覆盖度, 输入时效性或综合报告依赖.
+intake 报告模板中的每个项目符号标签和二级标题. 此模式检查当前 scope 的时效性, 并要求正文清单
+按阅读顺序为每个 scope 文件提供一行准确数据; 它拒绝用 `--input` 缩小范围, 同时保留非 scope 附加输入.
+CLI 不推断复核发现项, 语义覆盖度或综合报告依赖; 其他预设仍使用 scope 中记录的哈希.
 
 `evidence-retention.mjs --help` 说明可选的有界证据保留. 默认项目保留所有历史证据.
 只有显式 `--enable --apply` 才迁移发现项身份并删除无引用的旧审计产物;

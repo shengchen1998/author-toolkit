@@ -139,6 +139,10 @@
       "sha256": "a74f29cbd5cc22147a3032bd1e925e5d7d6ed17816af9bb897aaa9f27d4e31f1"
     },
     {
+      "path": "scripts/intake-inventory.mjs",
+      "sha256": "754fdc43474a9d789b1190d52f631e375fe25e54eba1d462df2892072158da4a"
+    },
+    {
       "path": "scripts/lib/approval-paths.mjs",
       "sha256": "21e6f48e40d794544cf5859bcb4c35f099e70bd65c767c8035b23ffd711f0460"
     },
@@ -192,7 +196,11 @@
     },
     {
       "path": "scripts/lib/index.mjs",
-      "sha256": "569a84fd71c9578ded71de1f44c3bc8993a461b7e3e04e1f9d1a5c68dd8efd8c"
+      "sha256": "e7a08bac3f1bad103f0ca1421e93c0cc06878a14d9ee486f8d11627d671cd6ad"
+    },
+    {
+      "path": "scripts/lib/intake-inventory.mjs",
+      "sha256": "28a8a7e79d7b870f4a3ed3cc74cf569dabdb8fdf0da4cb3d3be689b4cc4f73dd"
     },
     {
       "path": "scripts/lib/manifest.mjs",
@@ -240,7 +248,7 @@
     },
     {
       "path": "scripts/lib/report-scaffold.mjs",
-      "sha256": "c0859f8865a93ea70ec7d38e18b038988906de93cfad3bf6dd7399f1899b94f7"
+      "sha256": "3e4f93e9627fb99afae1137edfcfc925b74d3fd08d9a87b077331db80060feac"
     },
     {
       "path": "scripts/lib/review-brief.mjs",
@@ -348,7 +356,7 @@
     },
     {
       "path": "scripts/scaffold-report.mjs",
-      "sha256": "6c3ea06ae7e4f7b670dc3f430da118d0f89b67856d3679e035d432e28981d2be"
+      "sha256": "fd90c84477906b7fb78794e62cc67aaf6fff3019f5694eec3ffa16cacecdeead"
     },
     {
       "path": "scripts/set-pending.mjs",

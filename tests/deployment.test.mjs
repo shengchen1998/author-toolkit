@@ -73,7 +73,7 @@ test("setup runtime check rejects a stale payload manifest without rewriting it"
   assert.equal(await readFile(manifestPath, "utf8"), staleManifest);
 });
 
-test("setup carries self-contained preflight, validation, state, range, and installation CLIs", async (t) => {
+test("setup carries self-contained preflight, validation, state, intake, range, and installation CLIs", async (t) => {
   await mkdir(path.join(root, ".test-output"), { recursive: true });
   const temporaryRoot = await mkdtemp(path.join(root, ".test-output", "setup-cli-"));
   t.after(() => rm(temporaryRoot, { recursive: true, force: true }));
@@ -124,7 +124,7 @@ test("setup carries self-contained preflight, validation, state, range, and inst
   );
 
   const nodeArgs = ["--no-warnings", "--experimental-loader", loader, "--require", preload];
-  for (const script of ["inspect-root.mjs", "scaffold-project.mjs", "initialize.mjs", "install-entry-files.mjs", "preflight.mjs", "check.mjs", "read.mjs", "set-pending.mjs", "validate.mjs", "status.mjs", "project-digest.mjs", "findings.mjs", "range.mjs", "doctor.mjs", "writes.mjs", "terminology.mjs", "setup-report.mjs", "scaffold-report.mjs", "review-brief.mjs", "coverage-index.mjs", "record-scope.mjs"]) {
+  for (const script of ["inspect-root.mjs", "scaffold-project.mjs", "initialize.mjs", "install-entry-files.mjs", "preflight.mjs", "check.mjs", "read.mjs", "set-pending.mjs", "validate.mjs", "status.mjs", "project-digest.mjs", "findings.mjs", "intake-inventory.mjs", "range.mjs", "doctor.mjs", "writes.mjs", "terminology.mjs", "setup-report.mjs", "scaffold-report.mjs", "review-brief.mjs", "coverage-index.mjs", "record-scope.mjs"]) {
     const result = spawnSync(
       process.execPath,
       [...nodeArgs, path.join(installedSetup, "scripts", script), "--help"],
@@ -171,6 +171,29 @@ test("setup carries self-contained preflight, validation, state, range, and inst
   );
   assert.equal(projection.status, 0, projection.stderr);
   assert.equal(JSON.parse(projection.stdout).pending_action.artifact_count, 1);
+
+  const intakeInventory = spawnSync(
+    process.execPath,
+    [
+      ...nodeArgs,
+      path.join(installedSetup, "scripts", "intake-inventory.mjs"),
+      "--project-root",
+      path.join(root, "examples", "fiction-revision-zh"),
+    ],
+    { encoding: "utf8" },
+  );
+  assert.equal(intakeInventory.status, 0, intakeInventory.stderr);
+  const inventory = JSON.parse(intakeInventory.stdout);
+  const scopedManifest = JSON.parse(await readFile(
+    path.join(root, "examples", "fiction-revision-zh", ".author-toolkit", "project.json"),
+    "utf8",
+  ));
+  assert.equal(inventory.files.length, scopedManifest.current_scope.files.length);
+  assert.deepEqual(
+    inventory.files.map((file) => file.sha256).sort(),
+    scopedManifest.current_scope.files.map((file) => file.sha256).sort(),
+  );
+  assert.ok(inventory.files.every((file) => Number.isSafeInteger(file.characters)));
 
   const indexInspection = spawnSync(
     process.execPath,

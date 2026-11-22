@@ -1,11 +1,12 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import test from "node:test";
 
 import {
   extractReportEnvelope,
+  readIntakeInventory,
   validateEvidenceReport,
   validateMarkdownReport,
 } from "../scripts/lib/index.mjs";
@@ -25,6 +26,7 @@ async function fixture(t) {
   await Promise.all([
     mkdir(path.join(project, ".author-toolkit"), { recursive: true }),
     mkdir(path.join(project, "reports"), { recursive: true }),
+    cp(path.join(example, "manuscript"), path.join(project, "manuscript"), { recursive: true }),
     writeFile(
       path.join(project, ".author-toolkit", "project.json"),
       await readFile(path.join(example, ".author-toolkit", "project.json"), "utf8"),
@@ -91,6 +93,41 @@ async function intakeArguments(values, skillName = "revise-draft", language = "e
   ];
 }
 
+async function intakeTableRows(values, formatPath = (file) => file) {
+  const inventory = await readIntakeInventory({
+    projectRoot: values.project,
+    manifest: values.manifest,
+  });
+  const currentFiles = new Map(inventory.files.map((file) => [file.path, file]));
+  return values.manifest.current_scope.files.map((file, index) => {
+    const current = currentFiles.get(file.path);
+    return `| ${index + 1} | ${formatPath(file.path)} | ${current.characters} | ${current.sha256} |`;
+  });
+}
+
+async function completeIntakeBody(values, language = "en", formatPath) {
+  const rows = await intakeTableRows(values, formatPath);
+  return `# Intake
+
+- Scope ID: ${values.manifest.current_scope.scope_id}
+- Reading order: the Order column below
+- Chapter identifiers: each path has one unique identifier
+- Exclusions: None
+- Language: ${language}
+- Current author goal: unknown
+
+## Manuscript inventory
+
+| Order | Path | Characters | SHA-256 |
+|---|---|---:|---|
+${rows.join("\n")}
+
+## Language coverage
+
+full (${language}): every manuscript file is readable.
+`;
+}
+
 test("scaffold defaults omitted findings and preserves supplied finding v2 objects", async () => {
   const source = extractReportEnvelope(await readReport());
   delete source.created_at;
@@ -119,14 +156,18 @@ test("scaffold CLI requires every revise-draft intake template label and level-t
     path.join(root, "skills/revise-draft/assets/intake-report-template.md"),
     "utf8",
   );
-  const lines = template.split("\n");
-  const markers = lines.filter((line) => /^- [^:]+:/.test(line) || /^## \S/.test(line));
+  const markers = template.split("\n").flatMap((line) => {
+    const label = line.match(/^- [^:]+:/)?.[0];
+    return label ? [label] : /^## \S/.test(line) ? [line] : [];
+  });
   assert.equal(markers.length, 8);
+  const lines = (await completeIntakeBody(values)).split("\n");
   const args = await intakeArguments(values);
   const destination = path.join(values.project, "reports/intake/scaffold.md");
 
   for (const marker of markers) {
-    await writeFile(values.bodyPath, lines.filter((line) => line !== marker).join("\n"), "utf8");
+    await writeFile(values.bodyPath, lines.filter((line) =>
+      marker.startsWith("- ") ? !line.startsWith(marker) : line !== marker).join("\n"), "utf8");
     const result = run(args);
     const expected = marker.match(/^- [^:]+:/)?.[0] ?? marker;
     assert.equal(result.status, 1, `intake body without ${expected} should fail`);
@@ -144,6 +185,7 @@ test("scaffold CLI accepts reordered revise-draft intake headings and Chinese co
     "utf8",
   );
   const args = await intakeArguments(values, "revise-draft", "zh-CN");
+  const rows = await intakeTableRows(values);
   await writeFile(values.bodyPath, `# 草稿接收
 
 ## Language coverage
@@ -161,6 +203,7 @@ full (zh-CN)：已清点全部稿件。
 
 | Order | Path | Characters | SHA-256 |
 |---|---|---:|---|
+${rows.join("\n")}
 `);
 
   const result = run(args);
@@ -168,6 +211,100 @@ full (zh-CN)：已清点全部稿件。
   const markdown = await readFile(path.join(values.project, "reports/intake/scaffold.md"), "utf8");
   assert.equal(extractReportEnvelope(markdown).language, "zh-CN");
   assert.match(markdown, /- Chapter identifiers: 每章标识均已记录/);
+});
+
+test("scaffold CLI rejects incomplete, duplicate, extra, reordered, and inaccurate revise-draft intake rows", async (t) => {
+  const values = await fixture(t);
+  const args = await intakeArguments(values);
+  const body = await completeIntakeBody(values);
+  const rows = await intakeTableRows(values);
+  const originalTable = rows.join("\n");
+  const wrongCharacters = rows[0].replace(
+    / \| \d+ \| [0-9a-f]{64} \|$/,
+    ` | 0 | ${values.manifest.current_scope.files[0].sha256} |`,
+  );
+  const wrongHash = rows[0].replace(/[0-9a-f]{64} \|$/, `${"0".repeat(64)} |`);
+  const extra = `| 4 | manuscript/extra.md | 0 | ${"0".repeat(64)} |`;
+  const cases = [
+    { rows: [], error: /row count does not match/ },
+    { rows: rows.slice(1), error: /row count does not match/ },
+    { rows: [rows[0], rows[0], rows[2]], error: /duplicate revise-draft intake manuscript row/ },
+    { rows: [...rows, extra], error: /row count does not match/ },
+    { rows: [rows[1], rows[0], rows[2]], error: /reading order and path/ },
+    { rows: [wrongCharacters, rows[1], rows[2]], error: /character count does not match/ },
+    { rows: [wrongHash, rows[1], rows[2]], error: /SHA-256 does not match/ },
+  ];
+  const destination = path.join(values.project, "reports/intake/scaffold.md");
+  for (const item of cases) {
+    await writeFile(values.bodyPath, body.replace(originalTable, item.rows.join("\n")), "utf8");
+    const result = run(args);
+    assert.equal(result.status, 1, item.error.source);
+    assert.match(result.stderr, item.error);
+    await assert.rejects(readFile(destination, "utf8"), { code: "ENOENT" });
+  }
+});
+
+test("scaffold CLI rejects changed manuscript and explicit subsets for revise-draft intake", async (t) => {
+  const values = await fixture(t);
+  const args = await intakeArguments(values);
+  await writeFile(values.bodyPath, await completeIntakeBody(values), "utf8");
+  const destination = path.join(values.project, "reports/intake/scaffold.md");
+
+  const subset = run([...args, "--input", values.manifest.current_scope.files[0].path]);
+  assert.equal(subset.status, 1);
+  assert.match(subset.stderr, /requires every current-scope file; omit --input/);
+  await assert.rejects(readFile(destination, "utf8"), { code: "ENOENT" });
+
+  await writeFile(path.join(values.project, values.manifest.current_scope.files[0].path), "Changed after scope recording.\n");
+  const changed = run(args);
+  assert.equal(changed.status, 1);
+  assert.match(changed.stderr, /current scope is stale/);
+  assert.match(changed.stderr, /changed since the scope was recorded/);
+  await assert.rejects(readFile(destination, "utf8"), { code: "ENOENT" });
+});
+
+test("scaffold CLI accepts additional non-scope inputs for revise-draft intake", async (t) => {
+  const values = await fixture(t);
+  const args = await intakeArguments(values);
+  const additionalInput = { path: "story-bible.md", version: "author-v1", version_type: "author" };
+  const envelope = JSON.parse(await readFile(values.envelopePath, "utf8"));
+  envelope.inputs = [additionalInput];
+  await writeFile(values.envelopePath, JSON.stringify(envelope), "utf8");
+  await writeFile(values.bodyPath, await completeIntakeBody(values), "utf8");
+
+  const result = run(args);
+  assert.equal(result.status, 0, result.stderr);
+  const report = await readFile(path.join(values.project, "reports/intake/scaffold.md"), "utf8");
+  const inputs = extractReportEnvelope(report).inputs;
+  assert.equal(inputs.length, values.manifest.current_scope.files.length + 1);
+  assert.deepEqual(inputs.at(-1), additionalInput);
+});
+
+test("scaffold CLI verifies escaped pipes and code spans in revise-draft intake paths", async (t) => {
+  const values = await fixture(t);
+  const specialPath = "manuscript/chap|`ter.md";
+  for (const file of values.manifest.current_scope.files) {
+    await rm(path.join(values.project, file.path));
+  }
+  await writeFile(path.join(values.project, specialPath), "A😀\n", "utf8");
+  const inventory = await readIntakeInventory({ projectRoot: values.project, manifest: values.manifest });
+  values.manifest.current_scope.files = [{
+    path: specialPath,
+    sha256: inventory.files.find((file) => file.path === specialPath).sha256,
+  }];
+  await writeFile(
+    path.join(values.project, ".author-toolkit", "project.json"),
+    JSON.stringify(values.manifest),
+    "utf8",
+  );
+  const args = await intakeArguments(values);
+  const formatPath = (file) => `\`\`${file.replaceAll("|", "\\|")}\`\``;
+  await writeFile(values.bodyPath, await completeIntakeBody(values, "en", formatPath), "utf8");
+
+  const result = run(args);
+  assert.equal(result.status, 0, result.stderr);
+  const report = await readFile(path.join(values.project, "reports/intake/scaffold.md"), "utf8");
+  assert.match(report, /chap\\\|`ter\.md/);
 });
 
 test("scaffold CLI does not apply the revise-draft intake template to revise-fiction", async (t) => {
@@ -414,6 +551,8 @@ test("scaffold CLI help documents body input and the generated envelope", () => 
   assert.match(result.stdout, /CLI appends the single\s+fenced report v2 `json` block/);
   assert.match(result.stdout, /revise-draft with --preset intake/);
   assert.match(result.stdout, /every bullet label\s+and level-two heading/);
+  assert.match(result.stdout, /current-scope paths in\s+reading order/);
+  assert.match(result.stdout, /checks scope currency and rejects --input/);
 });
 
 test("scaffold CLI uses exit 2 for argument errors", async (t) => {
