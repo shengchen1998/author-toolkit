@@ -154,6 +154,8 @@ node <setup-skill-root>/scripts/record-scope.mjs --manifest <project-root>/.auth
 
 Confirmation accepts no proposal fields. It preserves `created_at` and every other scope field, updates only `status` and the manifest's top-level `updated_at`, and stops if any manuscript hash or recorded non-manuscript exclusion has changed. It never refreshes the proposed hashes to match changed text. A text change requires a new proposal before confirmation.
 
+For the rules governing approval rows for revision scope confirmations and creation acceptance, follow [Author approvals](../../revise-fiction/references/state-and-findings.md#author-approvals).
+
 Both forms reread the manifest after acquiring the shared lock and stop on a concurrent change. They preserve unrelated manifest fields, validate the complete candidate project before a verified atomic write, and validate the published manifest afterward. Both forms always emit JSON without a `--json` option. Their output includes the complete `current_scope` for the author decision. Argument errors exit 2; validation and filesystem failures exit 1.
 
 ## Set pending
