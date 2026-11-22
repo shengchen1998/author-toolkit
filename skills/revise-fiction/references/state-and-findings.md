@@ -4,7 +4,7 @@ Use the controlled workflow terminology in `<setup-skill-root>/assets/references
 
 ## Task-based reading
 
-Read only the rows needed for the current task and their linked sections. Direct operation and author-gate pointers may require additional sections.
+Read the rows needed for the current task and their linked sections. Use bounded section reads when the required content is contiguous; when those ranges are noncontiguous, read this reference once in full instead. Direct operation and author-gate pointers may require additional sections.
 
 | Task | Required sections |
 |---|---|
@@ -28,13 +28,13 @@ For example, a clean current-scope `intake` report with full English coverage ca
 
 Body:
 
-```md
-# Intake
+  ```md
+  # Intake
 
-## Language coverage
+  ## Language coverage
 
-full (en)
-```
+  full (en)
+  ```
 
 Envelope:
 
@@ -81,22 +81,22 @@ A finding absent from an equivalent complete rerun becomes `stale`, not `resolve
 
 Before processing shared review findings, run `author-project` with `review-brief` to generate or refresh `<paths.reports>/review_brief.md` from the current tracker. This review brief is a disposable navigation summary, not an immutable report or another authority. The CLI produces exactly these sections:
 
-```md
-# Review Brief
+  ```md
+  # Review Brief
 
-- Updated: <UTC timestamp>
-- Tracker: <project-relative tracker path>
+  - Updated: <UTC timestamp>
+  - Tracker: <project-relative tracker path>
 
-## Resolved decisions
+  ## Resolved decisions
 
-| Finding ID | Location | Decision reason | Current report |
-|---|---|---|---|
+  | Finding ID | Location | Decision reason | Current report |
+  |---|---|---|---|
 
-## Dismissed decisions
+  ## Dismissed decisions
 
-| Finding ID | Location | Decision reason | Current report |
-|---|---|---|---|
-```
+  | Finding ID | Location | Decision reason | Current report |
+  |---|---|---|---|
+  ```
 
 The CLI includes every tracker row whose status is `resolved` or `dismissed`, preserving its actual location, decision reason, and report path without expanding it into a full finding or manuscript excerpt. If neither status has any rows, it states `No resolved or dismissed findings.` beneath both headings. Refresh the brief through the same CLI after relevant tracker changes. It validates the complete result before atomically replacing the brief; `node <setup-skill-root>/scripts/validate.mjs --review-brief <path> --tracker <tracker-path>` remains the independent check. The tracker remains authoritative; regenerate a missing or inconsistent brief rather than treating its contents as approval.
 

@@ -57,7 +57,7 @@ At every author gate, follow the [Author decision loop](../revise-fiction/refere
 
 `write-fiction`, `revise-draft`, `revise-fiction`, `revise-increment`, and `revise-request` use the same manifest, tracker, reports, sessions, backups, handoffs, and creation state. At any stable operation gate, show the exact command for the author's selected strategy and wait. Switching does not reset evidence, resume writes, or recreate shared project state. This entry adds no report v2 `stage` value, pending-action operation name, manifest field, or separate state tree.
 
-Read only the applicable row and linked sections in [Task-based reading](../revise-fiction/references/state-and-findings.md#task-based-reading) before writing a report, changing finding or approval status, propagating stale evidence, or recording a stopping point. Validate newly written reports and artifacts with the installed validator; preserve historical evidence by default or retire only unreferenced audit artifacts under the explicitly enabled bounded policy.
+Follow [Task-based reading](../revise-fiction/references/state-and-findings.md#task-based-reading) before writing a report, changing finding or approval status, propagating stale evidence, or recording a stopping point. Validate newly written reports and artifacts with the installed validator; preserve historical evidence by default or retire only unreferenced audit artifacts under the explicitly enabled bounded policy.
 
 ## Finish
 

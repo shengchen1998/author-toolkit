@@ -555,8 +555,9 @@ test("author-project routes operations to targeted reference sections", async ()
   ]);
   const routes = project.split("### Operation reference routes")[1]?.split("## Invocation boundary")[0];
   assert.ok(routes);
-  assert.match(routes, /read the \[opening project-operation rules\].*and only the linked sections/);
-  assert.match(routes, /Do not read unrelated operation sections/);
+  assert.match(routes, /read the \[opening project-operation rules\].*and the linked sections/);
+  assert.match(routes, /When those ranges are noncontiguous, read `operations\.md` once in full/);
+  assert.match(routes, /Do not read unrelated operation sections during bounded reads/);
   assert.match(routes, /\[Digest\]\(references\/read-operations\.md#digest\)/);
   assert.match(readOperations, /^### Digest$/m);
 
@@ -717,11 +718,19 @@ test("shared state references use task-based reading", async () => {
   for (const task of ["Writing a report", "Changing finding status", "Changing approval status", "Propagating stale evidence", "Recording a stopping point"]) {
     assert.ok(state.includes(`| ${task} |`), `Missing state-reading route for ${task}`);
   }
-  assert.match(reporting, /only the applicable row and linked sections under `Task-based reading`/);
+  assert.match(reporting, /follow the applicable `Task-based reading` route/);
   assert.match(instructions, /reference routes to selected sections, use the host's heading search and bounded line-range reads/);
+  assert.match(instructions, /For `operations\.md` and `state-and-findings\.md`, use one full read when the required content forms noncontiguous ranges/);
   assert.match(instructions, /ending each section before the next same-level heading/);
+  assert.match(state, /when those ranges are noncontiguous, read this reference once in full/);
   assert.match(review, /state-and-findings\.md#report-envelope/);
   assert.match(review, /state-and-findings\.md#finding-identity-across-reruns/);
+
+  const markdownExamples = [...state.matchAll(/^ {0,3}```md\n([\s\S]*?)^ {0,3}```/gm)];
+  assert.equal(markdownExamples.length, 2);
+  for (const example of markdownExamples) {
+    assert.doesNotMatch(example[1], /^#{1,6} /m);
+  }
 
   const headings = new Set(
     [...state.matchAll(/^#{1,6} (.+)$/gm)].map((match) =>
@@ -732,7 +741,7 @@ test("shared state references use task-based reading", async () => {
     assert.ok(headings.has(match[1]), `Missing state-and-findings.md heading for #${match[1]}`);
   }
   for (const strategy of strategies) {
-    assert.match(strategy, /Read only the applicable row and linked sections in \[Task-based reading\]\([^\n]*state-and-findings\.md#task-based-reading\)/);
+    assert.match(strategy, /Follow \[Task-based reading\]\([^\n]*state-and-findings\.md#task-based-reading\)/);
     assert.doesNotMatch(strategy, /Before writing any report or changing finding or approval status/);
   }
   for (const match of [state, ...strategies, review].join("\n").matchAll(/state-and-findings\.md#([a-z0-9-]+)/g)) {

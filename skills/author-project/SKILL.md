@@ -40,7 +40,7 @@ For `validate`, read only [Read and validate](references/read-operations.md#read
 
 ### Operation reference routes
 
-For each operation below, read the [opening project-operation rules](references/operations.md#project-operations) and only the linked sections. The opening rules cover installation, bounded reads, and navigation-cache refresh. Follow [Digest](references/read-operations.md#digest) for that refresh rather than reading the whole read-operations reference. Do not read unrelated operation sections.
+For each operation below, read the [opening project-operation rules](references/operations.md#project-operations) and the linked sections. When those ranges are noncontiguous, read `operations.md` once in full; otherwise use bounded section reads. The opening rules cover installation, bounded reads, and navigation-cache refresh. Follow [Digest](references/read-operations.md#digest) for that refresh rather than reading the whole read-operations reference. Do not read unrelated operation sections during bounded reads.
 
 | Operations | Required sections in `operations.md` |
 |---|---|

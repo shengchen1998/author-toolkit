@@ -4,7 +4,7 @@ Match the author's language. The active skill's `SKILL.md` and its references su
 
 ## Resolve and route skills
 
-Read each semantic skill's installed `SKILL.md` and applicable references, then execute its procedure directly. When a reference routes to selected sections, use the host's heading search and bounded line-range reads to load only the applicable routing row and linked sections, ending each section before the next same-level heading. Deterministic shared-state transactions have one installed CLI implementation and no model-executed counterpart. Assume the explicit author entry points below are installed; do not check their host visibility or infer availability from model-facing registry metadata.
+Read each semantic skill's installed `SKILL.md` and applicable references, then execute its procedure directly. When a reference routes to selected sections, use the host's heading search and bounded line-range reads to load only the applicable routing row and linked sections, ending each section before the next same-level heading. For `operations.md` and `state-and-findings.md`, use one full read when the required content forms noncontiguous ranges. Deterministic shared-state transactions have one installed CLI implementation and no model-executed counterpart. Assume the explicit author entry points below are installed; do not check their host visibility or infer availability from model-facing registry metadata.
 
 For author-facing entries, use the current host's skill command or skill picker with the exact unqualified registered skill name, such as `write-fiction`.
 
