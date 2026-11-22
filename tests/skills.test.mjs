@@ -431,7 +431,8 @@ test("setup and routine navigation keep operational history listings bounded", a
 
   assert.match(setup, /^1\. Check only whether `<project-root>\/\.author-toolkit\/project\.json` exists\./m);
   assert.match(existingSetup, /For an existing v3\.1 manifest, run `node <setup-skill-root>\/scripts\/setup-report\.mjs capture --report-store <report-store> --kind initialize -- --project-root <project-root>` for the bounded projection/);
-  assert.match(setup, /print `payload-manifest\.json` or the complete manifest, or emit complete session or backup listings/);
+  assert.match(setup, /Leave payload verification to doctor\/check and treat `assets\/payload-manifest\.json` as their machine-readable input\. Read the toolkit version from the captured doctor\/check JSON when needed, and use the rendered setup report for the author-facing payload summary\./);
+  assert.doesNotMatch(setup, /print `payload-manifest\.json`/);
   assert.doesNotMatch(setup, /inspect-root\.mjs/);
   assert.match(newSetup, /at most 12 candidate manuscript paths with an omitted count/);
   assert.match(newSetup, /recursive historical regular-file counts without historical artifact paths/);
