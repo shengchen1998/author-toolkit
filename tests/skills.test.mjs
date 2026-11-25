@@ -419,6 +419,15 @@ test("new Story Bibles use a neutral heading and an optional title field", async
   assert.match(newSetup, /retaining the neutral `# Story Bible` heading/);
 });
 
+test("the draft baseline takes its title from the registered Story Bible", async () => {
+  const stageGates = await readFile(path.join(root, "skills/revise-draft/references/stage-gates.md"), "utf8");
+
+  assert.match(stageGates, /read it through `paths\.story_bible`/);
+  assert.match(stageGates, /fill `PROJECT_TITLE` from its `- Title:` field/);
+  assert.match(stageGates, /plain `# Draft Baseline` heading when the field is empty/);
+  assert.match(stageGates, /manifest records no project title/);
+});
+
 test("setup and routine navigation keep operational history listings bounded", async () => {
   const [setup, existingSetup, newSetup, readOperations, readme, zhReadme] = await Promise.all([
     readFile(path.join(root, "skills/setup-author-toolkit/SKILL.md"), "utf8"),
