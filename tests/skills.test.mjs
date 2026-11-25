@@ -221,7 +221,7 @@ test("author-facing entries use host-independent skill invocation", async () => 
   }
   assert.match(setup, /current host's skill command or skill picker/);
   assert.match(setup, /Do not add a qualifier to these unqualified registered skill names/);
-  assert.match(setup, /Read `\.\.\/ask-author\/SKILL\.md` once and use only the \*\*Need\*\* labels from its \*\*Author-facing commands\*\* table as the descriptions for the five strategy entries/);
+  assert.match(setup, /In `\.\.\/ask-author\/SKILL\.md`, locate \*\*Author-facing commands\*\* with a heading search and read only its table with a bounded line range; use the \*\*Need\*\* labels from the five strategy rows as their descriptions/);
   assert.match(ask, /\| Need \| Registered skill \|/);
   assert.match(instructions, /current host's skill command or skill picker/);
   assert.match(instructions, /`write-fiction`/);
