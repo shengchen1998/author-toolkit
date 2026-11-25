@@ -844,10 +844,17 @@ test("revision strategies share one project and keep distinct evidence gates", a
   assert.match(state, /`pending_action\.reason`/);
   assert.match(
     draft,
-    /read the shared preamble and the \[Intake\]\(references\/stage-gates\.md#1-intake\) and \[Draft baseline\]\(references\/stage-gates\.md#2-draft-baseline\) sections, stopping before `## 3\. Diagnostics`/,
+    /Read the shared preamble and the \[Intake\]\(references\/stage-gates\.md#1-intake\) and \[Draft baseline\]\(references\/stage-gates\.md#2-draft-baseline\) sections, stopping before `## 3\. Diagnostics`/,
   );
-  assert.match(draft, /normally confirmation of the proposed scope/);
+  assert.match(draft, /record the proposed scope through `author-project` with `record-scope`/);
   assert.match(draft, /persist the proposed `draft-baseline` artifact/);
+  assert.match(draft, /Record the gate as `awaiting_author` through `set-pending`/);
+  assert.match(draft, /write the session note and refresh the navigation cache once/);
+  assert.match(draft, /Then stop for confirmation of the proposed scope/);
+  assert.match(draft, /Defer the intake-report template and all intake-report preparation, including the Report envelope, until after explicit scope confirmation/);
+  assert.match(draft, /After explicit scope confirmation, confirm that exact unchanged record through `record-scope`/);
+  assert.match(draft, /Read `\.\.\/author-project\/references\/operations\.md` once in full for `intake-inventory`, `record-scope`, and `set-pending`/);
+  assert.match(draft, /read `\.\.\/revise-fiction\/references\/state-and-findings\.md` once in full for the author gate and stopping point/);
   const draftBaselineRoute = draft.match(/^\| `draft-baseline` \| (.+) \|$/m)?.[1];
   assert.ok(draftBaselineRoute);
   assert.match(draftBaselineRoute, /^Execute the local \[Draft baseline\]\(references\/stage-gates\.md#2-draft-baseline\) procedure with `assets\/draft-baseline-template\.md`/);
