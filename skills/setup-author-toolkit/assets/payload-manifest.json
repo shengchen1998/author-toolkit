@@ -276,7 +276,7 @@
     },
     {
       "path": "scripts/lib/setup-report.mjs",
-      "sha256": "d619e3ae79e6d8cbe3673c0cb919f13acc27a6322c0c0b33483e5de48041d953"
+      "sha256": "e350da2a245cabb8de913aa2e2bf7b039e233a0a9cf688057348363b1b22c9ab"
     },
     {
       "path": "scripts/lib/state-files.mjs",

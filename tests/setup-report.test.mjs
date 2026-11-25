@@ -150,6 +150,7 @@ test("setup report exposes a format-valid cache whose pending state is stale", a
 
   const report = render(reportStore);
   assert.match(report, /Navigation cache: stale \(cache pending action differs from current manifest\); recorded next action withheld/);
+  assert.match(report, /Recovery: run `check --digest` at the next strategy start; the cache refreshes only after validation passes/);
 });
 
 test("setup report preserves a failed strict gate and grouped unverified approvals", async (t) => {

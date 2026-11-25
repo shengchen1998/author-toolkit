@@ -83,6 +83,9 @@ function cacheLines(lines, cache) {
     lines.push("- Navigation cache: absent; expected before the first successful --digest refresh; installation and preflight do not fail");
   } else {
     lines.push(`- Navigation cache: ${cache.state} (${cache.issues.join("; ")}); recorded next action withheld`);
+    if (cache.state === "stale") {
+      lines.push("  - Recovery: run `check --digest` at the next strategy start; the cache refreshes only after validation passes");
+    }
   }
 }
 
