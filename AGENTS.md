@@ -44,7 +44,7 @@ node --test tests/creation-manifest.test.mjs
 node --test --test-name-pattern="schema" tests/manifest.test.mjs
 ```
 
-There is no lint, formatter, coverage threshold, or repository CI workflow; the checked-in setup mirror is the only generated runtime build. After changing validation or digest implementation, regenerate it before testing:
+There is no lint, formatter, or coverage threshold. Repository CI is defined in `.github/workflows/validate.yml`; the checked-in setup mirror is the only generated runtime build. After changing validation or digest implementation, regenerate it before testing:
 
 ```bash
 npm run sync:setup-runtime
