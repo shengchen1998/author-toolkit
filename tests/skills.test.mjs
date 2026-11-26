@@ -305,6 +305,17 @@ test("author-project operation rows expose the installed CLI argument contracts"
   assert.match(operations, /The command always emits JSON without a `--json` option/);
 });
 
+test("intake inventory counts guide manuscript reads without redundant size probes", async () => {
+  const operations = await readFile(
+    path.join(root, "skills/author-project/references/operations.md"),
+    "utf8",
+  );
+
+  assert.match(operations, /Use each file entry's `characters` count to decide between a full-file read and bounded reads/);
+  assert.match(operations, /do not repeat byte-size or line-count probes solely for that decision/);
+  assert.match(operations, /Measure bytes or lines separately only when the current operation specifically needs those values/);
+});
+
 test("shared session notes use one template and compatible UTC filenames", async () => {
   const [project, readOperations, sharedState, template, readme, zhReadme] = await Promise.all([
     readFile(path.join(root, "skills/author-project/SKILL.md"), "utf8"),
