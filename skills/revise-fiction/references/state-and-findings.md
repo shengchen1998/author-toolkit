@@ -4,7 +4,7 @@ Use the controlled workflow terminology in `<setup-skill-root>/assets/references
 
 ## Task-based reading
 
-Read the rows needed for the current task and their linked sections. Use bounded section reads when the required content is contiguous; when those ranges are noncontiguous, read this reference once in full instead. Direct operation and author-gate pointers may require additional sections.
+Read the rows needed for the current task and their linked sections. Use bounded section reads when the required content is contiguous; when those ranges are noncontiguous, read this reference once in full unless the active strategy supplies an explicit bounded multi-section route naming every required section. Follow that strategy route for its branch. Direct operation and author-gate pointers may require additional sections.
 
 | Task | Required sections |
 |---|---|

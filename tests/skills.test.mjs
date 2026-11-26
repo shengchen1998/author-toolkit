@@ -573,6 +573,7 @@ test("author-project routes operations to targeted reference sections", async ()
   assert.ok(routes);
   assert.match(routes, /read the \[opening project-operation rules\].*and the linked sections/);
   assert.match(routes, /When those ranges are noncontiguous, read `operations\.md` once in full/);
+  assert.match(routes, /unless the active strategy supplies an explicit bounded multi-section route naming every required section/);
   assert.match(routes, /Do not read unrelated operation sections during bounded reads/);
   assert.match(routes, /\[Digest\]\(references\/read-operations\.md#digest\)/);
   assert.match(readOperations, /^### Digest$/m);
@@ -743,8 +744,10 @@ test("shared state references use task-based reading", async () => {
   assert.match(reporting, /follow the applicable `Task-based reading` route/);
   assert.match(instructions, /reference routes to selected sections, use the host's heading search and bounded line-range reads/);
   assert.match(instructions, /For `operations\.md` and `state-and-findings\.md`, use one full read when the required content forms noncontiguous ranges/);
+  assert.match(instructions, /unless the active strategy supplies an explicit bounded multi-section route naming every required section/);
   assert.match(instructions, /ending each section before the next same-level heading/);
   assert.match(state, /when those ranges are noncontiguous, read this reference once in full/);
+  assert.match(state, /unless the active strategy supplies an explicit bounded multi-section route naming every required section/);
   assert.match(review, /state-and-findings\.md#report-envelope/);
   assert.match(review, /state-and-findings\.md#finding-identity-across-reruns/);
 
@@ -851,10 +854,35 @@ test("revision strategies share one project and keep distinct evidence gates", a
   assert.match(state, /explicitly request batch handling/);
   assert.match(state, /Keep nonblocking unknowns labeled as unknown/);
   assert.match(state, /`pending_action\.reason`/);
-  assert.match(
-    draft,
-    /Read the shared preamble and the \[Intake\]\(references\/stage-gates\.md#1-intake\) and \[Draft baseline\]\(references\/stage-gates\.md#2-draft-baseline\) sections, stopping before `## 3\. Diagnostics`/,
-  );
+  const firstScopeRoute = draft
+    .split("4. On the first run for a new scope, follow this first-scope gate:")[1]
+    ?.split("   - Before asking for scope confirmation,")[0];
+  assert.ok(firstScopeRoute);
+  assert.match(firstScopeRoute, /Before scope confirmation, use this bounded first-scope reading route instead of the general whole-reference rule for noncontiguous ranges/);
+  assert.match(firstScopeRoute, /Read each file's opening rules or shared preamble from its first line through the line before its first level-two heading/);
+  assert.match(firstScopeRoute, /For the named level-two sections, locate each heading and its next same-level heading first, then use parallel bounded line-range reads/);
+  assert.match(firstScopeRoute, /\[Intake\]\(references\/stage-gates\.md#1-intake\)/);
+  assert.match(firstScopeRoute, /\[Draft baseline\]\(references\/stage-gates\.md#2-draft-baseline\)/);
+  assert.match(firstScopeRoute, /stopping before `## 3\. Diagnostics`/);
+  assert.match(firstScopeRoute, /`\.\.\/author-project\/references\/operations\.md` for `intake-inventory`, `record-scope`, and `set-pending`/);
+  assert.match(firstScopeRoute, /`\.\.\/revise-fiction\/references\/state-and-findings\.md` for the author gate, scope record, and stopping point/);
+  for (const section of [
+    "opening project-operation rules",
+    "Paths and manifest identity",
+    "Shared scope and evidence",
+    "Intake inventory",
+    "Record scope",
+    "Set pending",
+    "Task-based reading",
+    "Author decision loop",
+    "Author approvals",
+    "Scope and input currency",
+    "Pending actions and session writes",
+  ]) {
+    assert.ok(firstScopeRoute.includes(`[${section}]`), `Missing first-scope reading section: ${section}`);
+  }
+  assert.match(firstScopeRoute, /Keep every read of these three references within those ranges/);
+  assert.doesNotMatch(firstScopeRoute, /once in full/);
   assert.match(draft, /record the proposed scope through `author-project` with `record-scope`/);
   assert.match(draft, /persist the proposed `draft-baseline` artifact/);
   assert.match(draft, /Record the gate as `awaiting_author` through `set-pending`/);
@@ -862,8 +890,6 @@ test("revision strategies share one project and keep distinct evidence gates", a
   assert.match(draft, /Then stop for confirmation of the proposed scope/);
   assert.match(draft, /Defer the intake-report template and all intake-report preparation, including the Report envelope, until after explicit scope confirmation/);
   assert.match(draft, /After explicit scope confirmation, confirm that exact unchanged record through `record-scope`/);
-  assert.match(draft, /Read `\.\.\/author-project\/references\/operations\.md` once in full for `intake-inventory`, `record-scope`, and `set-pending`/);
-  assert.match(draft, /read `\.\.\/revise-fiction\/references\/state-and-findings\.md` once in full for the author gate and stopping point/);
   const draftBaselineRoute = draft.match(/^\| `draft-baseline` \| (.+) \|$/m)?.[1];
   assert.ok(draftBaselineRoute);
   assert.match(draftBaselineRoute, /^Execute the local \[Draft baseline\]\(references\/stage-gates\.md#2-draft-baseline\) procedure with `assets\/draft-baseline-template\.md`/);
