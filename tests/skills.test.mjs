@@ -898,12 +898,14 @@ test("revision strategies share one project and keep distinct evidence gates", a
     ?.split("   - Before asking for scope confirmation,")[0];
   assert.ok(firstScopeRoute);
   assert.match(firstScopeRoute, /Before scope confirmation, use this bounded first-scope reading route instead of the general whole-reference rule for noncontiguous ranges/);
-  assert.match(firstScopeRoute, /Read each file's opening rules or shared preamble from its first line through the line before its first level-two heading/);
-  assert.match(firstScopeRoute, /For the named level-two sections, locate each heading and its next same-level heading first, then use parallel bounded line-range reads/);
+  assert.match(firstScopeRoute, /read each file's opening rules or shared preamble from its first line through the line before its first level-two heading/);
+  assert.match(firstScopeRoute, /For every named section below, locate its heading and section end first, then use parallel bounded line-range reads/);
   assert.match(firstScopeRoute, /\[Intake\]\(references\/stage-gates\.md#1-intake\)/);
   assert.match(firstScopeRoute, /\[Draft baseline\]\(references\/stage-gates\.md#2-draft-baseline\)/);
   assert.match(firstScopeRoute, /stopping before `## 3\. Diagnostics`/);
   assert.match(firstScopeRoute, /`\.\.\/author-project\/references\/operations\.md` for `intake-inventory`, `record-scope`, and `set-pending`/);
+  assert.match(firstScopeRoute, /`\.\.\/author-project\/references\/read-operations\.md` for writing the session note before the final cache refresh/);
+  assert.match(firstScopeRoute, /\[Digest\]\(\.\.\/author-project\/references\/read-operations\.md#digest\) only, following its linked session-note template/);
   assert.match(firstScopeRoute, /`\.\.\/revise-fiction\/references\/state-and-findings\.md` for the author gate, scope record, and stopping point/);
   for (const section of [
     "opening project-operation rules",
@@ -912,6 +914,7 @@ test("revision strategies share one project and keep distinct evidence gates", a
     "Intake inventory",
     "Record scope",
     "Set pending",
+    "Digest",
     "Task-based reading",
     "Author decision loop",
     "Author approvals",
@@ -920,9 +923,10 @@ test("revision strategies share one project and keep distinct evidence gates", a
   ]) {
     assert.ok(firstScopeRoute.includes(`[${section}]`), `Missing first-scope reading section: ${section}`);
   }
-  assert.match(firstScopeRoute, /Keep every read of these three references within those ranges/);
+  assert.match(firstScopeRoute, /Keep every read of these four references within those ranges/);
+  assert.match(firstScopeRoute, /Use the linked reference and template paths directly/);
   assert.match(firstScopeRoute, /This gate is the complete first-scope procedure/);
-  assert.match(firstScopeRoute, /`revise-fiction` supplies only the shared reference sections linked here; its entry `SKILL\.md` and other strategies are outside this procedure/);
+  assert.match(firstScopeRoute, /`author-project` and `revise-fiction` supply only the shared reference sections linked here; their entry `SKILL\.md` files and other strategies are outside this procedure/);
   assert.doesNotMatch(firstScopeRoute, /once in full/);
   assert.match(draft, /record the proposed scope through `author-project` with `record-scope`/);
   assert.match(draft, /persist the proposed `draft-baseline` artifact/);
