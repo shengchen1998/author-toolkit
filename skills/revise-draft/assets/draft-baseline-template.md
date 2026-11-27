@@ -33,6 +33,13 @@ Interpretations are working assumptions until the author explicitly turns them i
 
 Valid entries include future turns, total length, character outcomes, and ending. No entry requires immediate resolution by default.
 
+## Source-fidelity review
+
+Before showing the proposal, use one row per factual or temporal assertion drafted under `Observed in the text`. Record direct manuscript support or its absence and one disposition: `keep`, `revise`, `move to Inferred from the text`, or `move to Unknown or unwritten`. For a revision or move, record the resulting statement and destination. Reconcile assertions about the same character, object, event, or timeline across all three sections, and apply every correction and move before presentation. A summary claim does not replace the review rows.
+
+| Drafted observed assertion | Manuscript path and line or short passage, or no direct support | Disposition and resulting statement or destination |
+|---|---|---|
+
 ## Open questions and scope notes
 
 ## Author confirmation and revision history

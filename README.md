@@ -435,8 +435,12 @@ The mirrored nine operations are:
 `.author-toolkit/proposals/<scope-id>-draft-baseline.md` and links it from
 `pending_action.artifacts` and the session note. This non-authoritative proposal
 requires no `edit` approval; on resume, its scope and input versions must still
-match before reuse. Baseline confirmation and publication of the formal
-baseline retain their separate author decision and `edit` approval gates.
+match before reuse. Before the proposal is shown, a source-fidelity review records
+direct evidence and a keep, revise, or reclassification disposition for every
+observed assertion, reconciling shared topics across observed, inferred, and
+unknown sections. The first-scope pending action and session note both use
+operation `intake`. Baseline confirmation and publication of the formal baseline
+retain their separate author decision and `edit` approval gates.
 
 All four revision user entries share the character capability. The draft,
 incremental, and request-driven paths require current arcs and continuity; the
