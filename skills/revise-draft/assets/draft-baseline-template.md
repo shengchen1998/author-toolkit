@@ -24,14 +24,14 @@ Record only facts directly established by the current manuscript. Assign one sta
 | Source ID | Interpretation | Evidence paths | Alternative or uncertainty | Author decision |
 |---|---|---|---|---|
 
-Use the original `O-NNN` as `Source ID` for an assertion moved from `Observed in the text`; use `—` for an unrelated interpretation. Interpretations are working assumptions until the author explicitly turns them into creative decisions.
+Use the original `O-NNN` as `Source ID` for an assertion moved from `Observed in the text`; use `—` for an interpretation drafted directly in this table rather than moved from `Observed in the text`. Interpretations are working assumptions until the author explicitly turns them into creative decisions.
 
 ## Unknown or unwritten
 
 | Source ID | Topic | Current status | Effect on current-text diagnosis |
 |---|---|---|---|
 
-Use the original `O-NNN` as `Source ID` for an assertion moved from `Observed in the text`; use `—` for an unrelated unknown. Valid entries include future turns, total length, character outcomes, and ending. No entry requires immediate resolution by default.
+Use the original `O-NNN` as `Source ID` for an assertion moved from `Observed in the text`; use `—` for an unknown drafted directly in this table rather than moved from `Observed in the text`. Valid entries include future turns, total length, character outcomes, and ending. No entry requires immediate resolution by default.
 
 ## Source-fidelity review
 

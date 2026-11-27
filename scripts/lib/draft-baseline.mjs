@@ -60,9 +60,9 @@ function table(lines, heading, headings, errors) {
   return rows;
 }
 
-function registerLocation(locations, id, heading, index, errors) {
+function registerLocation(locations, id, heading, index, errors, duplicateHint = "") {
   if (locations.has(id)) {
-    errors.push(baselineError(`/${heading}/${index}/id`, `duplicate final assertion ID: ${id}`));
+    errors.push(baselineError(`/${heading}/${index}/id`, `duplicate final assertion ID: ${id}${duplicateHint}`));
     return;
   }
   locations.set(id, { heading, index });
@@ -94,13 +94,20 @@ function destinationIds(lines, heading, headings, locations, errors) {
     const id = cleanTrackerCell(cells[0]);
     if (id === "—") continue;
     if (!ID_PATTERN.test(id)) {
-      errors.push(baselineError(`/${heading}/${index}/id`, "Source ID must be O-NNN or — for an unrelated entry"));
+      errors.push(baselineError(`/${heading}/${index}/id`, "Source ID must be O-NNN for an assertion moved from Observed in the text or — for an entry drafted directly in this table"));
       continue;
     }
     if (!cleanTrackerCell(cells[1])) {
       errors.push(baselineError(`/${heading}/${index}`, "a moved assertion requires destination content"));
     }
-    registerLocation(locations, id, heading, index, errors);
+    registerLocation(
+      locations,
+      id,
+      heading,
+      index,
+      errors,
+      "; only a destination entry for a recorded move may retain O-NNN; use — for an entry drafted directly in this table",
+    );
   }
 }
 

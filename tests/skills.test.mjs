@@ -463,6 +463,8 @@ test("draft baseline source fidelity produces an auditable review before present
   }
   assert.match(template, /deleting an unsupported clause from a retained assertion is a revision, not a move/);
   assert.match(template, /place the same ID and resulting entry in the named destination table/);
+  assert.match(template, /use `—` for an interpretation drafted directly in this table rather than moved from `Observed in the text`/);
+  assert.match(template, /use `—` for an unknown drafted directly in this table rather than moved from `Observed in the text`/);
   assert.match(template, /same character, object, event, or timeline across all three sections/);
   assert.match(template, /apply every correction and move before presentation/);
   assert.match(template, /A summary claim does not replace the review rows/);
@@ -920,6 +922,7 @@ test("revision strategies share one project and keep distinct evidence gates", a
   const firstScopeRoute = draft
     .split("4. On the first run for a new scope, follow this first-scope gate:")[1]
     ?.split("   - Before asking for scope confirmation,")[0];
+  assert.match(draft, /Read each needed callee's installed `SKILL\.md` and applicable references unless the selected procedure below explicitly excludes an entry file\./);
   assert.ok(firstScopeRoute);
   assert.match(firstScopeRoute, /Before scope confirmation, use this bounded first-scope reading route instead of the general whole-reference rule for noncontiguous ranges/);
   assert.match(firstScopeRoute, /read each file's opening rules or shared preamble from its first line through the line before its first level-two heading/);

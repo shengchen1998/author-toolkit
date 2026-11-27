@@ -79,7 +79,7 @@ async function temporaryDirectory(t) {
   return directory;
 }
 
-test("draft baseline validation accepts keep, revise, moves, and unrelated destination rows", () => {
+test("draft baseline validation accepts keep, revise, moves, and directly drafted destination rows", () => {
   const result = validateDraftBaseline(fixture());
   assert.deepEqual(result.errors, []);
   assert.equal(result.valid, true);
@@ -134,6 +134,7 @@ test("draft baseline validation requires identified single-line observed asserti
     inferred: ["| O-001 | A duplicated assertion. | `manuscript/1.md:3` | None. | Undecided |"],
   });
   assert.match(messages(duplicate), /duplicate final assertion ID: O-001/);
+  assert.match(messages(duplicate), /only a destination entry for a recorded move may retain O-NNN; use — for an entry drafted directly in this table/);
 });
 
 test("draft baseline CLI validates Markdown and resolves project-relative paths", async (t) => {
@@ -149,6 +150,15 @@ test("draft baseline CLI validates Markdown and resolves project-relative paths"
   const invalid = runValidator(["--draft-baseline", invalidFile]);
   assert.equal(invalid.status, 1);
   assert.match(invalid.stderr, /O-003 has no recorded destination/);
+
+  const duplicateFile = path.join(directory, "duplicate.md");
+  await writeFile(duplicateFile, fixture({
+    inferred: ["| O-001 | A duplicated assertion. | `manuscript/1.md:3` | None. | Undecided |"],
+  }), "utf8");
+  const duplicate = runValidator(["--draft-baseline", duplicateFile]);
+  assert.equal(duplicate.status, 1);
+  assert.match(duplicate.stderr, /only a destination entry for a recorded move may retain O-NNN; use — for an entry drafted directly in this table/);
+
   assert.equal(runValidator(["--draft-baseline"]).status, 2);
 
   const project = path.join(directory, "project");
