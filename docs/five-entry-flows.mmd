@@ -11,7 +11,14 @@ flowchart TD
 
   subgraph RF["revise-fiction｜全书修订"]
     direction LR
-    RF0([入口]) --> RF1["intake"]
+    RF0([入口]) --> RFSTATE{"活动全书修订<br/>且有已验证全稿基准范围？"}
+    RFSTATE -->|是：恢复| RFRESUME["基准范围作为历史证据<br/>自身获批修改不重新打开准入门"]
+    RFRESUME --> RF1
+    RFSTATE -->|否：新任务或无法确认| RFV["验证全稿基准范围<br/>当前草稿修订收敛 + strict execution"]
+    RFV --> RFBASE{"全稿基准范围已达到<br/>当前草稿修订收敛？"}
+    RFBASE -->|否：范围增长| RFISTOP["显示 revise-increment 命令<br/>停止跳过基础工作"]
+    RFBASE -->|否：其他缺口| RFDSTOP["显示 revise-draft 命令<br/>停止跳过基础工作"]
+    RFBASE -->|是| RF1["intake"]
     RF1 --> RF2["story-bible<br/>完整全书基线"]
     RF2 --> RF3["structure<br/>全书结构审计"]
     RF3 --> RF4["characters<br/>全书角色弧线与连续性"]
@@ -82,7 +89,14 @@ flowchart TD
 
   subgraph WF["write-fiction｜增量创作"]
     direction LR
-    WF0([入口]) --> WFTYPE{"任务类型"}
+    WF0([入口]) --> WFSTATE{"活动创作批次<br/>且有已验证全稿基准范围？"}
+    WFSTATE -->|是：恢复| WFRESUME["基准范围作为历史证据<br/>自身获批修改或发布不重新打开准入门"]
+    WFRESUME --> WFTYPE
+    WFSTATE -->|否：新批次或无法确认| WFV["验证全稿基准范围<br/>当前草稿修订收敛 + strict execution"]
+    WFV --> WFBASE{"全稿基准范围已达到<br/>当前草稿修订收敛？"}
+    WFBASE -->|否：范围增长| WFISTOP["显示 revise-increment 命令<br/>停止跳过基础工作"]
+    WFBASE -->|否：其他缺口| WFDSTOP["显示 revise-draft 命令<br/>停止跳过基础工作"]
+    WFBASE -->|是| WFTYPE{"任务类型"}
     WFTYPE -->|缺少基础| WF1["creation-baseline"]
     WFTYPE -->|外部稿件变化| WF2["creation-import"]
     WFTYPE -->|卷 / 故事阶段| WF3["milestone-review"]
@@ -92,8 +106,8 @@ flowchart TD
     WF6 --> WFA{"作者验收创作批次？"}
     WFA -->|拒绝| WFR["保留暂存稿<br/>正文 / 故事状态 / 范围不变"]
     WFA -->|验收| WF7["creation-commit<br/>无额外批准门，发布并同步状态"]
-    WF7 --> WF8["发布 ≠ 当前草稿修订收敛<br/>修订新增或受影响章节时转 revise-increment"]
-    WF8 -.->|下一批次| WF4
+    WF7 --> WF8["发布 ≠ 当前草稿修订收敛<br/>转 revise-increment；下一新批次重新验证准入"]
+    WF8 -.->|达到当前草稿修订收敛后的下一新批次| WFV
   end
 
   COMMON ~~~ RF
@@ -110,7 +124,7 @@ flowchart TD
   classDef note fill:#FAFAFA,stroke:#90A4AE,color:#37474F,stroke-dasharray:4 3;
 
   class START,RF0,RD0,RI0,RR0,WF0 startEnd;
-  class SETUP,REFS,READ,STATE,GATES,WAIT,RDN,RISTATE,RIRESUME,RIV,RIBASE,RISTOP,RDC,RIC,RRV,RRBASE,RRISTOP,RRDSTOP,RRC,WFTYPE,WFA,WFR,WF8 control;
+  class SETUP,REFS,READ,STATE,GATES,WAIT,RDN,RFSTATE,RFRESUME,RFV,RFBASE,RFISTOP,RFDSTOP,RISTATE,RIRESUME,RIV,RIBASE,RISTOP,RDC,RIC,RRV,RRBASE,RRISTOP,RRDSTOP,RRC,WFSTATE,WFRESUME,WFV,WFBASE,WFISTOP,WFDSTOP,WFTYPE,WFA,WFR,WF8 control;
   class RF1,RF4,RF5,RF6,RF7,RF8,RD1,RD4,RD5,RD6,RD7,RD8,RI2,RI5,RI6,RI7,RI8,RI9,RR2,RR4,RR5,RR6 shared;
   class RD2,RD3,RD9,RI3,RI4,RI10,RR3,RR7 draftShared;
   class RF2,RF3,RF9,RI1,RR1,WF1,WF2,WF3,WF4,WF5,WF6,WF7 unique;

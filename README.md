@@ -18,8 +18,8 @@ versions.
 | --- | --- |
 | `ask-author` | Read project state and route the author to the appropriate user entry or independent skill. |
 | `setup-author-toolkit` | Register an existing writing project and initialize the shared project state required by creation and revision. |
-| `write-fiction` | Create or continue a novel through reviewed creation batches, staged drafts, synchronized story state, and milestone reviews. |
-| `revise-fiction` | Revise a whole novel through its Story Bible, macro structure, character arcs, and final review. |
+| `write-fiction` | Create a new reviewed batch from a full-manuscript base scope that has reached current-draft revision convergence, or resume its active batch. |
+| `revise-fiction` | Start a whole-book revision from a full-manuscript base scope that has reached current-draft revision convergence, then work through its Story Bible, macro structure, character arcs, and final review. |
 | `revise-draft` | Revise the current manuscript through a draft baseline, local narrative diagnostics, and current-scope review of the target scope. |
 | `revise-increment` | Revise added or affected chapters after incremental creation while applying the evidence-reuse rules to unchanged chapters and completing a full-target current-scope review. |
 | `revise-request` | Apply an author-defined revision to existing content from a full-manuscript base scope that has reached current-draft revision convergence, with request-only review by default and optional full-scope review. |
@@ -63,18 +63,23 @@ or rewriting, invoke `prose-mechanics` with its AI-Isms audit; shared
 ## Scope and language support
 
 The shared 3.1 creation and revision workflows support single-book fiction
-projects with Markdown or plain-text manuscripts. `write-fiction` can start
-without a complete outline or ending and can also continue an existing manuscript.
-`revise-fiction` addresses the whole book. `revise-draft` can work on an
+projects with Markdown or plain-text manuscripts. Every new `write-fiction`
+creation batch and every new `revise-fiction` full-book revision requires a
+confirmed full-manuscript base scope that has reached current-draft revision
+convergence. An active batch or revision may resume with that verified base
+scope as historical evidence. Creation still does not require a complete outline
+or ending. `revise-draft` establishes the initial base scope and can work on an
 unfinished manuscript; its diagnostics address the target scope rather than
 judging the percentage of a future book or penalizing beats that do not yet
-exist. `revise-increment` applies the same current-draft operation gates after
-scope growth, reusing only reusable evidence for unchanged text and reviewing the
-full target scope. `revise-request` starts from a full-manuscript base scope that
-has reached current-draft revision convergence and applies an author-defined
-revision to existing content. Its default request review covers only changed and
-affected passages; an explicit full-scope review is required to reverify
-current-draft revision convergence for the full-manuscript target scope.
+exist. Initial drafting before any manuscript exists uses standalone
+`fiction-workshop`, not shared `write-fiction`. `revise-increment` applies the
+same current-draft operation gates after scope growth, reusing only reusable
+evidence for unchanged text and reviewing the full target scope.
+`revise-request` starts from a full-manuscript base scope that has reached
+current-draft revision convergence and applies an author-defined revision to
+existing content. Its default request review covers only changed and affected
+passages; an explicit full-scope review is required to reverify current-draft
+revision convergence for the full-manuscript target scope.
 
 Narrative nonfiction remains a direct `narrative-nonfiction` task. Multi-book
 projects are outside the supported 3.1 workflows. Skill discovery and
@@ -344,14 +349,17 @@ A quick run looks like this:
    evidence separately, together with the independent installation, project-state,
    and strategy-gate states. A passing installation remains
    distinct from blocked evidence-dependent operations.
-3. After setup validates the shared manifest, choose `write-fiction` to create
-   or continue a novel, `revise-fiction` for whole-book revision, `revise-draft`
-   for the available manuscript and current-scope review, `revise-increment` to
-   bring added or affected chapters to current-draft revision convergence, or
-   `revise-request` to revise existing content from a full-manuscript base scope
-   that has reached that state. Request review covers changed and affected passages
-   by default; full-scope review is a separate explicit choice. The selected
-   strategy establishes and confirms the initial target scope when one is needed.
+3. After setup validates the shared manifest, use `revise-draft` to establish a
+   full-manuscript base scope at current-draft revision convergence when that
+   prerequisite is missing. Choose `write-fiction` for a new creation batch,
+   `revise-fiction` for a new whole-book revision, or `revise-request` to revise
+   existing content only after that base scope reaches the required state. Choose
+   `revise-increment` to bring added or affected chapters to current-draft
+   revision convergence after scope growth. Initial drafting with no manuscript
+   uses standalone `fiction-workshop`. Request review covers changed and affected
+   passages by default; full-scope review is a separate explicit choice. The
+   selected strategy establishes and confirms the initial target scope when one
+   is needed.
 4. Review evidence and proposals at the author gates. The agent presents one
    active decision at a time so you can discuss evidence and alternatives before
    deciding. Before presenting a concrete revision, the agent completes a
@@ -365,6 +373,14 @@ A quick run looks like this:
    `edit` approval for the actual operation, exact paths, actions, and input versions.
 
 ### `write-fiction`: incremental creation
+
+Start every new creation batch from a full-manuscript base scope that has reached
+current-draft revision convergence. Verify the shared evidence and run strict
+execution status with the base scope ID; a recorded statement does not replace
+that check. Route scope growth to `revise-increment` and other gaps to
+`revise-draft`. An active batch may resume with its verified base scope as
+historical evidence when its own approved changes or publication stale that
+scope. A later new batch must satisfy the entry gate again.
 
 The creation operations are:
 
@@ -398,6 +414,15 @@ convergence for the publication scope; continue with `revise-increment` when
 that is the goal.
 
 ### `revise-fiction`: whole-book revision
+
+Start every new full-book revision from a full-manuscript base scope that has
+reached current-draft revision convergence. Verify the shared evidence and run
+strict execution status with the base scope ID; a recorded statement does not
+replace that check. Route scope growth to `revise-increment` and other gaps to
+`revise-draft`. An active full-book revision may resume with its verified base
+scope as historical evidence when its own approved edits stale that scope. Every
+new current-draft revision convergence check for the target scope still uses
+strict execution status.
 
 The nine operations are:
 
@@ -548,8 +573,10 @@ current-draft revision convergence conditions. Without the flag, unverified appr
 successful. Status does not evaluate operation-specific evidence
 completeness, evidence reuse, or current-draft revision convergence; the active
 strategy retains those judgments at operation gates. It runs strict status whenever
-it determines or claims current-draft revision convergence and before entering a
-strategy that requires that state for a previous or base scope. A recorded statement of that state or a
+it determines or claims current-draft revision convergence, before entering
+`write-fiction`, `revise-fiction`, or `revise-request` with a base scope, and
+before entering `revise-increment` with a previous scope.
+A recorded statement of that state or a
 current-scope-review pending action does not replace that check. A failed strict
 check records a `blocked` pending action; it does not alter approvals or manufacture
 execution receipts.

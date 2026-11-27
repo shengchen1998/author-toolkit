@@ -703,17 +703,18 @@ test("new-project setup defines every strategy-entry status", async () => {
     readFile(path.join(root, "skills/setup-author-toolkit/assets/setup/new-project.md"), "utf8"),
   ]);
 
-  assert.match(setup, /for `revise-request` and `revise-increment`, apply the selected branch's routing rules for their required scopes and current-draft revision convergence/);
+  assert.match(setup, /for `write-fiction`, `revise-fiction`, `revise-request`, and `revise-increment`, apply the selected branch's routing rules for their required scopes and current-draft revision convergence/);
   assert.match(newSetup, /When existing manuscript is registered, the final setup report must name the registered manuscript root/);
-  assert.match(newSetup, /`revise-request` and `revise-increment` are not currently eligible because their required base scope or previous scope has not been verified/);
+  assert.match(newSetup, /those four entries are not currently eligible because their required base scope or previous scope has not been verified/);
   assert.match(newSetup, /When the five strategy entries are presented in a table, include a status column and mark every row as follows/);
-  assert.match(newSetup, /Mark `write-fiction` as `available`/);
-  assert.match(newSetup, /When existing manuscript is registered, mark `revise-draft` as `available` to establish the initial revision scope and `revise-fiction` as `available` for whole-book work beginning at `intake`; otherwise, mark both as `not currently eligible`/);
-  assert.match(newSetup, /Mark `revise-request` and `revise-increment` as `not currently eligible`, keeping that status in each row rather than only in surrounding prose/);
+  assert.match(newSetup, /Mark `write-fiction`, `revise-fiction`, `revise-request`, and `revise-increment` as `not currently eligible`, keeping that status in each row rather than only in surrounding prose/);
+  assert.match(newSetup, /When existing manuscript is registered, mark `revise-draft` as `available` to establish the initial full-manuscript revision scope and reach current-draft revision convergence; otherwise, mark it as `not currently eligible`/);
   assert.match(newSetup, /`available` describes entry routing only and does not satisfy any operation's evidence gates/);
   assert.match(newSetup, /Do not present `final-review` as currently eligible from new-project setup/);
-  assert.match(newSetup, /Offer `write-fiction` for continued creation, or `revise-draft` to establish the initial revision scope and reach current-draft revision convergence/);
-  assert.match(newSetup, /Offer `revise-fiction` only when the author requests whole-book work; manuscript file count alone does not establish whether the manuscript is complete/);
+  assert.match(newSetup, /offer `revise-draft` to establish the full-manuscript base scope and reach current-draft revision convergence/);
+  assert.match(newSetup, /For a project without manuscript, explain that no shared strategy is currently eligible and offer standalone `fiction-workshop` for initial drafting/);
+  assert.match(newSetup, /After a full-manuscript base scope reaches that state, offer `write-fiction` for a new creation batch, `revise-fiction` for requested whole-book work, or `revise-request` for revision of existing content/);
+  assert.match(newSetup, /manuscript file count alone establishes neither a full-manuscript scope nor current-draft revision convergence/);
 });
 
 test("convergence gates run strict execution checks without gating ordinary inspection", async () => {
@@ -749,8 +750,8 @@ test("convergence gates run strict execution checks without gating ordinary insp
     assert.doesNotMatch(text, /evidence-blocked|legacy-unverified/);
   }
   assert.match(state, /previous scope ID before entering `revise-increment`/);
-  assert.match(state, /base scope ID before entering `revise-request`/);
-  assert.match(state, /own approved edits may stale its verified previous or base scope/);
+  assert.match(state, /base scope ID before entering `write-fiction`, `revise-fiction`, or `revise-request`/);
+  assert.match(state, /own approved changes may stale its verified previous or base scope/);
   for (const text of [increment, request]) {
     assert.match(text, /`--require-execution`/);
     assert.match(text, /recorded statement of that state does not replace this check/);
@@ -762,6 +763,37 @@ test("convergence gates run strict execution checks without gating ordinary insp
   assert.match(zhReadme, /已记录的该状态声明或 `current-scope-review` 待处理操作不能替代该检查/);
   assert.match(readme, /unsupported unverified approvals/);
   assert.match(zhReadme, /无可用证据的未核对批准数/);
+});
+
+test("creation and whole-book revision require a converged full-manuscript base scope", async () => {
+  const [write, fiction, writeGates, fictionGates, ask, handoff, terminology] = await Promise.all([
+    readFile(path.join(root, "skills/write-fiction/SKILL.md"), "utf8"),
+    readFile(path.join(root, "skills/revise-fiction/SKILL.md"), "utf8"),
+    readFile(path.join(root, "skills/write-fiction/references/stage-gates.md"), "utf8"),
+    readFile(path.join(root, "skills/revise-fiction/references/stage-gates.md"), "utf8"),
+    readFile(path.join(root, "skills/ask-author/SKILL.md"), "utf8"),
+    readFile(path.join(root, "skills/author-handoff/SKILL.md"), "utf8"),
+    readFile(path.join(root, "references/terminology.md"), "utf8"),
+  ]);
+
+  for (const text of [write, fiction]) {
+    assert.match(text, /inventory the complete manuscript and verify that the confirmed base scope is a full-manuscript scope that has reached/);
+    assert.match(text, /Run `author-project status` with the base scope ID and `--require-execution`/);
+    assert.match(text, /a recorded statement of that state does not replace this check/);
+    assert.match(text, /Open findings, missing or stale required coverage, unverified approvals, and scope or hash mismatches prevent entry/);
+    assert.match(text, /Show `revise-increment` when creation or import grew the scope; otherwise show `revise-draft`/);
+    assert.match(text, /Treat its verified base scope as historical evidence/);
+    assert.match(text, /without reopening the entry gate/);
+    assert.match(text, /If no active .+ with a verified base scope can be established, apply the/);
+  }
+  assert.match(writeGates, /Another new creation batch must satisfy the full-manuscript base-scope entry gate again/);
+  assert.match(writeGates, /an active batch retains its verified base scope as historical evidence/i);
+  assert.match(fictionGates, /A new revision has satisfied the full-manuscript base-scope entry gate/);
+  assert.match(fictionGates, /an active revision retains its verified base scope as historical evidence/i);
+  assert.match(ask, /Apply the selected strategy's complete entry gate before recommending `write-fiction` for a new creation batch, `revise-fiction` for a new full-book revision, or `revise-request`/);
+  assert.match(ask, /Use standalone `fiction-workshop` for initial drafting from scratch before a shared full-manuscript base scope exists/);
+  assert.match(handoff, /when a handoff recommends `write-fiction`, `revise-fiction`, `revise-request`, or `revise-increment`/);
+  assert.match(terminology, /For `write-fiction`, `revise-fiction`, and `revise-request`, the full-manuscript scope verified as having reached current-draft revision convergence/);
 });
 
 test("unrecoverable execution evidence ends at an author decision without waiving gates", async () => {

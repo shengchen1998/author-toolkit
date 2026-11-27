@@ -4,11 +4,11 @@ Load the section for the current operation. Preserve the shared [Author decision
 
 ## 1. Creation baseline
 
-**Inputs:** A v3.1 project, any Story Bible or draft baseline, and accessible current text.
+**Inputs:** A v3.1 project, the new batch's verified full-manuscript base scope or the active batch's historical base scope, any Story Bible or draft baseline, and accessible current text.
 
-**Work:** Establish target reader, core premise, protagonist, central conflict, and narrative constraints. Mark unwritten future turns, total length, character outcomes, and ending as unknown unless the author supplies them. Create missing `state/`, `batches/`, and `staging/` skeletons beneath the registered creation root. For a project with no accepted manuscript, initialize `state/current.md` from `../assets/current-state-template.md` with `scope_id: null` and the versioned Story Bible as its source. Build initial chapter records from existing text when present; label model extraction proposed until the author confirms it.
+**Work:** Establish target reader, core premise, protagonist, central conflict, and narrative constraints. Mark unwritten future turns, total length, character outcomes, and ending as unknown unless the author supplies them. Create missing `state/`, `batches/`, and `staging/` skeletons beneath the registered creation root. When creation state is missing, initialize `state/current.md` from `../assets/current-state-template.md` with the verified base scope ID and versioned sources. Build initial chapter records from current manuscript text; label model extraction proposed until the author confirms it.
 
-**Gate:** The minimum foundation and initial state differences are author-confirmed. No current scope is required before the first accepted manuscript file. Do not require a complete outline or ending.
+**Gate:** The minimum foundation and initial state differences are author-confirmed. A new batch has satisfied the full-manuscript base-scope entry gate; an active batch retains its verified base scope as historical evidence. Do not require a complete outline or ending.
 
 ## 2. Writing plan
 
@@ -42,7 +42,7 @@ Construct the context package from relevant Story Bible entries, chapter records
 
 **Work:** Follow the commit procedure in `creation-state.md`. Reread the manifest and scope, compare dependencies, verify old-file hashes and new-file absence, back up every existing target, and write a recovery journal before publication. Publish each file atomically, update story state, record the accepted scope, propagate evidence changes, and validate the result. There is no additional author gate.
 
-**Gate:** Every file and state artifact verifies against its accepted output hash, the new scope is current, and the immutable batch and committed journal agree. An interruption records exact completed and pending actions and stops automatic publication. This is a creation gate, not current-draft revision convergence; offer `revise-increment` for the added and affected paths when revision is the next goal.
+**Gate:** Every file and state artifact verifies against its accepted output hash, the new scope is current, and the immutable batch and committed journal agree. An interruption records exact completed and pending actions and stops automatic publication. This is a creation gate, not current-draft revision convergence; offer `revise-increment` for the added and affected paths. Another new creation batch must satisfy the full-manuscript base-scope entry gate again rather than inheriting eligibility from the committed batch.
 
 A creation restore requires separate explicit approval naming the batch, commit, and files. Safety-back up current content, restore old text, move newly created files into the safety backup before removing them from the manuscript, and confirm the resulting scope.
 
