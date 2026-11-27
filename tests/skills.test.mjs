@@ -450,27 +450,36 @@ test("draft baseline source fidelity produces an auditable review before present
 
   assert.ok(baselineWork);
   assert.ok(baselineGate);
-  assert.match(baselineWork, /Before showing the proposal, complete the template's `Source-fidelity review`/);
+  assert.match(baselineWork, /Complete the template's `Source-fidelity review`/);
   assert.match(baselineWork, /apply every correction and move/);
-  assert.match(template, /one row per factual or temporal assertion drafted under `Observed in the text`/);
-  assert.match(template, /Record direct manuscript support or its absence/);
+  assert.match(baselineWork, /validate\.mjs --draft-baseline \.author-toolkit\/proposals\/<scope-id>-draft-baseline\.md/);
+  assert.match(baselineWork, /rerun it until it passes before showing the proposal/);
+  assert.match(baselineWork, /checks structure, not atomicity or semantic manuscript support/);
+  assert.match(template, /one stable `O-NNN` ID to each atomic factual or temporal assertion/);
+  assert.match(template, /one review row per ID drafted under `Observed in the text`/);
+  assert.match(template, /Record the original assertion, direct manuscript support or its absence/);
   for (const disposition of ["`keep`", "`revise`", "`move to Inferred from the text`", "`move to Unknown or unwritten`"]) {
     assert.ok(template.includes(disposition), `Missing source-fidelity disposition: ${disposition}`);
   }
+  assert.match(template, /deleting an unsupported clause from a retained assertion is a revision, not a move/);
+  assert.match(template, /place the same ID and resulting entry in the named destination table/);
   assert.match(template, /same character, object, event, or timeline across all three sections/);
   assert.match(template, /apply every correction and move before presentation/);
   assert.match(template, /A summary claim does not replace the review rows/);
-  assert.match(baselineGate, /The source-fidelity review is complete before the proposal is shown/);
+  assert.match(template, /does not establish that assertions are atomic or that citations support them/);
+  assert.match(template, /\| Source ID \| Interpretation \|/);
+  assert.match(template, /\| Source ID \| Topic \|/);
+  assert.match(baselineGate, /The source-fidelity review and installed draft-baseline validator pass before the proposal is shown/);
   assert.match(baselineGate, /evaluates the baseline against the manuscript, rather than the manuscript against the baseline/);
-  assert.match(baselineGate, /Every retained factual and temporal assertion under `Observed in the text` has a review row/);
+  assert.match(baselineGate, /Every final assertion ID has exactly one review row/);
+  assert.match(baselineGate, /every move ID occurs in its named destination/);
   assert.match(baselineGate, /cited manuscript path and line or short passage that directly supports it/);
   assert.match(baselineGate, /Relative-time and event-order expressions in the manuscript's language/);
   assert.match(baselineGate, /`yesterday`, `today`, `arrival`, `check-in`, and their equivalents/);
   assert.match(baselineGate, /Premise, timeline, and other observed statements do not contradict one another/);
   assert.match(baselineGate, /corrected or moved to `Inferred from the text` or `Unknown or unwritten` before presentation/);
   assert.match(template, /^## Source-fidelity review$/m);
-  assert.match(template, /Cite the supporting manuscript path and line or short passage for every factual and temporal assertion\./);
-  assert.match(template, /A summary claim does not replace the review rows/);
+  assert.match(template, /Cite the supporting manuscript path and line or short passage for every assertion\./);
   assert.doesNotMatch(template, /source paths where useful/);
 });
 
@@ -944,7 +953,7 @@ test("revision strategies share one project and keep distinct evidence gates", a
   assert.match(firstScopeRoute, /`author-project` and `revise-fiction` supply only the shared reference sections linked here; their entry `SKILL\.md` files and other strategies are outside this procedure/);
   assert.doesNotMatch(firstScopeRoute, /once in full/);
   assert.match(draft, /record the proposed scope through `author-project` with `record-scope`/);
-  assert.match(draft, /persist the proposed `draft-baseline` artifact/);
+  assert.match(draft, /persist the proposed `draft-baseline` artifact, and pass its installed `--draft-baseline` validation/);
   assert.match(draft, /Record the gate as `awaiting_author` through `set-pending` with `--operation intake`/);
   assert.match(draft, /write the session note with `Operation: intake` and refresh the navigation cache once/);
   assert.match(draft, /Then stop for confirmation of the proposed scope/);

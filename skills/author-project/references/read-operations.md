@@ -77,9 +77,10 @@ Run the self-contained installed validator:
 ```bash
 node <setup-skill-root>/scripts/validate.mjs --project-root <project-root>
 node <setup-skill-root>/scripts/validate.mjs --manifest <manifest-path>
+node <setup-skill-root>/scripts/validate.mjs --draft-baseline <proposal-path>
 ```
 
-Report the command, exit status, and diagnostics. The bundled CLI requires Node.js 22 or newer and needs no repository checkout or project `npm install`. It checks registered paths and current manuscript hashes. Treat a `scope-currency` diagnostic as changed input: mark dependent evidence stale and reconcile the scope with the author before relying on it or writing; preserve the recorded scope rather than silently refreshing its hashes. The `#executions` check validates receipt structure and identity; a missing receipt alone is reported by `status`, not rejected as malformed state. Report validation failures, changed inputs, and missing registered paths without repairing them implicitly. Inspection operations leave project state unchanged.
+Report the command, exit status, and diagnostics. The bundled CLI requires Node.js 22 or newer and needs no repository checkout or project `npm install`. It checks registered paths and current manuscript hashes. Treat a `scope-currency` diagnostic as changed input: mark dependent evidence stale and reconcile the scope with the author before relying on it or writing; preserve the recorded scope rather than silently refreshing its hashes. The `#executions` check validates receipt structure and identity; a missing receipt alone is reported by `status`, not rejected as malformed state. Report validation failures, changed inputs, and missing registered paths without repairing them implicitly. Inspection operations leave project state unchanged. The `--draft-baseline` option validates final assertion-ID coverage, review rows, dispositions, and recorded destinations in a completed Markdown proposal. It does not read the manuscript or establish atomic assertions, direct support, baseline confirmation, or operation completion.
 
 For a reported backup-index or execution-receipt inconsistency, run read-only backup index inspection:
 

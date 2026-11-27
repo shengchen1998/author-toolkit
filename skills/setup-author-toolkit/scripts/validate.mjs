@@ -9,6 +9,7 @@ import {
   validateCoverageUnit,
   validateCreationBatch,
   validateCreationCommit,
+  validateDraftBaseline,
   validateEvidenceReport,
   inspectProjectManifest,
   validateManifest,
@@ -32,6 +33,12 @@ const examples = ["fiction-revision-en", "fiction-revision-zh"];
 const artifactTypes = [
   { key: "creationBatches", option: "--creation-batch", validate: validateCreationBatch },
   { key: "creationCommits", option: "--creation-commit", validate: validateCreationCommit },
+  {
+    key: "draftBaselines",
+    option: "--draft-baseline",
+    validate: validateDraftBaseline,
+    validateMarkdown: validateDraftBaseline,
+  },
   { key: "coverageUnits", option: "--coverage-unit", validate: validateCoverageUnit },
   { key: "coverageIndexes", option: "--coverage-index", validate: validateCoverageIndex },
   { key: "reviewJobs", option: "--review-job", validate: validateReviewJob },
@@ -60,6 +67,7 @@ function usage() {
   node scripts/validate.mjs
   node scripts/validate.mjs [--manifest FILE] [--project-root DIR] [--report FILE] [--tracker FILE]...
   node scripts/validate.mjs [--creation-batch FILE] [--creation-commit FILE]...
+  node scripts/validate.mjs [--draft-baseline FILE]...
   node scripts/validate.mjs [--coverage-unit FILE] [--coverage-index FILE]...
   node scripts/validate.mjs [--review-job FILE] [--review-brief FILE --tracker FILE] [--reader-state FILE] [--story-state FILE]...
 

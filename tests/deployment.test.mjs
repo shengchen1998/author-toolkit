@@ -159,6 +159,44 @@ test("setup carries self-contained preflight, validation, state, intake, range, 
   assert.equal(rootValidation.status, 0, rootValidation.stderr);
   assert.match(rootValidation.stdout, /5 checks, 0 failures/);
 
+  const draftBaseline = path.join(temporaryRoot, "draft-baseline.md");
+  await writeFile(draftBaseline, `# Draft Baseline
+
+## Observed in the text
+
+### Premise and current conflict
+
+- [O-001] The meeting lasts three days. (\`manuscript/1.md:3\`)
+
+## Inferred from the text
+
+| Source ID | Interpretation | Evidence paths | Alternative or uncertainty | Author decision |
+|---|---|---|---|---|
+
+## Unknown or unwritten
+
+| Source ID | Topic | Current status | Effect on current-text diagnosis |
+|---|---|---|---|
+
+## Source-fidelity review
+
+| Assertion ID | Drafted observed assertion | Manuscript path and line or short passage, or no direct support | Disposition | Resulting statement or destination |
+|---|---|---|---|---|
+| O-001 | The meeting lasts three days. | \`manuscript/1.md:3\` | keep | — |
+`, "utf8");
+  const draftBaselineValidation = spawnSync(
+    process.execPath,
+    [
+      ...nodeArgs,
+      path.join(installedSetup, "scripts", "validate.mjs"),
+      "--draft-baseline",
+      draftBaseline,
+    ],
+    { encoding: "utf8" },
+  );
+  assert.equal(draftBaselineValidation.status, 0, draftBaselineValidation.stderr);
+  assert.match(draftBaselineValidation.stdout, /1 checks, 0 failures/);
+
   const projection = spawnSync(
     process.execPath,
     [

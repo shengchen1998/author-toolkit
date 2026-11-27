@@ -41,6 +41,7 @@ export {
   validateCoverageRegistration,
 } from "./coverage-index.mjs";
 export { validateManifest } from "./manifest.mjs";
+export { validateDraftBaseline } from "./draft-baseline.mjs";
 export { readIntakeInventory } from "./intake-inventory.mjs";
 export { recordScope } from "./scope.mjs";
 export { resolveProjectInput } from "./state-files.mjs";

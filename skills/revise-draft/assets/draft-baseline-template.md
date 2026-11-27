@@ -7,7 +7,7 @@
 
 ## Observed in the text
 
-Record only facts directly established by the current manuscript. Cite the supporting manuscript path and line or short passage for every factual and temporal assertion.
+Record only facts directly established by the current manuscript. Assign one stable `O-NNN` ID to each atomic factual or temporal assertion, using one single-line bullet in the form `- [O-001] assertion`. Reuse that ID in the source-fidelity review and any destination after reclassification. Cite the supporting manuscript path and line or short passage for every assertion.
 
 ### Premise and current conflict
 
@@ -21,24 +21,26 @@ Record only facts directly established by the current manuscript. Cite the suppo
 
 ## Inferred from the text
 
-| Interpretation | Evidence paths | Alternative or uncertainty | Author decision |
-|---|---|---|---|
+| Source ID | Interpretation | Evidence paths | Alternative or uncertainty | Author decision |
+|---|---|---|---|---|
 
-Interpretations are working assumptions until the author explicitly turns them into creative decisions.
+Use the original `O-NNN` as `Source ID` for an assertion moved from `Observed in the text`; use `—` for an unrelated interpretation. Interpretations are working assumptions until the author explicitly turns them into creative decisions.
 
 ## Unknown or unwritten
 
-| Topic | Current status | Effect on current-text diagnosis |
-|---|---|---|
+| Source ID | Topic | Current status | Effect on current-text diagnosis |
+|---|---|---|---|
 
-Valid entries include future turns, total length, character outcomes, and ending. No entry requires immediate resolution by default.
+Use the original `O-NNN` as `Source ID` for an assertion moved from `Observed in the text`; use `—` for an unrelated unknown. Valid entries include future turns, total length, character outcomes, and ending. No entry requires immediate resolution by default.
 
 ## Source-fidelity review
 
-Before showing the proposal, use one row per factual or temporal assertion drafted under `Observed in the text`. Record direct manuscript support or its absence and one disposition: `keep`, `revise`, `move to Inferred from the text`, or `move to Unknown or unwritten`. For a revision or move, record the resulting statement and destination. Reconcile assertions about the same character, object, event, or timeline across all three sections, and apply every correction and move before presentation. A summary claim does not replace the review rows.
+Before showing the proposal, use one review row per ID drafted under `Observed in the text`. Record the original assertion, direct manuscript support or its absence, and one disposition: `keep`, `revise`, `move to Inferred from the text`, or `move to Unknown or unwritten`. Use `—` as the result for `keep`. For `revise`, retain the ID in `Observed in the text` and record the complete resulting statement; deleting an unsupported clause from a retained assertion is a revision, not a move. For a move, remove the ID from `Observed in the text`, place the same ID and resulting entry in the named destination table, and record the resulting statement or destination. Reconcile assertions about the same character, object, event, or timeline across all three sections, and apply every correction and move before presentation. A summary claim does not replace the review rows.
 
-| Drafted observed assertion | Manuscript path and line or short passage, or no direct support | Disposition and resulting statement or destination |
-|---|---|---|
+Run the installed draft-baseline validator after applying the review and before presentation. It checks final ID coverage, review rows, dispositions, and recorded locations; it does not establish that assertions are atomic or that citations support them. Those remain semantic review requirements.
+
+| Assertion ID | Drafted observed assertion | Manuscript path and line or short passage, or no direct support | Disposition | Resulting statement or destination |
+|---|---|---|---|---|
 
 ## Open questions and scope notes
 

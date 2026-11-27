@@ -167,6 +167,10 @@
       "sha256": "74cea9657e8771bec7cb76787a0f4981ab54279542b3dae5f40db1e8f9f19aaa"
     },
     {
+      "path": "scripts/lib/draft-baseline.mjs",
+      "sha256": "f816eb209cbbb9e61f814236ab5f7882b24a9bb08c732847fc085034d1994d3f"
+    },
+    {
       "path": "scripts/lib/evidence-inspection.mjs",
       "sha256": "d80ca44627d2261fd4ce769eedb0c8dc1234912704d1454f568ffe8264fdc9d2"
     },
@@ -196,7 +200,7 @@
     },
     {
       "path": "scripts/lib/index.mjs",
-      "sha256": "e7a08bac3f1bad103f0ca1421e93c0cc06878a14d9ee486f8d11627d671cd6ad"
+      "sha256": "5dbbd4ba929d6e3be0bc3e7a86645056bce93a3078ca4a405e9840258abc1b8b"
     },
     {
       "path": "scripts/lib/intake-inventory.mjs",
@@ -376,7 +380,7 @@
     },
     {
       "path": "scripts/validate.mjs",
-      "sha256": "a32eb9bbbaef4bfaa538cceff923226dfe6a5cd1bf92096ee9644fdd44ec7f5f"
+      "sha256": "da007864042f965102a57dd4caf3737283cc6e51180cfc115b178ab33e0703fd"
     },
     {
       "path": "scripts/writes.mjs",

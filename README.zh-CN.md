@@ -251,9 +251,11 @@ AI, 作者和混合创作使用相同门禁. 每本书只保留一个活动创�
 `revise-draft` 会先把新建或更新的基线保存为
 `.author-toolkit/proposals/<scope-id>-draft-baseline.md`, 并将路径关联到
 `pending_action.artifacts` 和会话记录. 该非权威提案不需要 `edit` 批准; 恢复会话后,
-只有范围与输入版本仍然匹配才能复用. 展示提案前, 来源保真复核会逐项记录已写断言的直接证据及
-保留、修正或重新分类处置, 并协调同一主题在已写、推断和未知分区中的表述. 首次范围的待处理操作和
-会话记录均使用操作 `intake`. 基线确认和正式基线发布仍分别遵循作者决定与独立 `edit` 批准门禁.
+只有范围与输入版本仍然匹配才能复用. 展示提案前, 来源保真复核为每条原子已写断言分配稳定的
+`O-NNN` ID, 逐项记录直接证据及保留、修正或重新分类处置; 移动后的条目在目标表保留来源 ID.
+应用修正和移动后, 必须通过安装的 `validate.mjs --draft-baseline` 校验. 该校验检查最终 ID 覆盖,
+核对行, 处置和记录位置; 断言是否足够原子化及引文是否真正支持断言仍由语义复核负责.
+首次范围的待处理操作和会话记录均使用操作 `intake`. 基线确认和正式基线发布仍分别遵循作者决定与独立 `edit` 批准门禁.
 
 四个修订用户入口共用 `characters` 能力. 当前草稿, 增量与请求路径只要求当前弧线和连续性,
 完整全书门禁要求更多人物弧线和全书连续性子检查. 当前草稿任务可以直接进入 `prose` 或
@@ -527,6 +529,7 @@ node scripts/preflight.mjs --project-root /path/to/writing-project
 node scripts/validate.mjs --project-root /path/to/writing-project
 node scripts/validate.mjs --manifest /path/to/.author-toolkit/project.json
 node scripts/validate.mjs --report /path/to/report.md
+node scripts/validate.mjs --draft-baseline /path/to/draft-baseline-proposal.md
 node scripts/status.mjs --manifest /path/to/.author-toolkit/project.json --scope-id scope-001
 node scripts/writes.mjs check-index --manifest /path/to/.author-toolkit/project.json --explain
 node scripts/intake-inventory.mjs --project-root /path/to/writing-project

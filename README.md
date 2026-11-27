@@ -435,12 +435,16 @@ The mirrored nine operations are:
 `.author-toolkit/proposals/<scope-id>-draft-baseline.md` and links it from
 `pending_action.artifacts` and the session note. This non-authoritative proposal
 requires no `edit` approval; on resume, its scope and input versions must still
-match before reuse. Before the proposal is shown, a source-fidelity review records
-direct evidence and a keep, revise, or reclassification disposition for every
-observed assertion, reconciling shared topics across observed, inferred, and
-unknown sections. The first-scope pending action and session note both use
-operation `intake`. Baseline confirmation and publication of the formal baseline
-retain their separate author decision and `edit` approval gates.
+match before reuse. Before the proposal is shown, a source-fidelity review assigns
+stable `O-NNN` IDs to atomic observed assertions and records direct evidence and a
+keep, revise, or reclassification disposition for each ID. Moved assertions retain
+their source IDs in the destination tables. After corrections and moves, the
+installed `validate.mjs --draft-baseline` check must pass; it checks final ID
+coverage, review rows, dispositions, and recorded locations, while atomicity and
+semantic manuscript support remain review responsibilities. The first-scope
+pending action and session note both use operation `intake`. Baseline confirmation
+and publication of the formal baseline retain their separate author decision and
+`edit` approval gates.
 
 All four revision user entries share the character capability. The draft,
 incremental, and request-driven paths require current arcs and continuity; the
@@ -820,6 +824,7 @@ node scripts/preflight.mjs --project-root /path/to/writing-project
 node scripts/validate.mjs --project-root /path/to/writing-project
 node scripts/validate.mjs --manifest /path/to/.author-toolkit/project.json
 node scripts/validate.mjs --report /path/to/report.md
+node scripts/validate.mjs --draft-baseline /path/to/draft-baseline-proposal.md
 node scripts/status.mjs --manifest /path/to/.author-toolkit/project.json --scope-id scope-001
 node scripts/writes.mjs check-index --manifest /path/to/.author-toolkit/project.json --explain
 node scripts/intake-inventory.mjs --project-root /path/to/writing-project
