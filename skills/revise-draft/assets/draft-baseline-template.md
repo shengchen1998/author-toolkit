@@ -7,7 +7,7 @@
 
 ## Observed in the text
 
-Record only facts directly established by the current manuscript, with source paths where useful.
+Record only facts directly established by the current manuscript. Cite the supporting manuscript path and line or short passage for every factual and temporal assertion.
 
 ### Premise and current conflict
 

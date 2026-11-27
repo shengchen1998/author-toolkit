@@ -439,6 +439,26 @@ test("the draft baseline takes its title from the registered Story Bible", async
   assert.match(stageGates, /manifest records no project title/);
 });
 
+test("draft baseline confirmation requires source fidelity and timeline consistency", async () => {
+  const [stageGates, template] = await Promise.all([
+    readFile(path.join(root, "skills/revise-draft/references/stage-gates.md"), "utf8"),
+    readFile(path.join(root, "skills/revise-draft/assets/draft-baseline-template.md"), "utf8"),
+  ]);
+  const baselineGate = stageGates.split("## 2. Draft baseline")[1]?.split("## 3. Diagnostics")[0];
+
+  assert.ok(baselineGate);
+  assert.match(baselineGate, /Before confirmation, a separate source-fidelity check/);
+  assert.match(baselineGate, /evaluates the baseline against the manuscript, rather than the manuscript against the baseline/);
+  assert.match(baselineGate, /Every factual and temporal assertion under `Observed in the text`/);
+  assert.match(baselineGate, /cited manuscript path and line or short passage that directly supports it/);
+  assert.match(baselineGate, /Relative-time and event-order expressions in the manuscript's language/);
+  assert.match(baselineGate, /`yesterday`, `today`, `arrival`, `check-in`, and their equivalents/);
+  assert.match(baselineGate, /Premise, timeline, and other observed statements do not contradict one another/);
+  assert.match(baselineGate, /corrected or moved to `Inferred from the text` or `Unknown or unwritten` before confirmation/);
+  assert.match(template, /Cite the supporting manuscript path and line or short passage for every factual and temporal assertion\./);
+  assert.doesNotMatch(template, /source paths where useful/);
+});
+
 test("setup and routine navigation keep operational history listings bounded", async () => {
   const [setup, existingSetup, newSetup, readOperations, readme, zhReadme] = await Promise.all([
     readFile(path.join(root, "skills/setup-author-toolkit/SKILL.md"), "utf8"),
