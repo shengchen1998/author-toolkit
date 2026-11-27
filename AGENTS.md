@@ -12,6 +12,7 @@ The private native-ESM package requires Node.js 22+ (22.20+ for the generic skil
 
 ## Repository map
 
+- `package.json` and `package-lock.json`: the private package's Node.js engine, development dependencies, and test/validation/generation commands. `.github/workflows/validate.yml` is the CI pipeline; there are no other language manifests or build-system configuration files.
 - `skills/`: the 16 skill packages. Each has a `SKILL.md`; progressive-disclosure references, templates, and assets live inside the owning skill.
 - `scripts/`: repository CLI entry points. `scripts/lib/` contains their shared implementation, and `scripts/lib/index.mjs` is the library export surface.
 - `references/`: canonical shared schemas and workflow contracts; not an installed runtime dependency.
@@ -44,7 +45,7 @@ node --test tests/creation-manifest.test.mjs
 node --test --test-name-pattern="schema" tests/manifest.test.mjs
 ```
 
-There is no lint, formatter, or coverage threshold. Repository CI is defined in `.github/workflows/validate.yml`; the checked-in setup mirror is the only generated runtime build. After changing validation or digest implementation, regenerate it before testing:
+There is no lint, formatter, or coverage threshold. CI runs on pushes to `main` and pull requests using Ubuntu, Node.js 22, `npm ci`, `npm test`, and `npm run validate`; see `.github/workflows/validate.yml`. The checked-in setup mirror is the only generated runtime build. After changing `scripts/` or any hashed setup-skill asset, regenerate the mirror and payload manifest before testing:
 
 ```bash
 npm run sync:setup-runtime
@@ -65,7 +66,7 @@ Use each script's `--help` output as the exact argument contract. Repository scr
 ### Installation, initialization, and preflight
 
 - `doctor.mjs` checks installation; repeat `--require-sibling NAME` to check required files in `author-project`, `revise-fiction`, or `revise-draft`, not project state. Setup requests only the seven `author-project` files; strategies declare their own startup siblings.
-- `inspect-root.mjs --project-root DIR` performs bounded, read-only new-project discovery without following symlinks or reading file contents. Existing v3.1 projects use `initialize.mjs`, not repeated root discovery.
+- `inspect-root.mjs --project-root DIR` performs bounded, read-only new-project discovery without following symlinks. By default it reads no file contents. When the author has not supplied a language, `--language-sample` explicitly samples at most 300 Unicode code points from one unomitted candidate using strict UTF-8; non-unique or empty selections return no sample. Existing v3.1 projects use `initialize.mjs`, not repeated root discovery.
 - `install-entry-files.mjs --project-root DIR` verifies the payload and atomically installs both root agent entries. It preserves correct entries and any existing `START_HERE.md`, and rejects directories and special files.
 - `setup-report.mjs` captures doctor, initialize-or-scaffold, entry-file, and final-check results in a private temporary store, relays their JSON and exit statuses, and renders the deterministic four-section setup report without another project inspection. `render` removes the store; `cleanup` handles early stops. Host-specific strategy commands and current-draft revision convergence routing remain semantic setup decisions.
 - `scaffold-project.mjs --project-root DIR [--author-project-root DIR]` is the sole new-project scaffolding implementation. It resolves the sibling skill's four templates by default, accepts an explicit root for nonstandard layouts, creates only missing content under the shared write lock, refuses an existing manifest, applies one timestamp, and validates the complete project before succeeding.
@@ -132,7 +133,7 @@ The skills have three invocation modes:
 - Three shared orchestration capabilities: `author-project` owns state, paths, validation, backups, execution receipts, commits, and restores; `author-handoff` preserves resumable context; `author-review` performs manuscript reading and synthesis.
 - Six independent skills: `fiction-workshop`, `character-archetypes`, `story-structure`, `narrative-nonfiction`, `prose-mechanics`, and `avoid-ai-writing`. They work without setup, retain their standalone contracts, and leave shared state unchanged unless the author incorporates their output.
 
-`tests/skills.test.mjs` checks skill inventory, names, declared versions, invocation modes, and host-independent procedures. Skill discovery and author-facing invocation follow the selected host.
+`tests/skills.test.mjs` checks skill inventory, names, declared versions, invocation modes, and host-independent procedures. It also contract-tests this root guide's implementation-boundary wording; `tests/terminology.test.mjs` checks its controlled vocabulary and terminology pointer. Skill discovery and author-facing invocation follow the selected host.
 
 ### Validation and module boundaries
 
