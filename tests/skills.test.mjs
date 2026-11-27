@@ -871,6 +871,14 @@ test("revision strategies share one project and keep distinct evidence gates", a
     );
   }
   assert.match(draft, /unknown future story is not a finding/i);
+  const draftStartup = draft
+    .split("3. Run the `author-project` procedure once with `check --digest`")[1]
+    ?.split("4. On the first run for a new scope")[0];
+  assert.ok(draftStartup);
+  for (const field of ["schema_version", "language", "current_scope", "pending_action"]) {
+    assert.ok(draftStartup.includes(`projection.${field}`), `Missing startup projection field: ${field}`);
+  }
+  assert.match(draftStartup, /satisfies step 1's schema-version check without rereading the manifest/);
   assert.match(draftGates, /Unknown future turns and ending are valid entries/);
   assert.match(draftGates, /Reports list actual subchecks/);
   assert.match(fiction, /current-scope review does not satisfy final review/);
@@ -913,6 +921,8 @@ test("revision strategies share one project and keep distinct evidence gates", a
     assert.ok(firstScopeRoute.includes(`[${section}]`), `Missing first-scope reading section: ${section}`);
   }
   assert.match(firstScopeRoute, /Keep every read of these three references within those ranges/);
+  assert.match(firstScopeRoute, /This gate is the complete first-scope procedure/);
+  assert.match(firstScopeRoute, /`revise-fiction` supplies only the shared reference sections linked here; its entry `SKILL\.md` and other strategies are outside this procedure/);
   assert.doesNotMatch(firstScopeRoute, /once in full/);
   assert.match(draft, /record the proposed scope through `author-project` with `record-scope`/);
   assert.match(draft, /persist the proposed `draft-baseline` artifact/);
