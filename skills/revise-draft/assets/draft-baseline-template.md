@@ -7,7 +7,7 @@
 
 ## Observed in the text
 
-Record only facts directly established by the current manuscript. Assign one stable `O-NNN` ID to each atomic factual or temporal assertion, using one single-line bullet in the form `- [O-001] assertion`. Reuse that ID in the source-fidelity review and any destination after reclassification. Cite the supporting manuscript path and line or short passage for every assertion.
+Record only facts directly established by the current manuscript. Assign one stable `O-NNN` ID to each atomic factual or temporal assertion, using one single-line bullet in the form `- [O-001] assertion`. Within each `###` subsection, every nonempty line must be one of these single-line assertion bullets. Reuse that ID in the source-fidelity review and any destination after reclassification. Cite the supporting manuscript path and line or short passage for every assertion.
 
 ### Premise and current conflict
 

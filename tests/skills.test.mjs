@@ -451,10 +451,14 @@ test("draft baseline source fidelity produces an auditable review before present
   assert.ok(baselineGate);
   assert.match(baselineWork, /Complete the template's `Source-fidelity review`/);
   assert.match(baselineWork, /apply every correction and move/);
+  assert.match(baselineWork, /This section and the template are the complete authoring contract/);
   assert.match(baselineWork, /validate\.mjs --draft-baseline \.author-toolkit\/proposals\/<scope-id>-draft-baseline\.md/);
+  assert.match(baselineWork, /use its diagnostics to correct the proposal/);
   assert.match(baselineWork, /rerun it until it passes before showing the proposal/);
+  assert.match(baselineWork, /Read CLI internals only when diagnosing a validator defect/);
   assert.match(baselineWork, /checks structure, not atomicity or semantic manuscript support/);
   assert.match(template, /one stable `O-NNN` ID to each atomic factual or temporal assertion/);
+  assert.match(template, /Within each `###` subsection, every nonempty line must be one of these single-line assertion bullets/);
   assert.match(template, /one review row per ID drafted under `Observed in the text`/);
   assert.match(template, /Record the original assertion, direct manuscript support or its absence/);
   for (const disposition of ["`keep`", "`revise`", "`move to Inferred from the text`", "`move to Unknown or unwritten`"]) {
