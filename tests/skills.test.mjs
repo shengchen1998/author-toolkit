@@ -134,15 +134,17 @@ test("setup assumes the five strategy entries are installed", async () => {
   assert.match(zhReadme, /无需单独确认语言/);
 });
 
-test("setup reads a bounded reporting preset from the single installed source", async () => {
+test("setup receives a bounded reporting preset from the single installed source", async () => {
   const [setup, instructions] = await Promise.all([
     readFile(path.join(root, "skills/setup-author-toolkit/SKILL.md"), "utf8"),
     readFile(path.join(root, "skills/setup-author-toolkit/assets/AGENTS.md"), "utf8"),
   ]);
-  assert.match(setup, /scripts\/terminology\.mjs --preset setup-report/);
+  assert.match(setup, /`terminology` returned by `setup-report\.mjs begin`/);
+  assert.match(setup, /setup-report\.mjs begin --project-root <project-root> --json/);
   assert.match(setup, /setup report interpretation and entry routing/);
   assert.match(setup, /--preset setup` for the complete setup selection/);
   assert.match(setup, /do not read the full terminology file/);
+  assert.doesNotMatch(setup, /terminology\.mjs --preset setup-report/);
   assert.match(setup, /scripts\/terminology\.mjs --section "Operation identifiers"/);
   assert.match(setup, /pending action, group of unverified approvals, or backup-index difference/);
   assert.match(instructions, /`<setup-skill-root>\/assets\/references\/terminology\.md`/);
@@ -517,10 +519,9 @@ test("setup and routine navigation keep operational history listings bounded", a
   ]);
 
   const preflightSteps = [
-    "Check only whether `<project-root>/.author-toolkit/project.json` exists.",
-    "node <setup-skill-root>/scripts/setup-report.mjs begin --json",
+    "node <setup-skill-root>/scripts/setup-report.mjs begin --project-root <project-root> --json",
     "node <setup-skill-root>/scripts/setup-report.mjs capture --report-store <report-store> --kind doctor -- --require-sibling author-project",
-    "Select exactly one branch after this check",
+    "Select exactly one branch after this check using `project_branch`",
   ];
   let previousStep = -1;
   for (const step of preflightSteps) {
@@ -713,7 +714,7 @@ test("setup discloses only the selected project branch", async () => {
   ]);
   const setupSteps = setup.match(/^\d+\. .+$/gm) ?? [];
   assert.equal(setupSteps.length, 4);
-  assert.match(setup, /when the manifest exists, read only \[Existing project\]\(assets\/setup\/existing-project\.md\); otherwise read only \[New project\]\(assets\/setup\/new-project\.md\)/);
+  assert.match(setup, /using `project_branch`: when it is `existing`, read only \[Existing project\]\(assets\/setup\/existing-project\.md\); when it is `new`, read only \[New project\]\(assets\/setup\/new-project\.md\)/);
   assert.doesNotMatch(setup, /author-project\/references\/operations\.md|read-operations\.md/);
   assert.doesNotMatch(existingSetup, /author-project\/SKILL\.md|author-project\/references\/|read-operations\.md/);
   assert.doesNotMatch(newSetup, /author-project\/SKILL\.md|author-project\/references\//);

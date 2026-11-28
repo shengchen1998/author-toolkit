@@ -271,13 +271,23 @@ test("setup carries self-contained preflight, validation, state, intake, range, 
   assert.doesNotMatch(doctor.stdout, /Project entry failures:/);
   assert.doesNotMatch(doctor.stdout, /AGENTS\.md/);
 
+  const newProject = path.join(temporaryRoot, "new-project");
   const reportBegin = spawnSync(
     process.execPath,
-    [...nodeArgs, path.join(installedSetup, "scripts", "setup-report.mjs"), "begin", "--json"],
+    [
+      ...nodeArgs,
+      path.join(installedSetup, "scripts", "setup-report.mjs"),
+      "begin",
+      "--project-root",
+      newProject,
+      "--json",
+    ],
     { encoding: "utf8" },
   );
   assert.equal(reportBegin.status, 0, reportBegin.stderr);
-  const reportStore = JSON.parse(reportBegin.stdout).report_store;
+  const reportStart = JSON.parse(reportBegin.stdout);
+  assert.equal(reportStart.project_branch, "new");
+  const reportStore = reportStart.report_store;
   const reportCapture = spawnSync(
     process.execPath,
     [
@@ -297,7 +307,6 @@ test("setup carries self-contained preflight, validation, state, intake, range, 
   assert.equal(reportCapture.status, 0, reportCapture.stderr);
   assert.equal(JSON.parse(reportCapture.stdout).valid, true);
 
-  const newProject = path.join(temporaryRoot, "new-project");
   const scaffolding = spawnSync(
     process.execPath,
     [
@@ -764,6 +773,7 @@ test("setup carries self-contained preflight, validation, state, intake, range, 
     { encoding: "utf8" },
   );
   assert.equal(setupTerminology.status, 0, setupTerminology.stderr);
+  assert.equal(reportStart.terminology, setupTerminology.stdout.trimEnd());
   assert.match(setupTerminology.stdout, /^## Core terms\n/);
   assert.doesNotMatch(setupTerminology.stdout, /host_visibility|host command visibility/);
   assert.match(setupTerminology.stdout, /`previous scope`/);
@@ -1090,6 +1100,7 @@ test("setup branch references are included in the authoritative payload manifest
   assert.ok(paths.has("scripts/lib/project-scaffold.mjs"));
   assert.ok(paths.has("scripts/setup-report.mjs"));
   assert.ok(paths.has("scripts/lib/setup-report.mjs"));
+  assert.ok(paths.has("scripts/lib/terminology.mjs"));
 });
 
 test("setup mechanically prechecks sibling author-project dependencies before either branch", async () => {

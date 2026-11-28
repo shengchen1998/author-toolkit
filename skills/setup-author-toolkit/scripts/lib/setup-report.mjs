@@ -7,6 +7,7 @@ import path from "node:path";
 import { writeJsonAtomic } from "./atomic-json.mjs";
 import { unverifiedOperationGroups } from "./execution-summary.mjs";
 import { concise } from "./read-projection.mjs";
+import { readTerminology } from "./terminology.mjs";
 
 const storePrefix = "author-toolkit-setup-report-";
 const storeName = "report.json";
@@ -164,7 +165,19 @@ function executionLines(lines, check, pending) {
   lines.push("- Current-draft revision convergence: not established by this setup report; selected-branch routing rules still apply");
 }
 
-export async function beginSetupReport() {
+async function setupBranch(projectRoot) {
+  try {
+    await lstat(path.join(projectRoot, ".author-toolkit", "project.json"));
+    return "existing";
+  } catch (error) {
+    if (["ENOENT", "ENOTDIR"].includes(error.code)) return "new";
+    throw error;
+  }
+}
+
+export async function beginSetupReport({ projectRoot, terminologyPath }) {
+  const projectBranch = await setupBranch(projectRoot);
+  const terminology = await readTerminology({ terminologyPath, preset: "setup-report" });
   const directory = await mkdtemp(path.join(os.tmpdir(), storePrefix));
   const reportStore = path.join(directory, storeName);
   const value = { schema_version: "1.0", report_id: randomUUID(), results: {} };
@@ -174,7 +187,12 @@ export async function beginSetupReport() {
     await rm(directory, { recursive: true, force: true });
     throw error;
   }
-  return { valid: true, report_store: reportStore };
+  return {
+    valid: true,
+    report_store: reportStore,
+    project_branch: projectBranch,
+    terminology,
+  };
 }
 
 async function readSetupReport(reportStore) {

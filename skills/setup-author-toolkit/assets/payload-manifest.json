@@ -4,7 +4,7 @@
   "files": [
     {
       "path": "SKILL.md",
-      "sha256": "ade2c486dcb8b9b139304c97903b300c56dc4b970f98deb4b98df367ebbd06e4"
+      "sha256": "dc7743db9a9706e1b697201cb09f50d18af7497105d6ab3bbba1ae32e2bc0b51"
     },
     {
       "path": "assets/AGENTS.md",
@@ -280,11 +280,15 @@
     },
     {
       "path": "scripts/lib/setup-report.mjs",
-      "sha256": "e350da2a245cabb8de913aa2e2bf7b039e233a0a9cf688057348363b1b22c9ab"
+      "sha256": "bdec4295809369fd5cd63a35a5345cde83388c3c90ffd2bdff2f4795e88ec258"
     },
     {
       "path": "scripts/lib/state-files.mjs",
       "sha256": "92076bafc1f7a59bf4db4f91723759759473393b6b04af67e801f5dc0eb2b590"
+    },
+    {
+      "path": "scripts/lib/terminology.mjs",
+      "sha256": "c07720f5e9de0879b16c390e84e1665ae7cba4c91a3a6bce40d35ce3cac8ab4e"
     },
     {
       "path": "scripts/lib/test-hooks.mjs",
@@ -368,7 +372,7 @@
     },
     {
       "path": "scripts/setup-report.mjs",
-      "sha256": "ec7698b06b8264bc2f946386d93d0ac343163b6c21b4f7bec3aeb1848f73b891"
+      "sha256": "91cb25bf3ce3c64d673e87020a404aa5de9e150e161f1d4bd8d4139f6a7394e0"
     },
     {
       "path": "scripts/status.mjs",
@@ -376,7 +380,7 @@
     },
     {
       "path": "scripts/terminology.mjs",
-      "sha256": "31c8ab082786412256ca73654ad8ce07d999b1ae02b4b892f8b13228a61034d8"
+      "sha256": "b1ba196237bbe52588114a2a85c01fb906b68d81573f398651a312eba600a123"
     },
     {
       "path": "scripts/validate.mjs",

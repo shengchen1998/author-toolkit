@@ -128,7 +128,8 @@ setup 在初始化和入口文件修复后通过 `setup-report.mjs` 捕获一次
 仅当该检查报告缓存可复用时, setup 才读取 `PROJECT_STATE.md`. setup 报告所有非可复用的导航缓存状态;
 首次成功 `--digest` 刷新前缓存不存在属于正常情况, 不导致安装或 preflight 失败.
 缓存 absent、stale 或未检查时, 使用有界的命令结果而不读取缓存.
-`setup-report.mjs begin` 在写作项目之外创建私有临时存储. setup 的 `capture` 子命令只启动所选的同级
+`setup-report.mjs begin --project-root <root>` 只检查 manifest 是否存在, 返回 `new` 或 `existing` 项目分支及
+`setup-report` 术语预设, 并在写作项目之外创建私有临时存储. setup 的 `capture` 子命令只启动所选的同级
 doctor、初始化或脚手架、入口文件或 check CLI, 自动添加 `--json`, 并保留其输出与退出状态.
 `render` 将这四份捕获结果合成确定性的四段 setup 报告, 不重复检查项目, 随后删除临时存储;
 提前停止时由 `cleanup` 清理. 模型只补充宿主相关的策略命令和所选分支的当前草稿修订收敛路由, 不再手工拼装固定报告字段.

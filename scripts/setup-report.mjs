@@ -3,6 +3,7 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { resolveSetupRoot } from "./lib/setup-payload.mjs";
 import {
   beginSetupReport,
   captureSetupReport,
@@ -10,36 +11,47 @@ import {
   renderSetupReport,
 } from "./lib/setup-report.mjs";
 
+const scriptRoot = path.dirname(fileURLToPath(import.meta.url));
+const setupRoot = resolveSetupRoot(path.join(scriptRoot, ".."));
+const terminologyPath = path.join(setupRoot, "assets", "references", "terminology.md");
+
 function argumentError(message) {
   const error = new Error(message);
   error.code = "ERR_ARGUMENT";
   return error;
 }
 
+const optionNames = {
+  "--report-store": "reportStore",
+  "--kind": "kind",
+  "--project-root": "projectRoot",
+};
+
 function usage() {
   console.log(`Usage:
-  node scripts/setup-report.mjs begin [--json]
+  node scripts/setup-report.mjs begin --project-root DIR [--json]
   node scripts/setup-report.mjs capture --report-store FILE --kind KIND -- [ARG...]
   node scripts/setup-report.mjs render --report-store FILE
   node scripts/setup-report.mjs cleanup --report-store FILE
 
-Capture the existing doctor, initialize, scaffold, entry-files, and check CLIs
-for one deterministic four-section setup report. Capture runs only the sibling
-CLI selected by KIND, appends --json, relays its output and exit status, and
-stores the structured result in a private temporary store created by begin.
-Use kinds doctor, initialize, scaffold, entry-files, and check. Render requires
-doctor, entry-files, check, and exactly one of initialize or scaffold; it prints
-the report and removes the temporary store. Cleanup removes only a store created
-by begin. Strategy commands and current-draft revision convergence routing
-remain semantic setup decisions. Argument errors exit 2; capture preserves the
-child exit status; other failures exit 1.`);
+Begin checks only whether DIR/.author-toolkit/project.json exists, returns the
+new/existing project branch and setup-report terminology preset, and creates a
+private temporary store. Capture runs only the sibling CLI selected by KIND,
+appends --json, relays its output and exit status, and stores the structured
+result. Use kinds doctor, initialize, scaffold, entry-files, and check. Render
+requires doctor, entry-files, check, and exactly one of initialize or scaffold;
+it prints the deterministic four-section report and removes the temporary store.
+Cleanup removes only a store created by begin. Strategy commands and
+current-draft revision convergence routing remain semantic setup decisions.
+Argument errors exit 2; capture preserves the child exit status; other failures
+exit 1.`);
 }
 
 function options(args) {
   const result = {};
   for (let index = 0; index < args.length; index += 1) {
-    if (["--report-store", "--kind"].includes(args[index]) && args[index + 1]) {
-      const key = args[index] === "--report-store" ? "reportStore" : "kind";
+    if (Object.hasOwn(optionNames, args[index]) && args[index + 1]) {
+      const key = optionNames[args[index]];
       result[key] = args[++index];
     } else if (args[index] === "--json") {
       result.json = true;
@@ -52,7 +64,9 @@ function options(args) {
 
 function requiredOptions(args, names) {
   const result = options(args);
-  if (result.json) throw argumentError("--json is only available with begin");
+  if (result.json || result.projectRoot) {
+    throw argumentError("--json and --project-root are only available with begin");
+  }
   for (const name of names) {
     if (!result[name]) throw argumentError(`${name === "reportStore" ? "--report-store" : "--kind"} is required`);
   }
@@ -65,7 +79,14 @@ try {
     usage();
   } else if (args[0] === "begin") {
     const selection = options(args.slice(1));
-    const result = await beginSetupReport();
+    if (selection.reportStore || selection.kind) {
+      throw argumentError("--report-store and --kind are not available with begin");
+    }
+    if (!selection.projectRoot) throw argumentError("--project-root is required for begin");
+    const result = await beginSetupReport({
+      projectRoot: selection.projectRoot,
+      terminologyPath,
+    });
     if (selection.json) console.log(JSON.stringify(result, null, 2));
     else console.log(result.report_store);
   } else if (args[0] === "capture") {
@@ -75,7 +96,6 @@ try {
     if (!["doctor", "initialize", "scaffold", "entry-files", "check"].includes(selection.kind)) {
       throw argumentError(`unknown capture kind: ${selection.kind}`);
     }
-    const scriptRoot = path.dirname(fileURLToPath(import.meta.url));
     process.exitCode = await captureSetupReport({
       ...selection,
       args: args.slice(separator + 1),

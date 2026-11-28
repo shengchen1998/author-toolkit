@@ -14,8 +14,8 @@ function run(args) {
   return spawnSync(process.execPath, [tool, ...args], { cwd: root, encoding: "utf8" });
 }
 
-function begin() {
-  const result = run(["begin", "--json"]);
+function begin(projectRoot) {
+  const result = run(["begin", "--project-root", projectRoot, "--json"]);
   assert.equal(result.status, 0, result.stderr);
   return JSON.parse(result.stdout).report_store;
 }
@@ -55,9 +55,53 @@ function render(reportStore) {
   return result.stdout;
 }
 
+test("setup report begin returns the project branch and exact reporting terminology", async (t) => {
+  const { projectRoot } = await fixture(t);
+  const reportStores = [];
+  t.after(async () => {
+    await Promise.all(reportStores.map((reportStore) => rm(
+      path.dirname(reportStore),
+      { recursive: true, force: true },
+    )));
+  });
+  const preset = spawnSync(process.execPath, [
+    path.join(root, "scripts", "terminology.mjs"),
+    "--preset",
+    "setup-report",
+  ], { cwd: root, encoding: "utf8" });
+  assert.equal(preset.status, 0, preset.stderr);
+  const expectedTerminology = preset.stdout.trimEnd();
+
+  const createdResult = run(["begin", "--project-root", projectRoot, "--json"]);
+  assert.equal(createdResult.status, 0, createdResult.stderr);
+  const created = JSON.parse(createdResult.stdout);
+  reportStores.push(created.report_store);
+  assert.equal(created.valid, true);
+  assert.equal(created.project_branch, "new");
+  assert.equal(created.terminology, expectedTerminology);
+
+  const manifestDirectory = path.join(projectRoot, ".author-toolkit");
+  const manifestPath = path.join(manifestDirectory, "project.json");
+  await mkdir(manifestDirectory, { recursive: true });
+  await writeFile(manifestPath, "not JSON\n");
+  const existingResult = run(["begin", "--project-root", projectRoot, "--json"]);
+  assert.equal(existingResult.status, 0, existingResult.stderr);
+  const existing = JSON.parse(existingResult.stdout);
+  reportStores.push(existing.report_store);
+  assert.equal(existing.valid, true);
+  assert.equal(existing.project_branch, "existing");
+  assert.equal(existing.terminology, expectedTerminology);
+  assert.notEqual(existing.report_store, created.report_store);
+  assert.equal(await readFile(manifestPath, "utf8"), "not JSON\n");
+
+  for (const reportStore of reportStores) {
+    assert.equal(run(["cleanup", "--report-store", reportStore]).status, 0);
+  }
+});
+
 test("setup report captures and renders a new project without resubmitting JSON", async (t) => {
   const { projectRoot } = await fixture(t);
-  const reportStore = begin();
+  const reportStore = begin(projectRoot);
   const doctor = captureDoctor(reportStore);
   assert.equal(doctor.valid, true, doctor.failures);
   const scaffold = capture(reportStore, "scaffold", [
@@ -89,7 +133,7 @@ test("setup report captures and renders a new project without resubmitting JSON"
 
 test("setup report renders an existing scope and omits a reusable cache detail", async (t) => {
   const { projectRoot } = await fixture(t, { existing: true });
-  const reportStore = begin();
+  const reportStore = begin(projectRoot);
   captureDoctor(reportStore);
   const initialized = capture(reportStore, "initialize", ["--project-root", projectRoot]);
   assert.equal(initialized.projection.current_scope.scope_id, scopeId);
@@ -122,7 +166,7 @@ test("setup report renders an existing scope and omits a reusable cache detail",
 
 test("setup report exposes a format-valid cache whose pending state is stale", async (t) => {
   const { projectRoot } = await fixture(t, { existing: true });
-  const reportStore = begin();
+  const reportStore = begin(projectRoot);
   captureDoctor(reportStore);
   capture(reportStore, "initialize", ["--project-root", projectRoot]);
   capture(reportStore, "entry-files", ["--project-root", projectRoot]);
@@ -165,7 +209,7 @@ test("setup report preserves a failed strict gate and grouped unverified approva
       `| Approval ID | Type | Operation | Scope ID | Paths | Status | Reason | Updated |\n|---|---|---|---|---|---|---|---|\n| EDIT-001 | edit | chapter-revision | ${scopeId} | \`manuscript/chapter-01.md\` | approved | Exact test batch. | ${timestamp} |`,
     ),
   );
-  const reportStore = begin();
+  const reportStore = begin(projectRoot);
   captureDoctor(reportStore);
   capture(reportStore, "initialize", ["--project-root", projectRoot]);
   capture(reportStore, "entry-files", ["--project-root", projectRoot]);
@@ -191,7 +235,7 @@ test("setup report preserves a failed strict gate and grouped unverified approva
 test("setup report renders recorded project failures without treating them as installation failures", async (t) => {
   const { projectRoot } = await fixture(t, { existing: true });
   await rm(path.join(projectRoot, "story-bible.md"));
-  const reportStore = begin();
+  const reportStore = begin(projectRoot);
   captureDoctor(reportStore);
   const initialized = capture(reportStore, "initialize", ["--project-root", projectRoot], 3);
   assert.equal(initialized.schema_valid, true);
@@ -220,8 +264,20 @@ test("setup report renders recorded project failures without treating them as in
 });
 
 test("setup report validates arguments, preserves child argument errors, and bounds cleanup", async (t) => {
-  const { temporary } = await fixture(t);
-  for (const args of [[], ["begin", "--unknown"], ["capture"], ["render"], ["cleanup"]]) {
+  const { temporary, projectRoot } = await fixture(t);
+  for (const args of [
+    [],
+    ["begin"],
+    ["begin", "--json"],
+    ["begin", "--unknown"],
+    ["begin", "--project-root"],
+    ["begin", "--project-root", projectRoot, "--report-store", "unused"],
+    ["begin", "--project-root", projectRoot, "--kind", "doctor"],
+    ["capture"],
+    ["render"],
+    ["render", "--report-store", "unused", "--project-root", projectRoot],
+    ["cleanup"],
+  ]) {
     const result = run(args);
     assert.equal(result.status, 2, args.join(" "));
     assert.match(result.stdout, /Usage:/);
@@ -229,7 +285,7 @@ test("setup report validates arguments, preserves child argument errors, and bou
   const unknown = run(["capture", "--report-store", "missing", "--kind", "unknown", "--"]);
   assert.equal(unknown.status, 2);
 
-  const reportStore = begin();
+  const reportStore = begin(projectRoot);
   captureDoctor(reportStore);
   const duplicate = run([
     "capture",

@@ -254,7 +254,9 @@ after that check reports a reusable snapshot. It reports any non-reusable
 navigation-cache state; absence before the first successful `--digest` refresh
 is expected and does not fail installation or preflight. An absent, stale, or
 unchecked cache is left unread in favor of the bounded command results.
-`setup-report.mjs begin` creates a private temporary store outside the writing
+`setup-report.mjs begin --project-root <root>` checks only whether the manifest
+exists, returns the `new` or `existing` project branch and the `setup-report`
+terminology preset, and creates a private temporary store outside the writing
 project. Setup's `capture` subcommand runs only the selected sibling doctor,
 initialize-or-scaffold, entry-file, or check CLI, appends `--json`, and preserves
 its output and exit status. `render` combines those four captured results into
