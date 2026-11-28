@@ -343,6 +343,10 @@ test("shared session notes use one template and compatible UTC filenames", async
   assert.ok(project.includes("assets/session-note-template.md"));
   assert.ok(readOperations.includes("../assets/session-note-template.md"));
   assert.ok(sharedState.includes("../../author-project/assets/session-note-template.md"));
+  assert.match(sharedState, /update each tracker table for which the operation supplies an applicable record/);
+  assert.match(sharedState, /A proposed scope or pending author decision alone does not create a tracker row/);
+  assert.match(sharedState, /leave the tracker unchanged when the operation supplies no other applicable record/);
+  assert.match(sharedState, /The manifest stores the current scope and pending action, and the session note records the stopping point/);
   assert.ok(readme.includes("(skills/author-project/assets/session-note-template.md)"));
   assert.ok(zhReadme.includes("(skills/author-project/assets/session-note-template.md)"));
 
@@ -471,6 +475,11 @@ test("draft baseline source fidelity produces an auditable review before present
   assert.match(template, /same character, object, event, or timeline across all three sections/);
   assert.match(template, /apply every correction and move before presentation/);
   assert.match(template, /A summary claim does not replace the review rows/);
+  assert.match(template, /For each ID, reread the cited manuscript passage/);
+  assert.match(template, /the assertion is atomic and that the citation directly supports every clause/);
+  assert.match(template, /Use `keep` only when both checks pass/);
+  assert.match(template, /otherwise revise the assertion or move it to the applicable destination/);
+  assert.match(template, /A completed row without these semantic checks does not satisfy the review/);
   assert.match(template, /checks the required `Observed in the text` subsections/);
   assert.match(template, /does not establish that assertions are atomic or that citations support them/);
   assert.match(template, /\| Source ID \| Interpretation \|/);
