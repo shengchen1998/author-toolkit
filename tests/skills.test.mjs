@@ -403,14 +403,13 @@ test("project digest is a generated navigation cache, not another source of trut
   };
   for (const [skill, siblings] of Object.entries(startupSiblings)) {
     const text = await readFile(path.join(root, "skills", skill, "SKILL.md"), "utf8");
-    assert.match(text, /procedure once with `check --digest`/, skill);
+    const siblingArgs = siblings.map((sibling) => `--require-sibling ${sibling}`).join(" ");
+    const command = `node <setup-skill-root>/scripts/check.mjs --project-root <project-root> --digest --json ${siblingArgs}`;
+    assert.ok(text.includes(`Run \`${command}\` once`), `${skill}: executable startup check`);
     assert.match(text, /single JSON result supplies the bounded projection/, skill);
     assert.doesNotMatch(text, /procedures separately with `read`, `validate`, and `status --digest`/, skill);
     assert.match(text, /Read `PROJECT_STATE\.md` first/, skill);
     assert.match(text, /needed for the requested work/i, skill);
-    for (const sibling of siblings) {
-      assert.ok(text.includes(`--require-sibling ${sibling}`), `${skill}: ${sibling}`);
-    }
   }
   assert.match(readOperations, /payload\.siblings/);
   assert.match(readOperations, /payload\.sibling_failures/);
@@ -496,7 +495,19 @@ test("setup and routine navigation keep operational history listings bounded", a
     readFile(path.join(root, "README.zh-CN.md"), "utf8"),
   ]);
 
-  assert.match(setup, /^1\. Check only whether `<project-root>\/\.author-toolkit\/project\.json` exists\./m);
+  const preflightSteps = [
+    "Check only whether `<project-root>/.author-toolkit/project.json` exists.",
+    "node <setup-skill-root>/scripts/setup-report.mjs begin --json",
+    "node <setup-skill-root>/scripts/setup-report.mjs capture --report-store <report-store> --kind doctor -- --require-sibling author-project",
+    "Select exactly one branch after this check",
+  ];
+  let previousStep = -1;
+  for (const step of preflightSteps) {
+    const index = setup.indexOf(step);
+    assert.ok(index > previousStep, `Setup preflight step missing or out of order: ${step}`);
+    previousStep = index;
+  }
+  assert.match(setup, /Resolve `<setup-skill-root>` directly and use only this procedure's commands and linked files for installation-payload discovery, navigation, and verification; do not enumerate skill or payload directories\./);
   assert.match(existingSetup, /For an existing v3\.1 manifest, run `node <setup-skill-root>\/scripts\/setup-report\.mjs capture --report-store <report-store> --kind initialize -- --project-root <project-root>` for the bounded projection/);
   assert.match(setup, /Leave payload verification to doctor\/check and treat `assets\/payload-manifest\.json` as their machine-readable input\. Read the toolkit version from the captured doctor\/check JSON when needed, and use the rendered setup report for the author-facing payload summary\./);
   assert.doesNotMatch(setup, /print `payload-manifest\.json`/);
@@ -933,7 +944,7 @@ test("revision strategies share one project and keep distinct evidence gates", a
   }
   assert.match(draft, /unknown future story is not a finding/i);
   const draftStartup = draft
-    .split("3. Run the `author-project` procedure once with `check --digest`")[1]
+    .split("3. Run `node <setup-skill-root>/scripts/check.mjs")[1]
     ?.split("4. On the first run for a new scope")[0];
   assert.ok(draftStartup);
   for (const field of ["schema_version", "language", "current_scope", "pending_action"]) {
