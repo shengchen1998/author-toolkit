@@ -997,7 +997,8 @@ test("revision strategies share one project and keep distinct evidence gates", a
     assert.ok(firstScopeRoute.includes(`[${section}]`), `Missing first-scope reading section: ${section}`);
   }
   assert.match(firstScopeRoute, /Keep every read of these four references within those ranges/);
-  assert.match(firstScopeRoute, /Use the linked reference and template paths directly/);
+  assert.match(firstScopeRoute, /Resolve every relative reference and template path below from the installed directory containing this `revise-draft\/SKILL\.md`/);
+  assert.match(firstScopeRoute, /use the resolved paths for heading searches and bounded line-range reads\. `<setup-skill-root>` supplies CLI and shared `assets\/references\/` paths\./);
   assert.match(firstScopeRoute, /This gate is the complete first-scope procedure/);
   assert.match(firstScopeRoute, /`author-project` and `revise-fiction` supply only the shared reference sections linked here; their entry `SKILL\.md` files and other strategies are outside this procedure/);
   assert.doesNotMatch(firstScopeRoute, /once in full/);
