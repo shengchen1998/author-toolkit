@@ -578,7 +578,9 @@ test("existing-project setup uses bounded inspection references and a categorize
   assert.match(setup, /a reusable cache adds no detail and no recorded route/);
   assert.match(setup, /every non-reusable navigation-cache result/);
   assert.match(setup, /setup-report\.mjs render --report-store <report-store>/);
-  assert.match(setup, /rather than reconstructing its fields from the captured JSON/);
+  assert.match(setup, /The author-facing response consists of the rendered report verbatim, followed by the strategy routing and entry-confirmation explanation below/);
+  assert.match(setup, /Preserve the report's emitted language, order, headings, fields, status values, and explanatory text/);
+  assert.match(setup, /write the appended routing explanation in the author's language/);
   assert.match(readme, /It reports any non-reusable\s+navigation-cache state/);
   assert.match(zhReadme, /setup 报告所有非可复用的导航缓存状态/);
 
