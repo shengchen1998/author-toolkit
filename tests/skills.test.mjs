@@ -307,13 +307,13 @@ test("author-project operation rows expose the installed CLI argument contracts"
   assert.match(operations, /The command always emits JSON without a `--json` option/);
 });
 
-test("intake inventory counts guide manuscript reads without redundant size probes", async () => {
+test("intake inventory counts guide required manuscript reads without redundant size probes", async () => {
   const operations = await readFile(
     path.join(root, "skills/author-project/references/operations.md"),
     "utf8",
   );
 
-  assert.match(operations, /Use each file entry's `characters` count to decide between a full-file read and bounded reads/);
+  assert.match(operations, /When the active operation requires manuscript content, use each file entry's `characters` count to decide between a full-file read and bounded reads/);
   assert.match(operations, /do not repeat byte-size or line-count probes solely for that decision/);
   assert.match(operations, /Measure bytes or lines separately only when the current operation specifically needs those values/);
 });
@@ -612,6 +612,10 @@ test("existing-project setup uses bounded inspection references and a categorize
   assert.match(setup, /a reusable cache adds no detail and no recorded route/);
   assert.match(setup, /every non-reusable navigation-cache result/);
   assert.match(setup, /setup-report\.mjs render --report-store <report-store>/);
+  const setupFinalCheck = setup.indexOf("node <setup-skill-root>/scripts/setup-report.mjs capture --report-store <report-store> --kind check -- --project-root <project-root> --diagnose");
+  const setupProgress = setup.indexOf("After the captured final check returns, report its installation, project-state, and requested strategy-gate results and that report rendering is next.");
+  const setupRender = setup.indexOf("node <setup-skill-root>/scripts/setup-report.mjs render --report-store <report-store>");
+  assert.ok(setupFinalCheck >= 0 && setupFinalCheck < setupProgress && setupProgress < setupRender, "Setup must report final-check results before rendering");
   assert.match(setup, /The author-facing response consists of the rendered report verbatim, followed by the strategy routing and entry-confirmation explanation below/);
   assert.match(setup, /Preserve the report's emitted language, order, headings, fields, status values, and explanatory text/);
   assert.match(setup, /write the appended routing explanation in the author's language/);
@@ -1056,6 +1060,39 @@ test("revision strategies share one project and keep distinct evidence gates", a
   assert.match(draftGates, /reuse it only when its scope and input versions still match/);
   assert.match(draftGates, /requires no `edit` approval/);
   assert.match(draft, /Publishing or changing `draft-baseline\.md`.*uses its own `edit` approval/);
+});
+
+test("revise-draft first scope separates mechanical scope proposal from semantic intake", async () => {
+  const [draft, draftGates, operations, readme, zhReadme] = await Promise.all([
+    readFile(path.join(root, "skills/revise-draft/SKILL.md"), "utf8"),
+    readFile(path.join(root, "skills/revise-draft/references/stage-gates.md"), "utf8"),
+    readFile(path.join(root, "skills/author-project/references/operations.md"), "utf8"),
+    readFile(path.join(root, "README.md"), "utf8"),
+    readFile(path.join(root, "README.zh-CN.md"), "utf8"),
+  ]);
+  const beforeScopeConfirmation = draft
+    .split("   - Before asking for scope confirmation,")[1]
+    ?.split("   - After explicit scope confirmation,")[0];
+  const afterScopeConfirmation = draft
+    .split("   - After explicit scope confirmation,")[1]
+    ?.split("\n\n   On later runs,")[0];
+  assert.ok(beforeScopeConfirmation);
+  assert.ok(afterScopeConfirmation);
+  assert.match(beforeScopeConfirmation, /Use only the inventory results, `projection\.language`, and author-supplied choices to propose scope membership, reading order, and exclusions/);
+  assert.match(beforeScopeConfirmation, /defer manuscript-content reads and semantic intake fields until after explicit scope confirmation/);
+  assert.match(beforeScopeConfirmation, /Report the actual inventory coverage and the upcoming proposed-scope and pending-action writes before the first shared-state write/);
+  const inventory = beforeScopeConfirmation.indexOf("complete the read-only `intake` inventory");
+  const progress = beforeScopeConfirmation.indexOf("Report the actual inventory coverage");
+  const record = beforeScopeConfirmation.indexOf("Then record the proposed scope");
+  assert.ok(inventory >= 0 && inventory < progress && progress < record, "First-scope intake must report inventory coverage before recording scope");
+  assert.match(afterScopeConfirmation, /read the confirmed-scope manuscript as needed to complete chapter identifiers, language coverage, and other semantic intake fields/);
+  assert.match(draftGates, /For a first scope, pre-confirmation work is limited to the mechanical inventory and scope proposal/);
+  assert.match(draftGates, /After scope confirmation, read the confirmed-scope manuscript as needed/);
+  assert.match(operations, /When the active operation requires manuscript content, use each file entry's `characters` count/);
+  assert.match(readme, /For a first scope, pre-confirmation work is limited to the\s+mechanical manuscript inventory/);
+  assert.match(readme, /manuscript-content reading and semantic intake fields begin\s+after explicit scope confirmation/);
+  assert.match(zhReadme, /首次范围确认前仅运行正文清单命令并拟议范围成员、阅读顺序、排除项和哈希/);
+  assert.match(zhReadme, /正文内容阅读与语义\s+intake 字段在作者明确确认范围后开始/);
 });
 
 test("revise-draft intake uses a stable human-readable report template", async () => {

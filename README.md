@@ -472,8 +472,11 @@ their source IDs in the destination tables. After corrections and moves, the
 installed `validate.mjs --draft-baseline` check must pass; it checks the required
 Observed subsections, final ID coverage, review rows, dispositions, and recorded
 locations, while atomicity and semantic manuscript support remain review
-responsibilities. The first-scope
-pending action and session note both use operation `intake`. Baseline confirmation
+responsibilities. For a first scope, pre-confirmation work is limited to the
+mechanical manuscript inventory and proposed scope membership, reading order,
+exclusions, and hashes; manuscript-content reading and semantic intake fields begin
+after explicit scope confirmation. The first-scope pending action and session note
+both use operation `intake`. Baseline confirmation
 and publication of the formal baseline retain their separate author decision and
 `edit` approval gates.
 
