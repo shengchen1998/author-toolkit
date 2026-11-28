@@ -487,6 +487,13 @@ test("draft baseline source fidelity produces an auditable review before present
   assert.match(template, /^## Source-fidelity review$/m);
   assert.match(template, /Cite the supporting manuscript path and line or short passage for every assertion\./);
   assert.doesNotMatch(template, /source paths where useful/);
+  assert.match(template, /^### Chapter order and manuscript events$/m);
+  assert.doesNotMatch(template, /^### Chapter order and current turning points$/m);
+  assert.match(template, /Narrative-function judgments/);
+  assert.match(template, /`first turning point`, `climax`, or character-arc trajectory/);
+  assert.match(template, /can remain observed with a supporting citation/);
+  assert.match(template, /Record only completed author confirmations and revisions here/);
+  assert.match(template, /awaited scope or baseline decision in `pending_action\.reason`/);
 });
 
 test("setup and routine navigation keep operational history listings bounded", async () => {

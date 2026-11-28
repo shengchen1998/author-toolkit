@@ -11,12 +11,14 @@ const validator = path.join(root, "scripts", "validate.mjs");
 const INFERRED_HEADINGS = "| Source ID | Interpretation | Evidence paths | Alternative or uncertainty | Author decision |\n|---|---|---|---|---|";
 const UNKNOWN_HEADINGS = "| Source ID | Topic | Current status | Effect on current-text diagnosis |\n|---|---|---|---|";
 const REVIEW_HEADINGS = "| Assertion ID | Drafted observed assertion | Manuscript path and line or short passage, or no direct support | Disposition | Resulting statement or destination |\n|---|---|---|---|---|";
+const CHAPTER_ORDER_SUBSECTION = "Chapter order and manuscript events";
+const LEGACY_CHAPTER_ORDER_SUBSECTION = "Chapter order and current turning points";
 const OBSERVED_SUBSECTIONS = [
   "Premise and current conflict",
   "Principal characters and current choices",
   "Current arc trends",
   "World facts and timeline constraints",
-  "Chapter order and current turning points",
+  CHAPTER_ORDER_SUBSECTION,
 ];
 
 function defaultReview() {
@@ -112,6 +114,21 @@ test("draft baseline validation requires every template subsection within Observ
   }).replace("## Inferred from the text", `## Inferred from the text\n\n### ${heading}`);
   assert.equal(validateDraftBaseline(misplaced).valid, false);
   assert.match(messages(misplaced), /expected exactly one ### Current arc trends subsection; found 0/);
+});
+
+test("draft baseline validation accepts the legacy chapter-order alias only when it is unique", () => {
+  const legacy = fixture({
+    observedHeadings: OBSERVED_SUBSECTIONS.map((heading) => (
+      heading === CHAPTER_ORDER_SUBSECTION ? LEGACY_CHAPTER_ORDER_SUBSECTION : heading
+    )),
+  });
+  assert.equal(validateDraftBaseline(legacy).valid, true, messages(legacy));
+
+  const duplicate = fixture({
+    observedHeadings: [...OBSERVED_SUBSECTIONS, LEGACY_CHAPTER_ORDER_SUBSECTION],
+  });
+  assert.equal(validateDraftBaseline(duplicate).valid, false);
+  assert.match(messages(duplicate), /expected exactly one ### Chapter order and manuscript events subsection; found 2 \(legacy alias: ### Chapter order and current turning points\)/);
 });
 
 test("draft baseline validation reports missing and duplicate review rows", () => {

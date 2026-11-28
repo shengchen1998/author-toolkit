@@ -23,8 +23,11 @@ const OBSERVED_SUBSECTIONS = [
   "Principal characters and current choices",
   "Current arc trends",
   "World facts and timeline constraints",
-  "Chapter order and current turning points",
+  "Chapter order and manuscript events",
 ];
+const LEGACY_OBSERVED_SUBSECTIONS = new Map([
+  ["Chapter order and manuscript events", "Chapter order and current turning points"],
+]);
 
 function baselineError(instancePath, message) {
   return { instancePath, keyword: "draft-baseline", message, params: {} };
@@ -77,11 +80,16 @@ function registerLocation(locations, id, heading, index, errors, duplicateHint =
 
 function observedSubsections(lines, errors) {
   for (const heading of OBSERVED_SUBSECTIONS) {
-    const count = lines.filter((line) => line === `### ${heading}`).length;
+    const legacyHeading = LEGACY_OBSERVED_SUBSECTIONS.get(heading);
+    const acceptedHeadings = legacyHeading ? [heading, legacyHeading] : [heading];
+    const count = lines.filter((line) => acceptedHeadings.some(
+      (candidate) => line === `### ${candidate}`,
+    )).length;
+    const legacyDetail = legacyHeading ? ` (legacy alias: ### ${legacyHeading})` : "";
     if (count !== 1) {
       errors.push(baselineError(
         `/${OBSERVED}/${heading}`,
-        `expected exactly one ### ${heading} subsection; found ${count}`,
+        `expected exactly one ### ${heading} subsection; found ${count}${legacyDetail}`,
       ));
     }
   }

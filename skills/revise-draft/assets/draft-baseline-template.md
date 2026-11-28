@@ -17,7 +17,7 @@ Record only facts directly established by the current manuscript. Assign one sta
 
 ### World facts and timeline constraints
 
-### Chapter order and current turning points
+### Chapter order and manuscript events
 
 ## Inferred from the text
 
@@ -37,6 +37,8 @@ Use the original `O-NNN` as `Source ID` for an assertion moved from `Observed in
 
 Before showing the proposal, use one review row per ID drafted under `Observed in the text`. Record the original assertion, direct manuscript support or its absence, and one disposition: `keep`, `revise`, `move to Inferred from the text`, or `move to Unknown or unwritten`. Use `—` as the result for `keep`. For `revise`, retain the ID in `Observed in the text` and record the complete resulting statement; deleting an unsupported clause from a retained assertion is a revision, not a move. For a move, remove the ID from `Observed in the text`, place the same ID and resulting entry in the named destination table, and record the resulting statement or destination. Reconcile assertions about the same character, object, event, or timeline across all three sections, and apply every correction and move before presentation. A summary claim does not replace the review rows.
 
+Directly established events and changes in a character's stated feelings, choices, or behavior remain under `Observed in the text`. Narrative-function judgments, including identifying a `first turning point`, `climax`, or character-arc trajectory, belong in `Inferred from the text` even when the underlying event is directly supported. For example, `She decides to try on the garment` can remain observed with a supporting citation; labeling that decision the `first turning point` or `climax` is an interpretation and requires an alternative or uncertainty.
+
 Run the installed draft-baseline validator after applying the review and before presentation. It checks the required `Observed in the text` subsections, final ID coverage, review rows, dispositions, and recorded locations; it does not establish that assertions are atomic or that citations support them. Those remain semantic review requirements.
 
 | Assertion ID | Drafted observed assertion | Manuscript path and line or short passage, or no direct support | Disposition | Resulting statement or destination |
@@ -46,4 +48,4 @@ Run the installed draft-baseline validator after applying the review and before 
 
 ## Author confirmation and revision history
 
-Record the approval ID and affected differences whenever the author confirms or changes this baseline.
+Record only completed author confirmations and revisions here, including the approval ID and affected differences. Keep the awaited scope or baseline decision in `pending_action.reason`, and use the session note for the stopping point under its existing contract.

@@ -174,7 +174,7 @@ test("setup carries self-contained preflight, validation, state, intake, range, 
 
 ### World facts and timeline constraints
 
-### Chapter order and current turning points
+### Chapter order and manuscript events
 
 ## Inferred from the text
 
