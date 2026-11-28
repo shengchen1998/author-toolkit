@@ -468,6 +468,7 @@ test("draft baseline source fidelity produces an auditable review before present
   assert.match(template, /same character, object, event, or timeline across all three sections/);
   assert.match(template, /apply every correction and move before presentation/);
   assert.match(template, /A summary claim does not replace the review rows/);
+  assert.match(template, /checks the required `Observed in the text` subsections/);
   assert.match(template, /does not establish that assertions are atomic or that citations support them/);
   assert.match(template, /\| Source ID \| Interpretation \|/);
   assert.match(template, /\| Source ID \| Topic \|/);

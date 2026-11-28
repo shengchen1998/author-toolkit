@@ -168,6 +168,14 @@ test("setup carries self-contained preflight, validation, state, intake, range, 
 
 - [O-001] The meeting lasts three days. (\`manuscript/1.md:3\`)
 
+### Principal characters and current choices
+
+### Current arc trends
+
+### World facts and timeline constraints
+
+### Chapter order and current turning points
+
 ## Inferred from the text
 
 | Source ID | Interpretation | Evidence paths | Alternative or uncertainty | Author decision |

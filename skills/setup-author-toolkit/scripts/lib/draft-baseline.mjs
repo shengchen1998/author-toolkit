@@ -18,6 +18,13 @@ const REVIEW_HEADINGS = [
   "Disposition",
   "Resulting statement or destination",
 ];
+const OBSERVED_SUBSECTIONS = [
+  "Premise and current conflict",
+  "Principal characters and current choices",
+  "Current arc trends",
+  "World facts and timeline constraints",
+  "Chapter order and current turning points",
+];
 
 function baselineError(instancePath, message) {
   return { instancePath, keyword: "draft-baseline", message, params: {} };
@@ -68,6 +75,18 @@ function registerLocation(locations, id, heading, index, errors, duplicateHint =
   locations.set(id, { heading, index });
 }
 
+function observedSubsections(lines, errors) {
+  for (const heading of OBSERVED_SUBSECTIONS) {
+    const count = lines.filter((line) => line === `### ${heading}`).length;
+    if (count !== 1) {
+      errors.push(baselineError(
+        `/${OBSERVED}/${heading}`,
+        `expected exactly one ### ${heading} subsection; found ${count}`,
+      ));
+    }
+  }
+}
+
 function observedIds(lines, locations, errors) {
   let subsection = false;
   for (const [index, line] of lines.entries()) {
@@ -115,7 +134,9 @@ export function validateDraftBaseline(markdown) {
   const errors = [];
   const lines = markdown.split(/\r?\n/);
   const locations = new Map();
-  observedIds(section(lines, OBSERVED, errors), locations, errors);
+  const observed = section(lines, OBSERVED, errors);
+  observedSubsections(observed, errors);
+  observedIds(observed, locations, errors);
   destinationIds(section(lines, INFERRED, errors), INFERRED, [
     "Source ID",
     "Interpretation",

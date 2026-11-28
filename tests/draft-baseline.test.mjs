@@ -11,6 +11,13 @@ const validator = path.join(root, "scripts", "validate.mjs");
 const INFERRED_HEADINGS = "| Source ID | Interpretation | Evidence paths | Alternative or uncertainty | Author decision |\n|---|---|---|---|---|";
 const UNKNOWN_HEADINGS = "| Source ID | Topic | Current status | Effect on current-text diagnosis |\n|---|---|---|---|";
 const REVIEW_HEADINGS = "| Assertion ID | Drafted observed assertion | Manuscript path and line or short passage, or no direct support | Disposition | Resulting statement or destination |\n|---|---|---|---|---|";
+const OBSERVED_SUBSECTIONS = [
+  "Premise and current conflict",
+  "Principal characters and current choices",
+  "Current arc trends",
+  "World facts and timeline constraints",
+  "Chapter order and current turning points",
+];
 
 function defaultReview() {
   return [
@@ -27,6 +34,7 @@ function fixture(overrides = {}) {
       "- [O-001] The meeting lasts three days. (`manuscript/1.md:3`)",
       "- [O-002] She returned at 18:00. (`manuscript/1.md:5`)",
     ],
+    observedHeadings: OBSERVED_SUBSECTIONS,
     inferred: [
       "| O-003 | The object may have been left deliberately. | `manuscript/1.md:13` | It may be unrelated. | Undecided |",
       "| — | The attendant may return. | `manuscript/1.md:5` | The scene may end here. | Undecided |",
@@ -42,9 +50,7 @@ function fixture(overrides = {}) {
 
 ## Observed in the text
 
-### Premise and current conflict
-
-${values.observed.join("\n")}
+${values.observedHeadings.map((heading, index) => `### ${heading}\n\n${index === 0 ? values.observed.join("\n") : ""}`).join("\n\n")}
 
 ## Inferred from the text
 
@@ -83,6 +89,29 @@ test("draft baseline validation accepts keep, revise, moves, and directly drafte
   const result = validateDraftBaseline(fixture());
   assert.deepEqual(result.errors, []);
   assert.equal(result.valid, true);
+});
+
+test("draft baseline validation requires every template subsection within Observed in the text", () => {
+  for (const heading of OBSERVED_SUBSECTIONS) {
+    const missing = fixture({
+      observedHeadings: OBSERVED_SUBSECTIONS.filter((candidate) => candidate !== heading),
+    });
+    assert.equal(validateDraftBaseline(missing).valid, false);
+    assert.match(messages(missing), new RegExp(`expected exactly one ### ${heading} subsection; found 0`));
+  }
+
+  const duplicate = fixture({
+    observedHeadings: [...OBSERVED_SUBSECTIONS, OBSERVED_SUBSECTIONS[0]],
+  });
+  assert.equal(validateDraftBaseline(duplicate).valid, false);
+  assert.match(messages(duplicate), /expected exactly one ### Premise and current conflict subsection; found 2/);
+
+  const heading = "Current arc trends";
+  const misplaced = fixture({
+    observedHeadings: OBSERVED_SUBSECTIONS.filter((candidate) => candidate !== heading),
+  }).replace("## Inferred from the text", `## Inferred from the text\n\n### ${heading}`);
+  assert.equal(validateDraftBaseline(misplaced).valid, false);
+  assert.match(messages(misplaced), /expected exactly one ### Current arc trends subsection; found 0/);
 });
 
 test("draft baseline validation reports missing and duplicate review rows", () => {

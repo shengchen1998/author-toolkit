@@ -464,9 +464,10 @@ match before reuse. Before the proposal is shown, a source-fidelity review assig
 stable `O-NNN` IDs to atomic observed assertions and records direct evidence and a
 keep, revise, or reclassification disposition for each ID. Moved assertions retain
 their source IDs in the destination tables. After corrections and moves, the
-installed `validate.mjs --draft-baseline` check must pass; it checks final ID
-coverage, review rows, dispositions, and recorded locations, while atomicity and
-semantic manuscript support remain review responsibilities. The first-scope
+installed `validate.mjs --draft-baseline` check must pass; it checks the required
+Observed subsections, final ID coverage, review rows, dispositions, and recorded
+locations, while atomicity and semantic manuscript support remain review
+responsibilities. The first-scope
 pending action and session note both use operation `intake`. Baseline confirmation
 and publication of the formal baseline retain their separate author decision and
 `edit` approval gates.

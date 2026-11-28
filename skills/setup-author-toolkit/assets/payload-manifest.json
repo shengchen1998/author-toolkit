@@ -168,7 +168,7 @@
     },
     {
       "path": "scripts/lib/draft-baseline.mjs",
-      "sha256": "68e2fd798c2581a9f14aec02fa50d55eb1d06c262efcdb6f5c3614acd03e44b2"
+      "sha256": "8c52b631585fcca6b93ff7c7c7fa0c975abbe4a00fefe1191caa7264d73b2a77"
     },
     {
       "path": "scripts/lib/evidence-inspection.mjs",
