@@ -190,7 +190,7 @@ test("setup carries self-contained preflight, validation, state, intake, range, 
 
 | Assertion ID | Drafted observed assertion | Manuscript path and line or short passage, or no direct support | Disposition | Resulting statement or destination |
 |---|---|---|---|---|
-| O-001 | The meeting lasts three days. | \`manuscript/1.md:3\` | keep | — |
+| O-001 | — | — | keep | — |
 `, "utf8");
   const draftBaselineValidation = spawnSync(
     process.execPath,

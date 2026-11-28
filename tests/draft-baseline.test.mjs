@@ -30,6 +30,12 @@ function defaultReview() {
   ];
 }
 
+function compactKeepReview() {
+  return defaultReview().map((row) => row.startsWith("| O-001")
+    ? "| O-001 | — | — | keep | — |"
+    : row);
+}
+
 function fixture(overrides = {}) {
   const values = {
     observed: [
@@ -91,6 +97,37 @@ test("draft baseline validation accepts keep, revise, moves, and directly drafte
   const result = validateDraftBaseline(fixture());
   assert.deepEqual(result.errors, []);
   assert.equal(result.valid, true);
+});
+
+test("draft baseline validation accepts compact keep rows and requires change audit fields", () => {
+  const compact = fixture({ review: compactKeepReview() });
+  assert.equal(validateDraftBaseline(compact).valid, true, messages(compact));
+
+  for (const row of [
+    "| O-001 | — | `manuscript/1.md:3` | keep | — |",
+    "| O-001 | The meeting lasts three days. | — | keep | — |",
+  ]) {
+    const mixed = fixture({
+      review: compactKeepReview().map((candidate) => candidate.startsWith("| O-001") ? row : candidate),
+    });
+    assert.equal(validateDraftBaseline(mixed).valid, false);
+  }
+
+  const missingRevisionAssertion = fixture({
+    review: compactKeepReview().map((row) => row.startsWith("| O-002")
+      ? row.replace("Today is the first meeting day.", "—")
+      : row),
+  });
+  assert.equal(validateDraftBaseline(missingRevisionAssertion).valid, false);
+  assert.match(messages(missingRevisionAssertion), /drafted observed assertion is required/);
+
+  const missingMoveSupport = fixture({
+    review: compactKeepReview().map((row) => row.startsWith("| O-003")
+      ? row.replace("`manuscript/1.md:13`", "—")
+      : row),
+  });
+  assert.equal(validateDraftBaseline(missingMoveSupport).valid, false);
+  assert.match(messages(missingMoveSupport), /manuscript support or its absence is required/);
 });
 
 test("draft baseline validation requires every template subsection within Observed in the text", () => {
@@ -186,7 +223,7 @@ test("draft baseline validation requires identified single-line observed asserti
 test("draft baseline CLI validates Markdown and resolves project-relative paths", async (t) => {
   const directory = await temporaryDirectory(t);
   const validFile = path.join(directory, "valid.md");
-  await writeFile(validFile, fixture(), "utf8");
+  await writeFile(validFile, fixture({ review: compactKeepReview() }), "utf8");
   const valid = runValidator(["--draft-baseline", validFile]);
   assert.equal(valid.status, 0, valid.stderr);
   assert.match(valid.stdout, /1 checks, 0 failures/);

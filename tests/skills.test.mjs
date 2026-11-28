@@ -464,7 +464,8 @@ test("draft baseline source fidelity produces an auditable review before present
   assert.match(template, /one stable `O-NNN` ID to each atomic factual or temporal assertion/);
   assert.match(template, /Within each `###` subsection, every nonempty line must be one of these single-line assertion bullets/);
   assert.match(template, /one review row per ID drafted under `Observed in the text`/);
-  assert.match(template, /Record the original assertion, direct manuscript support or its absence/);
+  assert.match(template, /For `keep`, use `—` for both the drafted assertion and manuscript support cells/);
+  assert.match(template, /For `revise` and moves, record the original assertion and direct manuscript support or its absence/);
   for (const disposition of ["`keep`", "`revise`", "`move to Inferred from the text`", "`move to Unknown or unwritten`"]) {
     assert.ok(template.includes(disposition), `Missing source-fidelity disposition: ${disposition}`);
   }
@@ -994,8 +995,8 @@ test("revision strategies share one project and keep distinct evidence gates", a
   assert.match(firstScopeRoute, /read each file's opening rules or shared preamble from its first line through the line before its first level-two heading/);
   assert.match(firstScopeRoute, /For every named section below, locate its heading and section end first, then use parallel bounded line-range reads/);
   assert.match(firstScopeRoute, /\[Intake\]\(references\/stage-gates\.md#1-intake\)/);
-  assert.match(firstScopeRoute, /\[Draft baseline\]\(references\/stage-gates\.md#2-draft-baseline\)/);
-  assert.match(firstScopeRoute, /stopping before `## 3\. Diagnostics`/);
+  assert.doesNotMatch(firstScopeRoute, /\[Draft baseline\]\(references\/stage-gates\.md#2-draft-baseline\)/);
+  assert.match(firstScopeRoute, /stopping before `## 2\. Draft baseline`/);
   assert.match(firstScopeRoute, /`\.\.\/author-project\/references\/operations\.md` for `intake-inventory`, `record-scope`, and `set-pending`/);
   assert.match(firstScopeRoute, /`\.\.\/author-project\/references\/read-operations\.md` for writing the session note before the final cache refresh/);
   assert.match(firstScopeRoute, /\[Digest\]\(\.\.\/author-project\/references\/read-operations\.md#digest\) only, following its linked session-note template/);
@@ -1019,21 +1020,35 @@ test("revision strategies share one project and keep distinct evidence gates", a
   assert.match(firstScopeRoute, /Keep every read of these four references within those ranges/);
   assert.match(firstScopeRoute, /Resolve every relative reference and template path below from the installed directory containing this `revise-draft\/SKILL\.md`/);
   assert.match(firstScopeRoute, /use the resolved paths for heading searches and bounded line-range reads\. `<setup-skill-root>` supplies CLI and shared `assets\/references\/` paths\./);
-  assert.match(firstScopeRoute, /This gate is the complete first-scope procedure/);
+  assert.match(firstScopeRoute, /This route is the complete pre-confirmation reading procedure/);
   assert.match(firstScopeRoute, /`author-project` and `revise-fiction` supply only the shared reference sections linked here; their entry `SKILL\.md` files and other strategies are outside this procedure/);
   assert.doesNotMatch(firstScopeRoute, /once in full/);
-  assert.match(draft, /record the proposed scope through `author-project` with `record-scope`/);
-  assert.match(draft, /persist the proposed `draft-baseline` artifact, and pass its installed `--draft-baseline` validation/);
-  assert.match(draft, /Record the gate as `awaiting_author` through `set-pending` with `--operation intake`/);
-  assert.match(draft, /write the session note with `Operation: intake` and refresh the navigation cache once/);
-  assert.match(draft, /Then stop for confirmation of the proposed scope/);
-  assert.match(draft, /Defer the intake-report template and all intake-report preparation, including the Report envelope, until after explicit scope confirmation/);
-  assert.match(draft, /After explicit scope confirmation, confirm that exact unchanged record through `record-scope`/);
+  const beforeScopeConfirmation = draft
+    .split("   - Before asking for scope confirmation,")[1]
+    ?.split("   - After explicit scope confirmation,")[0];
+  const afterScopeConfirmation = draft
+    .split("   - After explicit scope confirmation,")[1]
+    ?.split("\n\n   On later runs,")[0];
+  assert.ok(beforeScopeConfirmation);
+  assert.ok(afterScopeConfirmation);
+  assert.match(beforeScopeConfirmation, /record the proposed scope through `author-project` with `record-scope`/);
+  assert.doesNotMatch(beforeScopeConfirmation, /baseline|draft-baseline/);
+  assert.match(beforeScopeConfirmation, /Record the gate as `awaiting_author` through `set-pending` with `--operation intake`/);
+  assert.match(beforeScopeConfirmation, /write the session note with `Operation: intake` and refresh the navigation cache once/);
+  assert.match(beforeScopeConfirmation, /Then stop for confirmation of the proposed scope/);
+  assert.match(beforeScopeConfirmation, /Defer the intake-report template and all intake-report preparation, including the Report envelope, until after explicit scope confirmation/);
+  assert.match(afterScopeConfirmation, /confirm that exact unchanged record through `record-scope`/);
+  assert.match(afterScopeConfirmation, /persist the proposed `draft-baseline` artifact, and pass its installed `--draft-baseline` validation/);
+  assert.match(afterScopeConfirmation, /Record the baseline gate as `awaiting_author` through `set-pending` with `--operation draft-baseline`/);
+  assert.match(afterScopeConfirmation, /including the baseline path in `pending_action\.artifacts`/);
+  assert.match(afterScopeConfirmation, /write the session note with `Operation: draft-baseline` and refresh the navigation cache once/);
+  assert.match(afterScopeConfirmation, /Then stop for baseline corrections and confirmation/);
   const draftBaselineRoute = draft.match(/^\| `draft-baseline` \| (.+) \|$/m)?.[1];
   assert.ok(draftBaselineRoute);
   assert.match(draftBaselineRoute, /^Execute the local \[Draft baseline\]\(references\/stage-gates\.md#2-draft-baseline\) procedure with `assets\/draft-baseline-template\.md`/);
   assert.match(draftBaselineRoute, /optional editorial reference: \[developmental editing\]\(\.\.\/fiction-workshop\/references\/developmental-editing\.md\)/);
   assert.doesNotMatch(draftBaselineRoute, /`fiction-workshop`/);
+  assert.match(draftGates, /\*\*Inputs:\*\* The confirmed current scope, manuscript, and any existing Story Bible or earlier baseline\./);
   assert.match(draftGates, /\.author-toolkit\/proposals\/<scope-id>-draft-baseline\.md/);
   assert.match(draftGates, /`pending_action\.artifacts`/);
   assert.match(draftGates, /non-authoritative working artifact/);

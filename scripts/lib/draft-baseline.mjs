@@ -174,10 +174,13 @@ export function validateDraftBaseline(markdown) {
     }
     const disposition = cleanTrackerCell(cells[3]);
     const result = cleanTrackerCell(cells[4]);
-    if (!cleanTrackerCell(cells[1])) {
+    const assertion = cleanTrackerCell(cells[1]);
+    const support = cleanTrackerCell(cells[2]);
+    const compactKeep = disposition === "keep" && assertion === "—" && support === "—";
+    if (!compactKeep && (!assertion || assertion === "—")) {
       errors.push(baselineError(`${instancePath}/assertion`, "drafted observed assertion is required"));
     }
-    if (!cleanTrackerCell(cells[2])) {
+    if (!compactKeep && (!support || support === "—")) {
       errors.push(baselineError(`${instancePath}/support`, "manuscript support or its absence is required"));
     }
     if (!DISPOSITIONS.has(disposition)) {
