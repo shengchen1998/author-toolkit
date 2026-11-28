@@ -168,8 +168,11 @@ and `revise-draft` as well. Add
 `CLAUDE.md -> AGENTS.md` link; project-state validation remains a separate check.
 Its text and JSON output distinguish installed-payload,
 required-sibling, and repairable project-entry failures, with an explicit exit reason.
-JSON exposes the toolkit release as `version`; `check` and `preflight` expose it as
-`payload.version`.
+JSON exposes the toolkit release as `version` and the normalized payload inventory's
+SHA-256 identity as `payload_digest`; `check` and `preflight` expose them as
+`payload.version` and `payload.payload_digest`. The digest identifies a payload
+snapshot independently of manifest formatting and file order; it does not replace
+validation, establish that the snapshot is current upstream, or verify sibling content.
 
 Run `node <setup-skill-root>/scripts/install-entry-files.mjs --project-root <root> --json`
 to repair the two project agent entry files after a successful payload check. It

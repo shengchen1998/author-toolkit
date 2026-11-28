@@ -73,7 +73,9 @@ setup 在进入任一项目分支前执行此检查. 重复 `--require-sibling N
 `revise-fiction` 和 `revise-draft` 启动文件. 添加 `--project-root <root>` 可同时核对写作项目的
 `AGENTS.md` 和相对符号链接 `CLAUDE.md -> AGENTS.md`; 项目状态校验仍是独立检查.
 文本和 JSON 输出分别列出安装载荷、必需兄弟技能与可修复项目入口的失败, 并明确显示退出原因.
-doctor 的 JSON 以 `version` 返回工具包发布版本; `check` 和 preflight 以 `payload.version` 返回.
+doctor 的 JSON 以 `version` 返回工具包发布版本, 以 `payload_digest` 返回规范化载荷清单的 SHA-256 标识;
+`check` 和 preflight 分别以 `payload.version` 和 `payload.payload_digest` 返回.
+载荷摘要不随 manifest 格式化和文件顺序变化, 用于识别载荷快照; 它不替代校验, 不证明快照是上游最新版本, 也不核对兄弟技能内容.
 
 运行 `node <setup-skill-root>/scripts/install-entry-files.mjs --project-root <root> --json`,
 在载荷检查通过后修复两个项目代理入口文件.

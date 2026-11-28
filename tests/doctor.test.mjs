@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { cp, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import test from "node:test";
@@ -64,6 +65,36 @@ test("doctor reports a bounded summary for a complete installed payload", async 
   assert.deepEqual(parsed.failures, []);
   assert.deepEqual(parsed.payload_failures, []);
   assert.deepEqual(parsed.entry_failures, []);
+});
+
+test("doctor payload digest identifies normalized payload content", async (t) => {
+  const { setupRoot } = await fixture(t);
+  const installedTool = path.join(setupRoot, "scripts", "doctor.mjs");
+  const initialResult = run(["--json"], { tool: installedTool });
+  assert.equal(initialResult.status, 0, initialResult.stderr);
+  const initial = JSON.parse(initialResult.stdout);
+  assert.match(initial.payload_digest, /^[a-f\d]{64}$/);
+
+  const manifestPath = path.join(setupRoot, "assets", "payload-manifest.json");
+  const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
+  manifest.files.reverse();
+  await writeFile(manifestPath, JSON.stringify(manifest));
+  const reformattedResult = run(["--json"], { tool: installedTool });
+  assert.equal(reformattedResult.status, 0, reformattedResult.stderr);
+  assert.equal(JSON.parse(reformattedResult.stdout).payload_digest, initial.payload_digest);
+
+  const skillPath = path.join(setupRoot, "SKILL.md");
+  const skill = `${await readFile(skillPath, "utf8")}\n`;
+  await writeFile(skillPath, skill);
+  manifest.files.find((entry) => entry.path === "SKILL.md").sha256 = createHash("sha256")
+    .update(skill)
+    .digest("hex");
+  await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
+  const changedResult = run(["--json"], { tool: installedTool });
+  assert.equal(changedResult.status, 0, changedResult.stderr);
+  const changed = JSON.parse(changedResult.stdout);
+  assert.equal(changed.valid, true);
+  assert.notEqual(changed.payload_digest, initial.payload_digest);
 });
 
 test("source doctor resolves the checked-in setup skill", () => {
@@ -250,6 +281,9 @@ test("doctor does not guess required files from a missing or invalid manifest", 
   const manifestPath = path.join(setupRoot, "assets", "payload-manifest.json");
   const original = await readFile(manifestPath, "utf8");
   await rm(manifestPath);
+  const missingJson = run(["--json"], { tool: installedTool });
+  assert.equal(missingJson.status, 1);
+  assert.equal(JSON.parse(missingJson.stdout).payload_digest, null);
   const missing = run([], { tool: installedTool });
   assert.equal(missing.status, 1);
   assert.match(missing.stdout, /Setup payload: 0 files \(0 references, 0 CLIs\)\nPayload failures: 1/);

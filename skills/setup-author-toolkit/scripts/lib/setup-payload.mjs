@@ -91,6 +91,18 @@ function validateManifestShape(value) {
   return errors;
 }
 
+function payloadDigest(manifest) {
+  if (!manifest) return null;
+  const files = manifest.files
+    .map((entry) => ({ path: entry.path, sha256: entry.sha256 }))
+    .sort((left, right) => left.path < right.path ? -1 : left.path > right.path ? 1 : 0);
+  return createHash("sha256").update(JSON.stringify({
+    schema_version: manifest.schema_version,
+    version: manifest.version,
+    files,
+  })).digest("hex");
+}
+
 async function readPayloadManifest(setupRoot) {
   const relative = PAYLOAD_MANIFEST;
   let text;
@@ -215,6 +227,7 @@ export async function inspectSetupPayload(setupRoot, { projectRoot, requireSibli
     valid: failures.length === 0,
     setup_root: setupRoot,
     payload_manifest: manifest ? path.basename(PAYLOAD_MANIFEST) : null,
+    payload_digest: payloadDigest(manifest),
     version: manifest?.version ?? null,
     files: manifest?.files.length ?? 0,
     references,
